@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/constantsForDesign.dart';
+import 'package:chickenjoo_inventory/designconstants.dart';
 
 void main() {
   runApp(const MyApp());
