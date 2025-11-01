@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:chickenjoo_inventory/designconstants.dart';
 
 void main() {
   runApp(const MyApp());
@@ -41,81 +42,57 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() {
-    // TODO: Implement login logic
     final email = _emailController.text;
     final password = _passwordController.text;
-    
+
     print('Email: $email');
     print('Password: $password');
-    
-    // Add your authentication logic here
   }
 
   @override
   Widget build(BuildContext context) {
+    final double fieldPadding = AppLayout.fieldPadding(context);
+    final double loginButtonWidth = AppLayout.loginButtonWidth(context);
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFEF4848), // Solid red background
-        ),
+        decoration: const BoxDecoration(color: Color(0xFFEF4848)),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
+              padding: EdgeInsets.symmetric(horizontal: fieldPadding),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo Container
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      children: [
-                        // Placeholder for logo - Replace with your actual logo
-                        Container(
-                          height: 80,
-                          width: 150,
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade100,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'CHICKEN\nJOO',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // If you have the logo image, replace the Container above with:
-                        // Image.asset(
-                        //   'assets/images/chicken_joo_logo.png',
-                        //   height: 80,
-                        // ),
-                      ],
+                  SizedBox(
+                    width: 300,
+                    child: Image.asset(
+                      imageAll,
+                      height: 80,
+                      fit: BoxFit.contain,
                     ),
                   ),
-                  const SizedBox(height: 20),
                   
+
+                  const SizedBox(height: 20),
+
                   // Inventory System Title
                   const Text(
                     'Inventory System',
+                    textAlign: TextAlign.center,
+                    //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
                     style: TextStyle(
+                      fontFamily: fontAll,
                       fontSize: 24,
+                      
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                       letterSpacing: 0.5,
                     ),
                   ),
                   const SizedBox(height: 40),
-                  
+
                   // Email Input Field
                   Container(
                     decoration: BoxDecoration(
@@ -132,8 +109,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
+                      style: const TextStyle(
+                        fontFamily: fontAll,
+                        fontSize: 18,
+                        color: Colors.black,
+                      ),
                       decoration: const InputDecoration(
-                        hintText: 'owner@gmail.com',
+                        hintText: 'Email Address',
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: 25,
@@ -143,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Password Input Field
                   Container(
                     decoration: BoxDecoration(
@@ -153,15 +136,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         BoxShadow(
                           color: Colors.black.withOpacity(0.1),
                           blurRadius: 10,
-                          offset: const Offset(0, 5),
                         ),
                       ],
                     ),
                     child: TextField(
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
+                      //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
+                      style: const TextStyle(
+                        fontFamily: fontAll,
+                        fontSize: 18,
+                        color: Colors.black,
+                      ),
                       decoration: InputDecoration(
-                        hintText: '•••••',
+                        hintText: 'Password',
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 25,
@@ -184,10 +172,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-                  
+
                   // Login Button
                   SizedBox(
-                    width: double.infinity,
+                    width: loginButtonWidth,
                     child: ElevatedButton(
                       onPressed: _handleLogin,
                       style: ElevatedButton.styleFrom(
@@ -195,14 +183,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        elevation: 5,
+                        elevation: 10,
                       ),
                       child: const Text(
                         'LOGIN',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontFamily: fontAll,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1,
                         ),
