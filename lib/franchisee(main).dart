@@ -74,7 +74,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      body: Row(
+      body: 
+      Row(
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -100,7 +101,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(12),
               child: currentPage,
             ),
           ),
@@ -109,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Button for Drawer Menu Items
+  // Button for Sidebar
   Widget sideBarButtons(IconData icon, String label, int index) {
     bool active = selectedIndex == index;
 
