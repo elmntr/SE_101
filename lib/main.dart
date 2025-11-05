@@ -1,3 +1,4 @@
+import 'package:chickenjoo_inventory/items_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/designconstants.dart';
 import 'franchisee(main).dart';
@@ -77,7 +78,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       fit: BoxFit.contain,
                     ),
                   ),
-                  
 
                   const SizedBox(height: 20),
 
@@ -89,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(
                       fontFamily: fontAll,
                       fontSize: 24,
-                      
+
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                       letterSpacing: 0.5,
