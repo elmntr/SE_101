@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/designconstants.dart';
-import 'franchisee(main).dart';
+import 'home.dart';
 
 void main() {
   runApp(const MyApp());

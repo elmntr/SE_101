@@ -18,19 +18,38 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget currentPage = const ReportsPage(); 
   int selectedIndex = 0;
   bool isSideBarOpen = false;
+  String accountType = "franchisee"; 
 
-  final List<Widget> pages = const [
-    ReportsPage(),
-    ItemsPage(),
-    InventoryPage(),
-    EmployeePage(),
-  ];
+  late List<Map<String, dynamic>> menuItems;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (accountType == "franchisee") {
+      menuItems = [
+        {"icon": Icons.bar_chart, "label": "Reports", "page": const ReportsPage()},
+        {"icon": Icons.shopping_cart, "label": "Items", "page": const ItemsPage()},
+        {"icon": Icons.inventory_2, "label": "Inventory", "page": const InventoryPage()},
+        {"icon": Icons.person_2, "label": "Employee", "page": const EmployeePage()},
+      ];
+    } else if (accountType == "admin") {
+      menuItems = [
+        {"icon": Icons.dashboard, "label": "Dashboard", "page": const ReportsPage()},
+        {"icon": Icons.store, "label": "Manage Branches", "page": const ItemsPage()},
+        {"icon": Icons.people, "label": "Users", "page": const EmployeePage()},
+        {"icon": Icons.settings, "label": "Settings", "page": const InventoryPage()},
+      ];
+    }
+
+    currentPage = menuItems[0]["page"]; // first page default
+  }
 
   void switchPage(int index) {
     setState(() {
       selectedIndex = index;
-      currentPage = pages[index];
-      isSideBarOpen = false; 
+      currentPage = menuItems[index]["page"];
+      isSideBarOpen = false;
     });
   }
 
@@ -86,13 +105,14 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const SizedBox(height: 40),
 
-                sideBarButtons(Icons.bar_chart, "Reports", 0),
-                const SizedBox(height: 5),
-                sideBarButtons(Icons.shopping_cart, "Items", 1),
-                const SizedBox(height: 5),
-                sideBarButtons(Icons.inventory_2, "Inventory", 2),
-                const SizedBox(height: 5),
-                sideBarButtons(Icons.person_2, "Employee", 3),
+                ...List.generate(menuItems.length, (index) {
+                  return Column(
+                    children: [
+                      sideBarButtons(menuItems[index]["icon"], menuItems[index]["label"], index),
+                      const SizedBox(height: 5),
+                    ],
+                  );
+                }),
               ],
             ),
           ),

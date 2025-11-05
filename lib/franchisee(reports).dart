@@ -85,8 +85,9 @@ class _ReportsPageState extends State<ReportsPage> {
   Widget build(BuildContext context) {
     final data = chartData[selectedMetric]![selectedPeriod]!;
     final maxValue = data.reduce((a, b) => a > b ? a : b);
-
+  
     return Scaffold(
+      backgroundColor: Colors.grey.shade200,
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -97,10 +98,11 @@ class _ReportsPageState extends State<ReportsPage> {
               children: [
                 const Text(
                   'Reports',
-                  style: TextStyle(fontSize: 22, fontFamily: fontAll),
+                  style: TextStyle(fontSize: 30, fontFamily: fontAll),
                 ),
                 IconButton(
                   icon: const Icon(Icons.notifications_outlined),
+                  iconSize: 35,
                   onPressed: () {},
                 )
               ],
@@ -113,14 +115,14 @@ class _ReportsPageState extends State<ReportsPage> {
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
                     child: DropdownButton<String>(
                       value: selectedItem,
                       isExpanded: true,
                       dropdownColor: Colors.red,
                       underline: const SizedBox(),
-                      icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white),
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      icon: const Icon(Icons.keyboard_arrow_up, color: Colors.black),
+                      style: const TextStyle(color: Colors.black, fontSize: 14),
                       items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
                       onChanged: (value) => setState(() => selectedItem = value!),
                     ),
@@ -129,13 +131,13 @@ class _ReportsPageState extends State<ReportsPage> {
                 const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
                   child: DropdownButton<String>(
                     value: selectedPeriod,
-                    dropdownColor: Colors.red,
+                    dropdownColor: Colors.white,
                     underline: const SizedBox(),
-                    icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white),
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    icon: const Icon(Icons.keyboard_arrow_up, color: Colors.black),
+                    style: const TextStyle(color: Colors.black, fontSize: 14),
                     items: periods.map((period) => DropdownMenuItem(value: period, child: Text(period))).toList(),
                     onChanged: (value) => setState(() => selectedPeriod = value!),
                   ),
