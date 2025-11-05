@@ -1,6 +1,7 @@
 import 'package:chickenjoo_inventory/items_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/designconstants.dart';
+import 'franchisee(main).dart';
 
 void main() {
   runApp(const MyApp());
@@ -43,11 +44,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() {
-    final email = _emailController.text;
+    /*final email = _emailController.text;
     final password = _passwordController.text;
 
     print('Email: $email');
-    print('Password: $password');
+    print('Password: $password');*/
+
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()),
+  );
   }
 
   @override
