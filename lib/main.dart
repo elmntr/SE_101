@@ -1,4 +1,3 @@
-import 'package:chickenjoo_inventory/items_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/designconstants.dart';
 import 'home.dart';

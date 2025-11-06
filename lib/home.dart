@@ -5,7 +5,6 @@ import 'franchisee(inventory).dart';
 import 'franchisee(items).dart';
 import 'franchisee(employee).dart';
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -14,11 +13,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // (APURADO) Naka set na as default page yung ReportsPage pagdating sa Franchisee
-  Widget currentPage = const ReportsPage(); 
+  Widget currentPage = const ReportsPage();
   int selectedIndex = 0;
   bool isSideBarOpen = false;
-  String accountType = "franchisee"; 
+  bool showLabels = false; // ✅ NEW
+  String accountType = "franchisee";
 
   late List<Map<String, dynamic>> menuItems;
 
@@ -42,7 +41,21 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
     }
 
-    currentPage = menuItems[0]["page"]; // first page default
+    currentPage = menuItems[0]["page"];
+  }
+
+  // ✅ Sidebar toggle with delayed label appearance
+  void toggleSidebar() {
+    setState(() {
+      isSideBarOpen = !isSideBarOpen;
+      showLabels = false; // hide immediately
+    });
+
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted && isSideBarOpen) {
+        setState(() => showLabels = true);
+      }
+    });
   }
 
   void switchPage(int index) {
@@ -50,23 +63,20 @@ class _HomeScreenState extends State<HomeScreen> {
       selectedIndex = index;
       currentPage = menuItems[index]["page"];
       isSideBarOpen = false;
+      showLabels = false; 
     });
   }
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: Colors.grey.shade200,
-
       appBar: AppBar(
         backgroundColor: Colors.red.shade400,
         elevation: 3,
         leading: IconButton(
           icon: const Icon(Icons.menu, color: Colors.white, size: 35),
-          onPressed: () {
-            setState(() => isSideBarOpen = !isSideBarOpen);
-          },
+          onPressed: toggleSidebar, 
         ),
         centerTitle: true,
         title: Row(
@@ -93,8 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      body: 
-      Row(
+      body: Row(
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -108,7 +117,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ...List.generate(menuItems.length, (index) {
                   return Column(
                     children: [
-                      sideBarButtons(menuItems[index]["icon"], menuItems[index]["label"], index),
+                      sideBarButtons(
+                        menuItems[index]["icon"],
+                        menuItems[index]["label"],
+                        index,
+                      ),
                       const SizedBox(height: 5),
                     ],
                   );
@@ -120,16 +133,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(width: 1, color: Colors.grey.shade300),
 
           Expanded(
-            child: Container(
-              child: currentPage,
-            ),
+            child: currentPage,
           ),
         ],
       ),
     );
   }
 
-  // Button for Sidebar
   Widget sideBarButtons(IconData icon, String label, int index) {
     bool active = selectedIndex == index;
 
@@ -142,19 +152,31 @@ class _HomeScreenState extends State<HomeScreen> {
             : null,
         child: Row(
           children: [
-            Icon(icon, size: 25,
-                color: active ? Colors.red : Colors.grey.shade900),
-            if (isSideBarOpen) ...[
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: TextStyle(
-                    fontFamily: fontAll,
-                    fontSize: 16,
-                    color: active ? Colors.red : Colors.black,
-                    fontWeight: active ? FontWeight.normal : FontWeight.normal),
-              ),
-            ],
+            Icon(
+              icon,
+              size: 25,
+              color: active ? Colors.red : Colors.grey.shade900,
+            ),
+
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: showLabels
+                  ? Row(
+                      children: [
+                        const SizedBox(width: 12),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontFamily: fontAll,
+                            fontSize: 16,
+                            color: active ? Colors.red : Colors.black,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox(),
+            ),
           ],
         ),
       ),

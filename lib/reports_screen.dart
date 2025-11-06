@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/designconstants.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
