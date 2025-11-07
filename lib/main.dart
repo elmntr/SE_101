@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/designconstants.dart';
+import 'home.dart';
 
 void main() {
   runApp(const MyApp());
@@ -42,11 +43,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() {
-    final email = _emailController.text;
+    /*final email = _emailController.text;
     final password = _passwordController.text;
 
     print('Email: $email');
-    print('Password: $password');
+    print('Password: $password');*/
+
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()),
+  );
   }
 
   @override
@@ -73,7 +77,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       fit: BoxFit.contain,
                     ),
                   ),
-                  
 
                   const SizedBox(height: 20),
 
@@ -85,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(
                       fontFamily: fontAll,
                       fontSize: 24,
-                      
+
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                       letterSpacing: 0.5,
