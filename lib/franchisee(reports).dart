@@ -119,7 +119,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     child: DropdownButton<String>(
                       value: selectedItem,
                       isExpanded: true,
-                      dropdownColor: Colors.red,
+                      dropdownColor: Colors.white,
                       underline: const SizedBox(),
                       icon: const Icon(Icons.keyboard_arrow_up, color: Colors.black),
                       style: const TextStyle(color: Colors.black, fontSize: 14),

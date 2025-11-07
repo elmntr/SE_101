@@ -15,22 +15,15 @@ class _ItemsPageState extends State<ItemsPage> {
   int categoryCount = 0;
   int selectedTab = 0; // 0 = Items, 1 = Categories
 
-  // ✅ Add Item Function
-  void _addNewCategory(Map<String, dynamic> newItem) {
-    setState(() {
-      categories.add(newItem);
-    });
-  }
-
-  // ✅ Add Item Dialog
-  void _showAddCategory() {
+  //Add Category Popup
+  void _createCategory() {
     final TextEditingController category = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Add Category", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Add Category", style: TextStyle( fontFamily: fontAll , fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -43,7 +36,7 @@ class _ItemsPageState extends State<ItemsPage> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               if (category.text.isEmpty) return;
-              _addNewCategory({
+              _saveCategory({
                 "category": category.text,
                 "itemNumber": categoryCount,
               });
@@ -57,42 +50,46 @@ class _ItemsPageState extends State<ItemsPage> {
     );
   }
 
-  // ✅ Empty Screen Widget
-  Widget _noPresentItems(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(message, style: const TextStyle(color: Colors.black54)),
-        ],
-      ),
-    );
+  // Save New Category
+  void _saveCategory(Map<String, dynamic> newItem) {
+    setState(() {
+      categories.add(newItem);
+    });
   }
 
-  Widget _noPresentCategories(String message) {
+  //Empty Tab Widget
+  Widget _emptyTables(String message, int tab) {
+
+    selectedTab = tab;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(message, style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 15),
-          IconButton(
-            icon: const Icon(Icons.add_circle, color: Colors.red, size: 55),
-            onPressed: _showAddCategory,
-          )
+          if (tab == 1)
+            IconButton(
+              icon: const Icon(Icons.add_circle, color: Colors.red, size: 55),
+              onPressed: _createCategory,
+            )
+          else 
+            IconButton(
+              icon: const Icon(Icons.add_circle, color: Colors.red, size: 55),
+              onPressed: _createCategory,
+            )
         ],
       ),
     );
   }
-  
 
-  // ✅ Table Widget
+  // Category Table Widget
   Widget _buildCategoryTable() {
     return SingleChildScrollView(
       child: DataTable(
         columns: const [
-          DataColumn(label: Text("Category Name", style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text("Items in Category", style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(label: Text("Category Name", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
+          DataColumn(label: Text("Items in Category", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
           DataColumn(label: Text('')),
         ],
         rows: List.generate(categories.length, (i) {
@@ -103,7 +100,7 @@ class _ItemsPageState extends State<ItemsPage> {
             DataCell(
               IconButton(
                 icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _confirmDelete(i),
+                onPressed: () => _deleteCategory(i),
               ),
             ),
           ]);
@@ -112,7 +109,8 @@ class _ItemsPageState extends State<ItemsPage> {
     );
   }
 
-  void _confirmDelete(int index) {
+  // Delete Category
+  void _deleteCategory(int index) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -139,92 +137,7 @@ class _ItemsPageState extends State<ItemsPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // ✅ Header
-            Row(
-              children: [
-                const Text("Items", style: TextStyle(fontSize: 30, fontFamily: fontAll)),
-                const SizedBox(width: 16),
-
-                // ✅ Search Bar
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search...",
-                        prefixIcon: Icon(Icons.search),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ),
-
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined, size: 35),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // ✅ Tabs + Content
-            Expanded(
-              child: Column(
-                children: [
-                  // ✅ Raised Tabs
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        _buildTab("Item List", 0),
-                        _buildTab("Categories", 1),
-                      ],
-                    ),
-                  ),
-
-                  // ✅ White content box
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(12),
-                          bottomRight: Radius.circular(12),
-                        ),
-                      ),
-                      child: selectedTab == 0 
-                          ? _noPresentItems("You can manage your items here.")
-                          : (categories.isEmpty ?_noPresentCategories("You can add categories here to organize your items.") : _buildCategoryTable()) ,
-              
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ✅ Tab Builder
+// Tab Builder
   Widget _buildTab(String label, int index) {
     bool active = selectedTab == index;
     return Expanded(
@@ -257,4 +170,91 @@ class _ItemsPageState extends State<ItemsPage> {
       )
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            //  Header
+            Row(
+              children: [
+                const Text("Items", style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+                const SizedBox(width: 16),
+
+                // Search Bar
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: const TextField(
+                      decoration: InputDecoration(
+                        hintText: "Search...",
+                        prefixIcon: Icon(Icons.search),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ),
+
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined, size: 35),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Tabs + Content
+            Expanded(
+              child: Column(
+                children: [
+                  // Raised Tabs
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildTab("Item List", 0),
+                        _buildTab("Categories", 1),
+                      ],
+                    ),
+                  ),
+
+                  // White content box
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(12),
+                          bottomRight: Radius.circular(12),
+                        ),
+                      ),
+                      child: selectedTab == 0 
+                          ? _emptyTables("You can manage your items here.", selectedTab)
+                          : (categories.isEmpty ?_emptyTables("You can add categories here to organize your items.", selectedTab) : _buildCategoryTable()) ,
+              
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  
 }

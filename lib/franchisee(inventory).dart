@@ -11,134 +11,114 @@ class InventoryPage extends StatefulWidget {
 class _InventoryPageState extends State<InventoryPage> {
   List<Map<String, dynamic>> inventory = [];
   List<Map<String, dynamic>> stockChanges = [];
+  List<Map<String, dynamic>> replenishStock = [];
 
-  int categoryCount = 0;
-  int selectedTab = 0; // 0 = Items, 1 = Categories
+  //Hardcoded data for testing
+  List<String> itemName= ['Chicken', 'Beef', 'Pork'];
+  List<int> inStock= [12, 24, 36];
+  List<int> sold= [0, 0, 0];
+  List<int> spoilage= [0, 0, 0]; 
 
-  // ✅ Add Item Function
-  void _addNewCategory(Map<String, dynamic> newItem) {
-    setState(() {
-      inventory.add(newItem);
-    });
+  int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock
+
+  //Set Date for Inventory Table
+  @override
+  void initState() {
+    super.initState();
+
+    // Convert list elements into map data
+    for (int i = 0; i < itemName.length; i++) {
+      inventory.add({
+        "itemName": itemName[i],
+        "inStock": inStock[i],
+        "sold": sold[i],
+        "spoilage": spoilage[i],
+      });
+    }
   }
 
-  // ✅ Add Item Dialog
-  void _showAddCategory() {
-    final TextEditingController category = TextEditingController();
+  //Empty Tab Widget
+  Widget _emptyTables(String message, int tab) {
+    
+    selectedTab = tab;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Add Category", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(decoration: const InputDecoration(labelText: "Category"), controller: category),
-            ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              if (category.text.isEmpty) return;
-              _addNewCategory({
-                "category": category.text,
-                "itemNumber": categoryCount,
-              });
-
-              Navigator.pop(context);
-            },
-            child: const Text("Save", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /*Widget _noStockItems(String message) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(message, style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 15),
-          IconButton(
-            icon: const Icon(Icons.add_circle, color: Colors.red, size: 55),
-            onPressed: _showAddCategory,
-          )
-        ],
-      ),
-    );
-  }*/
-
-  Widget _noPresentItems(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(message, style: const TextStyle(color: Colors.black54)),
-          const SizedBox(height: 15),
-          IconButton(
-            icon: const Icon(Icons.add_circle, color: Colors.red, size: 55),
-            onPressed: _showAddCategory,
-          )
+          if (tab == 2)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+              ),
+              onPressed: () {
+                // TODO: add your function here
+                print("Replenish stock button pressed");
+              },
+              child: const Text("Request Stock", style: TextStyle(color: Colors.white)),
+            ),
         ],
       ),
     );
   }
 
-  // ✅ Table Widget
-  Widget _buildCategoryTable() {
+  // Inventory Table Widget
+  Widget _buildInventoryTable() {
     return SingleChildScrollView(
       child: DataTable(
         columns: const [
-          DataColumn(label: Text("Category Name", style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text("Items in Category", style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('')),
+          DataColumn(label: Text("Category Name", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
+          DataColumn(label: Text("In Stock", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
+          DataColumn(label: Text("Sale", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
+          DataColumn(label: Text("Spoilage", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
         ],
         rows: List.generate(inventory.length, (i) {
-          final category = inventory[i];
+          final item = inventory[i];
           return DataRow(cells: [
-            DataCell(Text(category["category"])),
-            DataCell(Text(category["itemNumber"].toString())),
-            DataCell(
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _confirmDelete(i),
-              ),
-            ),
+            DataCell(Text(item["itemName"].toString())),
+            DataCell(Text(item["inStock"].toString())),
+            DataCell(Text(item["sold"].toString())),
+            DataCell(Text(item["spoilage"].toString())),
           ]);
         }),
       ),
     );
   }
 
-  void _confirmDelete(int index) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Delete Category", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text("Are you sure you want to delete this category?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+  //Tab Builder
+  Widget _buildTab(String label, int index) {
+    bool active = selectedTab == index;
+    return Expanded(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+        onTap: () => setState(() => selectedTab = index),
+        child: Container(
+          height: 45,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active ? Colors.white : Colors.grey[300],
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
+            ),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.12),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : [],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              setState(() {
-                inventory.removeAt(index);
-              });
-              Navigator.pop(context);
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.white)),
-          ),
-        ],
+          child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        ),
       ),
+      )
     );
   }
 
@@ -214,9 +194,9 @@ class _InventoryPageState extends State<InventoryPage> {
                         ),
                       ),
                       child: 
-                          selectedTab == 0 ? _noPresentItems("You can manage your items here."):
-                          selectedTab == 1 ? (inventory.isEmpty ?_noPresentItems("You can view employee stock change and updates here") : _buildCategoryTable()): 
-                          _noPresentItems("You can request stock replenishment for products here."),
+                          selectedTab == 0 ? (inventory.isEmpty ?_emptyTables("You can manage your items here.", selectedTab) : _buildInventoryTable()) :
+                          selectedTab == 1 ? _emptyTables("You can view employee stock change and updates here", selectedTab): 
+                          _emptyTables("You can request stock replenishment for products here.", selectedTab),
               
                     ),
                   ),
@@ -229,37 +209,5 @@ class _InventoryPageState extends State<InventoryPage> {
     );
   }
 
-  // ✅ Tab Builder
-  Widget _buildTab(String label, int index) {
-    bool active = selectedTab == index;
-    return Expanded(
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-        onTap: () => setState(() => selectedTab = index),
-        child: Container(
-          height: 45,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? Colors.white : Colors.grey[300],
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(12),
-              topRight: Radius.circular(12),
-            ),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                : [],
-          ),
-          child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ),
-      ),
-      )
-    );
-  }
+  
 }
