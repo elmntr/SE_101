@@ -153,21 +153,7 @@ class _ItemsPageState extends State<ItemsPage> {
 
   // ✅ Item Table Widget with "Add Item" button
   Widget _buildItemTable() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text("Add Item", style: TextStyle(color: Colors.white)),
-            onPressed: _createItem,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: SingleChildScrollView(
+    return SingleChildScrollView(
             child: DataTable(
               columns: const [
                 DataColumn(
@@ -207,59 +193,38 @@ class _ItemsPageState extends State<ItemsPage> {
                 ]);
               }),
             ),
-          ),
-        ),
-      ],
-    );
+          );
   }
 
   // ✅ Category Table Widget with "Add Category" button
   Widget _buildCategoryTable() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            icon: const Icon(Icons.add, color: Colors.white),
-            label:
-                const Text("Add Category", style: TextStyle(color: Colors.white)),
-            onPressed: _createCategory,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: SingleChildScrollView(
-            child: DataTable(
-              columns: const [
-                DataColumn(
-                    label: Text("Category Name",
-                        style:
-                            TextStyle(fontFamily: fontAll, color: Colors.red))),
-                DataColumn(
-                    label: Text("Items in Category",
-                        style:
-                            TextStyle(fontFamily: fontAll, color: Colors.red))),
-                DataColumn(label: Text('')),
-              ],
-              rows: List.generate(categories.length, (i) {
-                final category = categories[i];
-                return DataRow(cells: [
-                  DataCell(Text(category["category"])),
-                  DataCell(Text(category["itemNumber"].toString())),
-                  DataCell(
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteCategory(i),
-                    ),
-                  ),
-                ]);
-              }),
+    return SingleChildScrollView(
+      child: DataTable(
+        columns: const [
+          DataColumn(
+              label: Text("Category Name",
+                  style:
+                      TextStyle(fontFamily: fontAll, color: Colors.red))),
+          DataColumn(
+              label: Text("Items in Category",
+                  style:
+                      TextStyle(fontFamily: fontAll, color: Colors.red))),
+          DataColumn(label: Text('')),
+        ],
+        rows: List.generate(categories.length, (i) {
+          final category = categories[i];
+          return DataRow(cells: [
+            DataCell(Text(category["category"])),
+            DataCell(Text(category["itemNumber"].toString())),
+            DataCell(
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () => _deleteCategory(i),
+              ),
             ),
-          ),
-        ),
-      ],
+          ]);
+        }),
+      ),
     );
   }
 
@@ -417,6 +382,19 @@ class _ItemsPageState extends State<ItemsPage> {
           ],
         ),
       ),
+
+      floatingActionButton:  (selectedTab == 0 && dbItems.isNotEmpty) || (selectedTab == 1 && categories.isNotEmpty)
+      ? Container(
+          margin: const EdgeInsets.only(bottom: 20), // ✅ overlap without pushing content
+          child: FloatingActionButton(
+            backgroundColor: Colors.red[700],
+            onPressed: selectedTab == 0 ? _createItem : _createCategory,
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        )
+      : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+
     );
   }
 }
