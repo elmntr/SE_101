@@ -10,7 +10,7 @@ void main() {
 }
 
 class ItemsScreen extends StatefulWidget {
-  const ItemsScreen({Key? key}) : super(key: key);
+  const ItemsScreen({super.key});
 
   @override
   State<ItemsScreen> createState() => _ItemsScreenState();
@@ -46,7 +46,7 @@ class _ItemsScreenState extends State<ItemsScreen> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: selectedCategory,
+                initialValue: selectedCategory,
                 decoration: const InputDecoration(labelText: 'Category'),
                 items: ['Sauce', 'Chicken']
                     .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
@@ -81,7 +81,9 @@ class _ItemsScreenState extends State<ItemsScreen> {
               if (nameController.text.isEmpty ||
                   selectedCategory == null ||
                   priceController.text.isEmpty ||
-                  quantityController.text.isEmpty) return;
+                  quantityController.text.isEmpty) {
+                return;
+              }
 
               _addNewItem({
                 'name': nameController.text,

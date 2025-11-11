@@ -292,60 +292,83 @@ class _EmployeePageState extends State<EmployeePage> {
   }
 
   // Role Table Widget
-  Widget _buildRoleTable() {
-  return SingleChildScrollView(
-    child: DataTable(
-      columns: const [
-        DataColumn(
-          label: Text("Role Name",
-            style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-        ),
-        DataColumn(
-          label: Text("Access",
-            style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-        ),
-        DataColumn(
-          label: Text("Employees",
-            style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-        ),
-        DataColumn(label: Text("")),
-      ],
-      rows: List.generate(roles.length, (i) {
-        final role = roles[i];
-
-        // Convert true/false list into "Access 1, Access 2"
-        String accessText = "";
-        for (int j = 0; j < role["access"].length; j++) {
-          if (role["access"][j] == true) {
-            accessText += "${accessTitles[j]}, ";
-          }
-        }
-        if (accessText.endsWith(", ")) {
-          accessText = accessText.substring(0, accessText.length - 2);
-        }
-
-        // Placeholder employee count (update later when you link roles)
-        int employeeCount = 0;
-
-        return DataRow(cells: [
-          DataCell(Text(role["roleName"])),
-          DataCell(Text(accessText)),
-          DataCell(Text(employeeCount.toString())),
-
-          // Row actions
-          DataCell(Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _deleteRole(i),
+Widget _buildRoleTable() {
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: constraints.maxWidth,   // ✅ row must fill table width
+          ),
+          child: DataTable(
+            columnSpacing: 40,
+            dataRowMaxHeight: double.infinity,
+            columns: const [
+              DataColumn(
+                label: Text("Role Name", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
               ),
+              DataColumn(
+                label: Text("Access", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
+              ),
+              DataColumn(
+                label: Text("Employees", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
+              ),
+              DataColumn(label: Text("")),
             ],
-          )),
-        ]);
-      }),
-    ),
+            rows: List.generate(roles.length, (i) {
+              final role = roles[i];
+
+              List<Widget> accessWidgets = [];
+              for (int j = 0; j < accessTitles.length; j++) {
+                if (role["access"][j]) {
+                  accessWidgets.add(
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      margin: const EdgeInsets.only(right: 6, bottom: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade100,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(accessTitles[j], style: const TextStyle(fontSize: 12)),
+                    ),
+                  );
+                }
+              }
+
+              return DataRow(
+                cells: [
+                  DataCell(Text(role["roleName"])),
+                  DataCell(
+                    SizedBox(
+                      width: 400,
+                      child: Wrap(children: accessWidgets),
+                    ),
+                  ),
+                  DataCell(Text("0")),
+                  DataCell(
+                    SizedBox(
+                      width: double.infinity,    // ✅ forces row to stretch horizontally
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteRole(i),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ),
+      );
+    },
   );
 }
+
+
   
   // Delete Role
   void _deleteRole(int index) {

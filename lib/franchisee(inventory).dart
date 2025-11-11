@@ -5,7 +5,7 @@ import '../data/database_provider.dart';
 import 'package:drift/drift.dart' show Value;
 
 class InventoryPage extends StatefulWidget {
-  const InventoryPage({Key? key}) : super(key: key);
+  const InventoryPage({super.key});
 
   @override
   State<InventoryPage> createState() => _InventoryPageState();

@@ -4,6 +4,8 @@ import 'franchisee(reports).dart';
 import 'franchisee(inventory).dart';
 import 'franchisee(items).dart';
 import 'franchisee(employee).dart';
+import 'employee(items).dart';
+import 'employee(account).dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int selectedIndex = 0;
   bool isSideBarOpen = false;
   bool showLabels = false; // ✅ NEW
-  String accountType = "franchisee";
+  String accountType = "franchisee"; // Change to "employee" to test employee view
 
   late List<Map<String, dynamic>> menuItems;
 
@@ -32,12 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
         {"icon": Icons.inventory_2, "label": "Inventory", "page": const InventoryPage()},
         {"icon": Icons.person_2, "label": "Employee", "page": const EmployeePage()},
       ];
-    } else if (accountType == "admin") {
+    } else if (accountType == "employee") {
       menuItems = [
-        {"icon": Icons.dashboard, "label": "Dashboard", "page": const ReportsPage()},
-        {"icon": Icons.store, "label": "Manage Branches", "page": const ItemsPage()},
-        {"icon": Icons.people, "label": "Users", "page": const EmployeePage()},
-        {"icon": Icons.settings, "label": "Settings", "page": const InventoryPage()},
+        {"icon": Icons.shopping_cart, "label": "Items", "page": const EmployeeItemsPage()},
+        {"icon": Icons.person_2, "label": "Users", "page": const EmployeeAccountPage()},
       ];
     }
 
