@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/designconstants.dart';
-import '../data/local/app_database.dart'; // ✅ Drift database import
+import '../data/local/app_database.dart';
 import '../data/database_provider.dart';
+import 'package:drift/drift.dart' show Value;
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});

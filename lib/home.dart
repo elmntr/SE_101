@@ -1,7 +1,7 @@
 import 'package:chickenjoo_inventory/designconstants.dart';
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/data/database_provider.dart'; // ADDED: Access shared database instance.
-import 'package:chickenjoo_inventory/data/local/app_database.dart'; // ADDED: Access authenticated user and role rows.
+import 'package:chickenjoo_inventory/data/database_provider.dart';
+import 'package:chickenjoo_inventory/data/local/app_database.dart';
 import 'franchisee(reports).dart';
 import 'franchisee(inventory).dart';
 import 'franchisee(items).dart';
@@ -21,11 +21,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget? currentPage;
   int selectedIndex = 0;
   bool isSideBarOpen = false;
-  bool showLabels = false; // ✅ NEW
-  late AppDatabase _db; // ADDED: Database reference for permission lookup.
+  bool showLabels = false;
+  late AppDatabase _db;
 
   List<Map<String, dynamic>> menuItems = [];
-  bool _isLoadingRole = true; // ADDED: Avoids rendering before permissions load.
+  bool _isLoadingRole = true;
 
   @override
   void initState() {
@@ -34,11 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadRoleAndMenu();
   }
 
-  // ✅ Sidebar toggle with delayed label appearance
   void toggleSidebar() {
     setState(() {
       isSideBarOpen = !isSideBarOpen;
-      showLabels = false; // hide immediately
+      showLabels = false;
     });
 
     Future.delayed(const Duration(milliseconds: 200), () {
@@ -72,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.inventory_2, color: Colors.white, size: 30),
+            Image.asset(imageAll, height: 30),
             const SizedBox(width: 10),
             const Text(
               "Inventory System",
@@ -175,7 +174,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ADDED: Loads the role then configures the sidebar menu.
   Future<void> _loadRoleAndMenu() async {
     final role = await _db.getRoleByName(widget.signedInUser.role);
     if (!mounted) return;
@@ -189,7 +187,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ADDED: Builds navigation entries based on stored permissions.
   List<Map<String, dynamic>> _buildMenu(Role? role) {
     final List<Map<String, dynamic>> items = [];
     final bool isAdmin = role?.name == 'admin';
@@ -210,7 +207,6 @@ class _HomeScreenState extends State<HomeScreen> {
       items.add({"icon": Icons.person_2, "label": "Employee", "page": const EmployeePage()});
     }
 
-    // Account page is always available for viewing personal details.
     items.add({"icon": Icons.person, "label": "Account", "page": const EmployeeAccountPage()});
 
     return items.isEmpty

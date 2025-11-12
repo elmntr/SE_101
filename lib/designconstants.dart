@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
 const String fontAll = 'Montserrat';
+const String imageAll = 'assets/images/chicken_joo_logo.png';
 
 class AppLayout {
   const AppLayout._();
+
+  static bool isDesktop(BuildContext context) =>
+      MediaQuery.of(context).size.width > 800;
 
   static double fieldPadding(BuildContext context) {
     final width = MediaQuery.of(context).size.width;

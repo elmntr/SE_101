@@ -11,7 +11,8 @@ class Items extends Table {
 
   IntColumn get spoilage => integer().withDefault(const Constant(0))();
 
-  DateTimeColumn get lastUpdated => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastUpdated =>
+      dateTime().withDefault(currentDateAndTime)();
 
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }

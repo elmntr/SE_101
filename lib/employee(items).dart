@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/designconstants.dart';
-import '../data/local/app_database.dart';
+import '../data/local/app_database.dart'; // ✅ your Drift DB
 import "../data/database_provider.dart";
 import 'package:drift/drift.dart' show Value;
 
-class ItemsPage extends StatefulWidget {
-  const ItemsPage({Key? key}) : super(key: key);
+class EmployeeItemsPage extends StatefulWidget {
+  const EmployeeItemsPage({super.key});
 
   @override
-  State<ItemsPage> createState() => _ItemsPageState();
+  State<EmployeeItemsPage> createState() => _EmployeeItemsPageState();
 }
 
-class _ItemsPageState extends State<ItemsPage> {
+class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   late AppDatabase db;
 
   List<Item> dbItems = [];
@@ -345,8 +345,8 @@ class _ItemsPageState extends State<ItemsPage> {
                     ),
                     child: Row(
                       children: [
-                        _buildTab("Item List", 0),
-                        _buildTab("Categories", 1),
+                        _buildTab("Change Item Stock", 0),
+                        _buildTab("Review Changes", 1),
                       ],
                     ),
                   ),

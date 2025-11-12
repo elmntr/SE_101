@@ -104,7 +104,14 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.inventory_2, size: 80, color: Colors.white),
+                  SizedBox(
+                    width: 300,
+                    child: Image.asset(
+                      imageAll,
+                      height: 80,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                   const SizedBox(height: 20),
                   const Text(
                     'Inventory System',
