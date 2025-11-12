@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:chickenjoo_inventory/designconstants.dart';
+import 'package:chickenjoo_inventory/data/database_provider.dart'; // ADDED: Access the shared database instance.
+import 'package:chickenjoo_inventory/data/local/app_database.dart'; // ADDED: Database types for authentication.
+import 'home.dart';
 
 void main() {
   runApp(const MyApp());
@@ -53,18 +57,64 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isPasswordVisible = false;
+  bool _isSubmitting = false; // ADDED: Tracks login progress for UI feedback.
+  late final AppDatabase _db; // ADDED: Reference to the Drift database.
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _db = DatabaseProvider.instance;
+    // ADDED: Seed a demo admin account so login works on first run.
+    Future.microtask(() async => _db.seedDefaultAccounts());
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both email and password.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    // ADDED: Use Drift to validate credentials against the local Users table.
+    final user = await _db.authenticateUser(email, password);
+
+    if (!mounted) return;
+
+    setState(() => _isSubmitting = false);
+
+    if (user == null) {
+      // ADDED: Show feedback when credentials are invalid.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid email or password.')),
+      );
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(
+          signedInUser: user,
+        ),
+      ),
+    );
   }
 
   @override
@@ -76,47 +126,163 @@ class _MyHomePageState extends State<MyHomePage> {
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: Container(
+        decoration: const BoxDecoration(color: Color(0xFFEF4848)),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: fieldPadding),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo Container
+                  SizedBox(
+                    width: 300,
+                    child: Image.asset(
+                      imageAll,
+                      height: 80,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Inventory System Title
+                  const Text(
+                    'Inventory System',
+                    textAlign: TextAlign.center,
+                    //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
+                    style: TextStyle(
+                      fontFamily: fontAll,
+                      fontSize: 24,
+
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                  // Email Input Field
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
+                      style: const TextStyle(
+                        fontFamily: fontAll,
+                        fontSize: 18,
+                        color: Colors.black,
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Email Address',
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 25,
+                          vertical: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Password Input Field
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _passwordController,
+                      obscureText: !_isPasswordVisible,
+                      //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
+                      style: const TextStyle(
+                        fontFamily: fontAll,
+                        fontSize: 18,
+                        color: Colors.black,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Password',
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 25,
+                          vertical: 18,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+
+                  // Login Button
+                  SizedBox(
+                    width: loginButtonWidth,
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting ? null : _handleLogin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD62828),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 10,
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'LOGIN',
+                              style: TextStyle(
+                                fontFamily: fontAll,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
