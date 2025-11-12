@@ -29,7 +29,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     false,
     additionalChecks: GeneratedColumn.checkTextLength(
       minTextLength: 1,
-      maxTextLength: 100,
+      maxTextLength: 255,
     ),
     type: DriftSqlType.string,
     requiredDuringInsert: true,

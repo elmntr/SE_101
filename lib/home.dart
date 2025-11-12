@@ -72,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset("assets/images/chicken_joo_logo.png", height: 30),
+            const Icon(Icons.inventory_2, color: Colors.white, size: 30),
             const SizedBox(width: 10),
             const Text(
               "Inventory System",
