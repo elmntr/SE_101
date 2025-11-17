@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int selectedIndex = 0;
   bool isSideBarOpen = false;
   bool showLabels = false; // ✅ NEW
-  String accountType = "franchisee"; // Change to "employee" to test employee view
+  String accountType = "employee"; // Change to "employee" to test employee view
 
   late List<Map<String, dynamic>> menuItems;
 
