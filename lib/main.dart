@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/designconstants.dart';
+import 'package:chickenjoo_inventory/data/database_provider.dart';
+import 'package:chickenjoo_inventory/data/local/app_database.dart';
 import 'home.dart';
 
 void main() {
@@ -34,6 +36,15 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isSubmitting = false;
+  late final AppDatabase _db;
+
+  @override
+  void initState() {
+    super.initState();
+    _db = DatabaseProvider.instance;
+    Future.microtask(() async => _db.seedDefaultAccounts());
+  }
 
   @override
   void dispose() {
@@ -42,21 +53,46 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
-    /*final email = _emailController.text;
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    print('Email: $email');
-    print('Password: $password');*/
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both email and password.')),
+      );
+      return;
+    }
 
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()),
-  );
+    setState(() => _isSubmitting = true);
+
+    final user = await _db.authenticateUser(email, password);
+
+    if (!mounted) return;
+
+    setState(() => _isSubmitting = false);
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid email or password.')),
+      );
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(
+          signedInUser: user,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final double fieldPadding = AppLayout.fieldPadding(context);
-    final double loginButtonWidth = AppLayout.loginButtonWidth(context);
+    final fieldPadding = AppLayout.fieldPadding(context);
+    final loginButtonWidth = AppLayout.loginButtonWidth(context);
 
     return Scaffold(
       body: Container(
@@ -68,7 +104,6 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo Container
                   SizedBox(
                     width: 300,
                     child: Image.asset(
@@ -77,26 +112,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       fit: BoxFit.contain,
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Inventory System Title
                   const Text(
                     'Inventory System',
                     textAlign: TextAlign.center,
-                    //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
                     style: TextStyle(
                       fontFamily: fontAll,
                       fontSize: 24,
-
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                       letterSpacing: 0.5,
                     ),
                   ),
                   const SizedBox(height: 40),
-
-                  // Email Input Field
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -112,7 +140,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
                       style: const TextStyle(
                         fontFamily: fontAll,
                         fontSize: 18,
@@ -129,8 +156,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // Password Input Field
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -145,7 +170,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: TextField(
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
-                      //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
                       style: const TextStyle(
                         fontFamily: fontAll,
                         fontSize: 18,
@@ -175,12 +199,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-
-                  // Login Button
                   SizedBox(
                     width: loginButtonWidth,
                     child: ElevatedButton(
-                      onPressed: _handleLogin,
+                      onPressed: _isSubmitting ? null : _handleLogin,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFD62828),
                         foregroundColor: Colors.white,
@@ -190,15 +212,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         elevation: 10,
                       ),
-                      child: const Text(
-                        'LOGIN',
-                        style: TextStyle(
-                          fontFamily: fontAll,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'LOGIN',
+                              style: TextStyle(
+                                fontFamily: fontAll,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
                     ),
                   ),
                 ],

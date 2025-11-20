@@ -1,6 +1,7 @@
 import 'local/app_database.dart';
 
 class DatabaseProvider {
-  // Singleton instance
+  DatabaseProvider._();
+
   static final AppDatabase instance = AppDatabase();
 }

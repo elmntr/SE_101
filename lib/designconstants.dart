@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
 
-//FONTS AND IMAGES
-const String fontAll = 'Gantari';
+const String fontAll = 'Montserrat';
 const String imageAll = 'assets/images/chicken_joo_logo.png';
 
 class AppLayout {
+  const AppLayout._();
+
   static bool isDesktop(BuildContext context) =>
       MediaQuery.of(context).size.width > 800;
 
-  static double screenWidth(BuildContext context) =>
-      MediaQuery.of(context).size.width;
+  static double fieldPadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 1200) return 400;
+    if (width >= 800) return 200;
+    return 24;
+  }
 
-  //LAYOUT SETTINGS (PADDINGS, FONT SIZES, BUTTON SIZES, ETC.)
-  static double titleFontSize(BuildContext context) =>
-      isDesktop(context) ? 40 : 30;
-
-  static double fieldPadding(BuildContext context) =>
-      isDesktop(context) ? 600 : 50;
-
-  static double loginButtonWidth(BuildContext context) =>
-      isDesktop(context) ? 180 : 1000;
+  static double loginButtonWidth(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 1200) return 320;
+    if (width >= 800) return 280;
+    return double.infinity;
+  }
 }
