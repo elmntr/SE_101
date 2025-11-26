@@ -1,7 +1,10 @@
-import 'dart:math';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/designconstants.dart';
+import 'package:chickenjoo_inventory/data/local/app_database.dart'; // ADDED: Access Drift tables.
+import 'package:chickenjoo_inventory/data/database_provider.dart';
+import 'package:drift/drift.dart' show Value;
 
 class EmployeePage extends StatefulWidget {
   const EmployeePage({Key? key}) : super(key: key);
@@ -11,8 +14,13 @@ class EmployeePage extends StatefulWidget {
 }
 
 class _EmployeePageState extends State<EmployeePage> {
-  List<Map<String, dynamic>> employees= [];
-  List<Map<String, dynamic>> roles = [];
+  late AppDatabase db;
+  late StreamSubscription<List<User>> _usersSub;
+  late StreamSubscription<List<Role>> _rolesSub;
+
+  List<User> _users = [];
+  List<Role> _roles = [];
+
   List<String> accessTitles = [
       "View Inventory",
       "Add Inventory",
@@ -26,65 +34,129 @@ class _EmployeePageState extends State<EmployeePage> {
 
   int selectedTab = 0; // 0 = Items, 1 = Categories
 
+  bool _isLoading = true; // ADDED: Display spinner while data loads.
+
+  @override
+  void initState() {
+    super.initState();
+    db = DatabaseProvider.instance;
+
+    _usersSub = db.watchAllUsers().listen((users) {
+      setState(() {
+        _users = users;
+        _isLoading = false;
+      });
+    });
+
+    _rolesSub = db.watchAllRoles().listen((roles) {
+      setState(() {
+        _roles = roles;
+        _isLoading = false;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _usersSub.cancel();
+    _rolesSub.cancel();
+    super.dispose();
+  }
+
   //Add Employee Popup
   void _createEmployee() {
+    if (_roles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please create a role before adding employees.')),
+      );
+      return;
+    }
+
     final TextEditingController employeeName = TextEditingController();
     final TextEditingController employeeEmail = TextEditingController();
     final TextEditingController employeePN = TextEditingController();
-    String? selectedEmployee;
+    final TextEditingController employeePassword = TextEditingController();
+    String? selectedRole = _roles.first.name;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Add Employee", style: TextStyle( fontFamily: fontAll , fontWeight: FontWeight.bold)),
+        title: const Text("Add Employee", style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(decoration: const InputDecoration(labelText: "Name"), controller: employeeName),
             TextField(decoration: const InputDecoration(labelText: "Email"), controller: employeeEmail),
-            TextField(decoration: const InputDecoration(labelText: "Phone"), controller: employeePN,),
+            TextField(decoration: const InputDecoration(labelText: "Phone"), controller: employeePN),
+            TextField(
+              decoration: const InputDecoration(labelText: "Password"),
+              controller: employeePassword,
+              obscureText: true,
+            ),
             DropdownButtonFormField<String>(
-                  value: selectedEmployee,
-                  decoration: const InputDecoration(labelText: 'Role'),
-                  items: roles
-                      .map((role) => DropdownMenuItem<String>(
-                            value: role["roleName"],
-                            child: Text(role["roleName"]),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    selectedEmployee = value;
-                  },
-                ),
-            ],
+              initialValue: selectedRole,
+              decoration: const InputDecoration(labelText: 'Role'),
+              items: _roles
+                  .map((role) => DropdownMenuItem<String>(
+                        value: role.name,
+                        child: Text(role.name),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                selectedRole = value;
+              },
+            ),
+          ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              if (employeeName.text.isEmpty) return;
-              _saveEmployee({
-                "employeeName": employeeName.text,
-                "employeeEmail": employeeEmail.text,
-                "employeePN": int.tryParse(employeePN.text),
-                "employeeRole": selectedEmployee,
-              });
-              Navigator.pop(context);
+            onPressed: () async {
+              final dialogContext = context;
+              final messenger = ScaffoldMessenger.of(dialogContext);
+              final navigator = Navigator.of(dialogContext);
+
+              final name = employeeName.text.trim();
+              final email = employeeEmail.text.trim();
+              final phone = employeePN.text.trim();
+              final password = employeePassword.text;
+
+              if (name.isEmpty || email.isEmpty || password.isEmpty || selectedRole == null) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Name, email, password, and role are required.')),
+                );
+                return;
+              }
+
+              try {
+                await db.insertUser(
+                  UsersCompanion.insert(
+                    email: email,
+                    name: Value(name),
+                    phone: Value(phone.isEmpty ? null : phone),
+                    password: password,
+                    role: selectedRole!,
+                  ),
+                );
+                if (!navigator.mounted || !messenger.mounted) return;
+                navigator.pop();
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Employee added successfully.')),
+                );
+              } on Exception catch (e) {
+                if (!messenger.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Failed to add employee: ${e.toString()}')),
+                );
+              }
             },
             child: const Text("Save", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
-  }
-
-  // Save New Employee
-  void _saveEmployee(Map<String, dynamic> newItem) {
-    setState(() {
-      employees.add(newItem);
-    });
   }
 
   //Add Role Popup
@@ -177,13 +249,31 @@ class _EmployeePageState extends State<EmployeePage> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            onPressed: () {
-              if (roleName.text.isEmpty) return;
-              _saveRole({
-                "roleName": roleName.text,
-                "access": List<bool>.from(access),
-              });
-              Navigator.pop(context);
+            onPressed: () async {
+              final dialogContext = context;
+              final messenger = ScaffoldMessenger.of(dialogContext);
+              final navigator = Navigator.of(dialogContext);
+              final name = roleName.text.trim();
+              if (name.isEmpty) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Role name is required.')),
+                );
+                return;
+              }
+
+              try {
+                await db.insertRole(_buildRoleCompanion(name, access));
+                if (!navigator.mounted || !messenger.mounted) return;
+                navigator.pop();
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Role "$name" created.')),
+                );
+              } on Exception catch (e) {
+                if (!messenger.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Failed to create role: ${e.toString()}')),
+                );
+              }
             },
             child: const Text(
               "SUBMIT",
@@ -200,11 +290,31 @@ class _EmployeePageState extends State<EmployeePage> {
     );
   }
 
-  // Save New Role
-  void _saveRole(Map<String, dynamic> newItem) {
-    setState(() {
-      roles.add(newItem);
-    });
+  RolesCompanion _buildRoleCompanion(String name, List<bool> access) {
+    return RolesCompanion.insert(
+      name: name,
+      canViewInventory: Value(access[0]),
+      canAddInventory: Value(access[1]),
+      canEditInventory: Value(access[2]),
+      canDeleteInventory: Value(access[3]),
+      canManageEmployees: Value(access[4]),
+      canManageRoles: Value(access[5]),
+      canViewReports: Value(access[6]),
+      canAccessSettings: Value(access[7]),
+    );
+  }
+
+  List<bool> _flagsFromRole(Role role) {
+    return [
+      role.canViewInventory,
+      role.canAddInventory,
+      role.canEditInventory,
+      role.canDeleteInventory,
+      role.canManageEmployees,
+      role.canManageRoles,
+      role.canViewReports,
+      role.canAccessSettings,
+    ];
   }
 
   //Empty Tab Widget
@@ -235,36 +345,56 @@ class _EmployeePageState extends State<EmployeePage> {
 
   // Employee Table Widget
   Widget _buildEmployeeTable() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_users.isEmpty) {
+      return _emptyTables("No employees found", 0);
+    }
+
     return SingleChildScrollView(
       child: DataTable(
         columns: const [
-          DataColumn(label: Text("Employee Name", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
-          DataColumn(label: Text("Email", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
-          DataColumn(label: Text("Phone Number", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
-          DataColumn(label: Text("Role", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
+          DataColumn(label: Text("Name", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+          DataColumn(label: Text("Email", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+          DataColumn(label: Text("Phone", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+          DataColumn(label: Text("Role", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
           DataColumn(label: Text('')),
         ],
-        rows: List.generate(employees.length, (i) {
-          final employee = employees[i];
+        rows: _users.map((user) {
           return DataRow(cells: [
-            DataCell(Text(employee["employeeName"].toString())),
-            DataCell(Text(employee["employeeEmail"].toString())),
-            DataCell(Text(employee["employeePN"].toString())),
-            DataCell(Text(employee["employeeRole"].toString())),
+            DataCell(Text(user.name ?? '')),
+            DataCell(Text(user.email)),
+            DataCell(Text(user.phone ?? '')),
+            DataCell(
+              _roles.isEmpty
+                  ? const Text('No roles')
+                  : DropdownButton<String>(
+                      value: user.role,
+                      items: _roles
+                          .map((role) => DropdownMenuItem<String>(
+                                value: role.name,
+                                child: Text(role.name),
+                              ))
+                          .toList(),
+                      onChanged: (value) => _assignRole(user, value),
+                    ),
+            ),
             DataCell(
               IconButton(
                 icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _deleteEmployee(i),
+                onPressed: () => _deleteEmployee(user),
               ),
             ),
           ]);
-        }),
+        }).toList(),
       ),
     );
   }
 
   // Delete Employee
-  void _deleteEmployee(int index) {
+  void _deleteEmployee(User user) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -278,11 +408,23 @@ class _EmployeePageState extends State<EmployeePage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              setState(() {
-                employees.removeAt(index);
-              });
-              Navigator.pop(context);
+            onPressed: () async {
+              final dialogContext = context;
+              final messenger = ScaffoldMessenger.of(dialogContext);
+              final navigator = Navigator.of(dialogContext);
+              try {
+                await db.deleteUserById(user.id);
+                if (!navigator.mounted || !messenger.mounted) return;
+                navigator.pop();
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Employee ${user.email} removed.')),
+                );
+              } on Exception catch (e) {
+                if (!messenger.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Failed to delete employee: ${e.toString()}')),
+                );
+              }
             },
             child: const Text("Delete", style: TextStyle(color: Colors.white)),
           ),
@@ -292,86 +434,102 @@ class _EmployeePageState extends State<EmployeePage> {
   }
 
   // Role Table Widget
-Widget _buildRoleTable() {
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minWidth: constraints.maxWidth,   // ✅ row must fill table width
-          ),
-          child: DataTable(
-            columnSpacing: 40,
-            dataRowMaxHeight: double.infinity,
-            columns: const [
-              DataColumn(
-                label: Text("Role Name", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-              ),
-              DataColumn(
-                label: Text("Access", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-              ),
-              DataColumn(
-                label: Text("Employees", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-              ),
-              DataColumn(label: Text("")),
-            ],
-            rows: List.generate(roles.length, (i) {
-              final role = roles[i];
+  Widget _buildRoleTable() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-              List<Widget> accessWidgets = [];
-              for (int j = 0; j < accessTitles.length; j++) {
-                if (role["access"][j]) {
-                  accessWidgets.add(
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      margin: const EdgeInsets.only(right: 6, bottom: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade100,
-                        borderRadius: BorderRadius.circular(6),
+    if (_roles.isEmpty) {
+      return _emptyTables("No roles found", 1);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: constraints.maxWidth,
+            ),
+            child: DataTable(
+              columnSpacing: 40,
+              dataRowMaxHeight: double.infinity,
+              columns: const [
+                DataColumn(
+                  label: Text("Role Name", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
+                ),
+                DataColumn(
+                  label: Text("Access", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
+                ),
+                DataColumn(
+                  label: Text("Employees", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
+                ),
+                DataColumn(label: Text("")),
+              ],
+              rows: _roles.map((role) {
+                final accessWidgets = <Widget>[];
+                final accessFlags = _flagsFromRole(role);
+                for (int j = 0; j < accessTitles.length; j++) {
+                  if (accessFlags[j]) {
+                    accessWidgets.add(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        margin: const EdgeInsets.only(right: 6, bottom: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(accessTitles[j], style: const TextStyle(fontSize: 12)),
                       ),
-                      child: Text(accessTitles[j], style: const TextStyle(fontSize: 12)),
-                    ),
-                  );
+                    );
+                  }
                 }
-              }
 
-              return DataRow(
-                cells: [
-                  DataCell(Text(role["roleName"])),
-                  DataCell(
-                    SizedBox(
-                      width: 400,
-                      child: Wrap(children: accessWidgets),
+                final userCount = _users.where((user) => user.role == role.name).length;
+
+                return DataRow(
+                  cells: [
+                    DataCell(Text(role.name)),
+                    DataCell(
+                      SizedBox(
+                        width: 400,
+                        child: Wrap(children: accessWidgets),
+                      ),
                     ),
-                  ),
-                  DataCell(Text("0")),
-                  DataCell(
-                    SizedBox(
-                      width: double.infinity,    // ✅ forces row to stretch horizontally
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteRole(i),
+                    DataCell(Text(userCount.toString())),
+                    DataCell(
+                      SizedBox(
+                        width: double.infinity,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteRole(role, userCount),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            }),
+                  ],
+                );
+              }).toList(),
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
 
   
   // Delete Role
-  void _deleteRole(int index) {
+  void _deleteRole(Role role, int assignedUsers) {
+    if (assignedUsers > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cannot delete "${role.name}" while $assignedUsers user(s) are assigned to it.')),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -385,17 +543,47 @@ Widget _buildRoleTable() {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              setState(() {
-                roles.removeAt(index);
-              });
-              Navigator.pop(context);
+            onPressed: () async {
+              final dialogContext = context;
+              final messenger = ScaffoldMessenger.of(dialogContext);
+              final navigator = Navigator.of(dialogContext);
+              final success = await db.deleteRoleById(role.id);
+              if (!navigator.mounted || !messenger.mounted) return;
+              navigator.pop();
+              if (success) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Role "${role.name}" deleted.')),
+                );
+              } else {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Failed to delete role.')),
+                );
+              }
             },
             child: const Text("Delete", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _assignRole(User user, String? roleName) async {
+    if (roleName == null || roleName == user.role) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await db.assignRoleToUser(user.id, roleName);
+      if (!mounted || !messenger.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Updated ${user.email} to $roleName.')),
+      );
+    } on Exception catch (e) {
+      if (!messenger.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to update role: ${e.toString()}')),
+      );
+    }
   }
 
 // Tab Builder
@@ -503,8 +691,8 @@ Widget _buildRoleTable() {
                         ),
                       ),
                       child: selectedTab == 0 
-                          ? (employees.isEmpty ?_emptyTables("You can add your employees here.", selectedTab) : _buildEmployeeTable())
-                          : (roles.isEmpty ?_emptyTables("You can add categories here to organize your items.", selectedTab) : _buildRoleTable() ),
+                          ? ( _isLoading ? const Center(child: CircularProgressIndicator()) : _buildEmployeeTable())
+                          : ( _isLoading ? const Center(child: CircularProgressIndicator()) : _buildRoleTable() ),
               
                     ),
                   ),
@@ -515,7 +703,7 @@ Widget _buildRoleTable() {
         ),
       ),
 
-      floatingActionButton:  (selectedTab == 0 && employees.isNotEmpty) || (selectedTab == 1 && roles.isNotEmpty) 
+      floatingActionButton:  (selectedTab == 0 && !_isLoading) || (selectedTab == 1 && !_isLoading) 
       ? Container(
           margin: const EdgeInsets.only(bottom: 20), // ✅ overlap without pushing content
           child: FloatingActionButton(

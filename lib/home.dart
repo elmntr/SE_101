@@ -1,54 +1,43 @@
 import 'package:chickenjoo_inventory/designconstants.dart';
 import 'package:flutter/material.dart';
+import 'package:chickenjoo_inventory/data/database_provider.dart';
+import 'package:chickenjoo_inventory/data/local/app_database.dart';
 import 'franchisee(reports).dart';
 import 'franchisee(inventory).dart';
 import 'franchisee(items).dart';
 import 'franchisee(employee).dart';
-import 'employee(items).dart';
 import 'employee(account).dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, required this.signedInUser});
+
+  final User signedInUser;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Widget currentPage = const ReportsPage();
+  Widget? currentPage;
   int selectedIndex = 0;
   bool isSideBarOpen = false;
-  bool showLabels = false; // ✅ NEW
-  String accountType = "employee"; // Change to "employee" to test employee view
+  bool showLabels = false;
+  late AppDatabase _db;
 
-  late List<Map<String, dynamic>> menuItems;
+  List<Map<String, dynamic>> menuItems = [];
+  bool _isLoadingRole = true;
 
   @override
   void initState() {
     super.initState();
-
-    if (accountType == "franchisee") {
-      menuItems = [
-        {"icon": Icons.bar_chart, "label": "Reports", "page": const ReportsPage()},
-        {"icon": Icons.shopping_cart, "label": "Items", "page": const ItemsPage()},
-        {"icon": Icons.inventory_2, "label": "Inventory", "page": const InventoryPage()},
-        {"icon": Icons.person_2, "label": "Employee", "page": const EmployeePage()},
-      ];
-    } else if (accountType == "employee") {
-      menuItems = [
-        {"icon": Icons.shopping_cart, "label": "Items", "page": const EmployeeItemsPage()},
-        {"icon": Icons.person_2, "label": "Users", "page": const EmployeeAccountPage()},
-      ];
-    }
-
-    currentPage = menuItems[0]["page"];
+    _db = DatabaseProvider.instance;
+    _loadRoleAndMenu();
   }
 
-  // ✅ Sidebar toggle with delayed label appearance
   void toggleSidebar() {
     setState(() {
       isSideBarOpen = !isSideBarOpen;
-      showLabels = false; // hide immediately
+      showLabels = false;
     });
 
     Future.delayed(const Duration(milliseconds: 200), () {
@@ -61,9 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void switchPage(int index) {
     setState(() {
       selectedIndex = index;
-      currentPage = menuItems[index]["page"];
+      currentPage = menuItems[index]["page"] as Widget;
       isSideBarOpen = false;
-      showLabels = false; 
+      showLabels = false;
     });
   }
 
@@ -76,13 +65,13 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 3,
         leading: IconButton(
           icon: const Icon(Icons.menu, color: Colors.white, size: 35),
-          onPressed: toggleSidebar, 
+          onPressed: toggleSidebar,
         ),
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset("assets/images/chicken_joo_logo.png", height: 30),
+            Image.asset(imageAll, height: 30),
             const SizedBox(width: 10),
             const Text(
               "Inventory System",
@@ -102,7 +91,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
       body: Row(
         children: [
           AnimatedContainer(
@@ -113,27 +101,32 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 40),
-
-                ...List.generate(menuItems.length, (index) {
-                  return Column(
-                    children: [
-                      sideBarButtons(
-                        menuItems[index]["icon"],
-                        menuItems[index]["label"],
-                        index,
-                      ),
-                      const SizedBox(height: 5),
-                    ],
-                  );
-                }),
+                if (_isLoadingRole)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CircularProgressIndicator(),
+                  )
+                else
+                  ...List.generate(menuItems.length, (index) {
+                    return Column(
+                      children: [
+                        sideBarButtons(
+                          menuItems[index]["icon"],
+                          menuItems[index]["label"],
+                          index,
+                        ),
+                        const SizedBox(height: 5),
+                      ],
+                    );
+                  }),
               ],
             ),
           ),
-
           Container(width: 1, color: Colors.grey.shade300),
-
           Expanded(
-            child: currentPage,
+            child: _isLoadingRole
+                ? const Center(child: CircularProgressIndicator())
+                : currentPage ?? const SizedBox.shrink(),
           ),
         ],
       ),
@@ -141,15 +134,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget sideBarButtons(IconData icon, String label, int index) {
-    bool active = selectedIndex == index;
+    final bool active = selectedIndex == index;
 
     return InkWell(
       onTap: () => switchPage(index),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-        decoration: active
-            ? BoxDecoration(color: Colors.white.withOpacity(0.25))
-            : null,
+        decoration:
+            active ? BoxDecoration(color: Colors.white.withOpacity(0.25)) : null,
         child: Row(
           children: [
             Icon(
@@ -157,7 +149,6 @@ class _HomeScreenState extends State<HomeScreen> {
               size: 25,
               color: active ? Colors.red : Colors.grey.shade900,
             ),
-
             AnimatedSize(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
@@ -181,5 +172,51 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadRoleAndMenu() async {
+    final role = await _db.getRoleByName(widget.signedInUser.role);
+    if (!mounted) return;
+
+    final menu = _buildMenu(role);
+
+    setState(() {
+      menuItems = menu;
+      currentPage = menu.first["page"] as Widget;
+      _isLoadingRole = false;
+    });
+  }
+
+  List<Map<String, dynamic>> _buildMenu(Role? role) {
+    final List<Map<String, dynamic>> items = [];
+    final bool isAdmin = role?.name == 'admin';
+
+    if (isAdmin || (role?.canViewReports ?? false)) {
+      items.add({"icon": Icons.bar_chart, "label": "Reports", "page": const ReportsPage()});
+    }
+    if (isAdmin || (role?.canViewInventory ?? false)) {
+      items.add({"icon": Icons.shopping_cart, "label": "Items", "page": const ItemsPage()});
+    }
+    if (isAdmin ||
+        (role?.canAddInventory ?? false) ||
+        (role?.canEditInventory ?? false) ||
+        (role?.canDeleteInventory ?? false)) {
+      items.add({"icon": Icons.inventory_2, "label": "Inventory", "page": const InventoryPage()});
+    }
+    if (isAdmin || (role?.canManageEmployees ?? false) || (role?.canManageRoles ?? false)) {
+      items.add({"icon": Icons.person_2, "label": "Employee", "page": const EmployeePage()});
+    }
+
+    items.add({"icon": Icons.person, "label": "Account", "page": const EmployeeAccountPage()});
+
+    return items.isEmpty
+        ? [
+            {
+              "icon": Icons.person,
+              "label": "Account",
+              "page": const EmployeeAccountPage(),
+            }
+          ]
+        : items;
   }
 }
