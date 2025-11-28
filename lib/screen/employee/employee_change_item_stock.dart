@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../data/local/app_database.dart';
-import '../data/database_provider.dart';
-import 'designconstants.dart';
+import '../../../data/local/app_database.dart';
+import '../../../data/database_provider.dart';
+import '../../design_constants.dart';
 
 class EmployeeChangeStockPage extends StatefulWidget {
   final VoidCallback onBack;

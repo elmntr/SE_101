@@ -1,12 +1,12 @@
-import 'package:chickenjoo_inventory/designconstants.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/data/database_provider.dart';
 import 'package:chickenjoo_inventory/data/local/app_database.dart';
-import 'franchisee(reports).dart';
-import 'franchisee(inventory).dart';
-import 'franchisee(items).dart';
-import 'franchisee(employee).dart';
-import 'employee(account).dart';
+import 'franchisee/franchisee_reports.dart';
+import 'franchisee/franchisee_inventory.dart';
+import 'franchisee/franchisee_items.dart';
+import 'franchisee/franchisee_employee.dart';
+import 'employee/employee_account.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.signedInUser});

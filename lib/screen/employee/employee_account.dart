@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/designconstants.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
 
 class EmployeeAccountPage extends StatefulWidget {
   const EmployeeAccountPage({super.key});

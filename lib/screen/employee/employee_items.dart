@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/designconstants.dart';
-import '../data/local/app_database.dart';
-import "../data/database_provider.dart";
+import 'package:chickenjoo_inventory/design_constants.dart';
+import '../../../data/local/app_database.dart'; // ✅ your Drift DB
+import "../../../data/database_provider.dart";
 import 'package:drift/drift.dart' show Value;
+import 'employee_change_item_stock.dart';
 
-class ItemsPage extends StatefulWidget {
-  const ItemsPage({Key? key}) : super(key: key);
+class EmployeeItemsPage extends StatefulWidget {
+  const EmployeeItemsPage({super.key});
 
   @override
-  State<ItemsPage> createState() => _ItemsPageState();
+  State<EmployeeItemsPage> createState() => _EmployeeItemsPageState();
 }
 
-class _ItemsPageState extends State<ItemsPage> {
+class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
+
+  bool _isInChangeStockMode = false;
+
   late AppDatabase db;
 
   List<Item> dbItems = [];
@@ -25,6 +29,12 @@ class _ItemsPageState extends State<ItemsPage> {
     super.initState();
     db = DatabaseProvider.instance;
     _loadItems();
+  }
+
+  void _toggleChangeStockMode() {
+    setState(() {
+      _isInChangeStockMode = !_isInChangeStockMode;
+    });
   }
 
   Future<void> _loadItems() async {
@@ -294,6 +304,16 @@ class _ItemsPageState extends State<ItemsPage> {
   // MAIN BUILD
   @override
   Widget build(BuildContext context) {
+
+    if (_isInChangeStockMode) {
+      return EmployeeChangeStockPage(
+        onBack: () async {
+          _toggleChangeStockMode();        // This closes the Change Stock page
+          await _loadItems();  // This refreshes the list!
+        },
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
       body: Padding(
@@ -345,8 +365,8 @@ class _ItemsPageState extends State<ItemsPage> {
                     ),
                     child: Row(
                       children: [
-                        _buildTab("Item List", 0),
-                        _buildTab("Categories", 1),
+                        _buildTab("Change Item Stock", 0),
+                        _buildTab("Review Changes", 1),
                       ],
                     ),
                   ),
@@ -383,16 +403,28 @@ class _ItemsPageState extends State<ItemsPage> {
         ),
       ),
 
-      floatingActionButton:  (selectedTab == 0 && dbItems.isNotEmpty) || (selectedTab == 1 && categories.isNotEmpty)
-      ? Container(
-          margin: const EdgeInsets.only(bottom: 20), // ✅ overlap without pushing content
-          child: FloatingActionButton(
-            backgroundColor: Colors.red[700],
-            onPressed: selectedTab == 0 ? _createItem : _createCategory,
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
-        )
-      : null,
+      floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty) || (selectedTab == 1 && categories.isNotEmpty)
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: FloatingActionButton.extended(
+                onPressed: _toggleChangeStockMode,
+                backgroundColor: const Color(0xFFE30417),
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                label: const Text(
+                  'Change Stock',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                icon: const Icon(Icons.inventory_2_outlined, color: Colors.white),
+              ),
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
 
     );
