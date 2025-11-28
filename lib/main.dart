@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/designconstants.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/data/database_provider.dart';
 import 'package:chickenjoo_inventory/data/local/app_database.dart';
 import 'home.dart';

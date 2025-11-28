@@ -1,10 +1,10 @@
-import 'package:chickenjoo_inventory/changerecord.dart';
-import 'package:chickenjoo_inventory/employee(reviewchanges).dart';
+import 'package:chickenjoo_inventory/change_record.dart';
+import 'package:chickenjoo_inventory/screen/employee/employee_review_changes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../data/local/app_database.dart';
-import '../data/database_provider.dart';
-import 'designconstants.dart';
+import '../../../data/local/app_database.dart';
+import '../../../data/database_provider.dart';
+import '../../design_constants.dart';
 
 class EmployeeChangeStockPage extends StatefulWidget {
   final VoidCallback onBack;

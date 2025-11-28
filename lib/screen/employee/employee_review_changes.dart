@@ -1,7 +1,7 @@
-import 'package:chickenjoo_inventory/changerecord.dart';
-import 'package:chickenjoo_inventory/employee(reviewchangespage).dart';
-import 'package:chickenjoo_inventory/franchisee(inventory).dart';
-import 'package:chickenjoo_inventory/designconstants.dart';
+import 'package:chickenjoo_inventory/change_record.dart';
+import 'package:chickenjoo_inventory/screen/employee/employee_review_changes_page.dart';
+import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
 
 class ReviewChangesPage extends StatefulWidget {

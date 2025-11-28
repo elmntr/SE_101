@@ -1,12 +1,13 @@
-import 'package:chickenjoo_inventory/designconstants.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
+import 'package:chickenjoo_inventory/screen/employee/employee_items.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/data/database_provider.dart';
 import 'package:chickenjoo_inventory/data/local/app_database.dart';
-import 'franchisee(reports).dart';
-import 'franchisee(inventory).dart';
-import 'franchisee(items).dart';
-import 'franchisee(employee).dart';
-import 'employee(account).dart';
+import 'screen/franchisee/franchisee_reports.dart';
+import 'screen/franchisee/franchisee_inventory.dart';
+import 'screen/franchisee/franchisee_items.dart';
+import 'screen/franchisee/franchisee_employee.dart';
+import 'screen/employee/employee_account.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.signedInUser});
@@ -190,6 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _buildMenu(Role? role) {
     final List<Map<String, dynamic>> items = [];
     final bool isAdmin = role?.name == 'admin';
+    final bool isEmployee = role?.name == 'employee';
 
     if (isAdmin || (role?.canViewReports ?? false)) {
       items.add({"icon": Icons.bar_chart, "label": "Reports", "page": const ReportsPage()});
@@ -207,7 +209,11 @@ class _HomeScreenState extends State<HomeScreen> {
       items.add({"icon": Icons.person_2, "label": "Employee", "page": const EmployeePage()});
     }
 
-    items.add({"icon": Icons.person, "label": "Account", "page": const EmployeeAccountPage()});
+    if (isEmployee){
+      items.add({"icon": Icons.shopping_cart, "label": "Account", "page": const EmployeeItemsPage()});
+      items.add({"icon": Icons.account_circle, "label": "Account", "page": const EmployeeAccountPage()});
+    }
+
 
     return items.isEmpty
         ? [
