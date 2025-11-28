@@ -1,47 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/designconstants.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
+import '../../../data/local/app_database.dart';
+import '../../../data/database_provider.dart';
+import 'package:drift/drift.dart' show Value;
 
 class InventoryPage extends StatefulWidget {
-  const InventoryPage({Key? key}) : super(key: key);
+  const InventoryPage({super.key});
 
   @override
   State<InventoryPage> createState() => _InventoryPageState();
 }
 
 class _InventoryPageState extends State<InventoryPage> {
-  List<Map<String, dynamic>> inventory = [];
-  List<Map<String, dynamic>> stockChanges = [];
-  List<Map<String, dynamic>> replenishStock = [];
-
-  //Hardcoded data for testing
-  List<String> itemName= ['Chicken', 'Beef', 'Pork'];
-  List<int> inStock= [12, 24, 36];
-  List<int> sold= [0, 0, 0];
-  List<int> spoilage= [0, 0, 0]; 
+  late AppDatabase db;
+  List<Item> items = [];
 
   int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock
 
-  //Set Date for Inventory Table
   @override
   void initState() {
     super.initState();
-
-    // Convert list elements into map data
-    for (int i = 0; i < itemName.length; i++) {
-      inventory.add({
-        "itemName": itemName[i],
-        "inStock": inStock[i],
-        "sold": sold[i],
-        "spoilage": spoilage[i],
-      });
-    }
+    db = DatabaseProvider.instance;
+    _loadItems();
   }
 
-  //Empty Tab Widget
-  Widget _emptyTables(String message, int tab) {
-    
-    selectedTab = tab;
+  // ✅ Fixed: properly structured and functional
+  Future<void> _loadItems() async {
+    final refreshed = await db.getAllItems();
+    setState(() => items = refreshed);
+  }
 
+  // Empty Tab Widget
+  Widget _emptyTables(String message, int tab) {
+    selectedTab = tab;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -52,76 +43,87 @@ class _InventoryPageState extends State<InventoryPage> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
               ),
               onPressed: () {
-                // TODO: add your function here
                 print("Replenish stock button pressed");
               },
-              child: const Text("Request Stock", style: TextStyle(color: Colors.white)),
+              child: const Text("Request Stock",
+                  style: TextStyle(color: Colors.white)),
             ),
         ],
       ),
     );
   }
 
-  // Inventory Table Widget
+  // ✅ Inventory Table Widget
   Widget _buildInventoryTable() {
     return SingleChildScrollView(
       child: DataTable(
         columns: const [
-          DataColumn(label: Text("Category Name", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
-          DataColumn(label: Text("In Stock", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
-          DataColumn(label: Text("Sale", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
-          DataColumn(label: Text("Spoilage", style: TextStyle(fontFamily: fontAll , color: Colors.red))),
+          DataColumn(
+              label: Text("Item Name",
+                  style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+          DataColumn(
+              label: Text("In Stock",
+                  style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+          DataColumn(
+              label: Text("Sale",
+                  style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+          DataColumn(
+              label: Text("Spoilage",
+                  style: TextStyle(fontFamily: fontAll, color: Colors.red))),
         ],
-        rows: List.generate(inventory.length, (i) {
-          final item = inventory[i];
+        rows: List.generate(items.length, (i) {
+          final item = items[i];
           return DataRow(cells: [
-            DataCell(Text(item["itemName"].toString())),
-            DataCell(Text(item["inStock"].toString())),
-            DataCell(Text(item["sold"].toString())),
-            DataCell(Text(item["spoilage"].toString())),
+            DataCell(Text(item.name)),
+            DataCell(Text(item.stock.toString())),
+            DataCell(Text(item.sold.toString())), // ✅ corrected field name
+            DataCell(Text(item.spoilage.toString())),
           ]);
         }),
       ),
     );
   }
 
-  //Tab Builder
+  // Tabs
   Widget _buildTab(String label, int index) {
     bool active = selectedTab == index;
     return Expanded(
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
-        onTap: () => setState(() => selectedTab = index),
-        child: Container(
-          height: 45,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? Colors.white : Colors.grey[300],
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(12),
-              topRight: Radius.circular(12),
+          onTap: () => setState(() => selectedTab = index),
+          child: Container(
+            height: 45,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: active ? Colors.white : Colors.grey[300],
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ]
+                  : [],
             ),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                : [],
+            child: Text(label,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
-          child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
         ),
       ),
-      )
     );
   }
 
+  // ✅ Build Method
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,13 +132,14 @@ class _InventoryPageState extends State<InventoryPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ✅ Header
+            // Header
             Row(
               children: [
-                const Text("Items", style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+                const Text("Items",
+                    style: TextStyle(fontSize: 30, fontFamily: fontAll)),
                 const SizedBox(width: 16),
 
-                // ✅ Search Bar
+                // Search Bar
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -162,11 +165,11 @@ class _InventoryPageState extends State<InventoryPage> {
 
             const SizedBox(height: 16),
 
-            // ✅ Tabs + Content
+            // Tabs + Content
             Expanded(
               child: Column(
                 children: [
-                  // ✅ Raised Tabs
+                  // Raised Tabs
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
@@ -181,7 +184,7 @@ class _InventoryPageState extends State<InventoryPage> {
                     ),
                   ),
 
-                  // ✅ White content box
+                  // White content box
                   Expanded(
                     child: Container(
                       width: double.infinity,
@@ -193,11 +196,18 @@ class _InventoryPageState extends State<InventoryPage> {
                           bottomRight: Radius.circular(12),
                         ),
                       ),
-                      child: 
-                          selectedTab == 0 ? (inventory.isEmpty ?_emptyTables("You can manage your items here.", selectedTab) : _buildInventoryTable()) :
-                          selectedTab == 1 ? _emptyTables("You can view employee stock change and updates here", selectedTab): 
-                          _emptyTables("You can request stock replenishment for products here.", selectedTab),
-              
+                      child: selectedTab == 0
+                          ? (items.isEmpty
+                              ? _emptyTables("You can manage your items here.",
+                                  selectedTab)
+                              : _buildInventoryTable())
+                          : selectedTab == 1
+                              ? _emptyTables(
+                                  "You can view employee stock changes and updates here.",
+                                  selectedTab)
+                              : _emptyTables(
+                                  "You can request stock replenishment for products here.",
+                                  selectedTab),
                     ),
                   ),
                 ],
@@ -208,6 +218,4 @@ class _InventoryPageState extends State<InventoryPage> {
       ),
     );
   }
-
-  
 }

@@ -1,4 +1,4 @@
-import 'package:chickenjoo_inventory/designconstants.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
 
 class ReportsPage extends StatefulWidget {
