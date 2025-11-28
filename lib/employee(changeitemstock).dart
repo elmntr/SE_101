@@ -1,5 +1,5 @@
 import 'package:chickenjoo_inventory/changerecord.dart';
-import 'package:chickenjoo_inventory/data/employee(reviewchanges).dart';
+import 'package:chickenjoo_inventory/employee(reviewchanges).dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../data/local/app_database.dart';
