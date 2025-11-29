@@ -7,8 +7,6 @@ import 'tables/items.dart';
 import 'tables/users.dart';
 import 'tables/roles.dart';
 
-import 'package:flutter/foundation.dart';
-
 part 'app_database.g.dart';
 
 @DriftDatabase(tables: [Items, Users, Roles])
@@ -19,54 +17,21 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 3;
 
   @override
-MigrationStrategy get migration => MigrationStrategy(
-  onCreate: (Migrator m) async {
-    await m.createAll();
-  },
-
-  onUpgrade: (Migrator m, int from, int to) async {
-    final executor = m.database.executor;
-
-    // Helper: table exists?
-    Future<bool> tableExists(String table) async {
-      final result = await executor.runSelect(
-        'SELECT name FROM sqlite_master WHERE type = ? AND name = ?',
-        ['table', table],
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) async {
+          await m.createAll();
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            await m.createTable(users);
+          }
+          if (from < 3) {
+            await m.createTable(roles);
+            await m.addColumn(users, users.name);
+            await m.addColumn(users, users.phone);
+          }
+        },
       );
-      return result.isNotEmpty;
-    }
-
-    // Helper: column exists?
-    Future<bool> columnExists(String table, String column) async {
-      final columns = await executor.runSelect(
-        'PRAGMA table_info($table)',
-        [], // PRAGMA takes NO parameters → empty list required
-      );
-      return columns.any((c) => c['name'] == column);
-    }
-
-    // ----------- v2 MIGRATION: Users table -----------
-    if (!await tableExists('users')) {
-      await m.createTable(users);
-    }
-
-    // ----------- v3 MIGRATION: Roles table + new user columns -----------
-    if (!await tableExists('roles')) {
-      await m.createTable(roles);
-    }
-
-    // Add `name` column if missing
-    if (!await columnExists('users', 'name')) {
-      await m.addColumn(users, users.name);
-    }
-
-    // Add `phone` column if missing
-    if (!await columnExists('users', 'phone')) {
-      await m.addColumn(users, users.phone);
-    }
-  },
-);
-
 
   Future<List<Item>> getAllItems() => select(items).get();
   Stream<List<Item>> watchAllItems() => select(items).watch();
@@ -186,17 +151,8 @@ MigrationStrategy get migration => MigrationStrategy(
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    File file;
-    if (kDebugMode) {
-      // Easy access during development
-      file = File('inventory.db'); 
-    } else {
-      // Normal path for release
-      final dbFolder = await getApplicationDocumentsDirectory();
-      file = File(p.join(dbFolder.path, 'inventory.db'));
-    }
+    final dbFolder = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dbFolder.path, 'inventory.db'));
     return NativeDatabase.createInBackground(file);
   });
 }
-
-

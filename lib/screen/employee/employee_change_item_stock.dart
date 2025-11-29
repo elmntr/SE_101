@@ -1,11 +1,20 @@
+import 'package:chickenjoo_inventory/change_record.dart';
+import 'package:chickenjoo_inventory/screen/employee/employee_review_changes.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../data/local/app_database.dart';
 import '../../../data/database_provider.dart';
 import '../../design_constants.dart';
 
 class EmployeeChangeStockPage extends StatefulWidget {
   final VoidCallback onBack;
-  const EmployeeChangeStockPage({super.key, required this.onBack});
+  final ValueChanged<ChangeRecord>? onRecordSaved;
+
+  const EmployeeChangeStockPage({
+    super.key,
+    required this.onBack,
+    this.onRecordSaved,
+  });
 
   @override
   State<EmployeeChangeStockPage> createState() => _EmployeeChangeStockPageState();
@@ -17,12 +26,26 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   bool isLoading = true;
 
   late List<String> selectedReasons;
+  late List<TextEditingController> qtyControllers;
+
+  
 
   @override
   void initState() {
     super.initState();
     db = DatabaseProvider.instance;
     _loadItems();
+  }
+
+  @override
+  void dispose() {
+    // dispose controllers if initialized
+    try {
+      for (var c in qtyControllers) {
+        c.dispose();
+      }
+    } catch (_) {}
+    super.dispose();
   }
 
   Future<void> _loadItems() async {
@@ -33,34 +56,76 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
           .map((item) => item.sold > 0 ? 'Sale' : 'Spoilage')
           .toList();
       isLoading = false;
+      qtyControllers = loaded
+          .map((item) => TextEditingController(
+              text: item.sold > 0
+                  ? item.sold.toString()
+                  : (item.spoilage > 0 ? item.spoilage.toString() : '')))
+          .toList();
     });
   }
 
   int get totalSold => items.fold(0, (sum, item) => sum + item.sold);
   int get totalSpoiled => items.fold(0, (sum, item) => sum + item.spoilage);
 
-  Future<void> _saveChanges() async {
+  void _saveChanges() {
+    // Validate controllers: ensure only digits or empty
+    for (var c in qtyControllers) {
+      final txt = c.text.trim();
+        if (txt.isNotEmpty && !RegExp(r'^\d+$').hasMatch(txt)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter only numbers for quantities.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    // Update items from controllers before creating record
     for (int i = 0; i < items.length; i++) {
-      final item = items[i];
-      final newStock = item.stock - item.sold - item.spoilage;
-
-      await db.updateItemData(
-        item.copyWith(stock: newStock < 0 ? 0 : newStock),
-      );
+      final txt = qtyControllers[i].text.trim();
+      final qty = txt.isEmpty ? 0 : int.tryParse(txt) ?? 0;
+      if (selectedReasons[i] == 'Sale') {
+        items[i] = items[i].copyWith(sold: qty);
+      } else {
+        items[i] = items[i].copyWith(spoilage: qty);
+      }
     }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Changes saved na!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
+    final record = ChangeRecord(
+      employeeName: "Employee 1",
+      role: "Cashier",
+      items: List.from(items.map((i) => i.copyWith())),
+    );
+
+    // Reset sold/spoilage
+    setState(() {
+      items = items.map((i) => i.copyWith(sold: 0, spoilage: 0)).toList();
+      selectedReasons = items.map((i) => "Sale").toList();
+      // clear controllers
+      for (var c in qtyControllers) {
+        c.text = '';
+      }
+    });
+
+    // Send record back (if a handler was provided)
+    widget.onRecordSaved?.call(record);
+
+    // Go back to main page
+    widget.onBack();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Changes sent for review!"), backgroundColor: Colors.green),
+    );
   }
+
+
 
   @override
   Widget build(BuildContext context) {
+    
     if (isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -201,6 +266,10 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                               } else {
                                 items[index] = item.copyWith(sold: 0);
                               }
+                              // clear qty input when reason changes
+                              try {
+                                qtyControllers[index].text = '';
+                              } catch (_) {}
                             });
                           },
                         ),
@@ -210,7 +279,9 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                       Expanded(
                         flex: 2,
                         child: TextField(
+                          controller: qtyControllers[index],
                           keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                           textAlign: TextAlign.center,
                           decoration: const InputDecoration(
                             hintText: '0',

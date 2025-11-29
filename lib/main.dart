@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/data/database_provider.dart';
 import 'package:chickenjoo_inventory/data/local/app_database.dart';
-import 'screen/home.dart';
+import 'home.dart';
 
 void main() {
   runApp(const MyApp());
