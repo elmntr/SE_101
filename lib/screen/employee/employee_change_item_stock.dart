@@ -1,4 +1,4 @@
-import 'package:chickenjoo_inventory/screen/employee/employee_change_record.dart';
+import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../data/local/app_database.dart';
