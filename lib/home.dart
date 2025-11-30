@@ -59,6 +59,79 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (AppLayout.isDesktop(context) == false) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.red.shade400,
+          elevation: 3,
+          centerTitle: true,
+          iconTheme: const IconThemeData(color: Colors.white),
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Icon(Icons.account_circle, color: Colors.white, size: 28),
+            ),
+          ],
+        ),
+        body: currentPage ?? const SizedBox.shrink(),
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.red.shade400,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(imageAll, height: 60),
+                    const SizedBox(height: 10),
+                    const Text(
+                      "Inventory System",
+                      style: TextStyle(
+                        fontFamily: fontAll,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ...List.generate(menuItems.length, (index) {
+                final bool isActive = selectedIndex == index;
+
+                return ListTile(
+                  leading: Icon(
+                    menuItems[index]["icon"],
+                    color: isActive ? Colors.red : Colors.black, // ✅ ICON RED
+                  ),
+                  title: Text(
+                    menuItems[index]["label"],
+                    style: TextStyle(
+                      color: isActive ? Colors.red : Colors.black, // ✅ TEXT RED
+                      fontFamily: fontAll,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+
+                  // ✅ LIGHT RED BACKGROUND LIKE DESKTOP FEEL
+                  tileColor: isActive ? Colors.red.withOpacity(0.08) : null,
+
+                  selected: isActive,
+                  onTap: () {
+                    Navigator.pop(context);
+                    switchPage(index);
+                  },
+                );
+              }),
+
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.grey.shade200,
       appBar: AppBar(

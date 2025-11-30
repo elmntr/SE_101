@@ -294,6 +294,119 @@ class _ItemsPageState extends State<ItemsPage> {
   // MAIN BUILD
   @override
   Widget build(BuildContext context) {
+
+    if (AppLayout.isDesktop(context) == false) {
+    /// ✅ PHONE UI
+    return Scaffold(
+      backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+
+              /// HEADER (STACKED)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Items",
+                        style: TextStyle(fontSize: 26, fontFamily: fontAll),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined, size: 28),
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  /// SEARCH BAR BELOW HEADER
+                  Container(
+                    height: 42,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: const TextField(
+                      decoration: InputDecoration(
+                        hintText: "Search...",
+                        icon: Icon(Icons.search),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              /// TABS
+              Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildTab("Items", 0),
+                    _buildTab("Categories", 1),
+                  ],
+                ),
+              ),
+
+
+              /// CONTENT
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(12),
+                    bottomRight: Radius.circular(12),
+                  ),
+                  ),
+                  child: selectedTab == 0
+                      ? (dbItems.isEmpty
+                          ? _emptyTables(
+                              "You can manage your items here.", 0)
+                          : _buildItemTable())
+                      : (categories.isEmpty
+                          ? _emptyTables(
+                              "You can add categories here.", 1)
+                          : _buildCategoryTable()),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      floatingActionButton:
+          (selectedTab == 0 && dbItems.isNotEmpty) ||
+                  (selectedTab == 1 && categories.isNotEmpty)
+              ? FloatingActionButton(
+                  backgroundColor: Colors.red[700],
+                  onPressed:
+                      selectedTab == 0 ? _createItem : _createCategory,
+                  child: const Icon(Icons.add, color: Colors.white),
+                )
+              : null,
+
+      floatingActionButtonLocation:
+          FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
     return Scaffold(
       backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
       body: Padding(

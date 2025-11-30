@@ -1,10 +1,10 @@
-import 'package:chickenjoo_inventory/change_record.dart';
-import 'package:chickenjoo_inventory/screen/employee/employee_review_changes.dart';
+import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
 
 class ReviewChangeDetailPage extends StatelessWidget {
+  static List<ChangeRecord> records = [];
   final ChangeRecord record;
   final VoidCallback? onBack;
   final ValueChanged<ChangeRecord>? onDelete;
@@ -196,7 +196,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
                               onDelete!(record);
                             } else {
                               try {
-                                ReviewChangesPage.records.remove(record);
+                                records.remove(record);
                               } catch (_) {}
                               Navigator.pop(context);
                             }
