@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/data/local/app_database.dart'; // ADDED: Access Drift tables.
 import 'package:chickenjoo_inventory/data/database_provider.dart';
+import 'package:chickenjoo_inventory/filters.dart';
 import 'package:drift/drift.dart' show Value;
 
 class EmployeePage extends StatefulWidget {
@@ -21,6 +22,10 @@ class _EmployeePageState extends State<EmployeePage> {
   List<User> _users = [];
   List<Role> _roles = [];
 
+  EmployeeSort _currentEmployeeSort = EmployeeSort.nameAZ;
+  RoleSort _currentRoleSort = RoleSort.nameAZ;
+  String? _selectedRoleFilter;
+
   List<String> accessTitles = [
       "View Inventory",
       "Add Inventory",
@@ -31,6 +36,39 @@ class _EmployeePageState extends State<EmployeePage> {
       "View Reports",
       "Settings",
     ];
+
+    List<User> get _filteredUsers {
+      var list = _users.toList();
+
+      // Apply role filter first
+      if (_selectedRoleFilter != null) {
+        list = list.where((user) => user.role == _selectedRoleFilter).toList();
+      }
+
+      // Then apply sorting
+      switch (_currentEmployeeSort) {
+        case EmployeeSort.nameAZ:
+          list.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+          break;
+        case EmployeeSort.nameZA:
+          list.sort((a, b) => (b.name ?? '').compareTo(a.name ?? ''));
+          break;
+        case EmployeeSort.emailAZ:
+          list.sort((a, b) => a.email.compareTo(b.email));
+          break;
+        case EmployeeSort.emailZA:
+          list.sort((a, b) => b.email.compareTo(a.email));
+          break;
+        case EmployeeSort.dateNewOld:
+          list.sort((a, b) => b.id.compareTo(a.id));
+          break;
+        case EmployeeSort.dateOldNew:
+          list.sort((a, b) => a.id.compareTo(b.id));
+          break;
+      }
+
+      return list;
+    }
 
   int selectedTab = 0; // 0 = Items, 1 = Categories
 
@@ -158,6 +196,68 @@ class _EmployeePageState extends State<EmployeePage> {
       ),
     );
   }
+
+  void _applyEmployeeSort(EmployeeSort sort) {
+  setState(() {
+    _currentEmployeeSort = sort;
+
+    switch (sort) {
+      case EmployeeSort.nameAZ:
+        _users.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+        break;
+      case EmployeeSort.nameZA:
+        _users.sort((a, b) => (b.name ?? '').compareTo(a.name ?? ''));
+        break;
+      case EmployeeSort.emailAZ:
+        _users.sort((a, b) => a.email.compareTo(b.email));
+        break;
+      case EmployeeSort.emailZA:
+        _users.sort((a, b) => b.email.compareTo(a.email));
+        break;
+      case EmployeeSort.dateNewOld:
+        _users.sort((a, b) => b.id.compareTo(a.id)); // assuming higher ID = newer
+        break;
+      case EmployeeSort.dateOldNew:
+        _users.sort((a, b) => a.id.compareTo(b.id));
+        break;
+    }
+  });
+}
+
+void _applyRoleSort(RoleSort sort) {
+  setState(() {
+    _currentRoleSort = sort;
+
+    switch (sort) {
+      case RoleSort.nameAZ:
+        _roles.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case RoleSort.nameZA:
+        _roles.sort((a, b) => b.name.compareTo(a.name));
+        break;
+      case RoleSort.employeesHighLow:
+        _roles.sort((a, b) {
+          final countA = _users.where((u) => u.role == a.name).length;
+          final countB = _users.where((u) => u.role == b.name).length;
+          return countB.compareTo(countA);
+        });
+        break;
+      case RoleSort.employeesLowHigh:
+        _roles.sort((a, b) {
+          final countA = _users.where((u) => u.role == a.name).length;
+          final countB = _users.where((u) => u.role == b.name).length;
+          return countA.compareTo(countB);
+        });
+        break;
+      case RoleSort.dateNewOld:
+        _roles.sort((a, b) => b.id.compareTo(a.id));
+        break;
+      case RoleSort.dateOldNew:
+        _roles.sort((a, b) => a.id.compareTo(b.id));
+        break;
+    }
+  });
+}
 
   //Add Role Popup
   void _createRoleDialog() {
@@ -349,8 +449,13 @@ class _EmployeePageState extends State<EmployeePage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_users.isEmpty) {
-      return _emptyTables("No employees found", 0);
+    if (_filteredUsers.isEmpty) {
+      return _emptyTables(
+        _selectedRoleFilter == null
+            ? "No employees found"
+            : "No employees with role '$_selectedRoleFilter'",
+        0,
+      );
     }
 
     return SingleChildScrollView(
@@ -362,7 +467,7 @@ class _EmployeePageState extends State<EmployeePage> {
           DataColumn(label: Text("Role", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
           DataColumn(label: Text('')),
         ],
-        rows: _users.map((user) {
+        rows: _filteredUsers.map((user) {
           return DataRow(cells: [
             DataCell(Text(user.name ?? '')),
             DataCell(Text(user.email)),
@@ -621,7 +726,178 @@ class _EmployeePageState extends State<EmployeePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+Widget build(BuildContext context) {
+
+  // PHONE UI – identical to ItemsPage
+  if (AppLayout.isDesktop(context) == false) {
+    return Scaffold(
+      backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+
+              // HEADER (stacked – title + notification)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Employees",
+                        style: TextStyle(fontSize: 26, fontFamily: fontAll),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined, size: 28),
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // SEARCH + FILTER ROW
+                  Row(
+                    children: [
+                      // Search Bar
+                      Expanded(
+                        child: Container(
+                          height: 42,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          child: const TextField(
+                            decoration: InputDecoration(
+                              hintText: "Search...",
+                              icon: Icon(Icons.search),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      Row(
+              children: [
+                // Role Filter Dropdown
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String?>(
+                      value: _selectedRoleFilter,
+                      hint: const Text("All Roles", style: TextStyle(fontSize: 14)),
+                      icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text("All Roles"),
+                        ),
+                        ..._roles.map((role) => DropdownMenuItem<String?>(
+                              value: role.name,
+                              child: Text(role.name),
+                            )),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedRoleFilter = value;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                // Sort Menu
+                PopupMenuButton<EmployeeSort>(
+                  icon: const Icon(Icons.sort, size: 32, color: Colors.black87),
+                  onSelected: (sort) {
+                    setState(() {
+                      _currentEmployeeSort = sort;
+                    });
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: EmployeeSort.dateNewOld, child: Text("Date Added (Newest)")),
+                    PopupMenuItem(value: EmployeeSort.dateOldNew, child: Text("Date Added (Oldest)")),
+                    PopupMenuDivider(),
+                    PopupMenuItem(value: EmployeeSort.nameAZ, child: Text("Name (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort.nameZA, child: Text("Name (Z–A)")),
+                    PopupMenuDivider(),
+                    PopupMenuItem(value: EmployeeSort.emailAZ, child: Text("Email (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort.emailZA, child: Text("Email (Z–A)")),
+                  ],
+                ),
+              ],
+            ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // TABS (Employees / Roles)
+              Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildTab("Employees", 0),
+                    _buildTab("Roles", 1),
+                  ],
+                ),
+              ),
+
+              // CONTENT
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : selectedTab == 0
+                          ? _buildEmployeeTable()
+                          : _buildRoleTable(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      // FAB – only show when data is loaded
+      floatingActionButton: _isLoading
+          ? null
+          : FloatingActionButton(
+              backgroundColor: Colors.red[700],
+              onPressed: selectedTab == 0 ? _createEmployee : _createRoleDialog,
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
     return Scaffold(
       backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
       body: Padding(
@@ -631,25 +907,85 @@ class _EmployeePageState extends State<EmployeePage> {
             //  Header
             Row(
               children: [
-                const Text("Items", style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+                const Text("Employee", style: TextStyle(fontSize: 30, fontFamily: fontAll)),
                 const SizedBox(width: 16),
 
                 // Search Bar
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search...",
-                        prefixIcon: Icon(Icons.search),
-                        border: InputBorder.none,
-                      ),
+                // Search Bar + Filter Button
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: const TextField(
+                  decoration: InputDecoration(
+                    hintText: "Search...",
+                    prefixIcon: Icon(Icons.search),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+              // Filter + Sort Button
+            Row(
+              children: [
+                // Role Filter Dropdown
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String?>(
+                      value: _selectedRoleFilter,
+                      hint: const Text("All Roles", style: TextStyle(fontSize: 14)),
+                      icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text("All Roles"),
+                        ),
+                        ..._roles.map((role) => DropdownMenuItem<String?>(
+                              value: role.name,
+                              child: Text(role.name),
+                            )),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedRoleFilter = value;
+                        });
+                      },
                     ),
                   ),
                 ),
+
+                const SizedBox(width: 10),
+
+                // Sort Menu
+                PopupMenuButton<EmployeeSort>(
+                  icon: const Icon(Icons.sort, size: 32, color: Colors.black87),
+                  onSelected: (sort) {
+                    setState(() {
+                      _currentEmployeeSort = sort;
+                    });
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: EmployeeSort.dateNewOld, child: Text("Date Added (Newest)")),
+                    PopupMenuItem(value: EmployeeSort.dateOldNew, child: Text("Date Added (Oldest)")),
+                    PopupMenuDivider(),
+                    PopupMenuItem(value: EmployeeSort.nameAZ, child: Text("Name (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort.nameZA, child: Text("Name (Z–A)")),
+                    PopupMenuDivider(),
+                    PopupMenuItem(value: EmployeeSort.emailAZ, child: Text("Email (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort.emailZA, child: Text("Email (Z–A)")),
+                  ],
+                ),
+              ],
+            ),
 
                 IconButton(
                   icon: const Icon(Icons.notifications_outlined, size: 35),
@@ -658,7 +994,7 @@ class _EmployeePageState extends State<EmployeePage> {
               ],
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 13),
 
             // Tabs + Content
             Expanded(

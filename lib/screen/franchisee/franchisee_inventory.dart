@@ -3,6 +3,7 @@ import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../data/local/app_database.dart';
 import '../../../data/database_provider.dart';
+import 'package:chickenjoo_inventory/filters.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -20,6 +21,8 @@ class _InventoryPageState extends State<InventoryPage> {
 
   int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock
 
+  ItemSort _currentSort = ItemSort.nameAZ;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +34,45 @@ class _InventoryPageState extends State<InventoryPage> {
   Future<void> _loadItems() async {
     final refreshed = await db.getAllItems();
     setState(() => items = refreshed);
+  }
+
+  void _applyItemSort(ItemSort sort) {
+    setState(() {
+      _currentSort = sort;
+
+      switch (sort) {
+        case ItemSort.dateOldNew:
+          items.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
+          break;
+        case ItemSort.dateNewOld:
+          items.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+          break;
+        case ItemSort.nameAZ:
+          items.sort((a, b) => a.name.compareTo(b.name));
+          break;
+        case ItemSort.nameZA:
+          items.sort((a, b) => b.name.compareTo(a.name));
+          break;
+        case ItemSort.stockLowHigh:
+          items.sort((a, b) => a.stock.compareTo(b.stock));
+          break;
+        case ItemSort.stockHighLow:
+          items.sort((a, b) => b.stock.compareTo(a.stock));
+          break;
+        case ItemSort.saleLowHigh:
+          items.sort((a, b) => a.sold.compareTo(b.sold));
+          break;
+        case ItemSort.saleHighLow:
+          items.sort((a, b) => b.sold.compareTo(a.sold));
+          break;
+        case ItemSort.spoilLowHigh:
+          items.sort((a, b) => a.spoilage.compareTo(b.spoilage));
+          break;
+        case ItemSort.spoilHighLow:
+          items.sort((a, b) => b.spoilage.compareTo(a.spoilage));
+          break;
+      }
+    });
   }
 
   // Empty Tab Widget
@@ -62,34 +104,47 @@ class _InventoryPageState extends State<InventoryPage> {
 
   // ✅ Inventory Table Widget
   Widget _buildInventoryTable() {
-    return SingleChildScrollView(
-      child: DataTable(
-        columns: const [
-          DataColumn(
-              label: Text("Item Name",
-                  style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(
-              label: Text("In Stock",
-                  style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(
-              label: Text("Sale",
-                  style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(
-              label: Text("Spoilage",
-                  style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-        ],
-        rows: List.generate(items.length, (i) {
-          final item = items[i];
-          return DataRow(cells: [
-            DataCell(Text(item.name)),
-            DataCell(Text(item.stock.toString())),
-            DataCell(Text(item.sold.toString())), // ✅ corrected field name
-            DataCell(Text(item.spoilage.toString())),
-          ]);
-        }),
-      ),
-    );
-  }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmall = constraints.maxWidth < 800;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: SingleChildScrollView(
+                  child: DataTable(
+                    columnSpacing: isSmall ? 10 : 60,
+                    horizontalMargin: isSmall ? 12 : 24,
+                    columns: const [
+                      DataColumn(
+                          label: Text("Item Name",
+                              style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+                      DataColumn(
+                          label: Text("In Stock",
+                              style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+                      DataColumn(
+                          label: Text("Sale",
+                              style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+                      DataColumn(
+                          label: Text("Spoilage",
+                              style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+                    ],
+                    rows: List.generate(items.length, (i) {
+                      final item = items[i];
+                      return DataRow(cells: [
+                        DataCell(Text(item.name)),
+                        DataCell(Text(item.stock.toString())),
+                        DataCell(Text(item.sold.toString())), // ✅ corrected field name
+                        DataCell(Text(item.spoilage.toString())),
+                      ]);
+                    }),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }
 
   // Tabs
   Widget _buildTab(String label, int index) {
@@ -128,121 +183,365 @@ class _InventoryPageState extends State<InventoryPage> {
 
   // ✅ Build Method
   @override
-  Widget build(BuildContext context) {
+Widget build(BuildContext context) {
+
+  // ✅ =============== PHONE UI =================
+  if (AppLayout.isDesktop(context) == false) {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Header
-            Row(
-              children: [
-                const Text("Items",
-                    style: TextStyle(fontSize: 30, fontFamily: fontAll)),
-                const SizedBox(width: 16),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
 
-                // Search Bar
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search...",
-                        prefixIcon: Icon(Icons.search),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ),
-
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined, size: 35),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Tabs + Content
-            Expanded(
-              child: Column(
+              /// HEADER (TITLE + NOTIFICATIONS)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Raised Tabs
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        _buildTab("Item Stock", 0),
-                        _buildTab("Stock Changes", 1),
-                        _buildTab("Replenish Stock", 2),
-                      ],
-                    ),
+                  const Text(
+                    "Inventory",
+                    style: TextStyle(fontSize: 26, fontFamily: fontAll),
                   ),
-
-                  // White content box
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(12),
-                          bottomRight: Radius.circular(12),
-                        ),
-                      ),
-                      child: selectedTab == 0
-                          ? (items.isEmpty
-                              ? _emptyTables("You can manage your items here.",
-                                  selectedTab)
-                              : _buildInventoryTable())
-                          : selectedTab == 1
-                                  ? (InventoryPage.pendingChanges.isEmpty
-                                      ? _emptyTables(
-                                          "You can view employee stock changes and updates here.",
-                                          selectedTab)
-                                      : SingleChildScrollView(
-                                          child: DataTable(
-                                            columns: const [
-                                              DataColumn(label: Text("Employee Name")),
-                                              DataColumn(label: Text("Role")),
-                                              DataColumn(label: Text("Total Changes")),
-                                              DataColumn(label: Text("Status")),
-                                            ],
-                                            rows: List.generate(
-                                                InventoryPage.pendingChanges.length,
-                                                (index) {
-                                              final record =
-                                                  InventoryPage.pendingChanges[index];
-                                              return DataRow(cells: [
-                                                DataCell(Text(record.employeeName)),
-                                                DataCell(Text(record.role)),
-                                                DataCell(Text(record.totalChanges
-                                                    .toString())),
-                                                DataCell(Text(record.status)),
-                                              ]);
-                                            }),
-                                          ),
-                                        ))
-                              : _emptyTables(
-                                  "You can request stock replenishment for products here.",
-                                  selectedTab),
-                    ),
+                  IconButton(
+                    icon:
+                        const Icon(Icons.notifications_outlined, size: 28),
+                    onPressed: () {},
                   ),
                 ],
               ),
-            ),
-          ],
+
+              const SizedBox(height: 10),
+
+              /// SEARCH BAR (BELOW TITLE)
+                                Row(
+                    children: [
+                      /// SEARCH BAR
+                      Expanded(
+                        child: Container(
+                          height: 42,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          child: const TextField(
+                            decoration: InputDecoration(
+                              hintText: "Search...",
+                              icon: Icon(Icons.search),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      if (selectedTab == 0)
+                        PopupMenuButton<ItemSort>(
+                          icon: const Icon(Icons.filter_list, size: 28),
+                          onSelected: _applyItemSort,
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: ItemSort.dateNewOld,
+                              child: Text("Date Modified (Newest)"),
+                            ),
+                            PopupMenuItem(
+                              value: ItemSort.dateOldNew,
+                              child: Text("Date Modified (Oldest)"),
+                            ),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort.nameAZ, child: Text("Name (A–Z)")),
+                            PopupMenuItem(
+                                value: ItemSort.nameZA, child: Text("Name (Z–A)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort.stockLowHigh,
+                                child: Text("Stock (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.stockHighLow,
+                                child: Text("Stock (High → Low)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort.saleLowHigh,
+                                child: Text("Sale (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.saleHighLow,
+                                child: Text("Sale (High → Low)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort.spoilLowHigh,
+                                child: Text("Spoilage (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.spoilHighLow,
+                                child: Text("Spoilage (High → Low)")),
+                          ],
+                        )
+                      else
+                        PopupMenuButton<CategorySort>(
+                          icon: const Icon(Icons.filter_list, size: 28),
+                          itemBuilder: (context) => const [
+                            
+                          ],
+                        ),
+                    ],
+                  ),
+
+              const SizedBox(height: 16),
+
+              /// TABS
+              Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildTab("Stock", 0),
+                    _buildTab("Changes", 1),
+                    _buildTab("Replenish", 2),
+                  ],
+                ),
+              ),
+
+
+              /// CONTENT
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(12),
+                  ),
+                ),
+
+                  child: selectedTab == 0
+                      ? (items.isEmpty
+                          ? _emptyTables(
+                              "You can manage your items here.", 0)
+                          : _buildInventoryTable())
+                      : selectedTab == 1
+                          ? (InventoryPage.pendingChanges.isEmpty
+                              ? _emptyTables(
+                                  "You can view employee stock updates here.", 1)
+                              : SingleChildScrollView(
+                                  child: DataTable(
+                                    columns: const [
+                                      DataColumn(label: Text("Employee")),
+                                      DataColumn(label: Text("Role")),
+                                      DataColumn(label: Text("Changes")),
+                                      DataColumn(label: Text("Status")),
+                                    ],
+                                    rows: List.generate(
+                                        InventoryPage.pendingChanges.length,
+                                        (index) {
+                                      final record =
+                                          InventoryPage.pendingChanges[index];
+                                      return DataRow(cells: [
+                                        DataCell(Text(record.employeeName)),
+                                        DataCell(Text(record.role)),
+                                        DataCell(Text(
+                                            record.totalChanges.toString())),
+                                        DataCell(Text(record.status)),
+                                      ]);
+                                    }),
+                                  ),
+                                ))
+                          : _emptyTables(
+                              "You can request stock replenishment here.", 2),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  // ✅ =============== DESKTOP UI (UNCHANGED) =================
+  return Scaffold(
+    backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+    body: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Header
+          Row(
+            children: [
+              const Text("Inventory",
+                  style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+              const SizedBox(width: 16),
+
+              // Search Bar
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const TextField(
+                    decoration: InputDecoration(
+                      hintText: "Search...",
+                      prefixIcon: Icon(Icons.search),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+              ),
+
+              if (selectedTab == 0)
+                        PopupMenuButton<ItemSort>(
+                          icon: const Icon(Icons.filter_list, size: 28),
+                          onSelected: _applyItemSort,
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: ItemSort.dateNewOld,
+                              child: Text("Date Modified (Newest)"),
+                            ),
+                            PopupMenuItem(
+                              value: ItemSort.dateOldNew,
+                              child: Text("Date Modified (Oldest)"),
+                            ),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort.nameAZ, child: Text("Name (A–Z)")),
+                            PopupMenuItem(
+                                value: ItemSort.nameZA, child: Text("Name (Z–A)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort.stockLowHigh,
+                                child: Text("Stock (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.stockHighLow,
+                                child: Text("Stock (High → Low)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort.saleLowHigh,
+                                child: Text("Sale (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.saleHighLow,
+                                child: Text("Sale (High → Low)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort.spoilLowHigh,
+                                child: Text("Spoilage (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.spoilHighLow,
+                                child: Text("Spoilage (High → Low)")),
+                          ],
+                        )
+                      else
+                        PopupMenuButton<CategorySort>(
+                          icon: const Icon(Icons.filter_list, size: 28),
+                          itemBuilder: (context) => const [
+                            
+                          ],
+                        ),
+
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, size: 35),
+                onPressed: () {},
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Tabs + Content
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildTab("Item Stock", 0),
+                      _buildTab("Stock Changes", 1),
+                      _buildTab("Replenish Stock", 2),
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: selectedTab == 0
+                        ? (items.isEmpty
+                            ? _emptyTables(
+                                "You can manage your items here.", selectedTab)
+                            : _buildInventoryTable())
+                        : selectedTab == 1
+                            ? (InventoryPage.pendingChanges.isEmpty
+                                ? _emptyTables(
+                                    "You can view employee stock changes here.",
+                                    selectedTab)
+                                : SingleChildScrollView(
+                                    child: DataTable(
+                                      columns: const [
+                                        DataColumn(label: Text("Employee Name")),
+                                        DataColumn(label: Text("Role")),
+                                        DataColumn(label: Text("Total Changes")),
+                                        DataColumn(label: Text("Status")),
+                                      ],
+                                      rows: List.generate(
+                                          InventoryPage.pendingChanges.length,
+                                          (index) {
+                                        final record =
+                                            InventoryPage.pendingChanges[index];
+                                        return DataRow(cells: [
+                                          DataCell(Text(
+                                              record.employeeName)),
+                                          DataCell(Text(record.role)),
+                                          DataCell(Text(record.totalChanges
+                                              .toString())),
+                                          DataCell(Text(record.status)),
+                                        ]);
+                                      }),
+                                    ),
+                                  ))
+                            : _emptyTables(
+                                "You can request stock replenishment here.",
+                                selectedTab),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 }
