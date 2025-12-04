@@ -3,7 +3,7 @@ import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../data/local/app_database.dart';
 import '../../../data/database_provider.dart';
-import 'package:chickenjoo_inventory/filters.dart';
+import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -21,7 +21,7 @@ class _InventoryPageState extends State<InventoryPage> {
 
   int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock
 
-  ItemSort _currentSort = ItemSort.nameAZ;
+  ItemSort _currentSort = ItemSort(ItemSortField.name, SortOrder.desc);
 
   @override
   void initState() {
@@ -40,38 +40,27 @@ class _InventoryPageState extends State<InventoryPage> {
     setState(() {
       _currentSort = sort;
 
-      switch (sort) {
-        case ItemSort.dateOldNew:
+      switch (sort.field) {
+        case ItemSortField.date:
           items.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
           break;
-        case ItemSort.dateNewOld:
-          items.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
-          break;
-        case ItemSort.nameAZ:
+        case ItemSortField.name:
           items.sort((a, b) => a.name.compareTo(b.name));
           break;
-        case ItemSort.nameZA:
-          items.sort((a, b) => b.name.compareTo(a.name));
-          break;
-        case ItemSort.stockLowHigh:
+        case ItemSortField.stock:
           items.sort((a, b) => a.stock.compareTo(b.stock));
           break;
-        case ItemSort.stockHighLow:
-          items.sort((a, b) => b.stock.compareTo(a.stock));
-          break;
-        case ItemSort.saleLowHigh:
+        case ItemSortField.sale:
           items.sort((a, b) => a.sold.compareTo(b.sold));
           break;
-        case ItemSort.saleHighLow:
-          items.sort((a, b) => b.sold.compareTo(a.sold));
-          break;
-        case ItemSort.spoilLowHigh:
+        case ItemSortField.spoilage:
           items.sort((a, b) => a.spoilage.compareTo(b.spoilage));
           break;
-        case ItemSort.spoilHighLow:
-          items.sort((a, b) => b.spoilage.compareTo(a.spoilage));
-          break;
       }
+
+      if (sort.order == SortOrder.desc) {
+      items = items.reversed.toList();
+    }
     });
   }
 
@@ -270,46 +259,46 @@ Widget build(BuildContext context) {
                           onSelected: _applyItemSort,
                           itemBuilder: (context) => const [
                             PopupMenuItem(
-                              value: ItemSort.dateNewOld,
+                              value: ItemSort(ItemSortField.date, SortOrder.desc),
                               child: Text("Date Modified (Newest)"),
                             ),
                             PopupMenuItem(
-                              value: ItemSort.dateOldNew,
+                              value: ItemSort(ItemSortField.date, SortOrder.asc),
                               child: Text("Date Modified (Oldest)"),
                             ),
 
                             PopupMenuDivider(),
 
                             PopupMenuItem(
-                                value: ItemSort.nameAZ, child: Text("Name (A–Z)")),
+                                value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
                             PopupMenuItem(
-                                value: ItemSort.nameZA, child: Text("Name (Z–A)")),
+                                value: ItemSort(ItemSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
 
                             PopupMenuDivider(),
 
                             PopupMenuItem(
-                                value: ItemSort.stockLowHigh,
+                                value: ItemSort(ItemSortField.stock, SortOrder.desc),
                                 child: Text("Stock (Low → High)")),
                             PopupMenuItem(
-                                value: ItemSort.stockHighLow,
+                                value: ItemSort(ItemSortField.stock, SortOrder.asc),
                                 child: Text("Stock (High → Low)")),
 
                             PopupMenuDivider(),
 
                             PopupMenuItem(
-                                value: ItemSort.saleLowHigh,
+                                value: ItemSort(ItemSortField.sale, SortOrder.desc),
                                 child: Text("Sale (Low → High)")),
                             PopupMenuItem(
-                                value: ItemSort.saleHighLow,
+                                value: ItemSort(ItemSortField.sale, SortOrder.asc),
                                 child: Text("Sale (High → Low)")),
 
                             PopupMenuDivider(),
 
                             PopupMenuItem(
-                                value: ItemSort.spoilLowHigh,
+                                value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
                                 child: Text("Spoilage (Low → High)")),
                             PopupMenuItem(
-                                value: ItemSort.spoilHighLow,
+                                value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
                                 child: Text("Spoilage (High → Low)")),
                           ],
                         )
@@ -434,46 +423,46 @@ Widget build(BuildContext context) {
                           onSelected: _applyItemSort,
                           itemBuilder: (context) => const [
                             PopupMenuItem(
-                              value: ItemSort.dateNewOld,
+                              value: ItemSort(ItemSortField.date, SortOrder.desc),
                               child: Text("Date Modified (Newest)"),
                             ),
                             PopupMenuItem(
-                              value: ItemSort.dateOldNew,
+                              value: ItemSort(ItemSortField.date, SortOrder.asc),
                               child: Text("Date Modified (Oldest)"),
                             ),
 
                             PopupMenuDivider(),
 
                             PopupMenuItem(
-                                value: ItemSort.nameAZ, child: Text("Name (A–Z)")),
+                                value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
                             PopupMenuItem(
-                                value: ItemSort.nameZA, child: Text("Name (Z–A)")),
+                                value: ItemSort(ItemSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
 
                             PopupMenuDivider(),
 
                             PopupMenuItem(
-                                value: ItemSort.stockLowHigh,
+                                value: ItemSort(ItemSortField.stock, SortOrder.desc),
                                 child: Text("Stock (Low → High)")),
                             PopupMenuItem(
-                                value: ItemSort.stockHighLow,
+                                value: ItemSort(ItemSortField.stock, SortOrder.asc),
                                 child: Text("Stock (High → Low)")),
 
                             PopupMenuDivider(),
 
                             PopupMenuItem(
-                                value: ItemSort.saleLowHigh,
+                                value: ItemSort(ItemSortField.sale, SortOrder.desc),
                                 child: Text("Sale (Low → High)")),
                             PopupMenuItem(
-                                value: ItemSort.saleHighLow,
+                                value: ItemSort(ItemSortField.sale, SortOrder.asc),
                                 child: Text("Sale (High → Low)")),
 
                             PopupMenuDivider(),
 
                             PopupMenuItem(
-                                value: ItemSort.spoilLowHigh,
+                                value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
                                 child: Text("Spoilage (Low → High)")),
                             PopupMenuItem(
-                                value: ItemSort.spoilHighLow,
+                                value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
                                 child: Text("Spoilage (High → Low)")),
                           ],
                         )

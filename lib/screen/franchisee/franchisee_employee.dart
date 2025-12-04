@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/data/local/app_database.dart'; // ADDED: Access Drift tables.
 import 'package:chickenjoo_inventory/data/database_provider.dart';
-import 'package:chickenjoo_inventory/filters.dart';
+import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 import 'package:drift/drift.dart' show Value;
 
 class EmployeePage extends StatefulWidget {
@@ -22,8 +22,8 @@ class _EmployeePageState extends State<EmployeePage> {
   List<User> _users = [];
   List<Role> _roles = [];
 
-  EmployeeSort _currentEmployeeSort = EmployeeSort.nameAZ;
-  RoleSort _currentRoleSort = RoleSort.nameAZ;
+  EmployeeSort _currentEmployeeSort = EmployeeSort(EmployeeSortField.name, SortOrder.desc);
+  RoleSort _currentRoleSort = RoleSort(RoleSortField.name, SortOrder.desc);
   String? _selectedRoleFilter;
 
   List<String> accessTitles = [
@@ -46,24 +46,15 @@ class _EmployeePageState extends State<EmployeePage> {
       }
 
       // Then apply sorting
-      switch (_currentEmployeeSort) {
-        case EmployeeSort.nameAZ:
+      switch (_currentEmployeeSort.field) {
+        case EmployeeSortField.name:
           list.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
           break;
-        case EmployeeSort.nameZA:
-          list.sort((a, b) => (b.name ?? '').compareTo(a.name ?? ''));
-          break;
-        case EmployeeSort.emailAZ:
+        case EmployeeSortField.email:
           list.sort((a, b) => a.email.compareTo(b.email));
           break;
-        case EmployeeSort.emailZA:
-          list.sort((a, b) => b.email.compareTo(a.email));
-          break;
-        case EmployeeSort.dateNewOld:
+        case EmployeeSortField.date:
           list.sort((a, b) => b.id.compareTo(a.id));
-          break;
-        case EmployeeSort.dateOldNew:
-          list.sort((a, b) => a.id.compareTo(b.id));
           break;
       }
 
@@ -201,26 +192,21 @@ class _EmployeePageState extends State<EmployeePage> {
   setState(() {
     _currentEmployeeSort = sort;
 
-    switch (sort) {
-      case EmployeeSort.nameAZ:
+    switch (sort.field) {
+      case EmployeeSortField.name:
         _users.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
         break;
-      case EmployeeSort.nameZA:
-        _users.sort((a, b) => (b.name ?? '').compareTo(a.name ?? ''));
-        break;
-      case EmployeeSort.emailAZ:
+      case EmployeeSortField.email:
         _users.sort((a, b) => a.email.compareTo(b.email));
         break;
-      case EmployeeSort.emailZA:
-        _users.sort((a, b) => b.email.compareTo(a.email));
-        break;
-      case EmployeeSort.dateNewOld:
+      case EmployeeSortField.date:
         _users.sort((a, b) => b.id.compareTo(a.id)); // assuming higher ID = newer
         break;
-      case EmployeeSort.dateOldNew:
-        _users.sort((a, b) => a.id.compareTo(b.id));
-        break;
     }
+    
+      if (sort.order == SortOrder.desc) {
+      _users = _users.reversed.toList();
+      }
   });
 }
 
@@ -228,34 +214,25 @@ void _applyRoleSort(RoleSort sort) {
   setState(() {
     _currentRoleSort = sort;
 
-    switch (sort) {
-      case RoleSort.nameAZ:
+    switch (sort.field) {
+      case RoleSortField.name:
         _roles.sort((a, b) => a.name.compareTo(b.name));
         break;
-      case RoleSort.nameZA:
-        _roles.sort((a, b) => b.name.compareTo(a.name));
-        break;
-      case RoleSort.employeesHighLow:
-        _roles.sort((a, b) {
-          final countA = _users.where((u) => u.role == a.name).length;
-          final countB = _users.where((u) => u.role == b.name).length;
-          return countB.compareTo(countA);
-        });
-        break;
-      case RoleSort.employeesLowHigh:
+      case RoleSortField.employees:
         _roles.sort((a, b) {
           final countA = _users.where((u) => u.role == a.name).length;
           final countB = _users.where((u) => u.role == b.name).length;
           return countA.compareTo(countB);
         });
         break;
-      case RoleSort.dateNewOld:
+      case RoleSortField.date:
         _roles.sort((a, b) => b.id.compareTo(a.id));
         break;
-      case RoleSort.dateOldNew:
-        _roles.sort((a, b) => a.id.compareTo(b.id));
-        break;
     }
+    
+      if (sort.order == SortOrder.desc) {
+      _roles = _roles.reversed.toList();
+      }
   });
 }
 
@@ -916,14 +893,14 @@ Widget build(BuildContext context) {
                     });
                   },
                   itemBuilder: (context) => const [
-                    PopupMenuItem(value: EmployeeSort.dateNewOld, child: Text("Date Added (Newest)")),
-                    PopupMenuItem(value: EmployeeSort.dateOldNew, child: Text("Date Added (Oldest)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.date, SortOrder.desc), child: Text("Date Added (Newest)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.date, SortOrder.asc), child: Text("Date Added (Oldest)")),
                     PopupMenuDivider(),
-                    PopupMenuItem(value: EmployeeSort.nameAZ, child: Text("Name (A–Z)")),
-                    PopupMenuItem(value: EmployeeSort.nameZA, child: Text("Name (Z–A)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
                     PopupMenuDivider(),
-                    PopupMenuItem(value: EmployeeSort.emailAZ, child: Text("Email (A–Z)")),
-                    PopupMenuItem(value: EmployeeSort.emailZA, child: Text("Email (Z–A)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.desc), child: Text("Email (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.asc), child: Text("Email (Z–A)")),
                   ],
                 ),
               ],
@@ -1054,6 +1031,7 @@ Widget build(BuildContext context) {
                 const SizedBox(width: 10),
 
                 // Sort Menu
+                // Sort Menu
                 PopupMenuButton<EmployeeSort>(
                   icon: const Icon(Icons.sort, size: 32, color: Colors.black87),
                   onSelected: (sort) {
@@ -1062,14 +1040,14 @@ Widget build(BuildContext context) {
                     });
                   },
                   itemBuilder: (context) => const [
-                    PopupMenuItem(value: EmployeeSort.dateNewOld, child: Text("Date Added (Newest)")),
-                    PopupMenuItem(value: EmployeeSort.dateOldNew, child: Text("Date Added (Oldest)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.date, SortOrder.desc), child: Text("Date Added (Newest)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.date, SortOrder.asc), child: Text("Date Added (Oldest)")),
                     PopupMenuDivider(),
-                    PopupMenuItem(value: EmployeeSort.nameAZ, child: Text("Name (A–Z)")),
-                    PopupMenuItem(value: EmployeeSort.nameZA, child: Text("Name (Z–A)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
                     PopupMenuDivider(),
-                    PopupMenuItem(value: EmployeeSort.emailAZ, child: Text("Email (A–Z)")),
-                    PopupMenuItem(value: EmployeeSort.emailZA, child: Text("Email (Z–A)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.desc), child: Text("Email (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.asc), child: Text("Email (Z–A)")),
                   ],
                 ),
               ],
