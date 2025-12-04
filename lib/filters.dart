@@ -45,3 +45,5 @@ enum RoleSort {
   dateOldNew,
 }
 
+enum ChangeSort { employeeAZ, employeeZA, roleAZ, roleZA, changesLowHigh, changesHighLow, statusPendingFirst, statusUpdatedFirst}
+

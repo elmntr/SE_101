@@ -122,81 +122,181 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   // ✅ Item Table Widget with "Add Item" button
   Widget _buildItemTable() {
-    return SingleChildScrollView(
-            child: DataTable(
-              columns: const [
-                DataColumn(
-                    label: Text("Item Name",
-                        style:
-                            TextStyle(fontFamily: fontAll, color: Colors.red))),
-                DataColumn(
-                    label: Text("Stock",
-                        style:
-                            TextStyle(fontFamily: fontAll, color: Colors.red))),
-                DataColumn(
-                    label: Text("Sale",
-                        style:
-                            TextStyle(fontFamily: fontAll, color: Colors.red))),
-                DataColumn(
-                    label: Text("Spoilage",
-                        style:
-                            TextStyle(fontFamily: fontAll, color: Colors.red))),
-                DataColumn(label: Text("")),
-              ],
-              rows: List.generate(dbItems.length, (i) {
-                final item = dbItems[i];
-                return DataRow(cells: [
-                  DataCell(Text(item.name)),
-                  DataCell(Text(item.stock.toString())),
-                  DataCell(Text(item.sold.toString())),
-                  DataCell(Text(item.spoilage.toString())),
-                  DataCell(
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () async {
-                        await db.deleteItemById(item.id);
-                        _loadItems();
-                      },
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final isSmall = constraints.maxWidth < 800;
+      Widget header(String value) {
+        return SizedBox(
+          width: isSmall ? 60 : 80,
+
+            child: Text(
+              value,
+              maxLines: null,                   // ✅ 2–3 lines visible
+              softWrap: true,
+              overflow: TextOverflow.fade,
+              style: const TextStyle(fontFamily: fontAll, color: Colors.red),
+            ),
+        );
+      }
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: DataTable(
+            headingRowHeight: 48,
+            columnSpacing: isSmall ? 10 : 60,
+            horizontalMargin: isSmall ? 12 : 24,
+
+            
+
+            columns: [
+              DataColumn(
+                  label: header("Item Name")),
+              DataColumn(
+                  label: header("Stock")),
+              DataColumn(
+                   label: header("Sale")),
+              DataColumn(
+                   label: header("Spoilage")),
+              DataColumn( label: header("")),
+            ],
+
+            rows: List.generate(dbItems.length, (i) {
+              final item = dbItems[i];
+
+               Widget cell(String value) {
+                return SizedBox(
+                  width: isSmall ? 60 : double.infinity,
+
+                    child: Text(
+                      value,
+                      maxLines: null,                   // ✅ 2–3 lines visible
+                      softWrap: true,
+                      overflow: TextOverflow.fade,
+                      style: const TextStyle(fontFamily: fontAll),
+                    ),
+                );
+              }
+
+              return DataRow(cells: [
+                DataCell(cell(item.name)),
+                DataCell(cell(item.stock.toString())),
+                DataCell(cell(item.sold.toString())),
+                DataCell(cell(item.spoilage.toString())),
+                DataCell(
+                  SizedBox(
+                    width: double.infinity,
+                    child: IconButton(
+                        icon:
+                            const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () async {
+                          await db.deleteItemById(item.id);
+                          _loadItems();
+                        },
                     ),
                   ),
-                ]);
-              }),
-            ),
-          );
-  }
+                ),
+              ]);
+            }),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+
+  
 
   // ✅ Category Table Widget with "Add Category" button
   Widget _buildCategoryTable() {
-    return SingleChildScrollView(
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text("Employee Name")),
-          DataColumn(label: Text("Role")),
-          DataColumn(label: Text("Total Changes")),
-          DataColumn(label: Text("Status")),
-          DataColumn(label: Text("")),
-        ],
-        rows: List.generate(reviewChanges.length, (index) {
-          final record = reviewChanges[index];
-          return DataRow(cells: [
-            DataCell(Text(record.employeeName)),
-            DataCell(Text(record.role)),
-            DataCell(Text(record.totalChanges.toString())),
-            DataCell(Text(record.status)),
-            DataCell(ElevatedButton(
-              child: const Text("View"),
-              onPressed: () {
-                setState(() {
-                  _isViewingChangeDetail = true;
-                  _selectedChangeRecord = record;
-                });
-              },
-            )),
-          ]);
-        }),
-      ),
-    );
-  }
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final isSmall = constraints.maxWidth < 800;
+      Widget header(String value) {
+        return SizedBox(
+          width: isSmall ? 40 : 80,
+
+            child: Text(
+              value,
+              maxLines: null,                   // ✅ 2–3 lines visible
+              softWrap: true,
+              overflow: TextOverflow.fade,
+              style: const TextStyle(fontFamily: fontAll, color: Colors.red),
+            ),
+        );
+      }
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: constraints.maxWidth,
+          ),
+          child: DataTable(
+            headingRowHeight: 48,
+            columnSpacing: isSmall ? 10 : 60,
+            horizontalMargin: isSmall ? 12 : 24,
+
+            
+
+            columns: [
+              
+              DataColumn(label: header("Employee Name")),
+              DataColumn(label: header("Role")),
+              DataColumn(label: header("Total Changes")),
+              DataColumn(label: header("Status")),
+              DataColumn(label: header("")),
+            ],
+
+            rows: List.generate(reviewChanges.length, (index) {
+              final record = reviewChanges[index];
+
+              Widget cell(String value) {
+                return SizedBox(
+                  width: isSmall ? 60 : double.infinity,
+
+                    child: Text(
+                      value,
+                      maxLines: null,                   // ✅ 2–3 lines visible
+                      softWrap: true,
+                      overflow: TextOverflow.fade,
+                      style: const TextStyle(fontFamily: fontAll),
+                    ),
+                );
+              }
+
+              return DataRow(cells: [
+                DataCell(cell(record.employeeName)),
+                DataCell(cell(record.role)),
+                DataCell(cell(record.totalChanges.toString())),
+                DataCell(cell(record.status)),
+                DataCell(
+                  SizedBox(
+                    width: double.infinity,
+                    child: Center(
+                      child: ElevatedButton(
+                        child: const Text("View"),
+                        onPressed: () {
+                          setState(() {
+                            _isViewingChangeDetail = true;
+                            _selectedChangeRecord = record;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ]);
+            }),
+          ),
+        ),
+      );
+    },
+  );
+}
+
 
   // Tab Builder
   Widget _buildTab(String label, int index) {

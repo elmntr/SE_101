@@ -107,21 +107,34 @@ class _InventoryPageState extends State<InventoryPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isSmall = constraints.maxWidth < 800;
+        Widget header(String value) {
+          return SizedBox(
+            width: isSmall ? 60 : 100,
+              child: Text(
+                value,
+                maxLines: null,                   // ✅ 2–3 lines visible
+                softWrap: true,
+                overflow: TextOverflow.fade,
+                style: const TextStyle(fontFamily: fontAll, color: Colors.red),
+              ),
+          );
+        }
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: constraints.maxWidth),
                 child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
                   child: DataTable(
                     columnSpacing: isSmall ? 10 : 60,
                     horizontalMargin: isSmall ? 12 : 24,
-                    columns: const [
+                    dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
+                    dataRowMaxHeight: double.infinity,
+                    columns: [
                       DataColumn(
-                          label: Text("Item Name",
-                              style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+                          label: header("Item Name")),
                       DataColumn(
-                          label: Text("In Stock",
-                              style: TextStyle(fontFamily: fontAll, color: Colors.red))),
+                          label: header("Stock")),
                       DataColumn(
                           label: Text("Sale",
                               style: TextStyle(fontFamily: fontAll, color: Colors.red))),
@@ -131,11 +144,25 @@ class _InventoryPageState extends State<InventoryPage> {
                     ],
                     rows: List.generate(items.length, (i) {
                       final item = items[i];
+                      Widget cell(String value) {
+                        return SizedBox(
+                          width: isSmall ? 80 : double.infinity,
+
+                          child: Text(
+                              value,
+                              maxLines: null,                   // ✅ 2–3 lines visible
+                              softWrap: true,
+                              overflow: TextOverflow.fade,
+                              style: const TextStyle(fontFamily: fontAll),
+                            ),
+                        );
+                      }
+
                       return DataRow(cells: [
-                        DataCell(Text(item.name)),
-                        DataCell(Text(item.stock.toString())),
-                        DataCell(Text(item.sold.toString())), // ✅ corrected field name
-                        DataCell(Text(item.spoilage.toString())),
+                        DataCell(cell(item.name)),
+                        DataCell(cell(item.stock.toString())),
+                        DataCell(cell(item.sold.toString())), // ✅ corrected field name
+                        DataCell(cell(item.spoilage.toString())),
                       ]);
                     }),
                   ),

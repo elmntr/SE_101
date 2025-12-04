@@ -444,59 +444,116 @@ void _applyRoleSort(RoleSort sort) {
   }
 
   // Employee Table Widget
-  Widget _buildEmployeeTable() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+  // Employee Table Widget – NOW 100% IDENTICAL to ItemsPage style
+Widget _buildEmployeeTable() {
+  if (_isLoading) {
+    return const Center(child: CircularProgressIndicator());
+  }
 
-    if (_filteredUsers.isEmpty) {
-      return _emptyTables(
-        _selectedRoleFilter == null
-            ? "No employees found"
-            : "No employees with role '$_selectedRoleFilter'",
-        0,
-      );
-    }
-
-    return SingleChildScrollView(
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text("Name", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(label: Text("Email", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(label: Text("Phone", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(label: Text("Role", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(label: Text('')),
-        ],
-        rows: _filteredUsers.map((user) {
-          return DataRow(cells: [
-            DataCell(Text(user.name ?? '')),
-            DataCell(Text(user.email)),
-            DataCell(Text(user.phone ?? '')),
-            DataCell(
-              _roles.isEmpty
-                  ? const Text('No roles')
-                  : DropdownButton<String>(
-                      value: user.role,
-                      items: _roles
-                          .map((role) => DropdownMenuItem<String>(
-                                value: role.name,
-                                child: Text(role.name),
-                              ))
-                          .toList(),
-                      onChanged: (value) => _assignRole(user, value),
-                    ),
-            ),
-            DataCell(
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _deleteEmployee(user),
-              ),
-            ),
-          ]);
-        }).toList(),
-      ),
+  if (_filteredUsers.isEmpty) {
+    return _emptyTables(
+      _selectedRoleFilter == null
+          ? "No employees found"
+          : "No employees with role '$_selectedRoleFilter'",
+      0,
     );
   }
+
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final isSmall = constraints.maxWidth < 800;
+
+      Widget header(String value) {
+        return SizedBox(
+          width: isSmall ? 60 : 100,
+          child: Text(
+            value,
+            maxLines: null,
+            softWrap: true,
+            overflow: TextOverflow.fade,
+            style: const TextStyle(fontFamily: fontAll, color: Colors.red),
+          ),
+        );
+      }
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: DataTable(
+              columnSpacing: isSmall ? 10 : 60,
+              horizontalMargin: isSmall ? 12 : 24,
+              dataRowMinHeight: kMinInteractiveDimension,
+              dataRowMaxHeight: double.infinity,
+              columns: [
+                DataColumn(label: header("Name")),
+                DataColumn(label: header("Email")),
+                DataColumn(label: header("Phone")),
+                DataColumn(label: header("Role")),
+                DataColumn(label: const Text("")), // Delete
+              ],
+              rows: _filteredUsers.map((user) {
+
+                
+
+                Widget cell(String? value) {
+                  return SizedBox(
+                    width: isSmall ? 80 : double.infinity,
+                    child: Text(
+                      value ?? '-',
+                      maxLines: null,
+                      softWrap: true,
+                      overflow: TextOverflow.fade,
+                      style: const TextStyle(fontFamily: fontAll),
+                    ),
+                  );
+                }
+                
+                return DataRow(
+                  cells: [
+                    DataCell(cell(user.name)),
+                    DataCell(cell(user.email)),
+                    DataCell(cell(user.phone)),
+                    DataCell(
+                      SizedBox(
+                        width: isSmall ? 100 : 180,
+                        child: _roles.isEmpty
+                            ? const Text('No roles', style: TextStyle(color: Colors.grey))
+                            : DropdownButton<String>(
+                                isDense: true,
+                                isExpanded: true,
+                                value: user.role,
+                                items: _roles
+                                    .map((role) => DropdownMenuItem<String>(
+                                          value: role.name,
+                                          child: Text(
+                                            role.name,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ))
+                                    .toList(),
+                                onChanged: (value) => _assignRole(user, value),
+                              ),
+                      ),
+                    ),
+                    DataCell(
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteEmployee(user),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
 
   // Delete Employee
   void _deleteEmployee(User user) {
@@ -539,39 +596,60 @@ void _applyRoleSort(RoleSort sort) {
   }
 
   // Role Table Widget
-  Widget _buildRoleTable() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+  // Role Table Widget
+Widget _buildRoleTable() {
+  if (_isLoading) {
+    return const Center(child: CircularProgressIndicator());
+  }
 
-    if (_roles.isEmpty) {
-      return _emptyTables("No roles found", 1);
-    }
+  if (_roles.isEmpty) {
+    return _emptyTables("No roles found", 1);
+  }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minWidth: constraints.maxWidth,
-            ),
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final isSmall = constraints.maxWidth < 800;
+
+      // Dynamic width for the Access column – scales with screen size
+      final double accessColumnWidth = (constraints.maxWidth - 
+          (isSmall ? 40 : 100) * 3 -   // 3 other columns (Role, Employees, delete)
+          40 * 3 -                     // columnSpacing between columns
+          100)                         // safety margin + delete button
+          .clamp(200.0, 600.0);        // min 200, max 600 so it never gets too cramped or too wide
+
+      Widget header(String value) {
+        return SizedBox(
+          width: isSmall ? 60 : 100,
+          child: Text(
+            value,
+            maxLines: null,
+            softWrap: true,
+            overflow: TextOverflow.fade,
+            style: const TextStyle(fontFamily: fontAll, color: Colors.red),
+          ),
+        );
+      }
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
             child: DataTable(
-              columnSpacing: 40,
+              columnSpacing: isSmall ? 10 : 60,
+              horizontalMargin: isSmall ? 12 : 24,
+              dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
               dataRowMaxHeight: double.infinity,
-              columns: const [
-                DataColumn(
-                  label: Text("Role Name", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-                ),
-                DataColumn(
-                  label: Text("Access", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-                ),
-                DataColumn(
-                  label: Text("Employees", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-                ),
-                DataColumn(label: Text("")),
+              columns: [
+                DataColumn(label: header("Role Name")),
+                DataColumn(label: header("Access")),
+                DataColumn(label: header("Employee")),
+                DataColumn(label: const Text("")),
               ],
               rows: _roles.map((role) {
+                
+
                 final accessWidgets = <Widget>[];
                 final accessFlags = _flagsFromRole(role);
                 for (int j = 0; j < accessTitles.length; j++) {
@@ -592,26 +670,35 @@ void _applyRoleSort(RoleSort sort) {
 
                 final userCount = _users.where((user) => user.role == role.name).length;
 
+                Widget cell(String value) {
+                    return SizedBox(
+                      width: isSmall ? 80 : double.infinity,
+
+                       child: Text(
+                          value,
+                          maxLines: null,                   // ✅ 2–3 lines visible
+                          softWrap: true,
+                          overflow: TextOverflow.fade,
+                          style: const TextStyle(fontFamily: fontAll),
+                        ),
+                    );
+                  }
+
                 return DataRow(
                   cells: [
-                    DataCell(Text(role.name)),
+                    DataCell(cell(role.name)),
+                    // RESPONSIVE ACCESS COLUMN
                     DataCell(
-                      SizedBox(
-                        width: 400,
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: accessColumnWidth),
                         child: Wrap(children: accessWidgets),
                       ),
                     ),
-                    DataCell(Text(userCount.toString())),
+                    DataCell(cell(userCount.toString())),
                     DataCell(
-                      SizedBox(
-                        width: double.infinity,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _deleteRole(role, userCount),
-                          ),
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteRole(role, userCount),
                       ),
                     ),
                   ],
@@ -619,10 +706,11 @@ void _applyRoleSort(RoleSort sort) {
               }).toList(),
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
 
   
