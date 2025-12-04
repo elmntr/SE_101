@@ -7,6 +7,7 @@ import '../../../data/local/app_database.dart'; // ✅ your Drift DB
 import "../../../data/database_provider.dart";
 import 'package:drift/drift.dart' show Value;
 import 'employee_change_item_stock.dart';
+import 'package:chickenjoo_inventory/filters.dart';
 
 class EmployeeItemsPage extends StatefulWidget {
   const EmployeeItemsPage({super.key});
@@ -31,6 +32,11 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   int categoryCount = 0;
   int selectedTab = 0; // 0 = Items, 1 = Categories
 
+  ItemSort _currentSort = ItemSort.nameAZ;
+  ReviewSort _reviewSort = ReviewSort.employeeAZ;
+
+
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +56,88 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
       dbItems = items;
     });
   }
+
+  void _applyItemSort(ItemSort sort) {
+  setState(() {
+    _currentSort = sort;
+
+    switch (sort) {
+      case ItemSort.dateOldNew:
+        dbItems.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
+        break;
+
+      case ItemSort.dateNewOld:
+        dbItems.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+        break;
+
+      case ItemSort.nameAZ:
+        dbItems.sort((a, b) => a.name.compareTo(b.name));
+        break;
+
+      case ItemSort.nameZA:
+        dbItems.sort((a, b) => b.name.compareTo(a.name));
+        break;
+
+      case ItemSort.stockLowHigh:
+        dbItems.sort((a, b) => a.stock.compareTo(b.stock));
+        break;
+
+      case ItemSort.stockHighLow:
+        dbItems.sort((a, b) => b.stock.compareTo(a.stock));
+        break;
+
+      case ItemSort.saleLowHigh:
+        dbItems.sort((a, b) => a.sold.compareTo(b.sold));
+        break;
+
+      case ItemSort.saleHighLow:
+        dbItems.sort((a, b) => b.sold.compareTo(a.sold));
+        break;
+
+      case ItemSort.spoilLowHigh:
+        dbItems.sort((a, b) => a.spoilage.compareTo(b.spoilage));
+        break;
+
+      case ItemSort.spoilHighLow:
+        dbItems.sort((a, b) => b.spoilage.compareTo(a.spoilage));
+        break;
+    }
+  });
+}
+
+void _applyReviewSort(ReviewSort sort) {
+  setState(() {
+    _reviewSort = sort;
+
+    switch (sort) {
+      case ReviewSort.employeeAZ:
+        reviewChanges.sort((a, b) => a.employeeName.compareTo(b.employeeName));
+        break;
+
+      case ReviewSort.employeeZA:
+        reviewChanges.sort((a, b) => b.employeeName.compareTo(a.employeeName));
+        break;
+
+      case ReviewSort.roleAZ:
+        reviewChanges.sort((a, b) => a.role.compareTo(b.role));
+        break;
+      
+      case ReviewSort.roleZA:
+        reviewChanges.sort((a, b) => b.role.compareTo(a.role));
+        break;
+
+      case ReviewSort.changesLowHigh:
+        reviewChanges.sort((a, b) => a.totalChanges.compareTo(b.totalChanges));
+        break;
+
+      case ReviewSort.changesHighLow:
+        reviewChanges.sort((a, b) => b.totalChanges.compareTo(a.totalChanges));
+        break;
+    }
+  });
+}
+
+
 
   // ✅ ADD ITEM POPUP (connected to DB)
   void _createItem() {
@@ -147,8 +235,8 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
             headingRowHeight: 48,
             columnSpacing: isSmall ? 10 : 60,
             horizontalMargin: isSmall ? 12 : 24,
-
-            
+            dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
+            dataRowMaxHeight: double.infinity,
 
             columns: [
               DataColumn(
@@ -238,8 +326,8 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
             headingRowHeight: 48,
             columnSpacing: isSmall ? 10 : 60,
             horizontalMargin: isSmall ? 12 : 24,
-
-            
+            dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
+            dataRowMaxHeight: double.infinity,
 
             columns: [
               
@@ -335,168 +423,451 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   // MAIN BUILD
   @override
-  Widget build(BuildContext context) {
+  @override
+Widget build(BuildContext context) {
 
-    if (_isInChangeStockMode) {
-      return EmployeeChangeStockPage(
-        onBack: () async {
-          _toggleChangeStockMode(); // This closes the Change Stock page
-          await _loadItems(); // This refreshes the list!
-        },
-        onRecordSaved: (record) {
-          setState(() {
-            reviewChanges.add(record); // Add to Review Changes list
-            selectedTab = 1; // Switch to Review Changes tab automatically
-          });
-        },
-      );
-    }
+  // ✅ CHANGE STOCK MODE
+  if (_isInChangeStockMode) {
+    return EmployeeChangeStockPage(
+      onBack: () async {
+        _toggleChangeStockMode();
+        await _loadItems();
+      },
+      onRecordSaved: (record) {
+        setState(() {
+          reviewChanges.add(record);
+          selectedTab = 1;
+        });
+      },
+    );
+  }
 
-    if (_isViewingChangeDetail && _selectedChangeRecord != null) {
-      return ReviewChangeDetailPage(
-        record: _selectedChangeRecord!,
-        onBack: () {
-          setState(() {
-            _isViewingChangeDetail = false;
-            _selectedChangeRecord = null;
-          });
-        },
-        onDelete: (rec) {
-          setState(() {
-            reviewChanges.remove(rec);
-            _isViewingChangeDetail = false;
-            _selectedChangeRecord = null;
-            selectedTab = 1;
-          });
-        },
-        onApprove: (rec) {
-          setState(() {
-            final idx = reviewChanges.indexOf(rec);
-            if (idx != -1) reviewChanges[idx].status = 'Updated';
-            try {
-              InventoryPage.pendingChanges.add(rec);
-            } catch (_) {}
-            _isViewingChangeDetail = false;
-            _selectedChangeRecord = null;
-            selectedTab = 1;
-          });
-        },
-      );
-    }
+  // ✅ VIEW CHANGE DETAIL
+  if (_isViewingChangeDetail && _selectedChangeRecord != null) {
+    return ReviewChangeDetailPage(
+      record: _selectedChangeRecord!,
+      onBack: () {
+        setState(() {
+          _isViewingChangeDetail = false;
+          _selectedChangeRecord = null;
+        });
+      },
+      onDelete: (rec) {
+        setState(() {
+          reviewChanges.remove(rec);
+          _isViewingChangeDetail = false;
+          _selectedChangeRecord = null;
+          selectedTab = 1;
+        });
+      },
+      onApprove: (rec) {
+        setState(() {
+          final idx = reviewChanges.indexOf(rec);
+          if (idx != -1) reviewChanges[idx].status = 'Updated';
+          try {
+            InventoryPage.pendingChanges.add(rec);
+          } catch (_) {}
+          _isViewingChangeDetail = false;
+          _selectedChangeRecord = null;
+          selectedTab = 1;
+        });
+      },
+    );
+  }
 
+  // ✅ PHONE UI
+    if (AppLayout.isDesktop(context) == false) {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Header
-            Row(
-              children: [
-                const Text("Items",
-                    style: TextStyle(fontSize: 30, fontFamily: fontAll)),
-                const SizedBox(width: 16),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
 
-                // Search Bar
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search...",
-                        prefixIcon: Icon(Icons.search),
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ),
-
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined, size: 35),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Tabs + Content
-            Expanded(
-              child: Column(
+              /// ✅ HEADER
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Raised Tabs
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        _buildTab("Change Item Stock", 0),
-                        _buildTab("Review Changes", 1),
-                      ],
-                    ),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Items",
+                        style: TextStyle(fontSize: 26, fontFamily: fontAll),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined, size: 28),
+                        onPressed: () {},
+                      ),
+                    ],
                   ),
 
-                  // White content box
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(12),
-                          bottomRight: Radius.circular(12),
+                  const SizedBox(height: 10),
+
+                  Row(
+                    children: [
+                      /// ✅ SEARCH BAR
+                      Expanded(
+                        child: Container(
+                          height: 42,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          child: const TextField(
+                            decoration: InputDecoration(
+                              hintText: "Search...",
+                              icon: Icon(Icons.search),
+                              border: InputBorder.none,
+                            ),
+                          ),
                         ),
                       ),
-                      child: selectedTab == 0
-                          ? (dbItems.isEmpty
-                              ? _emptyTables(
-                                  "You can manage your items here.",
-                                  selectedTab)
-                              : _buildItemTable())
-                          : (reviewChanges.isEmpty
-                              ? _emptyTables(
-                                  "No changes recorded yet.",
-                                  selectedTab)
-                              : _buildCategoryTable()),
-                    ),
+
+                      const SizedBox(width: 8),
+
+                      /// ✅ ITEM SORT FILTER (MOBILE)
+                      if (selectedTab == 0)
+                        PopupMenuButton<ItemSort>(
+                          icon: const Icon(Icons.filter_list, size: 28),
+                          onSelected: _applyItemSort,
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: ItemSort.dateNewOld,
+                              child: Text("Date Modified (Newest)"),
+                            ),
+                            PopupMenuItem(
+                              value: ItemSort.dateOldNew,
+                              child: Text("Date Modified (Oldest)"),
+                            ),
+                            PopupMenuDivider(),
+                            PopupMenuItem(
+                                value: ItemSort.nameAZ, child: Text("Name (A–Z)")),
+                            PopupMenuItem(
+                                value: ItemSort.nameZA, child: Text("Name (Z–A)")),
+                            PopupMenuDivider(),
+                            PopupMenuItem(
+                                value: ItemSort.stockLowHigh,
+                                child: Text("Stock (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.stockHighLow,
+                                child: Text("Stock (High → Low)")),
+                            PopupMenuDivider(),
+                            PopupMenuItem(
+                                value: ItemSort.saleLowHigh,
+                                child: Text("Sale (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.saleHighLow,
+                                child: Text("Sale (High → Low)")),
+                            PopupMenuDivider(),
+                            PopupMenuItem(
+                                value: ItemSort.spoilLowHigh,
+                                child: Text("Spoilage (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.spoilHighLow,
+                                child: Text("Spoilage (High → Low)")),
+                          ],
+                        )
+                        else (
+                          PopupMenuButton<ReviewSort>(
+                            icon: const Icon(Icons.filter_list, size: 28),
+                            onSelected: _applyReviewSort,
+                            itemBuilder: (context) => const [
+
+                              PopupMenuItem(value: ReviewSort.employeeAZ, child: Text("Employee (A–Z)")),
+                              PopupMenuItem(value: ReviewSort.employeeZA, child: Text("Employee (Z–A)")),
+
+                              PopupMenuDivider(),
+
+                              
+                              PopupMenuItem(value: ReviewSort.roleAZ, child: Text("Role (A–Z)")),
+                              PopupMenuItem(value: ReviewSort.roleZA, child: Text("Role (Z–A)")),
+
+                              PopupMenuDivider(),
+
+                              PopupMenuItem(
+                                value: ReviewSort.changesLowHigh,
+                                child: Text("Change (Low → High)"),
+                              ),
+                              PopupMenuItem(
+                                value: ReviewSort.changesHighLow,
+                                child: Text("Change (High → Low)"),
+                              ),
+                            ],
+                          )
+                          ),
+                      
+                    ],
                   ),
                 ],
               ),
-            ),
-          ],
+
+              const SizedBox(height: 16),
+
+              /// ✅ TABS
+              Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildTab("Items", 0),
+                    _buildTab("Categories", 1),
+                  ],
+                ),
+              ),
+
+              /// ✅ CONTENT
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: selectedTab == 0
+                      ? (dbItems.isEmpty
+                          ? _emptyTables("You can manage your items here.", 0)
+                          : _buildItemTable())
+                      : (reviewChanges.isEmpty
+                          ? _emptyTables("You can add categories here.", 1)
+                          : _buildCategoryTable()),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-
-        floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty)
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: FloatingActionButton.extended(
-                onPressed: _toggleChangeStockMode,
-                backgroundColor: const Color(0xFFE30417),
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                label: const Text(
-                  'Change Stock',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                icon: const Icon(Icons.inventory_2_outlined, color: Colors.white),
+      floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty)
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: FloatingActionButton.extended(
+              onPressed: _toggleChangeStockMode,
+              backgroundColor: const Color(0xFFE30417),
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
               ),
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+              label: const Text(
+                'Change Stock',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              icon: const Icon(
+                Icons.inventory_2_outlined,
+                color: Colors.white,
+              ),
+            ),
+          )
+        : null,
 
+    floatingActionButtonLocation:
+        FloatingActionButtonLocation.centerFloat,
     );
   }
+
+  // =========================
+  // ✅ DESKTOP UI
+  // =========================
+  return Scaffold(
+    backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+    body: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+
+          /// ✅ HEADER
+          Row(
+            children: [
+              const Text("Items",
+                  style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+              const SizedBox(width: 16),
+
+              /// ✅ SEARCH BAR
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const TextField(
+                    decoration: InputDecoration(
+                      hintText: "Search...",
+                      prefixIcon: Icon(Icons.search),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+              ),
+
+              /// ✅ ITEM SORT FILTER (DESKTOP)
+              if (selectedTab == 0)
+                        PopupMenuButton<ItemSort>(
+                          icon: const Icon(Icons.filter_list, size: 28),
+                          onSelected: _applyItemSort,
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: ItemSort.dateNewOld,
+                              child: Text("Date Modified (Newest)"),
+                            ),
+                            PopupMenuItem(
+                              value: ItemSort.dateOldNew,
+                              child: Text("Date Modified (Oldest)"),
+                            ),
+                            PopupMenuDivider(),
+                            PopupMenuItem(
+                                value: ItemSort.nameAZ, child: Text("Name (A–Z)")),
+                            PopupMenuItem(
+                                value: ItemSort.nameZA, child: Text("Name (Z–A)")),
+                            PopupMenuDivider(),
+                            PopupMenuItem(
+                                value: ItemSort.stockLowHigh,
+                                child: Text("Stock (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.stockHighLow,
+                                child: Text("Stock (High → Low)")),
+                            PopupMenuDivider(),
+                            PopupMenuItem(
+                                value: ItemSort.saleLowHigh,
+                                child: Text("Sale (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.saleHighLow,
+                                child: Text("Sale (High → Low)")),
+                            PopupMenuDivider(),
+                            PopupMenuItem(
+                                value: ItemSort.spoilLowHigh,
+                                child: Text("Spoilage (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort.spoilHighLow,
+                                child: Text("Spoilage (High → Low)")),
+                          ],
+                        )
+                        else (
+                          PopupMenuButton<ReviewSort>(
+                            icon: const Icon(Icons.filter_list, size: 28),
+                            onSelected: _applyReviewSort,
+                            itemBuilder: (context) => const [
+
+                              PopupMenuItem(value: ReviewSort.employeeAZ, child: Text("Employee (A–Z)")),
+                              PopupMenuItem(value: ReviewSort.employeeZA, child: Text("Employee (Z–A)")),
+
+                              PopupMenuDivider(),
+
+                              
+                              PopupMenuItem(value: ReviewSort.roleAZ, child: Text("Role (A–Z)")),
+                              PopupMenuItem(value: ReviewSort.roleZA, child: Text("Role (Z–A)")),
+
+                              PopupMenuDivider(),
+
+                              PopupMenuItem(
+                                value: ReviewSort.changesLowHigh,
+                                child: Text("Change (Low → High)"),
+                              ),
+                              PopupMenuItem(
+                                value: ReviewSort.changesHighLow,
+                                child: Text("Change (High → Low)"),
+                              ),
+                            ],
+                          )
+                    ),
+
+              IconButton(
+                icon:
+                    const Icon(Icons.notifications_outlined, size: 35),
+                onPressed: () {},
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          /// ✅ TABS
+          Expanded(
+            child: Column(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildTab("Item List", 0),
+                      _buildTab("Categories", 1),
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: selectedTab == 0
+                        ? (dbItems.isEmpty
+                            ? _emptyTables(
+                                "You can manage your items here.",
+                                selectedTab)
+                            : _buildItemTable())
+                        : (reviewChanges.isEmpty
+                            ? _emptyTables(
+                                "You can add categories here to organize your items.",
+                                selectedTab)
+                            : _buildCategoryTable()),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty)
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: FloatingActionButton.extended(
+              onPressed: _toggleChangeStockMode,
+              backgroundColor: const Color(0xFFE30417),
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              label: const Text(
+                'Change Stock',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              icon: const Icon(
+                Icons.inventory_2_outlined,
+                color: Colors.white,
+              ),
+            ),
+          )
+        : null,
+
+    floatingActionButtonLocation:
+        FloatingActionButtonLocation.centerFloat,
+  );
+}
 }

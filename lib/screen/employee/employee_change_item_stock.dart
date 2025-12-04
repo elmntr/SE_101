@@ -154,7 +154,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                   "Change Item Stock",
                   style: TextStyle(
                     fontFamily: fontAll,
-                    fontSize: 30,
+                    fontSize: 25,
                   ),
                 ),
 
