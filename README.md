@@ -1,4 +1,5 @@
-🍗 Cross-Platform Inventory Management System for Chicken Joo
+**🍗 Cross-Platform Inventory Management System for Chicken Joo**
+
 🌟 Project Overview
 This is a user-friendly, cross-platform inventory management solution developed for Chicken Joo to manage stock across its franchise branches and central commissary. The primary objective is to provide the owner with full visibility into all inventories and automate low-stock alerts.
 Key Features
