@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../data/local/app_database.dart';
 import "../../../data/database_provider.dart";
+import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 import 'package:drift/drift.dart' show Value;
 
 class ItemsPage extends StatefulWidget {
@@ -19,6 +20,11 @@ class _ItemsPageState extends State<ItemsPage> {
 
   int categoryCount = 0;
   int selectedTab = 0; // 0 = Items, 1 = Categories
+
+  
+  ItemSort _currentSort = ItemSort(ItemSortField.name, SortOrder.desc);
+  CategorySort _currentCategorySort = CategorySort(CategorySortField.name, SortOrder.desc);
+
 
   @override
   void initState() {
@@ -126,6 +132,61 @@ class _ItemsPageState extends State<ItemsPage> {
     });
   }
 
+  void _applyItemSort(ItemSort sort) {
+    setState(() {
+      _currentSort = sort;
+
+      switch (sort.field) {
+        case ItemSortField.date:
+          dbItems.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
+          break;
+        case ItemSortField.name:
+          dbItems.sort((a, b) => a.name.compareTo(b.name));
+          break;
+        case ItemSortField.stock:
+          dbItems.sort((a, b) => a.stock.compareTo(b.stock));
+          break;
+        case ItemSortField.sale:
+          dbItems.sort((a, b) => a.sold.compareTo(b.sold));
+          break;
+        case ItemSortField.spoilage:
+          dbItems.sort((a, b) => a.spoilage.compareTo(b.spoilage));
+          break;
+      }
+
+      if (sort.order == SortOrder.desc) {
+      dbItems = dbItems.reversed.toList();
+    }
+    });
+  }
+
+  void _applyCategorySort(CategorySort sort) {
+    setState(() {
+      _currentCategorySort = sort;
+
+      switch (sort.field) {
+        case CategorySortField.date:
+          categories.sort((a, b) =>
+              a["modifiedAt"].compareTo(b["modifiedAt"]));
+          break;
+        case CategorySortField.name:
+          categories.sort((a, b) =>
+              a["category"].toString().compareTo(b["category"].toString()));
+          break;
+        case CategorySortField.items:
+          categories.sort((a, b) =>
+              a["itemNumber"].compareTo(b["itemNumber"]));
+          break;
+      }
+
+      if (sort.order == SortOrder.desc) {
+        categories = categories.reversed.toList();
+    }
+    });
+  }
+
+
+
   // Empty Tab Widget
   Widget _emptyTables(String message, int tab) {
     selectedTab = tab;
@@ -153,80 +214,158 @@ class _ItemsPageState extends State<ItemsPage> {
 
   // ✅ Item Table Widget with "Add Item" button
   Widget _buildItemTable() {
-    return SingleChildScrollView(
-            child: DataTable(
-              columns: const [
-                DataColumn(
-                    label: Text("Item Name",
-                        style:
-                            TextStyle(fontFamily: fontAll, color: Colors.red))),
-                DataColumn(
-                    label: Text("Stock",
-                        style:
-                            TextStyle(fontFamily: fontAll, color: Colors.red))),
-                DataColumn(
-                    label: Text("Sale",
-                        style:
-                            TextStyle(fontFamily: fontAll, color: Colors.red))),
-                DataColumn(
-                    label: Text("Spoilage",
-                        style:
-                            TextStyle(fontFamily: fontAll, color: Colors.red))),
-                DataColumn(label: Text("")),
-              ],
-              rows: List.generate(dbItems.length, (i) {
-                final item = dbItems[i];
-                return DataRow(cells: [
-                  DataCell(Text(item.name)),
-                  DataCell(Text(item.stock.toString())),
-                  DataCell(Text(item.sold.toString())),
-                  DataCell(Text(item.spoilage.toString())),
-                  DataCell(
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () async {
-                        await db.deleteItemById(item.id);
-                        _loadItems();
-                      },
-                    ),
-                  ),
-                ]);
-              }),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmall = constraints.maxWidth < 800;
+        Widget header(String value) {
+          return SizedBox(
+            width: isSmall ? 60 : 100,
+              child: Text(
+                value,
+                maxLines: null,                   // ✅ 2–3 lines visible
+                softWrap: true,
+                overflow: TextOverflow.fade,
+                style: const TextStyle(fontFamily: fontAll, color: Colors.red),
+              ),
           );
+        }
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: DataTable(
+                columnSpacing: isSmall ? 10 : 60,
+                horizontalMargin: isSmall ? 12 : 24,
+                dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
+                dataRowMaxHeight: double.infinity,
+
+                columns: [
+                  DataColumn(
+                    label: header("Item Name")),
+                  DataColumn(
+                    label: header("Stock")),
+                  DataColumn(
+                    label: header("Sale")),
+                  DataColumn(
+                    label: header("Spoilage")),
+                  DataColumn(
+                    label: header("")),
+                ],
+                rows: List.generate(dbItems.length, (i) {
+                  final item = dbItems[i];
+
+                  Widget cell(String value) {
+                    return SizedBox(
+                      width: isSmall ? 80 : double.infinity,
+
+                       child: Text(
+                          value,
+                          maxLines: null,                   // ✅ 2–3 lines visible
+                          softWrap: true,
+                          overflow: TextOverflow.fade,
+                          style: const TextStyle(fontFamily: fontAll),
+                        ),
+                    );
+                  }
+
+                  return DataRow(cells: [
+                    DataCell(cell(item.name)),
+                    DataCell(cell(item.stock.toString())),
+                    DataCell(cell(item.sold.toString())),
+                    DataCell(cell(item.spoilage.toString())),
+                    DataCell(
+                      IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            await db.deleteItemById(item.id);
+                            _loadItems();
+                          },
+                        ),
+                    ),
+                  ]);
+                }),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
+
 
   // ✅ Category Table Widget with "Add Category" button
   Widget _buildCategoryTable() {
-    return SingleChildScrollView(
-      child: DataTable(
-        columns: const [
-          DataColumn(
-              label: Text("Category Name",
-                  style:
-                      TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(
-              label: Text("Items in Category",
-                  style:
-                      TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(label: Text('')),
-        ],
-        rows: List.generate(categories.length, (i) {
-          final category = categories[i];
-          return DataRow(cells: [
-            DataCell(Text(category["category"])),
-            DataCell(Text(category["itemNumber"].toString())),
-            DataCell(
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _deleteCategory(i),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmall = constraints.maxWidth < 800;
+        Widget header(String value) {
+          return SizedBox(
+            width: isSmall ? 60 : 80,
+
+              child: Text(
+                value,
+                maxLines: null,                   // ✅ 2–3 lines visible
+                softWrap: true,
+                overflow: TextOverflow.fade,
+                style: const TextStyle(fontFamily: fontAll, color: Colors.red),
               ),
-            ),
-          ]);
-        }),
-      ),
-    );
-  }
+          );
+        }
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: DataTable(
+                    columnSpacing: isSmall ? 10 : 60,
+                    horizontalMargin: isSmall ? 12 : 24,
+                    dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
+                    dataRowMaxHeight: double.infinity,
+
+                    columns: [
+                      DataColumn(
+                          label: header("Category Name")),
+                      DataColumn(
+                        label: header("Items in Category")),
+                      DataColumn(label: Text('')),
+                    ],
+                    rows: List.generate(categories.length, (i) {
+                      final category = categories[i];
+
+                      Widget cell(String value) {
+                        return SizedBox(
+                          width: isSmall ? 100 : double.infinity,
+
+                          child: Text(
+                              value,
+                              maxLines: null,                   // ✅ 2–3 lines visible
+                              softWrap: true,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontFamily: fontAll),
+                            ),
+                        );
+                      }
+                      return DataRow(cells: [
+                        DataCell(cell(category["category"])),
+                        DataCell(cell(category["itemNumber"].toString())),
+                        DataCell(
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteCategory(i),
+                          ),
+                        ),
+                      ]);
+                    }),
+                  )
+                ),
+              ),
+            );
+          },
+        );
+      }
 
   void _deleteCategory(int index) {
     showDialog(
@@ -326,22 +465,113 @@ class _ItemsPageState extends State<ItemsPage> {
 
                   const SizedBox(height: 10),
 
-                  /// SEARCH BAR BELOW HEADER
-                  Container(
-                    height: 42,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search...",
-                        icon: Icon(Icons.search),
-                        border: InputBorder.none,
+                  Row(
+                    children: [
+                      /// SEARCH BAR
+                      Expanded(
+                        child: Container(
+                          height: 42,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          child: const TextField(
+                            decoration: InputDecoration(
+                              hintText: "Search...",
+                              icon: Icon(Icons.search),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+
+                      const SizedBox(width: 8),
+
+                      if (selectedTab == 0)
+                        PopupMenuButton<ItemSort>(
+                          icon: const Icon(Icons.filter_list, size: 28),
+                          onSelected: _applyItemSort,
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: ItemSort(ItemSortField.date, SortOrder.desc),
+                              child: Text("Date Modified (Newest)"),
+                            ),
+                            PopupMenuItem(
+                              value: ItemSort(ItemSortField.date, SortOrder.asc),
+                              child: Text("Date Modified (Oldest)"),
+                            ),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.stock, SortOrder.desc),
+                                child: Text("Stock (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.stock, SortOrder.asc),
+                                child: Text("Stock (High → Low)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.sale, SortOrder.desc),
+                                child: Text("Sale (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.sale, SortOrder.asc),
+                                child: Text("Sale (High → Low)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
+                                child: Text("Spoilage (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
+                                child: Text("Spoilage (High → Low)")),
+                          ],
+                        )
+                      else
+                        PopupMenuButton<CategorySort>(
+                          icon: const Icon(Icons.filter_list, size: 28),
+                          onSelected: _applyCategorySort,
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: CategorySort(CategorySortField.date, SortOrder.desc),
+                              child: Text("Date Modified (Newest)"),
+                            ),
+                            PopupMenuItem(
+                              value: CategorySort(CategorySortField.date, SortOrder.asc),
+                              child: Text("Date Modified (Oldest)"),
+                            ),
+                            
+                            PopupMenuDivider(),
+                            
+                            PopupMenuItem(
+                                value: CategorySort(CategorySortField.name, SortOrder.desc), child: Text("Category (A–Z)")),
+                            PopupMenuItem(
+                                value: CategorySort(CategorySortField.name, SortOrder.asc), child: Text("Category (Z–A)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: CategorySort(CategorySortField.items, SortOrder.desc),
+                                child: Text("Items (Low → High)")),
+                            PopupMenuItem(
+                                value: CategorySort(CategorySortField.items, SortOrder.asc),
+                                child: Text("Items (High → Low)")),
+                          ],
+                        ),
+                    ],
                   ),
+
+
                 ],
               ),
 
@@ -436,6 +666,87 @@ class _ItemsPageState extends State<ItemsPage> {
                     ),
                   ),
                 ),
+
+                if (selectedTab == 0)
+                        PopupMenuButton<ItemSort>(
+                          icon: const Icon(Icons.filter_list, size: 28),
+                          onSelected: _applyItemSort,
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: ItemSort(ItemSortField.date, SortOrder.desc),
+                              child: Text("Date Modified (Newest)"),
+                            ),
+                            PopupMenuItem(
+                              value: ItemSort(ItemSortField.date, SortOrder.asc),
+                              child: Text("Date Modified (Oldest)"),
+                            ),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.stock, SortOrder.desc),
+                                child: Text("Stock (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.stock, SortOrder.asc),
+                                child: Text("Stock (High → Low)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.sale, SortOrder.desc),
+                                child: Text("Sale (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.sale, SortOrder.asc),
+                                child: Text("Sale (High → Low)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
+                                child: Text("Spoilage (Low → High)")),
+                            PopupMenuItem(
+                                value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
+                                child: Text("Spoilage (High → Low)")),
+                          ],
+                        )
+                      else
+                        PopupMenuButton<CategorySort>(
+                          icon: const Icon(Icons.filter_list, size: 28),
+                          onSelected: _applyCategorySort,
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: CategorySort(CategorySortField.date, SortOrder.desc),
+                              child: Text("Date Modified (Newest)"),
+                            ),
+                            PopupMenuItem(
+                              value: CategorySort(CategorySortField.date, SortOrder.asc),
+                              child: Text("Date Modified (Oldest)"),
+                            ),
+                            
+                            PopupMenuDivider(),
+                            
+                            PopupMenuItem(
+                                value: CategorySort(CategorySortField.name, SortOrder.desc), child: Text("Category (A–Z)")),
+                            PopupMenuItem(
+                                value: CategorySort(CategorySortField.name, SortOrder.asc), child: Text("Category (Z–A)")),
+
+                            PopupMenuDivider(),
+
+                            PopupMenuItem(
+                                value: CategorySort(CategorySortField.items, SortOrder.desc),
+                                child: Text("Items (Low → High)")),
+                            PopupMenuItem(
+                                value: CategorySort(CategorySortField.items, SortOrder.asc),
+                                child: Text("Items (High → Low)")),
+                          ],
+                        ),
 
                 IconButton(
                   icon: const Icon(Icons.notifications_outlined, size: 35),

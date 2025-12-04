@@ -39,7 +39,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
                   "Review Change Details",
                   style: TextStyle(
                     fontFamily: fontAll,
-                    fontSize: 30,
+                    fontSize: 25,
                   ),
                 ),
                 const Spacer(),

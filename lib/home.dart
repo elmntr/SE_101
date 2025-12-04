@@ -283,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (isEmployee){
-      items.add({"icon": Icons.shopping_cart, "label": "Account", "page": const EmployeeItemsPage()});
+      items.add({"icon": Icons.shopping_cart, "label": "Items", "page": const EmployeeItemsPage()});
       items.add({"icon": Icons.account_circle, "label": "Account", "page": const EmployeeAccountPage()});
     }
 
