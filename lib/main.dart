@@ -10,11 +10,11 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ✅ LOCK WINDOW SIZE (DESKTOP ONLY)
-  /*if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     setWindowTitle('Chicken Joo Inventory');
     setWindowMinSize(const Size(1280, 720));
     setWindowMaxSize(const Size(1920, 1080)); 
-  }*/
+  }
 
   runApp(const MyApp());
 }
