@@ -1,12 +1,24 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:window_size/window_size.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/data/database_provider.dart';
 import 'package:chickenjoo_inventory/data/local/app_database.dart';
-import 'screen/home.dart';
+import 'home.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // ✅ LOCK WINDOW SIZE (DESKTOP ONLY)
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    setWindowTitle('Chicken Joo Inventory');
+    setWindowMinSize(const Size(1280, 720));
+    setWindowMaxSize(const Size(1920, 1080)); 
+  }
+
   runApp(const MyApp());
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -238,6 +250,8 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+      
     );
+    
   }
 }

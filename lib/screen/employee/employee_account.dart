@@ -37,78 +37,162 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
     roleAccessToShow = ["View Inventory", "Add Inventory"];
   }
 
-  @override
-  Widget build(BuildContext context) {
+@override
+Widget build(BuildContext context) {
+
+  // ✅ PHONE UI
+  if (AppLayout.isDesktop(context) == false) {
     return Scaffold(
       backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
-      body: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("Account",
-                        style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: fontAll)),
-                    const SizedBox(height: 30),
-                    _infoField("Name:", nameController),
-                    const SizedBox(height: 20),
-                    _infoField("Email:", emailController),
-                    const SizedBox(height: 20),
-                    _infoField("Phone:", phoneController),
-                    const SizedBox(height: 20),
-                    _infoField("Role:", roleController),
-                    const SizedBox(height: 30),
-                    const Text("Role Access:",
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: fontAll)),
-                    const SizedBox(height: 10),
-                    Container(
-                      constraints: const BoxConstraints(
-                        minHeight: 120,
-                        maxHeight: 250,
-                      ),
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.black12),
-                      ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: roleAccessToShow.length,
-                        itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6.0),
-                            child: Text(roleAccessToShow[index]),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              // ✅ HEADER
+              const Text(
+                "Account",
+                style: TextStyle(
+                  fontSize: 26,
+                  fontFamily: fontAll,
                 ),
               ),
-            ),
-            Container(
-              width: 1,
-              color: Colors.red,
-              margin: const EdgeInsets.symmetric(horizontal: 25),
-            ),
-            const Expanded(flex: 5, child: SizedBox()),
-          ],
+
+              const SizedBox(height: 18),
+
+              // ✅ INFO FIELDS
+              _infoField("Name", nameController),
+              const SizedBox(height: 14),
+
+              _infoField("Email", emailController),
+              const SizedBox(height: 14),
+
+              _infoField("Phone", phoneController),
+              const SizedBox(height: 14),
+
+              _infoField("Role", roleController),
+              const SizedBox(height: 22),
+
+              // ✅ ROLE ACCESS
+              const Text(
+                "Role Access",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontFamily: fontAll,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black12),
+                ),
+                child: Column(
+                  children: roleAccessToShow
+                      .map(
+                        (e) => Padding(
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 8),
+                              Text(e),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  // ✅ DESKTOP UI (UNCHANGED)
+  return Scaffold(
+    backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+    body: Padding(
+      padding: const EdgeInsets.all(40),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Account",
+                      style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: fontAll)),
+                  const SizedBox(height: 30),
+                  _infoField("Name:", nameController),
+                  const SizedBox(height: 20),
+                  _infoField("Email:", emailController),
+                  const SizedBox(height: 20),
+                  _infoField("Phone:", phoneController),
+                  const SizedBox(height: 20),
+                  _infoField("Role:", roleController),
+                  const SizedBox(height: 30),
+                  const Text("Role Access:",
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: fontAll)),
+                  const SizedBox(height: 10),
+                  Container(
+                    constraints: const BoxConstraints(
+                      minHeight: 120,
+                      maxHeight: 250,
+                    ),
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.black12),
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      physics:
+                          const NeverScrollableScrollPhysics(),
+                      itemCount: roleAccessToShow.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 6.0),
+                          child: Text(roleAccessToShow[index]),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            width: 1,
+            color: Colors.red,
+            margin:
+                const EdgeInsets.symmetric(horizontal: 25),
+          ),
+          const Expanded(flex: 5, child: SizedBox()),
+        ],
+      ),
+    ),
+  );
+}
+
 
   Widget _infoField(String label, TextEditingController controller) {
     return Column(

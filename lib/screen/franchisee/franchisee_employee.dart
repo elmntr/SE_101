@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/data/local/app_database.dart'; // ADDED: Access Drift tables.
 import 'package:chickenjoo_inventory/data/database_provider.dart';
+import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 import 'package:drift/drift.dart' show Value;
 
 class EmployeePage extends StatefulWidget {
@@ -21,6 +22,10 @@ class _EmployeePageState extends State<EmployeePage> {
   List<User> _users = [];
   List<Role> _roles = [];
 
+  EmployeeSort _currentEmployeeSort = EmployeeSort(EmployeeSortField.name, SortOrder.desc);
+  RoleSort _currentRoleSort = RoleSort(RoleSortField.name, SortOrder.desc);
+  String? _selectedRoleFilter;
+
   List<String> accessTitles = [
       "View Inventory",
       "Add Inventory",
@@ -31,6 +36,30 @@ class _EmployeePageState extends State<EmployeePage> {
       "View Reports",
       "Settings",
     ];
+
+    List<User> get _filteredUsers {
+      var list = _users.toList();
+
+      // Apply role filter first
+      if (_selectedRoleFilter != null) {
+        list = list.where((user) => user.role == _selectedRoleFilter).toList();
+      }
+
+      // Then apply sorting
+      switch (_currentEmployeeSort.field) {
+        case EmployeeSortField.name:
+          list.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+          break;
+        case EmployeeSortField.email:
+          list.sort((a, b) => a.email.compareTo(b.email));
+          break;
+        case EmployeeSortField.date:
+          list.sort((a, b) => b.id.compareTo(a.id));
+          break;
+      }
+
+      return list;
+    }
 
   int selectedTab = 0; // 0 = Items, 1 = Categories
 
@@ -158,6 +187,54 @@ class _EmployeePageState extends State<EmployeePage> {
       ),
     );
   }
+
+  void _applyEmployeeSort(EmployeeSort sort) {
+  setState(() {
+    _currentEmployeeSort = sort;
+
+    switch (sort.field) {
+      case EmployeeSortField.name:
+        _users.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+        break;
+      case EmployeeSortField.email:
+        _users.sort((a, b) => a.email.compareTo(b.email));
+        break;
+      case EmployeeSortField.date:
+        _users.sort((a, b) => b.id.compareTo(a.id)); // assuming higher ID = newer
+        break;
+    }
+    
+      if (sort.order == SortOrder.desc) {
+      _users = _users.reversed.toList();
+      }
+  });
+}
+
+void _applyRoleSort(RoleSort sort) {
+  setState(() {
+    _currentRoleSort = sort;
+
+    switch (sort.field) {
+      case RoleSortField.name:
+        _roles.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case RoleSortField.employees:
+        _roles.sort((a, b) {
+          final countA = _users.where((u) => u.role == a.name).length;
+          final countB = _users.where((u) => u.role == b.name).length;
+          return countA.compareTo(countB);
+        });
+        break;
+      case RoleSortField.date:
+        _roles.sort((a, b) => b.id.compareTo(a.id));
+        break;
+    }
+    
+      if (sort.order == SortOrder.desc) {
+      _roles = _roles.reversed.toList();
+      }
+  });
+}
 
   //Add Role Popup
   void _createRoleDialog() {
@@ -344,54 +421,116 @@ class _EmployeePageState extends State<EmployeePage> {
   }
 
   // Employee Table Widget
-  Widget _buildEmployeeTable() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+  // Employee Table Widget – NOW 100% IDENTICAL to ItemsPage style
+Widget _buildEmployeeTable() {
+  if (_isLoading) {
+    return const Center(child: CircularProgressIndicator());
+  }
 
-    if (_users.isEmpty) {
-      return _emptyTables("No employees found", 0);
-    }
-
-    return SingleChildScrollView(
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text("Name", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(label: Text("Email", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(label: Text("Phone", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(label: Text("Role", style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(label: Text('')),
-        ],
-        rows: _users.map((user) {
-          return DataRow(cells: [
-            DataCell(Text(user.name ?? '')),
-            DataCell(Text(user.email)),
-            DataCell(Text(user.phone ?? '')),
-            DataCell(
-              _roles.isEmpty
-                  ? const Text('No roles')
-                  : DropdownButton<String>(
-                      value: user.role,
-                      items: _roles
-                          .map((role) => DropdownMenuItem<String>(
-                                value: role.name,
-                                child: Text(role.name),
-                              ))
-                          .toList(),
-                      onChanged: (value) => _assignRole(user, value),
-                    ),
-            ),
-            DataCell(
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _deleteEmployee(user),
-              ),
-            ),
-          ]);
-        }).toList(),
-      ),
+  if (_filteredUsers.isEmpty) {
+    return _emptyTables(
+      _selectedRoleFilter == null
+          ? "No employees found"
+          : "No employees with role '$_selectedRoleFilter'",
+      0,
     );
   }
+
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final isSmall = constraints.maxWidth < 800;
+
+      Widget header(String value) {
+        return SizedBox(
+          width: isSmall ? 60 : 100,
+          child: Text(
+            value,
+            maxLines: null,
+            softWrap: true,
+            overflow: TextOverflow.fade,
+            style: const TextStyle(fontFamily: fontAll, color: Colors.red),
+          ),
+        );
+      }
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: DataTable(
+              columnSpacing: isSmall ? 10 : 60,
+              horizontalMargin: isSmall ? 12 : 24,
+              dataRowMinHeight: kMinInteractiveDimension,
+              dataRowMaxHeight: double.infinity,
+              columns: [
+                DataColumn(label: header("Name")),
+                DataColumn(label: header("Email")),
+                DataColumn(label: header("Phone")),
+                DataColumn(label: header("Role")),
+                DataColumn(label: const Text("")), // Delete
+              ],
+              rows: _filteredUsers.map((user) {
+
+                
+
+                Widget cell(String? value) {
+                  return SizedBox(
+                    width: isSmall ? 80 : double.infinity,
+                    child: Text(
+                      value ?? '-',
+                      maxLines: null,
+                      softWrap: true,
+                      overflow: TextOverflow.fade,
+                      style: const TextStyle(fontFamily: fontAll),
+                    ),
+                  );
+                }
+                
+                return DataRow(
+                  cells: [
+                    DataCell(cell(user.name)),
+                    DataCell(cell(user.email)),
+                    DataCell(cell(user.phone)),
+                    DataCell(
+                      SizedBox(
+                        width: isSmall ? 100 : 180,
+                        child: _roles.isEmpty
+                            ? const Text('No roles', style: TextStyle(color: Colors.grey))
+                            : DropdownButton<String>(
+                                isDense: true,
+                                isExpanded: true,
+                                value: user.role,
+                                items: _roles
+                                    .map((role) => DropdownMenuItem<String>(
+                                          value: role.name,
+                                          child: Text(
+                                            role.name,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ))
+                                    .toList(),
+                                onChanged: (value) => _assignRole(user, value),
+                              ),
+                      ),
+                    ),
+                    DataCell(
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteEmployee(user),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
 
   // Delete Employee
   void _deleteEmployee(User user) {
@@ -434,39 +573,60 @@ class _EmployeePageState extends State<EmployeePage> {
   }
 
   // Role Table Widget
-  Widget _buildRoleTable() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+  // Role Table Widget
+Widget _buildRoleTable() {
+  if (_isLoading) {
+    return const Center(child: CircularProgressIndicator());
+  }
 
-    if (_roles.isEmpty) {
-      return _emptyTables("No roles found", 1);
-    }
+  if (_roles.isEmpty) {
+    return _emptyTables("No roles found", 1);
+  }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minWidth: constraints.maxWidth,
-            ),
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final isSmall = constraints.maxWidth < 800;
+
+      // Dynamic width for the Access column – scales with screen size
+      final double accessColumnWidth = (constraints.maxWidth - 
+          (isSmall ? 40 : 100) * 3 -   // 3 other columns (Role, Employees, delete)
+          40 * 3 -                     // columnSpacing between columns
+          100)                         // safety margin + delete button
+          .clamp(200.0, 600.0);        // min 200, max 600 so it never gets too cramped or too wide
+
+      Widget header(String value) {
+        return SizedBox(
+          width: isSmall ? 60 : 100,
+          child: Text(
+            value,
+            maxLines: null,
+            softWrap: true,
+            overflow: TextOverflow.fade,
+            style: const TextStyle(fontFamily: fontAll, color: Colors.red),
+          ),
+        );
+      }
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
             child: DataTable(
-              columnSpacing: 40,
+              columnSpacing: isSmall ? 10 : 60,
+              horizontalMargin: isSmall ? 12 : 24,
+              dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
               dataRowMaxHeight: double.infinity,
-              columns: const [
-                DataColumn(
-                  label: Text("Role Name", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-                ),
-                DataColumn(
-                  label: Text("Access", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-                ),
-                DataColumn(
-                  label: Text("Employees", style: TextStyle(fontFamily: fontAll, color: Colors.red)),
-                ),
-                DataColumn(label: Text("")),
+              columns: [
+                DataColumn(label: header("Role Name")),
+                DataColumn(label: header("Access")),
+                DataColumn(label: header("Employee")),
+                DataColumn(label: const Text("")),
               ],
               rows: _roles.map((role) {
+                
+
                 final accessWidgets = <Widget>[];
                 final accessFlags = _flagsFromRole(role);
                 for (int j = 0; j < accessTitles.length; j++) {
@@ -487,26 +647,35 @@ class _EmployeePageState extends State<EmployeePage> {
 
                 final userCount = _users.where((user) => user.role == role.name).length;
 
+                Widget cell(String value) {
+                    return SizedBox(
+                      width: isSmall ? 80 : double.infinity,
+
+                       child: Text(
+                          value,
+                          maxLines: null,                   // ✅ 2–3 lines visible
+                          softWrap: true,
+                          overflow: TextOverflow.fade,
+                          style: const TextStyle(fontFamily: fontAll),
+                        ),
+                    );
+                  }
+
                 return DataRow(
                   cells: [
-                    DataCell(Text(role.name)),
+                    DataCell(cell(role.name)),
+                    // RESPONSIVE ACCESS COLUMN
                     DataCell(
-                      SizedBox(
-                        width: 400,
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: accessColumnWidth),
                         child: Wrap(children: accessWidgets),
                       ),
                     ),
-                    DataCell(Text(userCount.toString())),
+                    DataCell(cell(userCount.toString())),
                     DataCell(
-                      SizedBox(
-                        width: double.infinity,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _deleteRole(role, userCount),
-                          ),
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteRole(role, userCount),
                       ),
                     ),
                   ],
@@ -514,10 +683,11 @@ class _EmployeePageState extends State<EmployeePage> {
               }).toList(),
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
 
   
@@ -621,7 +791,178 @@ class _EmployeePageState extends State<EmployeePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+Widget build(BuildContext context) {
+
+  // PHONE UI – identical to ItemsPage
+  if (AppLayout.isDesktop(context) == false) {
+    return Scaffold(
+      backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+
+              // HEADER (stacked – title + notification)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Employees",
+                        style: TextStyle(fontSize: 26, fontFamily: fontAll),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined, size: 28),
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // SEARCH + FILTER ROW
+                  Row(
+                    children: [
+                      // Search Bar
+                      Expanded(
+                        child: Container(
+                          height: 42,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          child: const TextField(
+                            decoration: InputDecoration(
+                              hintText: "Search...",
+                              icon: Icon(Icons.search),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      Row(
+              children: [
+                // Role Filter Dropdown
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String?>(
+                      value: _selectedRoleFilter,
+                      hint: const Text("All Roles", style: TextStyle(fontSize: 14)),
+                      icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text("All Roles"),
+                        ),
+                        ..._roles.map((role) => DropdownMenuItem<String?>(
+                              value: role.name,
+                              child: Text(role.name),
+                            )),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedRoleFilter = value;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                // Sort Menu
+                PopupMenuButton<EmployeeSort>(
+                  icon: const Icon(Icons.sort, size: 32, color: Colors.black87),
+                  onSelected: (sort) {
+                    setState(() {
+                      _currentEmployeeSort = sort;
+                    });
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.date, SortOrder.desc), child: Text("Date Added (Newest)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.date, SortOrder.asc), child: Text("Date Added (Oldest)")),
+                    PopupMenuDivider(),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
+                    PopupMenuDivider(),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.desc), child: Text("Email (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.asc), child: Text("Email (Z–A)")),
+                  ],
+                ),
+              ],
+            ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // TABS (Employees / Roles)
+              Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildTab("Employees", 0),
+                    _buildTab("Roles", 1),
+                  ],
+                ),
+              ),
+
+              // CONTENT
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : selectedTab == 0
+                          ? _buildEmployeeTable()
+                          : _buildRoleTable(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      // FAB – only show when data is loaded
+      floatingActionButton: _isLoading
+          ? null
+          : FloatingActionButton(
+              backgroundColor: Colors.red[700],
+              onPressed: selectedTab == 0 ? _createEmployee : _createRoleDialog,
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
     return Scaffold(
       backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
       body: Padding(
@@ -631,25 +972,86 @@ class _EmployeePageState extends State<EmployeePage> {
             //  Header
             Row(
               children: [
-                const Text("Items", style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+                const Text("Employee", style: TextStyle(fontSize: 30, fontFamily: fontAll)),
                 const SizedBox(width: 16),
 
                 // Search Bar
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search...",
-                        prefixIcon: Icon(Icons.search),
-                        border: InputBorder.none,
-                      ),
+                // Search Bar + Filter Button
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: const TextField(
+                  decoration: InputDecoration(
+                    hintText: "Search...",
+                    prefixIcon: Icon(Icons.search),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+              // Filter + Sort Button
+            Row(
+              children: [
+                // Role Filter Dropdown
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String?>(
+                      value: _selectedRoleFilter,
+                      hint: const Text("All Roles", style: TextStyle(fontSize: 14)),
+                      icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text("All Roles"),
+                        ),
+                        ..._roles.map((role) => DropdownMenuItem<String?>(
+                              value: role.name,
+                              child: Text(role.name),
+                            )),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedRoleFilter = value;
+                        });
+                      },
                     ),
                   ),
                 ),
+
+                const SizedBox(width: 10),
+
+                // Sort Menu
+                // Sort Menu
+                PopupMenuButton<EmployeeSort>(
+                  icon: const Icon(Icons.sort, size: 32, color: Colors.black87),
+                  onSelected: (sort) {
+                    setState(() {
+                      _currentEmployeeSort = sort;
+                    });
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.date, SortOrder.desc), child: Text("Date Added (Newest)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.date, SortOrder.asc), child: Text("Date Added (Oldest)")),
+                    PopupMenuDivider(),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
+                    PopupMenuDivider(),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.desc), child: Text("Email (A–Z)")),
+                    PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.asc), child: Text("Email (Z–A)")),
+                  ],
+                ),
+              ],
+            ),
 
                 IconButton(
                   icon: const Icon(Icons.notifications_outlined, size: 35),
@@ -658,7 +1060,7 @@ class _EmployeePageState extends State<EmployeePage> {
               ],
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 13),
 
             // Tabs + Content
             Expanded(

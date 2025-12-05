@@ -1,9 +1,6 @@
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
-=======
 import 'package:flutter/services.dart';
->>>>>>> 19567b0e9b0ca7696f1fecd036027e82af73f5ac
 import '../../../data/local/app_database.dart';
 import '../../../data/database_provider.dart';
 import '../../design_constants.dart';
@@ -157,7 +154,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                   "Change Item Stock",
                   style: TextStyle(
                     fontFamily: fontAll,
-                    fontSize: 30,
+                    fontSize: 25,
                   ),
                 ),
 

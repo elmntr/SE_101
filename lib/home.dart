@@ -1,14 +1,4 @@
 import 'package:chickenjoo_inventory/design_constants.dart';
-<<<<<<< HEAD:lib/screen/home.dart
-import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/data/database_provider.dart';
-import 'package:chickenjoo_inventory/data/local/app_database.dart';
-import 'franchisee/franchisee_reports.dart';
-import 'franchisee/franchisee_inventory.dart';
-import 'franchisee/franchisee_items.dart';
-import 'franchisee/franchisee_employee.dart';
-import 'employee/employee_account.dart';
-=======
 import 'package:chickenjoo_inventory/screen/employee/employee_items.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/data/database_provider.dart';
@@ -18,7 +8,6 @@ import 'screen/franchisee/franchisee_inventory.dart';
 import 'screen/franchisee/franchisee_items.dart';
 import 'screen/franchisee/franchisee_employee.dart';
 import 'screen/employee/employee_account.dart';
->>>>>>> 19567b0e9b0ca7696f1fecd036027e82af73f5ac:lib/home.dart
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.signedInUser});
@@ -294,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (isEmployee){
-      items.add({"icon": Icons.shopping_cart, "label": "Account", "page": const EmployeeItemsPage()});
+      items.add({"icon": Icons.shopping_cart, "label": "Items", "page": const EmployeeItemsPage()});
       items.add({"icon": Icons.account_circle, "label": "Account", "page": const EmployeeAccountPage()});
     }
 
