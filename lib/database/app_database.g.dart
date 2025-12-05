@@ -30,31 +30,32 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _descriptionMeta = const VerificationMeta(
-    'description',
-  );
-  @override
-  late final GeneratedColumn<String> description = GeneratedColumn<String>(
-    'description',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _priceMeta = const VerificationMeta('price');
-  @override
-  late final GeneratedColumn<double> price = GeneratedColumn<double>(
-    'price',
-    aliasedName,
-    false,
-    type: DriftSqlType.double,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0.0),
-  );
   static const VerificationMeta _stockMeta = const VerificationMeta('stock');
   @override
   late final GeneratedColumn<int> stock = GeneratedColumn<int>(
     'stock',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _soldMeta = const VerificationMeta('sold');
+  @override
+  late final GeneratedColumn<int> sold = GeneratedColumn<int>(
+    'sold',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _spoilageMeta = const VerificationMeta(
+    'spoilage',
+  );
+  @override
+  late final GeneratedColumn<int> spoilage = GeneratedColumn<int>(
+    'spoilage',
     aliasedName,
     false,
     type: DriftSqlType.int,
@@ -71,16 +72,61 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
+    'lastUpdated',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUpdated = GeneratedColumn<DateTime>(
+    'last_updated',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
   );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     name,
-    description,
-    price,
     stock,
+    sold,
+    spoilage,
     createdAt,
+    lastUpdated,
+    isSynced,
+    isDeleted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -105,31 +151,49 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
-    if (data.containsKey('description')) {
-      context.handle(
-        _descriptionMeta,
-        description.isAcceptableOrUnknown(
-          data['description']!,
-          _descriptionMeta,
-        ),
-      );
-    }
-    if (data.containsKey('price')) {
-      context.handle(
-        _priceMeta,
-        price.isAcceptableOrUnknown(data['price']!, _priceMeta),
-      );
-    }
     if (data.containsKey('stock')) {
       context.handle(
         _stockMeta,
         stock.isAcceptableOrUnknown(data['stock']!, _stockMeta),
       );
     }
+    if (data.containsKey('sold')) {
+      context.handle(
+        _soldMeta,
+        sold.isAcceptableOrUnknown(data['sold']!, _soldMeta),
+      );
+    }
+    if (data.containsKey('spoilage')) {
+      context.handle(
+        _spoilageMeta,
+        spoilage.isAcceptableOrUnknown(data['spoilage']!, _spoilageMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('last_updated')) {
+      context.handle(
+        _lastUpdatedMeta,
+        lastUpdated.isAcceptableOrUnknown(
+          data['last_updated']!,
+          _lastUpdatedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
       );
     }
     return context;
@@ -149,21 +213,33 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
-      description: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}description'],
-      ),
-      price: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}price'],
-      )!,
       stock: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}stock'],
       )!,
+      sold: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sold'],
+      )!,
+      spoilage: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}spoilage'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
+      )!,
+      lastUpdated: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_updated'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
       )!,
     );
   }
@@ -177,29 +253,36 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
 class Item extends DataClass implements Insertable<Item> {
   final int id;
   final String name;
-  final String? description;
-  final double price;
   final int stock;
+  final int sold;
+  final int spoilage;
   final DateTime createdAt;
+  final DateTime lastUpdated;
+  final bool isSynced;
+  final bool isDeleted;
   const Item({
     required this.id,
     required this.name,
-    this.description,
-    required this.price,
     required this.stock,
+    required this.sold,
+    required this.spoilage,
     required this.createdAt,
+    required this.lastUpdated,
+    required this.isSynced,
+    required this.isDeleted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
-    if (!nullToAbsent || description != null) {
-      map['description'] = Variable<String>(description);
-    }
-    map['price'] = Variable<double>(price);
     map['stock'] = Variable<int>(stock);
+    map['sold'] = Variable<int>(sold);
+    map['spoilage'] = Variable<int>(spoilage);
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_updated'] = Variable<DateTime>(lastUpdated);
+    map['is_synced'] = Variable<bool>(isSynced);
+    map['is_deleted'] = Variable<bool>(isDeleted);
     return map;
   }
 
@@ -207,12 +290,13 @@ class Item extends DataClass implements Insertable<Item> {
     return ItemsCompanion(
       id: Value(id),
       name: Value(name),
-      description: description == null && nullToAbsent
-          ? const Value.absent()
-          : Value(description),
-      price: Value(price),
       stock: Value(stock),
+      sold: Value(sold),
+      spoilage: Value(spoilage),
       createdAt: Value(createdAt),
+      lastUpdated: Value(lastUpdated),
+      isSynced: Value(isSynced),
+      isDeleted: Value(isDeleted),
     );
   }
 
@@ -224,10 +308,13 @@ class Item extends DataClass implements Insertable<Item> {
     return Item(
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
-      description: serializer.fromJson<String?>(json['description']),
-      price: serializer.fromJson<double>(json['price']),
       stock: serializer.fromJson<int>(json['stock']),
+      sold: serializer.fromJson<int>(json['sold']),
+      spoilage: serializer.fromJson<int>(json['spoilage']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
     );
   }
   @override
@@ -236,38 +323,50 @@ class Item extends DataClass implements Insertable<Item> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
-      'description': serializer.toJson<String?>(description),
-      'price': serializer.toJson<double>(price),
       'stock': serializer.toJson<int>(stock),
+      'sold': serializer.toJson<int>(sold),
+      'spoilage': serializer.toJson<int>(spoilage),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
     };
   }
 
   Item copyWith({
     int? id,
     String? name,
-    Value<String?> description = const Value.absent(),
-    double? price,
     int? stock,
+    int? sold,
+    int? spoilage,
     DateTime? createdAt,
+    DateTime? lastUpdated,
+    bool? isSynced,
+    bool? isDeleted,
   }) => Item(
     id: id ?? this.id,
     name: name ?? this.name,
-    description: description.present ? description.value : this.description,
-    price: price ?? this.price,
     stock: stock ?? this.stock,
+    sold: sold ?? this.sold,
+    spoilage: spoilage ?? this.spoilage,
     createdAt: createdAt ?? this.createdAt,
+    lastUpdated: lastUpdated ?? this.lastUpdated,
+    isSynced: isSynced ?? this.isSynced,
+    isDeleted: isDeleted ?? this.isDeleted,
   );
   Item copyWithCompanion(ItemsCompanion data) {
     return Item(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
-      description: data.description.present
-          ? data.description.value
-          : this.description,
-      price: data.price.present ? data.price.value : this.price,
       stock: data.stock.present ? data.stock.value : this.stock,
+      sold: data.sold.present ? data.sold.value : this.sold,
+      spoilage: data.spoilage.present ? data.spoilage.value : this.spoilage,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastUpdated: data.lastUpdated.present
+          ? data.lastUpdated.value
+          : this.lastUpdated,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
     );
   }
 
@@ -276,85 +375,121 @@ class Item extends DataClass implements Insertable<Item> {
     return (StringBuffer('Item(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('description: $description, ')
-          ..write('price: $price, ')
           ..write('stock: $stock, ')
-          ..write('createdAt: $createdAt')
+          ..write('sold: $sold, ')
+          ..write('spoilage: $spoilage, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, description, price, stock, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    stock,
+    sold,
+    spoilage,
+    createdAt,
+    lastUpdated,
+    isSynced,
+    isDeleted,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Item &&
           other.id == this.id &&
           other.name == this.name &&
-          other.description == this.description &&
-          other.price == this.price &&
           other.stock == this.stock &&
-          other.createdAt == this.createdAt);
+          other.sold == this.sold &&
+          other.spoilage == this.spoilage &&
+          other.createdAt == this.createdAt &&
+          other.lastUpdated == this.lastUpdated &&
+          other.isSynced == this.isSynced &&
+          other.isDeleted == this.isDeleted);
 }
 
 class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<int> id;
   final Value<String> name;
-  final Value<String?> description;
-  final Value<double> price;
   final Value<int> stock;
+  final Value<int> sold;
+  final Value<int> spoilage;
   final Value<DateTime> createdAt;
+  final Value<DateTime> lastUpdated;
+  final Value<bool> isSynced;
+  final Value<bool> isDeleted;
   const ItemsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
-    this.description = const Value.absent(),
-    this.price = const Value.absent(),
     this.stock = const Value.absent(),
+    this.sold = const Value.absent(),
+    this.spoilage = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
   });
   ItemsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
-    this.description = const Value.absent(),
-    this.price = const Value.absent(),
     this.stock = const Value.absent(),
+    this.sold = const Value.absent(),
+    this.spoilage = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.isDeleted = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Item> custom({
     Expression<int>? id,
     Expression<String>? name,
-    Expression<String>? description,
-    Expression<double>? price,
     Expression<int>? stock,
+    Expression<int>? sold,
+    Expression<int>? spoilage,
     Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastUpdated,
+    Expression<bool>? isSynced,
+    Expression<bool>? isDeleted,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
-      if (description != null) 'description': description,
-      if (price != null) 'price': price,
       if (stock != null) 'stock': stock,
+      if (sold != null) 'sold': sold,
+      if (spoilage != null) 'spoilage': spoilage,
       if (createdAt != null) 'created_at': createdAt,
+      if (lastUpdated != null) 'last_updated': lastUpdated,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (isDeleted != null) 'is_deleted': isDeleted,
     });
   }
 
   ItemsCompanion copyWith({
     Value<int>? id,
     Value<String>? name,
-    Value<String?>? description,
-    Value<double>? price,
     Value<int>? stock,
+    Value<int>? sold,
+    Value<int>? spoilage,
     Value<DateTime>? createdAt,
+    Value<DateTime>? lastUpdated,
+    Value<bool>? isSynced,
+    Value<bool>? isDeleted,
   }) {
     return ItemsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
-      description: description ?? this.description,
-      price: price ?? this.price,
       stock: stock ?? this.stock,
+      sold: sold ?? this.sold,
+      spoilage: spoilage ?? this.spoilage,
       createdAt: createdAt ?? this.createdAt,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+      isSynced: isSynced ?? this.isSynced,
+      isDeleted: isDeleted ?? this.isDeleted,
     );
   }
 
@@ -367,17 +502,26 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
-    if (description.present) {
-      map['description'] = Variable<String>(description.value);
-    }
-    if (price.present) {
-      map['price'] = Variable<double>(price.value);
-    }
     if (stock.present) {
       map['stock'] = Variable<int>(stock.value);
     }
+    if (sold.present) {
+      map['sold'] = Variable<int>(sold.value);
+    }
+    if (spoilage.present) {
+      map['spoilage'] = Variable<int>(spoilage.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastUpdated.present) {
+      map['last_updated'] = Variable<DateTime>(lastUpdated.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
     return map;
   }
@@ -387,10 +531,13 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     return (StringBuffer('ItemsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('description: $description, ')
-          ..write('price: $price, ')
           ..write('stock: $stock, ')
-          ..write('createdAt: $createdAt')
+          ..write('sold: $sold, ')
+          ..write('spoilage: $spoilage, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('isDeleted: $isDeleted')
           ..write(')'))
         .toString();
   }
@@ -414,14 +561,16 @@ class $RolesTable extends Roles with TableInfo<$RolesTable, Role> {
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
-  static const VerificationMeta _roleNameMeta = const VerificationMeta(
-    'roleName',
-  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
-  late final GeneratedColumn<String> roleName = GeneratedColumn<String>(
-    'role_name',
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
     aliasedName,
     false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 100,
+    ),
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
@@ -434,11 +583,216 @@ class $RolesTable extends Roles with TableInfo<$RolesTable, Role> {
     'description',
     aliasedName,
     true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 500),
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _canViewInventoryMeta = const VerificationMeta(
+    'canViewInventory',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, roleName, description];
+  late final GeneratedColumn<bool> canViewInventory = GeneratedColumn<bool>(
+    'can_view_inventory',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_view_inventory" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _canAddInventoryMeta = const VerificationMeta(
+    'canAddInventory',
+  );
+  @override
+  late final GeneratedColumn<bool> canAddInventory = GeneratedColumn<bool>(
+    'can_add_inventory',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_add_inventory" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _canEditInventoryMeta = const VerificationMeta(
+    'canEditInventory',
+  );
+  @override
+  late final GeneratedColumn<bool> canEditInventory = GeneratedColumn<bool>(
+    'can_edit_inventory',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_edit_inventory" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _canDeleteInventoryMeta =
+      const VerificationMeta('canDeleteInventory');
+  @override
+  late final GeneratedColumn<bool> canDeleteInventory = GeneratedColumn<bool>(
+    'can_delete_inventory',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_delete_inventory" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _canViewReportsMeta = const VerificationMeta(
+    'canViewReports',
+  );
+  @override
+  late final GeneratedColumn<bool> canViewReports = GeneratedColumn<bool>(
+    'can_view_reports',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_view_reports" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _canExportDataMeta = const VerificationMeta(
+    'canExportData',
+  );
+  @override
+  late final GeneratedColumn<bool> canExportData = GeneratedColumn<bool>(
+    'can_export_data',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_export_data" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _canAccessSettingsMeta = const VerificationMeta(
+    'canAccessSettings',
+  );
+  @override
+  late final GeneratedColumn<bool> canAccessSettings = GeneratedColumn<bool>(
+    'can_access_settings',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_access_settings" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
+    'lastUpdated',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUpdated = GeneratedColumn<DateTime>(
+    'last_updated',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isSystemRoleMeta = const VerificationMeta(
+    'isSystemRole',
+  );
+  @override
+  late final GeneratedColumn<bool> isSystemRole = GeneratedColumn<bool>(
+    'is_system_role',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_system_role" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _canManageEmployeesMeta =
+      const VerificationMeta('canManageEmployees');
+  @override
+  late final GeneratedColumn<bool> canManageEmployees = GeneratedColumn<bool>(
+    'can_manage_employees',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_manage_employees" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _canManageRolesMeta = const VerificationMeta(
+    'canManageRoles',
+  );
+  @override
+  late final GeneratedColumn<bool> canManageRoles = GeneratedColumn<bool>(
+    'can_manage_roles',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("can_manage_roles" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    description,
+    canViewInventory,
+    canAddInventory,
+    canEditInventory,
+    canDeleteInventory,
+    canViewReports,
+    canExportData,
+    canAccessSettings,
+    createdAt,
+    lastUpdated,
+    isSystemRole,
+    isActive,
+    canManageEmployees,
+    canManageRoles,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -454,13 +808,13 @@ class $RolesTable extends Roles with TableInfo<$RolesTable, Role> {
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
-    if (data.containsKey('role_name')) {
+    if (data.containsKey('name')) {
       context.handle(
-        _roleNameMeta,
-        roleName.isAcceptableOrUnknown(data['role_name']!, _roleNameMeta),
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
       );
     } else if (isInserting) {
-      context.missing(_roleNameMeta);
+      context.missing(_nameMeta);
     }
     if (data.containsKey('description')) {
       context.handle(
@@ -468,6 +822,117 @@ class $RolesTable extends Roles with TableInfo<$RolesTable, Role> {
         description.isAcceptableOrUnknown(
           data['description']!,
           _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('can_view_inventory')) {
+      context.handle(
+        _canViewInventoryMeta,
+        canViewInventory.isAcceptableOrUnknown(
+          data['can_view_inventory']!,
+          _canViewInventoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('can_add_inventory')) {
+      context.handle(
+        _canAddInventoryMeta,
+        canAddInventory.isAcceptableOrUnknown(
+          data['can_add_inventory']!,
+          _canAddInventoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('can_edit_inventory')) {
+      context.handle(
+        _canEditInventoryMeta,
+        canEditInventory.isAcceptableOrUnknown(
+          data['can_edit_inventory']!,
+          _canEditInventoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('can_delete_inventory')) {
+      context.handle(
+        _canDeleteInventoryMeta,
+        canDeleteInventory.isAcceptableOrUnknown(
+          data['can_delete_inventory']!,
+          _canDeleteInventoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('can_view_reports')) {
+      context.handle(
+        _canViewReportsMeta,
+        canViewReports.isAcceptableOrUnknown(
+          data['can_view_reports']!,
+          _canViewReportsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('can_export_data')) {
+      context.handle(
+        _canExportDataMeta,
+        canExportData.isAcceptableOrUnknown(
+          data['can_export_data']!,
+          _canExportDataMeta,
+        ),
+      );
+    }
+    if (data.containsKey('can_access_settings')) {
+      context.handle(
+        _canAccessSettingsMeta,
+        canAccessSettings.isAcceptableOrUnknown(
+          data['can_access_settings']!,
+          _canAccessSettingsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('last_updated')) {
+      context.handle(
+        _lastUpdatedMeta,
+        lastUpdated.isAcceptableOrUnknown(
+          data['last_updated']!,
+          _lastUpdatedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_system_role')) {
+      context.handle(
+        _isSystemRoleMeta,
+        isSystemRole.isAcceptableOrUnknown(
+          data['is_system_role']!,
+          _isSystemRoleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('can_manage_employees')) {
+      context.handle(
+        _canManageEmployeesMeta,
+        canManageEmployees.isAcceptableOrUnknown(
+          data['can_manage_employees']!,
+          _canManageEmployeesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('can_manage_roles')) {
+      context.handle(
+        _canManageRolesMeta,
+        canManageRoles.isAcceptableOrUnknown(
+          data['can_manage_roles']!,
+          _canManageRolesMeta,
         ),
       );
     }
@@ -484,14 +949,66 @@ class $RolesTable extends Roles with TableInfo<$RolesTable, Role> {
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
-      roleName: attachedDatabase.typeMapping.read(
+      name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}role_name'],
+        data['${effectivePrefix}name'],
       )!,
       description: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      canViewInventory: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_view_inventory'],
+      )!,
+      canAddInventory: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_add_inventory'],
+      )!,
+      canEditInventory: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_edit_inventory'],
+      )!,
+      canDeleteInventory: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_delete_inventory'],
+      )!,
+      canViewReports: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_view_reports'],
+      )!,
+      canExportData: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_export_data'],
+      )!,
+      canAccessSettings: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_access_settings'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastUpdated: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_updated'],
+      )!,
+      isSystemRole: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_system_role'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      canManageEmployees: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_manage_employees'],
+      )!,
+      canManageRoles: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}can_manage_roles'],
+      )!,
     );
   }
 
@@ -503,27 +1020,83 @@ class $RolesTable extends Roles with TableInfo<$RolesTable, Role> {
 
 class Role extends DataClass implements Insertable<Role> {
   final int id;
-  final String roleName;
+  final String name;
   final String? description;
-  const Role({required this.id, required this.roleName, this.description});
+  final bool canViewInventory;
+  final bool canAddInventory;
+  final bool canEditInventory;
+  final bool canDeleteInventory;
+  final bool canViewReports;
+  final bool canExportData;
+  final bool canAccessSettings;
+  final DateTime createdAt;
+  final DateTime lastUpdated;
+  final bool isSystemRole;
+  final bool isActive;
+  final bool canManageEmployees;
+  final bool canManageRoles;
+  const Role({
+    required this.id,
+    required this.name,
+    this.description,
+    required this.canViewInventory,
+    required this.canAddInventory,
+    required this.canEditInventory,
+    required this.canDeleteInventory,
+    required this.canViewReports,
+    required this.canExportData,
+    required this.canAccessSettings,
+    required this.createdAt,
+    required this.lastUpdated,
+    required this.isSystemRole,
+    required this.isActive,
+    required this.canManageEmployees,
+    required this.canManageRoles,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['role_name'] = Variable<String>(roleName);
+    map['name'] = Variable<String>(name);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
+    map['can_view_inventory'] = Variable<bool>(canViewInventory);
+    map['can_add_inventory'] = Variable<bool>(canAddInventory);
+    map['can_edit_inventory'] = Variable<bool>(canEditInventory);
+    map['can_delete_inventory'] = Variable<bool>(canDeleteInventory);
+    map['can_view_reports'] = Variable<bool>(canViewReports);
+    map['can_export_data'] = Variable<bool>(canExportData);
+    map['can_access_settings'] = Variable<bool>(canAccessSettings);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_updated'] = Variable<DateTime>(lastUpdated);
+    map['is_system_role'] = Variable<bool>(isSystemRole);
+    map['is_active'] = Variable<bool>(isActive);
+    map['can_manage_employees'] = Variable<bool>(canManageEmployees);
+    map['can_manage_roles'] = Variable<bool>(canManageRoles);
     return map;
   }
 
   RolesCompanion toCompanion(bool nullToAbsent) {
     return RolesCompanion(
       id: Value(id),
-      roleName: Value(roleName),
+      name: Value(name),
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      canViewInventory: Value(canViewInventory),
+      canAddInventory: Value(canAddInventory),
+      canEditInventory: Value(canEditInventory),
+      canDeleteInventory: Value(canDeleteInventory),
+      canViewReports: Value(canViewReports),
+      canExportData: Value(canExportData),
+      canAccessSettings: Value(canAccessSettings),
+      createdAt: Value(createdAt),
+      lastUpdated: Value(lastUpdated),
+      isSystemRole: Value(isSystemRole),
+      isActive: Value(isActive),
+      canManageEmployees: Value(canManageEmployees),
+      canManageRoles: Value(canManageRoles),
     );
   }
 
@@ -534,8 +1107,21 @@ class Role extends DataClass implements Insertable<Role> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Role(
       id: serializer.fromJson<int>(json['id']),
-      roleName: serializer.fromJson<String>(json['roleName']),
+      name: serializer.fromJson<String>(json['name']),
       description: serializer.fromJson<String?>(json['description']),
+      canViewInventory: serializer.fromJson<bool>(json['canViewInventory']),
+      canAddInventory: serializer.fromJson<bool>(json['canAddInventory']),
+      canEditInventory: serializer.fromJson<bool>(json['canEditInventory']),
+      canDeleteInventory: serializer.fromJson<bool>(json['canDeleteInventory']),
+      canViewReports: serializer.fromJson<bool>(json['canViewReports']),
+      canExportData: serializer.fromJson<bool>(json['canExportData']),
+      canAccessSettings: serializer.fromJson<bool>(json['canAccessSettings']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
+      isSystemRole: serializer.fromJson<bool>(json['isSystemRole']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      canManageEmployees: serializer.fromJson<bool>(json['canManageEmployees']),
+      canManageRoles: serializer.fromJson<bool>(json['canManageRoles']),
     );
   }
   @override
@@ -543,27 +1129,101 @@ class Role extends DataClass implements Insertable<Role> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'roleName': serializer.toJson<String>(roleName),
+      'name': serializer.toJson<String>(name),
       'description': serializer.toJson<String?>(description),
+      'canViewInventory': serializer.toJson<bool>(canViewInventory),
+      'canAddInventory': serializer.toJson<bool>(canAddInventory),
+      'canEditInventory': serializer.toJson<bool>(canEditInventory),
+      'canDeleteInventory': serializer.toJson<bool>(canDeleteInventory),
+      'canViewReports': serializer.toJson<bool>(canViewReports),
+      'canExportData': serializer.toJson<bool>(canExportData),
+      'canAccessSettings': serializer.toJson<bool>(canAccessSettings),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
+      'isSystemRole': serializer.toJson<bool>(isSystemRole),
+      'isActive': serializer.toJson<bool>(isActive),
+      'canManageEmployees': serializer.toJson<bool>(canManageEmployees),
+      'canManageRoles': serializer.toJson<bool>(canManageRoles),
     };
   }
 
   Role copyWith({
     int? id,
-    String? roleName,
+    String? name,
     Value<String?> description = const Value.absent(),
+    bool? canViewInventory,
+    bool? canAddInventory,
+    bool? canEditInventory,
+    bool? canDeleteInventory,
+    bool? canViewReports,
+    bool? canExportData,
+    bool? canAccessSettings,
+    DateTime? createdAt,
+    DateTime? lastUpdated,
+    bool? isSystemRole,
+    bool? isActive,
+    bool? canManageEmployees,
+    bool? canManageRoles,
   }) => Role(
     id: id ?? this.id,
-    roleName: roleName ?? this.roleName,
+    name: name ?? this.name,
     description: description.present ? description.value : this.description,
+    canViewInventory: canViewInventory ?? this.canViewInventory,
+    canAddInventory: canAddInventory ?? this.canAddInventory,
+    canEditInventory: canEditInventory ?? this.canEditInventory,
+    canDeleteInventory: canDeleteInventory ?? this.canDeleteInventory,
+    canViewReports: canViewReports ?? this.canViewReports,
+    canExportData: canExportData ?? this.canExportData,
+    canAccessSettings: canAccessSettings ?? this.canAccessSettings,
+    createdAt: createdAt ?? this.createdAt,
+    lastUpdated: lastUpdated ?? this.lastUpdated,
+    isSystemRole: isSystemRole ?? this.isSystemRole,
+    isActive: isActive ?? this.isActive,
+    canManageEmployees: canManageEmployees ?? this.canManageEmployees,
+    canManageRoles: canManageRoles ?? this.canManageRoles,
   );
   Role copyWithCompanion(RolesCompanion data) {
     return Role(
       id: data.id.present ? data.id.value : this.id,
-      roleName: data.roleName.present ? data.roleName.value : this.roleName,
+      name: data.name.present ? data.name.value : this.name,
       description: data.description.present
           ? data.description.value
           : this.description,
+      canViewInventory: data.canViewInventory.present
+          ? data.canViewInventory.value
+          : this.canViewInventory,
+      canAddInventory: data.canAddInventory.present
+          ? data.canAddInventory.value
+          : this.canAddInventory,
+      canEditInventory: data.canEditInventory.present
+          ? data.canEditInventory.value
+          : this.canEditInventory,
+      canDeleteInventory: data.canDeleteInventory.present
+          ? data.canDeleteInventory.value
+          : this.canDeleteInventory,
+      canViewReports: data.canViewReports.present
+          ? data.canViewReports.value
+          : this.canViewReports,
+      canExportData: data.canExportData.present
+          ? data.canExportData.value
+          : this.canExportData,
+      canAccessSettings: data.canAccessSettings.present
+          ? data.canAccessSettings.value
+          : this.canAccessSettings,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastUpdated: data.lastUpdated.present
+          ? data.lastUpdated.value
+          : this.lastUpdated,
+      isSystemRole: data.isSystemRole.present
+          ? data.isSystemRole.value
+          : this.isSystemRole,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      canManageEmployees: data.canManageEmployees.present
+          ? data.canManageEmployees.value
+          : this.canManageEmployees,
+      canManageRoles: data.canManageRoles.present
+          ? data.canManageRoles.value
+          : this.canManageRoles,
     );
   }
 
@@ -571,58 +1231,194 @@ class Role extends DataClass implements Insertable<Role> {
   String toString() {
     return (StringBuffer('Role(')
           ..write('id: $id, ')
-          ..write('roleName: $roleName, ')
-          ..write('description: $description')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('canViewInventory: $canViewInventory, ')
+          ..write('canAddInventory: $canAddInventory, ')
+          ..write('canEditInventory: $canEditInventory, ')
+          ..write('canDeleteInventory: $canDeleteInventory, ')
+          ..write('canViewReports: $canViewReports, ')
+          ..write('canExportData: $canExportData, ')
+          ..write('canAccessSettings: $canAccessSettings, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isSystemRole: $isSystemRole, ')
+          ..write('isActive: $isActive, ')
+          ..write('canManageEmployees: $canManageEmployees, ')
+          ..write('canManageRoles: $canManageRoles')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, roleName, description);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    description,
+    canViewInventory,
+    canAddInventory,
+    canEditInventory,
+    canDeleteInventory,
+    canViewReports,
+    canExportData,
+    canAccessSettings,
+    createdAt,
+    lastUpdated,
+    isSystemRole,
+    isActive,
+    canManageEmployees,
+    canManageRoles,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Role &&
           other.id == this.id &&
-          other.roleName == this.roleName &&
-          other.description == this.description);
+          other.name == this.name &&
+          other.description == this.description &&
+          other.canViewInventory == this.canViewInventory &&
+          other.canAddInventory == this.canAddInventory &&
+          other.canEditInventory == this.canEditInventory &&
+          other.canDeleteInventory == this.canDeleteInventory &&
+          other.canViewReports == this.canViewReports &&
+          other.canExportData == this.canExportData &&
+          other.canAccessSettings == this.canAccessSettings &&
+          other.createdAt == this.createdAt &&
+          other.lastUpdated == this.lastUpdated &&
+          other.isSystemRole == this.isSystemRole &&
+          other.isActive == this.isActive &&
+          other.canManageEmployees == this.canManageEmployees &&
+          other.canManageRoles == this.canManageRoles);
 }
 
 class RolesCompanion extends UpdateCompanion<Role> {
   final Value<int> id;
-  final Value<String> roleName;
+  final Value<String> name;
   final Value<String?> description;
+  final Value<bool> canViewInventory;
+  final Value<bool> canAddInventory;
+  final Value<bool> canEditInventory;
+  final Value<bool> canDeleteInventory;
+  final Value<bool> canViewReports;
+  final Value<bool> canExportData;
+  final Value<bool> canAccessSettings;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastUpdated;
+  final Value<bool> isSystemRole;
+  final Value<bool> isActive;
+  final Value<bool> canManageEmployees;
+  final Value<bool> canManageRoles;
   const RolesCompanion({
     this.id = const Value.absent(),
-    this.roleName = const Value.absent(),
+    this.name = const Value.absent(),
     this.description = const Value.absent(),
+    this.canViewInventory = const Value.absent(),
+    this.canAddInventory = const Value.absent(),
+    this.canEditInventory = const Value.absent(),
+    this.canDeleteInventory = const Value.absent(),
+    this.canViewReports = const Value.absent(),
+    this.canExportData = const Value.absent(),
+    this.canAccessSettings = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+    this.isSystemRole = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.canManageEmployees = const Value.absent(),
+    this.canManageRoles = const Value.absent(),
   });
   RolesCompanion.insert({
     this.id = const Value.absent(),
-    required String roleName,
+    required String name,
     this.description = const Value.absent(),
-  }) : roleName = Value(roleName);
+    this.canViewInventory = const Value.absent(),
+    this.canAddInventory = const Value.absent(),
+    this.canEditInventory = const Value.absent(),
+    this.canDeleteInventory = const Value.absent(),
+    this.canViewReports = const Value.absent(),
+    this.canExportData = const Value.absent(),
+    this.canAccessSettings = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+    this.isSystemRole = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.canManageEmployees = const Value.absent(),
+    this.canManageRoles = const Value.absent(),
+  }) : name = Value(name);
   static Insertable<Role> custom({
     Expression<int>? id,
-    Expression<String>? roleName,
+    Expression<String>? name,
     Expression<String>? description,
+    Expression<bool>? canViewInventory,
+    Expression<bool>? canAddInventory,
+    Expression<bool>? canEditInventory,
+    Expression<bool>? canDeleteInventory,
+    Expression<bool>? canViewReports,
+    Expression<bool>? canExportData,
+    Expression<bool>? canAccessSettings,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastUpdated,
+    Expression<bool>? isSystemRole,
+    Expression<bool>? isActive,
+    Expression<bool>? canManageEmployees,
+    Expression<bool>? canManageRoles,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (roleName != null) 'role_name': roleName,
+      if (name != null) 'name': name,
       if (description != null) 'description': description,
+      if (canViewInventory != null) 'can_view_inventory': canViewInventory,
+      if (canAddInventory != null) 'can_add_inventory': canAddInventory,
+      if (canEditInventory != null) 'can_edit_inventory': canEditInventory,
+      if (canDeleteInventory != null)
+        'can_delete_inventory': canDeleteInventory,
+      if (canViewReports != null) 'can_view_reports': canViewReports,
+      if (canExportData != null) 'can_export_data': canExportData,
+      if (canAccessSettings != null) 'can_access_settings': canAccessSettings,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastUpdated != null) 'last_updated': lastUpdated,
+      if (isSystemRole != null) 'is_system_role': isSystemRole,
+      if (isActive != null) 'is_active': isActive,
+      if (canManageEmployees != null)
+        'can_manage_employees': canManageEmployees,
+      if (canManageRoles != null) 'can_manage_roles': canManageRoles,
     });
   }
 
   RolesCompanion copyWith({
     Value<int>? id,
-    Value<String>? roleName,
+    Value<String>? name,
     Value<String?>? description,
+    Value<bool>? canViewInventory,
+    Value<bool>? canAddInventory,
+    Value<bool>? canEditInventory,
+    Value<bool>? canDeleteInventory,
+    Value<bool>? canViewReports,
+    Value<bool>? canExportData,
+    Value<bool>? canAccessSettings,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastUpdated,
+    Value<bool>? isSystemRole,
+    Value<bool>? isActive,
+    Value<bool>? canManageEmployees,
+    Value<bool>? canManageRoles,
   }) {
     return RolesCompanion(
       id: id ?? this.id,
-      roleName: roleName ?? this.roleName,
+      name: name ?? this.name,
       description: description ?? this.description,
+      canViewInventory: canViewInventory ?? this.canViewInventory,
+      canAddInventory: canAddInventory ?? this.canAddInventory,
+      canEditInventory: canEditInventory ?? this.canEditInventory,
+      canDeleteInventory: canDeleteInventory ?? this.canDeleteInventory,
+      canViewReports: canViewReports ?? this.canViewReports,
+      canExportData: canExportData ?? this.canExportData,
+      canAccessSettings: canAccessSettings ?? this.canAccessSettings,
+      createdAt: createdAt ?? this.createdAt,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+      isSystemRole: isSystemRole ?? this.isSystemRole,
+      isActive: isActive ?? this.isActive,
+      canManageEmployees: canManageEmployees ?? this.canManageEmployees,
+      canManageRoles: canManageRoles ?? this.canManageRoles,
     );
   }
 
@@ -632,11 +1428,50 @@ class RolesCompanion extends UpdateCompanion<Role> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
-    if (roleName.present) {
-      map['role_name'] = Variable<String>(roleName.value);
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
+    }
+    if (canViewInventory.present) {
+      map['can_view_inventory'] = Variable<bool>(canViewInventory.value);
+    }
+    if (canAddInventory.present) {
+      map['can_add_inventory'] = Variable<bool>(canAddInventory.value);
+    }
+    if (canEditInventory.present) {
+      map['can_edit_inventory'] = Variable<bool>(canEditInventory.value);
+    }
+    if (canDeleteInventory.present) {
+      map['can_delete_inventory'] = Variable<bool>(canDeleteInventory.value);
+    }
+    if (canViewReports.present) {
+      map['can_view_reports'] = Variable<bool>(canViewReports.value);
+    }
+    if (canExportData.present) {
+      map['can_export_data'] = Variable<bool>(canExportData.value);
+    }
+    if (canAccessSettings.present) {
+      map['can_access_settings'] = Variable<bool>(canAccessSettings.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastUpdated.present) {
+      map['last_updated'] = Variable<DateTime>(lastUpdated.value);
+    }
+    if (isSystemRole.present) {
+      map['is_system_role'] = Variable<bool>(isSystemRole.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (canManageEmployees.present) {
+      map['can_manage_employees'] = Variable<bool>(canManageEmployees.value);
+    }
+    if (canManageRoles.present) {
+      map['can_manage_roles'] = Variable<bool>(canManageRoles.value);
     }
     return map;
   }
@@ -645,8 +1480,21 @@ class RolesCompanion extends UpdateCompanion<Role> {
   String toString() {
     return (StringBuffer('RolesCompanion(')
           ..write('id: $id, ')
-          ..write('roleName: $roleName, ')
-          ..write('description: $description')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('canViewInventory: $canViewInventory, ')
+          ..write('canAddInventory: $canAddInventory, ')
+          ..write('canEditInventory: $canEditInventory, ')
+          ..write('canDeleteInventory: $canDeleteInventory, ')
+          ..write('canViewReports: $canViewReports, ')
+          ..write('canExportData: $canExportData, ')
+          ..write('canAccessSettings: $canAccessSettings, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isSystemRole: $isSystemRole, ')
+          ..write('isActive: $isActive, ')
+          ..write('canManageEmployees: $canManageEmployees, ')
+          ..write('canManageRoles: $canManageRoles')
           ..write(')'))
         .toString();
   }
@@ -1223,19 +2071,25 @@ typedef $$ItemsTableCreateCompanionBuilder =
     ItemsCompanion Function({
       Value<int> id,
       required String name,
-      Value<String?> description,
-      Value<double> price,
       Value<int> stock,
+      Value<int> sold,
+      Value<int> spoilage,
       Value<DateTime> createdAt,
+      Value<DateTime> lastUpdated,
+      Value<bool> isSynced,
+      Value<bool> isDeleted,
     });
 typedef $$ItemsTableUpdateCompanionBuilder =
     ItemsCompanion Function({
       Value<int> id,
       Value<String> name,
-      Value<String?> description,
-      Value<double> price,
       Value<int> stock,
+      Value<int> sold,
+      Value<int> spoilage,
       Value<DateTime> createdAt,
+      Value<DateTime> lastUpdated,
+      Value<bool> isSynced,
+      Value<bool> isDeleted,
     });
 
 class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
@@ -1256,23 +2110,38 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get description => $composableBuilder(
-    column: $table.description,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<double> get price => $composableBuilder(
-    column: $table.price,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<int> get stock => $composableBuilder(
     column: $table.stock,
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get sold => $composableBuilder(
+    column: $table.sold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get spoilage => $composableBuilder(
+    column: $table.spoilage,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1296,23 +2165,38 @@ class $$ItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get description => $composableBuilder(
-    column: $table.description,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<double> get price => $composableBuilder(
-    column: $table.price,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get stock => $composableBuilder(
     column: $table.stock,
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get sold => $composableBuilder(
+    column: $table.sold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get spoilage => $composableBuilder(
+    column: $table.spoilage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -1332,19 +2216,28 @@ class $$ItemsTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get description => $composableBuilder(
-    column: $table.description,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<double> get price =>
-      $composableBuilder(column: $table.price, builder: (column) => column);
-
   GeneratedColumn<int> get stock =>
       $composableBuilder(column: $table.stock, builder: (column) => column);
 
+  GeneratedColumn<int> get sold =>
+      $composableBuilder(column: $table.sold, builder: (column) => column);
+
+  GeneratedColumn<int> get spoilage =>
+      $composableBuilder(column: $table.spoilage, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 }
 
 class $$ItemsTableTableManager
@@ -1377,33 +2270,45 @@ class $$ItemsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<String?> description = const Value.absent(),
-                Value<double> price = const Value.absent(),
                 Value<int> stock = const Value.absent(),
+                Value<int> sold = const Value.absent(),
+                Value<int> spoilage = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
               }) => ItemsCompanion(
                 id: id,
                 name: name,
-                description: description,
-                price: price,
                 stock: stock,
+                sold: sold,
+                spoilage: spoilage,
                 createdAt: createdAt,
+                lastUpdated: lastUpdated,
+                isSynced: isSynced,
+                isDeleted: isDeleted,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required String name,
-                Value<String?> description = const Value.absent(),
-                Value<double> price = const Value.absent(),
                 Value<int> stock = const Value.absent(),
+                Value<int> sold = const Value.absent(),
+                Value<int> spoilage = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
               }) => ItemsCompanion.insert(
                 id: id,
                 name: name,
-                description: description,
-                price: price,
                 stock: stock,
+                sold: sold,
+                spoilage: spoilage,
                 createdAt: createdAt,
+                lastUpdated: lastUpdated,
+                isSynced: isSynced,
+                isDeleted: isDeleted,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -1430,14 +2335,40 @@ typedef $$ItemsTableProcessedTableManager =
 typedef $$RolesTableCreateCompanionBuilder =
     RolesCompanion Function({
       Value<int> id,
-      required String roleName,
+      required String name,
       Value<String?> description,
+      Value<bool> canViewInventory,
+      Value<bool> canAddInventory,
+      Value<bool> canEditInventory,
+      Value<bool> canDeleteInventory,
+      Value<bool> canViewReports,
+      Value<bool> canExportData,
+      Value<bool> canAccessSettings,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastUpdated,
+      Value<bool> isSystemRole,
+      Value<bool> isActive,
+      Value<bool> canManageEmployees,
+      Value<bool> canManageRoles,
     });
 typedef $$RolesTableUpdateCompanionBuilder =
     RolesCompanion Function({
       Value<int> id,
-      Value<String> roleName,
+      Value<String> name,
       Value<String?> description,
+      Value<bool> canViewInventory,
+      Value<bool> canAddInventory,
+      Value<bool> canEditInventory,
+      Value<bool> canDeleteInventory,
+      Value<bool> canViewReports,
+      Value<bool> canExportData,
+      Value<bool> canAccessSettings,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastUpdated,
+      Value<bool> isSystemRole,
+      Value<bool> isActive,
+      Value<bool> canManageEmployees,
+      Value<bool> canManageRoles,
     });
 
 final class $$RolesTableReferences
@@ -1477,13 +2408,78 @@ class $$RolesTableFilterComposer extends Composer<_$AppDatabase, $RolesTable> {
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get roleName => $composableBuilder(
-    column: $table.roleName,
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
     builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canViewInventory => $composableBuilder(
+    column: $table.canViewInventory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canAddInventory => $composableBuilder(
+    column: $table.canAddInventory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canEditInventory => $composableBuilder(
+    column: $table.canEditInventory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canDeleteInventory => $composableBuilder(
+    column: $table.canDeleteInventory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canViewReports => $composableBuilder(
+    column: $table.canViewReports,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canExportData => $composableBuilder(
+    column: $table.canExportData,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canAccessSettings => $composableBuilder(
+    column: $table.canAccessSettings,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSystemRole => $composableBuilder(
+    column: $table.isSystemRole,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canManageEmployees => $composableBuilder(
+    column: $table.canManageEmployees,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get canManageRoles => $composableBuilder(
+    column: $table.canManageRoles,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1527,13 +2523,78 @@ class $$RolesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get roleName => $composableBuilder(
-    column: $table.roleName,
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
     builder: (column) => ColumnOrderings(column),
   );
 
   ColumnOrderings<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get canViewInventory => $composableBuilder(
+    column: $table.canViewInventory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get canAddInventory => $composableBuilder(
+    column: $table.canAddInventory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get canEditInventory => $composableBuilder(
+    column: $table.canEditInventory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get canDeleteInventory => $composableBuilder(
+    column: $table.canDeleteInventory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get canViewReports => $composableBuilder(
+    column: $table.canViewReports,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get canExportData => $composableBuilder(
+    column: $table.canExportData,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get canAccessSettings => $composableBuilder(
+    column: $table.canAccessSettings,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSystemRole => $composableBuilder(
+    column: $table.isSystemRole,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get canManageEmployees => $composableBuilder(
+    column: $table.canManageEmployees,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get canManageRoles => $composableBuilder(
+    column: $table.canManageRoles,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -1550,11 +2611,72 @@ class $$RolesTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get roleName =>
-      $composableBuilder(column: $table.roleName, builder: (column) => column);
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
 
   GeneratedColumn<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get canViewInventory => $composableBuilder(
+    column: $table.canViewInventory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get canAddInventory => $composableBuilder(
+    column: $table.canAddInventory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get canEditInventory => $composableBuilder(
+    column: $table.canEditInventory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get canDeleteInventory => $composableBuilder(
+    column: $table.canDeleteInventory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get canViewReports => $composableBuilder(
+    column: $table.canViewReports,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get canExportData => $composableBuilder(
+    column: $table.canExportData,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get canAccessSettings => $composableBuilder(
+    column: $table.canAccessSettings,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isSystemRole => $composableBuilder(
+    column: $table.isSystemRole,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get canManageEmployees => $composableBuilder(
+    column: $table.canManageEmployees,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get canManageRoles => $composableBuilder(
+    column: $table.canManageRoles,
     builder: (column) => column,
   );
 
@@ -1613,22 +2735,74 @@ class $$RolesTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<String> roleName = const Value.absent(),
+                Value<String> name = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<bool> canViewInventory = const Value.absent(),
+                Value<bool> canAddInventory = const Value.absent(),
+                Value<bool> canEditInventory = const Value.absent(),
+                Value<bool> canDeleteInventory = const Value.absent(),
+                Value<bool> canViewReports = const Value.absent(),
+                Value<bool> canExportData = const Value.absent(),
+                Value<bool> canAccessSettings = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isSystemRole = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<bool> canManageEmployees = const Value.absent(),
+                Value<bool> canManageRoles = const Value.absent(),
               }) => RolesCompanion(
                 id: id,
-                roleName: roleName,
+                name: name,
                 description: description,
+                canViewInventory: canViewInventory,
+                canAddInventory: canAddInventory,
+                canEditInventory: canEditInventory,
+                canDeleteInventory: canDeleteInventory,
+                canViewReports: canViewReports,
+                canExportData: canExportData,
+                canAccessSettings: canAccessSettings,
+                createdAt: createdAt,
+                lastUpdated: lastUpdated,
+                isSystemRole: isSystemRole,
+                isActive: isActive,
+                canManageEmployees: canManageEmployees,
+                canManageRoles: canManageRoles,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                required String roleName,
+                required String name,
                 Value<String?> description = const Value.absent(),
+                Value<bool> canViewInventory = const Value.absent(),
+                Value<bool> canAddInventory = const Value.absent(),
+                Value<bool> canEditInventory = const Value.absent(),
+                Value<bool> canDeleteInventory = const Value.absent(),
+                Value<bool> canViewReports = const Value.absent(),
+                Value<bool> canExportData = const Value.absent(),
+                Value<bool> canAccessSettings = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isSystemRole = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<bool> canManageEmployees = const Value.absent(),
+                Value<bool> canManageRoles = const Value.absent(),
               }) => RolesCompanion.insert(
                 id: id,
-                roleName: roleName,
+                name: name,
                 description: description,
+                canViewInventory: canViewInventory,
+                canAddInventory: canAddInventory,
+                canEditInventory: canEditInventory,
+                canDeleteInventory: canDeleteInventory,
+                canViewReports: canViewReports,
+                canExportData: canExportData,
+                canAccessSettings: canAccessSettings,
+                createdAt: createdAt,
+                lastUpdated: lastUpdated,
+                isSystemRole: isSystemRole,
+                isActive: isActive,
+                canManageEmployees: canManageEmployees,
+                canManageRoles: canManageRoles,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import 'package:chickenjoo_inventory/data/local/app_database.dart'; // ADDED: Access Drift tables.
-import 'package:chickenjoo_inventory/data/database_provider.dart';
+import 'package:chickenjoo_inventory/database/app_database.dart'; // ADDED: Access Drift tables.
+import 'package:chickenjoo_inventory/database/database_provider.dart' as provider;
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
+
 import 'package:drift/drift.dart' show Value;
 
 class EmployeePage extends StatefulWidget {
@@ -42,13 +43,13 @@ class _EmployeePageState extends State<EmployeePage> {
 
       // Apply role filter first
       if (_selectedRoleFilter != null) {
-        list = list.where((user) => user.role == _selectedRoleFilter).toList();
+        list = list.where((user) => user.roleId == _selectedRoleFilter).toList();
       }
 
       // Then apply sorting
       switch (_currentEmployeeSort.field) {
         case EmployeeSortField.name:
-          list.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+          list.sort((a, b) => (a.username ?? '').compareTo(b.username ?? ''));
           break;
         case EmployeeSortField.email:
           list.sort((a, b) => a.email.compareTo(b.email));
@@ -68,16 +69,16 @@ class _EmployeePageState extends State<EmployeePage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.instance;
+    db = provider.DatabaseProvider.instance;
 
-    _usersSub = db.watchAllUsers().listen((users) {
+    _usersSub = db.usersDao.watchAllUsers().listen((users) {
       setState(() {
         _users = users;
         _isLoading = false;
       });
     });
 
-    _rolesSub = db.watchAllRoles().listen((roles) {
+    _rolesSub = db.rolesDao.watchAllRoles().listen((roles) {
       setState(() {
         _roles = roles;
         _isLoading = false;
@@ -151,6 +152,8 @@ class _EmployeePageState extends State<EmployeePage> {
               final email = employeeEmail.text.trim();
               final phone = employeePN.text.trim();
               final password = employeePassword.text;
+              final role = await db.rolesDao.getRoleByName(selectedRole!);
+              if (role == null) throw Exception('Role not found');
 
               if (name.isEmpty || email.isEmpty || password.isEmpty || selectedRole == null) {
                 messenger.showSnackBar(
@@ -160,13 +163,13 @@ class _EmployeePageState extends State<EmployeePage> {
               }
 
               try {
-                await db.insertUser(
+                await db.usersDao.insertUser(
                   UsersCompanion.insert(
                     email: email,
-                    name: Value(name),
+                    username: name,
                     phone: Value(phone.isEmpty ? null : phone),
                     password: password,
-                    role: selectedRole!,
+                    roleId: role.id,
                   ),
                 );
                 if (!navigator.mounted || !messenger.mounted) return;
@@ -194,7 +197,7 @@ class _EmployeePageState extends State<EmployeePage> {
 
     switch (sort.field) {
       case EmployeeSortField.name:
-        _users.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+        _users.sort((a, b) => (a.username ?? '').compareTo(b.username ?? ''));
         break;
       case EmployeeSortField.email:
         _users.sort((a, b) => a.email.compareTo(b.email));
@@ -220,8 +223,8 @@ void _applyRoleSort(RoleSort sort) {
         break;
       case RoleSortField.employees:
         _roles.sort((a, b) {
-          final countA = _users.where((u) => u.role == a.name).length;
-          final countB = _users.where((u) => u.role == b.name).length;
+          final countA = _users.where((u) => u.roleId == a.name).length;
+          final countB = _users.where((u) => u.roleId == b.name).length;
           return countA.compareTo(countB);
         });
         break;
@@ -339,7 +342,7 @@ void _applyRoleSort(RoleSort sort) {
               }
 
               try {
-                await db.insertRole(_buildRoleCompanion(name, access));
+                await db.rolesDao.insertRole(_buildRoleCompanion(name, access));
                 if (!navigator.mounted || !messenger.mounted) return;
                 navigator.pop();
                 messenger.showSnackBar(
@@ -490,29 +493,34 @@ Widget _buildEmployeeTable() {
                 
                 return DataRow(
                   cells: [
-                    DataCell(cell(user.name)),
+                    DataCell(cell(user.username)),
                     DataCell(cell(user.email)),
                     DataCell(cell(user.phone)),
                     DataCell(
                       SizedBox(
                         width: isSmall ? 100 : 180,
                         child: _roles.isEmpty
-                            ? const Text('No roles', style: TextStyle(color: Colors.grey))
-                            : DropdownButton<String>(
-                                isDense: true,
-                                isExpanded: true,
-                                value: user.role,
-                                items: _roles
-                                    .map((role) => DropdownMenuItem<String>(
-                                          value: role.name,
-                                          child: Text(
-                                            role.name,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ))
-                                    .toList(),
-                                onChanged: (value) => _assignRole(user, value),
-                              ),
+    ? const Text('No roles', style: TextStyle(color: Colors.grey))
+    : DropdownButton<int>(
+        isDense: true,
+        isExpanded: true,
+        // use roleId as value
+        value: user.roleId,
+        items: _roles
+            .map((role) => DropdownMenuItem<int>(
+                  value: role.id, // role.id is int
+                  child: Text(
+                    role.name,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ))
+            .toList(),
+        onChanged: (int? newRoleId) async {
+          if (newRoleId == null) return;
+          await _assignRole(user, newRoleId);
+        },
+      ),
+
                       ),
                     ),
                     DataCell(
@@ -552,7 +560,7 @@ Widget _buildEmployeeTable() {
               final messenger = ScaffoldMessenger.of(dialogContext);
               final navigator = Navigator.of(dialogContext);
               try {
-                await db.deleteUserById(user.id);
+                await db.usersDao.deleteUserById(user.id);
                 if (!navigator.mounted || !messenger.mounted) return;
                 navigator.pop();
                 messenger.showSnackBar(
@@ -645,7 +653,7 @@ Widget _buildRoleTable() {
                   }
                 }
 
-                final userCount = _users.where((user) => user.role == role.name).length;
+                final userCount = _users.where((user) => user.roleId == role.name).length;
 
                 Widget cell(String value) {
                     return SizedBox(
@@ -717,10 +725,10 @@ Widget _buildRoleTable() {
               final dialogContext = context;
               final messenger = ScaffoldMessenger.of(dialogContext);
               final navigator = Navigator.of(dialogContext);
-              final success = await db.deleteRoleById(role.id);
+              final success = await db.rolesDao.deleteRoleById(role.id);
               if (!navigator.mounted || !messenger.mounted) return;
               navigator.pop();
-              if (success) {
+              if (success == 0) {
                 messenger.showSnackBar(
                   SnackBar(content: Text('Role "${role.name}" deleted.')),
                 );
@@ -737,24 +745,23 @@ Widget _buildRoleTable() {
     );
   }
 
-  Future<void> _assignRole(User user, String? roleName) async {
-    if (roleName == null || roleName == user.role) return;
+  Future<void> _assignRole(User user, int roleId) async {
+  final messenger = ScaffoldMessenger.of(context);
 
-    final messenger = ScaffoldMessenger.of(context);
-
-    try {
-      await db.assignRoleToUser(user.id, roleName);
-      if (!mounted || !messenger.mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Updated ${user.email} to $roleName.')),
-      );
-    } on Exception catch (e) {
-      if (!messenger.mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Failed to update role: ${e.toString()}')),
-      );
-    }
+  try {
+    await db.usersDao.assignRoleToUser(user.id, roleId);
+    if (!mounted || !messenger.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text('Updated ${user.email} role.')),
+    );
+  } on Exception catch (e) {
+    if (!messenger.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(content: Text('Failed to update role: ${e.toString()}')),
+    );
   }
+}
+
 
 // Tab Builder
   Widget _buildTab(String label, int index) {

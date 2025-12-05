@@ -1,32 +1,14 @@
-// lib/database/tables/items.dart
 import 'package:drift/drift.dart';
 
 class Items extends Table {
   IntColumn get id => integer().autoIncrement()();
-
-  TextColumn get name => text().withLength(min: 1, max: 255)();
-
-  // Optional description for better inventory tracking
-  TextColumn get description => text().nullable().withLength(max: 1000)();
-
-  // SKU/Barcode for product identification
-  TextColumn get sku => text().nullable().withLength(max: 100)();
-
-  // current stock count
+  TextColumn get name => text()();
   IntColumn get stock => integer().withDefault(const Constant(0))();
-
-  // Separate creation and update timestamps
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get lastUpdated => dateTime().withDefault(currentDateAndTime)();
-
-  // Synced flag for remote sync processes
+  IntColumn get sold => integer().withDefault(const Constant(0))();  // ✅ default 0
+  IntColumn get spoilage => integer().withDefault(const Constant(0))(); // ✅ default 0
+  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
+  DateTimeColumn get lastUpdated => dateTime().clientDefault(() => DateTime.now())();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
-
-  // Soft delete flag instead of hard deletes
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
-
-  @override
-  List<Set<Column>>? get uniqueKeys => [
-        {sku}, // SKU should be unique if provided
-      ];
 }
+

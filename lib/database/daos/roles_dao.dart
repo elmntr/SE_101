@@ -18,4 +18,13 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
 
   Future<int> deleteRoleById(int id) =>
       (delete(roles)..where((t) => t.id.equals(id))).go();
+
+  Future<Role?> getRoleByName(String roleName) async {
+    return (select(roles)..where((r) => r.name.equals(roleName)))
+        .getSingleOrNull();
+  }
+
+  Future<Role?> getRoleById(int id) {
+    return (select(roles)..where((r) => r.id.equals(id))).getSingleOrNull();
+  }
 }

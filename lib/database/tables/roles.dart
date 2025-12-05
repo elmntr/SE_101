@@ -29,4 +29,9 @@ class Roles extends Table {
 
   // Soft delete
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+
+  // Employee & role management permissions
+BoolColumn get canManageEmployees => boolean().withDefault(const Constant(false))();
+BoolColumn get canManageRoles => boolean().withDefault(const Constant(false))();
+
 }

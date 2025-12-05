@@ -32,4 +32,16 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       return UserWithRole(user: u, role: r);
     }).toList();
   }
+  // ✅ NEW: authenticate method
+  Future<User?> authenticate(String email, String password) {
+    return (select(users)
+          ..where((u) => u.email.equals(email) & u.password.equals(password)))
+        .getSingleOrNull();
+  }
+  Future<int> assignRoleToUser(int userId, int roleId) {
+  return (update(users)..where((tbl) => tbl.id.equals(userId))).write(
+    UsersCompanion(roleId: Value(roleId)),
+  );
+}
+
 }

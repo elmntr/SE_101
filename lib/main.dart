@@ -2,23 +2,106 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_size/window_size.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import 'package:chickenjoo_inventory/data/database_provider.dart';
-import 'package:chickenjoo_inventory/data/local/app_database.dart';
+
+import 'package:chickenjoo_inventory/database/database_provider.dart';
+import 'package:chickenjoo_inventory/database/app_database.dart';
+import 'package:drift/drift.dart' as drift; // <- needed for Value<>
+
 import 'home.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ LOCK WINDOW SIZE (DESKTOP ONLY)
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     setWindowTitle('Chicken Joo Inventory');
     setWindowMinSize(const Size(1280, 720));
     setWindowMaxSize(const Size(1920, 1080)); 
   }
+  
+  
 
   runApp(const MyApp());
 }
+Future<void> seedTestEmployee(AppDatabase db) async {
+  // Check if role already exists
+  final existingRoles = await db.rolesDao.getAllRoles();
+  Role? employeeRole = existingRoles.firstWhere(
+    (r) => r.name == 'employee',
+    orElse: () => Role(
+      id: 0,
+      name: 'employee',
+      description: 'Test Employee Role',
+      canViewInventory: true,
+      canAddInventory: true,
+      canEditInventory: true,
+      canDeleteInventory: false,
+      canViewReports: false,
+      canExportData: false,
+      canAccessSettings: false,
+      isSystemRole: false,
+      isActive: true,
+      
+      createdAt: DateTime.now(),
+      lastUpdated: DateTime.now(),
+      canManageEmployees: false,
+      canManageRoles: false
+    ),
+  );
 
+  // Insert the role if it didn’t exist
+  if (employeeRole.id == 0) {
+    final roleId = await db.rolesDao.insertRole(
+      RolesCompanion.insert(
+        name: 'employee',
+        description: drift.Value('Test Employee Role'),
+        canViewInventory: drift.Value(true),
+        canAddInventory: drift.Value(true),
+        canEditInventory: drift.Value(true),
+        canDeleteInventory: drift.Value(false),
+        canViewReports: drift.Value(false),
+        canExportData: drift.Value(false),
+        canAccessSettings: drift.Value(false),
+      ),
+    );
+
+    employeeRole = (await db.rolesDao.getAllRoles())
+        .firstWhere((r) => r.id == roleId);
+  }
+
+  // Check if user exists
+  final users = await db.usersDao.getAllUsers();
+  final existingUser =
+      users.firstWhere((u) => u.username == 'test_employee', orElse: () => User(
+        id: 0,
+        username: 'test_employee',
+        email: 'employee@test.com',
+        password: '123456',
+        phone: '',
+        roleId: employeeRole!.id,
+        isActive: true,
+        createdAt: DateTime.now(),
+        lastUpdated: DateTime.now(),
+      ));
+       // 2️⃣ Insert a test employee user
+  final existingUsers = await db.usersDao.getAllUsers();
+  final alreadyExists = existingUsers.any((u) => u.username == 'employee');
+
+  if (!alreadyExists) {
+    await db.usersDao.insertUser(
+      UsersCompanion.insert(
+        username: 'employee',
+        email: 'employee@example.com',
+        password: 'password123',
+        roleId: employeeRole.id, // ✅ non-null
+        isActive: drift.Value(true),
+      ),
+    );
+  }
+
+  
+
+  print('✅ Test employee account created: test_employee / 123456');
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -49,13 +132,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isSubmitting = false;
+
+  // Use the new AppDatabase instance
   late final AppDatabase _db;
 
   @override
   void initState() {
     super.initState();
     _db = DatabaseProvider.instance;
-    Future.microtask(() async => _db.seedDefaultAccounts());
+
+    // Seed default accounts using the new DAO method
+    Future.microtask(() async {
+      await _db.usersDao.getAllUsers();
+    });
   }
 
   @override
@@ -78,7 +167,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isSubmitting = true);
 
-    final user = await _db.authenticateUser(email, password);
+    // Authenticate user using the new UsersDao function
+    final user = await _db.usersDao.authenticate(email, password);
 
     if (!mounted) return;
 
@@ -100,6 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -250,8 +341,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-      
     );
-    
   }
 }

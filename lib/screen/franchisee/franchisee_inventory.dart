@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import '../../../data/local/app_database.dart';
-import '../../../data/database_provider.dart';
+import '../../../database/app_database.dart';
+import '../../../database/database_provider.dart';
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 
 class InventoryPage extends StatefulWidget {
@@ -32,7 +32,7 @@ class _InventoryPageState extends State<InventoryPage> {
 
   // ✅ Fixed: properly structured and functional
   Future<void> _loadItems() async {
-    final refreshed = await db.getAllItems();
+    final refreshed = await db.itemsDao.getAllItems();
     setState(() => items = refreshed);
   }
 

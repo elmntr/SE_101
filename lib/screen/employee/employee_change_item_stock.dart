@@ -1,8 +1,8 @@
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../data/local/app_database.dart';
-import '../../../data/database_provider.dart';
+import '../../../database/app_database.dart';
+import '../../../database/database_provider.dart';
 import '../../design_constants.dart';
 
 class EmployeeChangeStockPage extends StatefulWidget {
@@ -16,7 +16,8 @@ class EmployeeChangeStockPage extends StatefulWidget {
   });
 
   @override
-  State<EmployeeChangeStockPage> createState() => _EmployeeChangeStockPageState();
+  State<EmployeeChangeStockPage> createState() =>
+      _EmployeeChangeStockPageState();
 }
 
 class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
@@ -27,8 +28,6 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   late List<String> selectedReasons;
   late List<TextEditingController> qtyControllers;
 
-  
-
   @override
   void initState() {
     super.initState();
@@ -38,58 +37,58 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
 
   @override
   void dispose() {
-    // dispose controllers if initialized
-    try {
-      for (var c in qtyControllers) {
-        c.dispose();
-      }
-    } catch (_) {}
+    for (var c in qtyControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _loadItems() async {
-    final loaded = await db.getAllItems();
+    final loaded = await db.itemsDao.getAllItems();
     setState(() {
       items = loaded;
       selectedReasons = loaded
           .map((item) => item.sold > 0 ? 'Sale' : 'Spoilage')
           .toList();
-      isLoading = false;
       qtyControllers = loaded
           .map((item) => TextEditingController(
               text: item.sold > 0
                   ? item.sold.toString()
                   : (item.spoilage > 0 ? item.spoilage.toString() : '')))
           .toList();
+      isLoading = false;
     });
   }
 
-  int get totalSold => items.fold(0, (sum, item) => sum + item.sold);
-  int get totalSpoiled => items.fold(0, (sum, item) => sum + item.spoilage);
+  int get totalSold => items.fold(0, (sum, i) => sum + i.sold);
+  int get totalSpoiled => items.fold(0, (sum, i) => sum + i.spoilage);
 
-  void _saveChanges() {
-    // Validate controllers: ensure only digits or empty
+  Future<void> _saveChanges() async {
+    // Validate input
     for (var c in qtyControllers) {
       final txt = c.text.trim();
-        if (txt.isNotEmpty && !RegExp(r'^\d+$').hasMatch(txt)) {
+      if (txt.isNotEmpty && !RegExp(r'^\d+$').hasMatch(txt)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please enter only numbers for quantities.'),
-            backgroundColor: Colors.red,
-          ),
+              content: Text('Please enter only numbers for quantities.'),
+              backgroundColor: Colors.red),
         );
         return;
       }
     }
 
-    // Update items from controllers before creating record
+    // Update database
     for (int i = 0; i < items.length; i++) {
-      final txt = qtyControllers[i].text.trim();
-      final qty = txt.isEmpty ? 0 : int.tryParse(txt) ?? 0;
+      final qty = int.tryParse(qtyControllers[i].text.trim()) ?? 0;
+
       if (selectedReasons[i] == 'Sale') {
-        items[i] = items[i].copyWith(sold: qty);
+        final updated = items[i].copyWith(sold: qty);
+        await db.itemsDao.updateItem(updated);
+        items[i] = updated;
       } else {
-        items[i] = items[i].copyWith(spoilage: qty);
+        final updated = items[i].copyWith(spoilage: qty);
+        await db.itemsDao.updateItem(updated);
+        items[i] = updated;
       }
     }
 
@@ -99,32 +98,27 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
       items: List.from(items.map((i) => i.copyWith())),
     );
 
-    // Reset sold/spoilage
+    // Reset UI
     setState(() {
       items = items.map((i) => i.copyWith(sold: 0, spoilage: 0)).toList();
-      selectedReasons = items.map((i) => "Sale").toList();
-      // clear controllers
+      selectedReasons = items.map((i) => 'Sale').toList();
       for (var c in qtyControllers) {
         c.text = '';
       }
     });
 
-    // Send record back (if a handler was provided)
     widget.onRecordSaved?.call(record);
-
-    // Go back to main page
     widget.onBack();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Changes sent for review!"), backgroundColor: Colors.green),
+      const SnackBar(
+          content: Text("Changes sent for review!"),
+          backgroundColor: Colors.green),
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
-    
     if (isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -132,37 +126,26 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     }
 
     return Scaffold(
-
-      backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+      backgroundColor: const Color(0xFFEEEEEE),
       body: Column(
         children: [
+          // Header
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-            ),
             child: Row(
               children: [
                 IconButton(
                   onPressed: widget.onBack,
-                  icon: const Icon(Icons.arrow_back,
-                      size: 30),
+                  icon: const Icon(Icons.arrow_back, size: 30),
                 ),
-
                 const SizedBox(width: 10),
-
                 const Text(
                   "Change Item Stock",
-                  style: TextStyle(
-                    fontFamily: fontAll,
-                    fontSize: 25,
-                  ),
+                  style: TextStyle(fontFamily: fontAll, fontSize: 25),
                 ),
-
                 const Spacer(),
-
                 IconButton(
-                  icon: const Icon(Icons.notifications_outlined,
-                      size: 35,),
+                  icon: const Icon(Icons.notifications_outlined, size: 35),
                   onPressed: () {},
                 ),
               ],
@@ -170,13 +153,11 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
           ),
 
           // Employee Info
-          const SizedBox(width: 16),
           Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12)),
+                color: Colors.white, borderRadius: BorderRadius.circular(12)),
             child: const Row(
               children: [
                 Expanded(
@@ -201,7 +182,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             ),
           ),
 
-          // Table Header
+          // Table header
           Container(
             color: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -221,9 +202,8 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             ),
           ),
 
-          // Items List
+          // Items list
           Expanded(
-
             child: ListView.builder(
               itemCount: items.length,
               itemBuilder: (context, index) {
@@ -233,18 +213,16 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                 return Container(
                   decoration: const BoxDecoration(
                       color: Colors.white,
-                      border: Border(
-                          bottom: BorderSide(color: Colors.grey))),
+                      border: Border(bottom: BorderSide(color: Colors.grey))),
                   child: Row(
                     children: [
                       Expanded(
-                          flex: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                            child: Text(item.name),
-                          )),
-
-                      // Reason
+                        flex: 3,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                          child: Text(item.name),
+                        ),
+                      ),
                       Expanded(
                         flex: 2,
                         child: DropdownButton<String>(
@@ -265,16 +243,11 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                               } else {
                                 items[index] = item.copyWith(sold: 0);
                               }
-                              // clear qty input when reason changes
-                              try {
-                                qtyControllers[index].text = '';
-                              } catch (_) {}
+                              qtyControllers[index].text = '';
                             });
                           },
                         ),
                       ),
-
-                      // Qty Input
                       Expanded(
                         flex: 2,
                         child: TextField(
@@ -299,7 +272,6 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                           },
                         ),
                       ),
-
                       Expanded(flex: 2, child: Center(child: Text(item.stock.toString()))),
                       Expanded(child: Center(child: Text(item.sold.toString()))),
                       Expanded(child: Center(child: Text(item.spoilage.toString()))),

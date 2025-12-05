@@ -3,8 +3,8 @@ import 'package:chickenjoo_inventory/screen/employee/employee_review_changes_pag
 import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import '../../../data/local/app_database.dart'; // ✅ your Drift DB
-import "../../../data/database_provider.dart";
+import '../../../database/app_database.dart';
+import "../../../database/database_provider.dart";
 import 'package:drift/drift.dart' show Value;
 import 'employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
@@ -50,73 +50,19 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     });
   }
 
+  // ✅ Load items from database
   Future<void> _loadItems() async {
-    final items = await db.getAllItems();
+    final items = await db.itemsDao.getAllItems();;
     setState(() {
       dbItems = items;
     });
   }
 
-  void _applyItemSort(ItemSort sort) {
-  setState(() {
-    _currentSort = sort;
-
-    switch (sort.field) {
-      case ItemSortField.date:
-        dbItems.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
-        break;
-
-      case ItemSortField.name:
-        dbItems.sort((a, b) => a.name.compareTo(b.name));
-        break;
-
-      case ItemSortField.stock:
-        dbItems.sort((a, b) => a.stock.compareTo(b.stock));
-        break;
-
-      case ItemSortField.sale:
-        dbItems.sort((a, b) => a.sold.compareTo(b.sold));
-        break;
-
-      case ItemSortField.spoilage:
-        dbItems.sort((a, b) => b.spoilage.compareTo(a.spoilage));
-        break;
-    }
-
-    if (sort.order == SortOrder.desc) {
-      dbItems = dbItems.reversed.toList();
-    }
-
-  });
-}
-
-void _applyReviewSort(ReviewSort sort) {
-  setState(() {
-    _reviewSort = sort;
-
-    switch (sort.field) {
-      case ReviewSortField.employee:
-        reviewChanges.sort((a, b) => a.employeeName.compareTo(b.employeeName));
-        break;
-      case ReviewSortField.role:
-        reviewChanges.sort((a, b) => a.role.compareTo(b.role));
-        break;
-
-      case ReviewSortField.changes:
-        reviewChanges.sort((a, b) => b.totalChanges.compareTo(a.totalChanges));
-        break;
-    }
-    
-    if (sort.order == SortOrder.desc) {
-      reviewChanges = reviewChanges.reversed.toList();
-    }
-
-  });
-}
+  
 
 
 
-  // ✅ ADD ITEM POPUP (connected to DB)
+  // ✅ ADD ITEM POPUP (using db.insertItem)
   void _createItem() {
     final TextEditingController name = TextEditingController();
     final TextEditingController stock = TextEditingController();
@@ -148,10 +94,12 @@ void _applyReviewSort(ReviewSort sort) {
             onPressed: () async {
               if (name.text.isEmpty || stock.text.isEmpty) return;
 
-              await db.insertItem(ItemsCompanion.insert(
-                name: name.text,
-                stock: Value(int.tryParse(stock.text) ?? 0),
-              ));
+              // ✅ Using db.insertItem from app_database.dart
+              await db.itemsDao.insertItem(
+                  name: name.text,
+                  stock: int.tryParse(stock.text) ?? 0,
+              );
+
 
               Navigator.pop(context);
               _loadItems(); // ✅ refresh UI
@@ -185,22 +133,35 @@ void _applyReviewSort(ReviewSort sort) {
     );
   }
 
-  // ✅ Item Table Widget with "Add Item" button
+  // ✅ Item Table Widget
   Widget _buildItemTable() {
   return LayoutBuilder(
     builder: (context, constraints) {
       final isSmall = constraints.maxWidth < 800;
+
       Widget header(String value) {
         return SizedBox(
-          width: isSmall ? 60 : 80,
+          width: isSmall ? 60 : 100,
+          child: Text(
+            value,
+            maxLines: null,
+            softWrap: true,
+            overflow: TextOverflow.fade,
+            style: const TextStyle(fontFamily: fontAll, color: Colors.red),
+          ),
+        );
+      }
 
-            child: Text(
-              value,
-              maxLines: null,                   // ✅ 2–3 lines visible
-              softWrap: true,
-              overflow: TextOverflow.fade,
-              style: const TextStyle(fontFamily: fontAll, color: Colors.red),
-            ),
+      Widget cell(String value) {
+        return SizedBox(
+          width: isSmall ? 80 : double.infinity,
+          child: Text(
+            value,
+            maxLines: null,
+            softWrap: true,
+            overflow: TextOverflow.fade,
+            style: const TextStyle(fontFamily: fontAll),
+          ),
         );
       }
 
@@ -208,62 +169,40 @@ void _applyReviewSort(ReviewSort sort) {
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
           constraints: BoxConstraints(minWidth: constraints.maxWidth),
-          child: DataTable(
-            headingRowHeight: 48,
-            columnSpacing: isSmall ? 10 : 60,
-            horizontalMargin: isSmall ? 12 : 24,
-            dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
-            dataRowMaxHeight: double.infinity,
-
-            columns: [
-              DataColumn(
-                  label: header("Item Name")),
-              DataColumn(
-                  label: header("Stock")),
-              DataColumn(
-                   label: header("Sale")),
-              DataColumn(
-                   label: header("Spoilage")),
-              DataColumn( label: header("")),
-            ],
-
-            rows: List.generate(dbItems.length, (i) {
-              final item = dbItems[i];
-
-               Widget cell(String value) {
-                return SizedBox(
-                  width: isSmall ? 60 : double.infinity,
-
-                    child: Text(
-                      value,
-                      maxLines: null,                   // ✅ 2–3 lines visible
-                      softWrap: true,
-                      overflow: TextOverflow.fade,
-                      style: const TextStyle(fontFamily: fontAll),
-                    ),
-                );
-              }
-
-              return DataRow(cells: [
-                DataCell(cell(item.name)),
-                DataCell(cell(item.stock.toString())),
-                DataCell(cell(item.sold.toString())),
-                DataCell(cell(item.spoilage.toString())),
-                DataCell(
-                  SizedBox(
-                    width: double.infinity,
-                    child: IconButton(
-                        icon:
-                            const Icon(Icons.delete, color: Colors.red),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: DataTable(
+              columnSpacing: isSmall ? 10 : 60,
+              horizontalMargin: isSmall ? 12 : 24,
+              dataRowMinHeight: kMinInteractiveDimension,
+              dataRowMaxHeight: double.infinity,
+              columns: [
+                DataColumn(label: header("Item Name")),
+                DataColumn(label: header("Stock")),
+                DataColumn(label: header("Sale")),
+                DataColumn(label: header("Spoilage")),
+                DataColumn(label: header("")),
+              ],
+              rows: dbItems.map((item) {
+                return DataRow(
+                  cells: [
+                    DataCell(cell(item.name)),
+                    DataCell(cell(item.stock.toString())),
+                    DataCell(cell(item.sold.toString())),
+                    DataCell(cell(item.spoilage.toString())),
+                    DataCell(
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () async {
-                          await db.deleteItemById(item.id);
-                          _loadItems();
+                          await db.itemsDao.deleteItem(item.id); // DAO call
+                          _loadItems(); // refresh
                         },
+                      ),
                     ),
-                  ),
-                ),
-              ]);
-            }),
+                  ],
+                );
+              }).toList(),
+            ),
           ),
         ),
       );
@@ -272,9 +211,10 @@ void _applyReviewSort(ReviewSort sort) {
 }
 
 
+
   
 
-  // ✅ Category Table Widget with "Add Category" button
+  // ✅ Category Table Widget (Review Changes)
   Widget _buildCategoryTable() {
   return LayoutBuilder(
     builder: (context, constraints) {
@@ -285,7 +225,7 @@ void _applyReviewSort(ReviewSort sort) {
 
             child: Text(
               value,
-              maxLines: null,                   // ✅ 2–3 lines visible
+              maxLines: null,
               softWrap: true,
               overflow: TextOverflow.fade,
               style: const TextStyle(fontFamily: fontAll, color: Colors.red),
@@ -303,7 +243,7 @@ void _applyReviewSort(ReviewSort sort) {
             headingRowHeight: 48,
             columnSpacing: isSmall ? 10 : 60,
             horizontalMargin: isSmall ? 12 : 24,
-            dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
+            dataRowMinHeight: kMinInteractiveDimension,
             dataRowMaxHeight: double.infinity,
 
             columns: [
@@ -324,7 +264,7 @@ void _applyReviewSort(ReviewSort sort) {
 
                     child: Text(
                       value,
-                      maxLines: null,                   // ✅ 2–3 lines visible
+                      maxLines: null,
                       softWrap: true,
                       overflow: TextOverflow.fade,
                       style: const TextStyle(fontFamily: fontAll),
@@ -510,7 +450,7 @@ Widget build(BuildContext context) {
                       if (selectedTab == 0)
                         PopupMenuButton<ItemSort>(
                           icon: const Icon(Icons.filter_list, size: 28),
-                          onSelected: _applyItemSort,
+                          onSelected: null,
                           itemBuilder: (context) => const [
                             PopupMenuItem(
                               value: ItemSort(ItemSortField.date, SortOrder.desc),
@@ -551,7 +491,7 @@ Widget build(BuildContext context) {
                         else (
                           PopupMenuButton<ReviewSort>(
                             icon: const Icon(Icons.filter_list, size: 28),
-                            onSelected: _applyReviewSort,
+                            onSelected: null,
                             itemBuilder: (context) => const [
 
                               PopupMenuItem(value: ReviewSort(ReviewSortField.employee, SortOrder.desc), child: Text("Employee (A–Z)")),
@@ -693,7 +633,7 @@ Widget build(BuildContext context) {
               if (selectedTab == 0)
                         PopupMenuButton<ItemSort>(
                           icon: const Icon(Icons.filter_list, size: 28),
-                          onSelected: _applyItemSort,
+                          onSelected: null,
                           itemBuilder: (context) => const [
                             PopupMenuItem(
                               value: ItemSort(ItemSortField.date, SortOrder.desc),
@@ -734,7 +674,7 @@ Widget build(BuildContext context) {
                         else (
                           PopupMenuButton<ReviewSort>(
                             icon: const Icon(Icons.filter_list, size: 28),
-                            onSelected: _applyReviewSort,
+                            onSelected: null,
                             itemBuilder: (context) => const [
 
                               PopupMenuItem(value: ReviewSort(ReviewSortField.employee, SortOrder.desc), child: Text("Employee (A–Z)")),
