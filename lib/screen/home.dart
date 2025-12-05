@@ -1,4 +1,5 @@
 import 'package:chickenjoo_inventory/design_constants.dart';
+<<<<<<< HEAD:lib/screen/home.dart
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/data/database_provider.dart';
 import 'package:chickenjoo_inventory/data/local/app_database.dart';
@@ -7,6 +8,17 @@ import 'franchisee/franchisee_inventory.dart';
 import 'franchisee/franchisee_items.dart';
 import 'franchisee/franchisee_employee.dart';
 import 'employee/employee_account.dart';
+=======
+import 'package:chickenjoo_inventory/screen/employee/employee_items.dart';
+import 'package:flutter/material.dart';
+import 'package:chickenjoo_inventory/data/database_provider.dart';
+import 'package:chickenjoo_inventory/data/local/app_database.dart';
+import 'screen/franchisee/franchisee_reports.dart';
+import 'screen/franchisee/franchisee_inventory.dart';
+import 'screen/franchisee/franchisee_items.dart';
+import 'screen/franchisee/franchisee_employee.dart';
+import 'screen/employee/employee_account.dart';
+>>>>>>> 19567b0e9b0ca7696f1fecd036027e82af73f5ac:lib/home.dart
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.signedInUser});
@@ -58,6 +70,79 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (AppLayout.isDesktop(context) == false) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.red.shade400,
+          elevation: 3,
+          centerTitle: true,
+          iconTheme: const IconThemeData(color: Colors.white),
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Icon(Icons.account_circle, color: Colors.white, size: 28),
+            ),
+          ],
+        ),
+        body: currentPage ?? const SizedBox.shrink(),
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.red.shade400,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(imageAll, height: 60),
+                    const SizedBox(height: 10),
+                    const Text(
+                      "Inventory System",
+                      style: TextStyle(
+                        fontFamily: fontAll,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ...List.generate(menuItems.length, (index) {
+                final bool isActive = selectedIndex == index;
+
+                return ListTile(
+                  leading: Icon(
+                    menuItems[index]["icon"],
+                    color: isActive ? Colors.red : Colors.black, // ✅ ICON RED
+                  ),
+                  title: Text(
+                    menuItems[index]["label"],
+                    style: TextStyle(
+                      color: isActive ? Colors.red : Colors.black, // ✅ TEXT RED
+                      fontFamily: fontAll,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+
+                  // ✅ LIGHT RED BACKGROUND LIKE DESKTOP FEEL
+                  tileColor: isActive ? Colors.red.withOpacity(0.08) : null,
+
+                  selected: isActive,
+                  onTap: () {
+                    Navigator.pop(context);
+                    switchPage(index);
+                  },
+                );
+              }),
+
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.grey.shade200,
       appBar: AppBar(
@@ -190,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _buildMenu(Role? role) {
     final List<Map<String, dynamic>> items = [];
     final bool isAdmin = role?.name == 'admin';
+    final bool isEmployee = role?.name == 'employee';
 
     if (isAdmin || (role?.canViewReports ?? false)) {
       items.add({"icon": Icons.bar_chart, "label": "Reports", "page": const ReportsPage()});
@@ -207,7 +293,11 @@ class _HomeScreenState extends State<HomeScreen> {
       items.add({"icon": Icons.person_2, "label": "Employee", "page": const EmployeePage()});
     }
 
-    items.add({"icon": Icons.person, "label": "Account", "page": const EmployeeAccountPage()});
+    if (isEmployee){
+      items.add({"icon": Icons.shopping_cart, "label": "Account", "page": const EmployeeItemsPage()});
+      items.add({"icon": Icons.account_circle, "label": "Account", "page": const EmployeeAccountPage()});
+    }
+
 
     return items.isEmpty
         ? [

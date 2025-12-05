@@ -7,7 +7,7 @@ class AppLayout {
   const AppLayout._();
 
   static bool isDesktop(BuildContext context) =>
-      MediaQuery.of(context).size.width > 800;
+      MediaQuery.of(context).size.width > 600;
 
   static double fieldPadding(BuildContext context) {
     final width = MediaQuery.of(context).size.width;

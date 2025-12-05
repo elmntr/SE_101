@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../data/local/app_database.dart';
 import '../../../data/database_provider.dart';
 import 'package:drift/drift.dart' show Value;
+=======
+import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
+import '../../../data/local/app_database.dart';
+import '../../../data/database_provider.dart';
+>>>>>>> 19567b0e9b0ca7696f1fecd036027e82af73f5ac
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
+
+  // Received updates from employees awaiting franchisee action
+  static List<ChangeRecord> pendingChanges = [];
 
   @override
   State<InventoryPage> createState() => _InventoryPageState();
@@ -202,9 +212,33 @@ class _InventoryPageState extends State<InventoryPage> {
                                   selectedTab)
                               : _buildInventoryTable())
                           : selectedTab == 1
-                              ? _emptyTables(
-                                  "You can view employee stock changes and updates here.",
-                                  selectedTab)
+                                  ? (InventoryPage.pendingChanges.isEmpty
+                                      ? _emptyTables(
+                                          "You can view employee stock changes and updates here.",
+                                          selectedTab)
+                                      : SingleChildScrollView(
+                                          child: DataTable(
+                                            columns: const [
+                                              DataColumn(label: Text("Employee Name")),
+                                              DataColumn(label: Text("Role")),
+                                              DataColumn(label: Text("Total Changes")),
+                                              DataColumn(label: Text("Status")),
+                                            ],
+                                            rows: List.generate(
+                                                InventoryPage.pendingChanges.length,
+                                                (index) {
+                                              final record =
+                                                  InventoryPage.pendingChanges[index];
+                                              return DataRow(cells: [
+                                                DataCell(Text(record.employeeName)),
+                                                DataCell(Text(record.role)),
+                                                DataCell(Text(record.totalChanges
+                                                    .toString())),
+                                                DataCell(Text(record.status)),
+                                              ]);
+                                            }),
+                                          ),
+                                        ))
                               : _emptyTables(
                                   "You can request stock replenishment for products here.",
                                   selectedTab),

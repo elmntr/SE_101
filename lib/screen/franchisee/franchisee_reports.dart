@@ -85,6 +85,263 @@ class _ReportsPageState extends State<ReportsPage> {
   Widget build(BuildContext context) {
     final data = chartData[selectedMetric]![selectedPeriod]!;
     final maxValue = data.reduce((a, b) => a > b ? a : b);
+
+if (AppLayout.isDesktop(context) == false) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade200,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // HEADER
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Reports',
+                    style: TextStyle(fontSize: 26, fontFamily: fontAll),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined, size: 28,),
+                    onPressed: () {},
+                  )
+                ],
+              ),
+
+              const SizedBox(height: 10),
+
+              // FILTERS (STACKED FOR PHONE)
+              Column(
+                children: [
+                  // ALL ITEMS + WEEKLY
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: DropdownButton<String>(
+                            value: selectedItem,
+                            isExpanded: true,
+                            underline: const SizedBox(),
+                            icon: const Icon(Icons.keyboard_arrow_down),
+                            items: items
+                                .map((item) =>
+                                    DropdownMenuItem(value: item, child: Text(item,style: TextStyle(fontWeight: FontWeight.normal),)))
+                                .toList(),
+                            onChanged: (value) =>
+                                setState(() => selectedItem = value!),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: DropdownButton<String>(
+                            value: selectedPeriod,
+                            isExpanded: true,
+                            underline: const SizedBox(),
+                            icon: const Icon(Icons.keyboard_arrow_down),
+                            items: periods
+                                .map((period) => DropdownMenuItem(
+                                    value: period, child: Text(period, style: TextStyle(fontWeight: FontWeight.normal),)))
+                                .toList(),
+                            onChanged: (value) =>
+                                setState(() => selectedPeriod = value!),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // DATE NAVIGATION
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, color: Colors.red),
+                          onPressed: () => navigateDate(false),
+                        ),
+                        Text(getDateRangeText(),
+                            style: const TextStyle(fontSize: 12)),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right, color: Colors.red),
+                          onPressed: () => navigateDate(true),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+
+              const SizedBox(height: 16),
+
+              // METRIC TABS
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => selectedMetric = 'sold'),
+                        child: Container(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: selectedMetric == 'sold'
+                                    ? Colors.red
+                                    : Colors.transparent,
+                                width: 3,
+                              ),
+                            ),
+                          ),
+                          child: const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Total Sold', style: TextStyle(fontSize: 12)),
+                              SizedBox(height: 6),
+                              Text('1200',
+                                  style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => selectedMetric = 'spoilage'),
+                        child: Container(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: selectedMetric == 'spoilage'
+                                    ? Colors.red
+                                    : Colors.transparent,
+                                width: 3,
+                              ),
+                            ),
+                          ),
+                          child: const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Spoilage',
+                                  style: TextStyle(fontSize: 12)),
+                              SizedBox(height: 6),
+                              Text('600',
+                                  style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // PHONE CHART CARD
+              Container(
+                height: 260,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2))
+                  ],
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(data.length, (index) {
+                          final value = data[index];
+                          final heightPercent = value / maxValue;
+
+                          return Expanded(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                              child: FractionallySizedBox(
+                                heightFactor: heightPercent,
+                                alignment: Alignment.bottomCenter,
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(4)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: getChartLabels()
+                          .map(
+                            (label) => Expanded(
+                              child: Text(
+                                label,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.grey[600]),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
   
     return Scaffold(
       backgroundColor: Colors.grey.shade200,
@@ -121,7 +378,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       isExpanded: true,
                       dropdownColor: Colors.white,
                       underline: const SizedBox(),
-                      icon: const Icon(Icons.keyboard_arrow_up, color: Colors.black),
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black),
                       style: const TextStyle(color: Colors.black, fontSize: 14),
                       items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
                       onChanged: (value) => setState(() => selectedItem = value!),
@@ -136,7 +393,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     value: selectedPeriod,
                     dropdownColor: Colors.white,
                     underline: const SizedBox(),
-                    icon: const Icon(Icons.keyboard_arrow_up, color: Colors.black),
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black),
                     style: const TextStyle(color: Colors.black, fontSize: 14),
                     items: periods.map((period) => DropdownMenuItem(value: period, child: Text(period))).toList(),
                     onChanged: (value) => setState(() => selectedPeriod = value!),

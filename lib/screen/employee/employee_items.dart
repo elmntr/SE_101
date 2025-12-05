@@ -1,3 +1,6 @@
+import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
+import 'package:chickenjoo_inventory/screen/employee/employee_review_changes_page.dart';
+import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../data/local/app_database.dart'; // ✅ your Drift DB
@@ -15,11 +18,15 @@ class EmployeeItemsPage extends StatefulWidget {
 class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   bool _isInChangeStockMode = false;
+  bool _isViewingChangeDetail = false;
+  ChangeRecord? _selectedChangeRecord;
 
   late AppDatabase db;
 
   List<Item> dbItems = [];
   List<Map<String, dynamic>> categories = [];
+  List<ChangeRecord> reviewChanges = [];
+
 
   int categoryCount = 0;
   int selectedTab = 0; // 0 = Items, 1 = Categories
@@ -91,51 +98,6 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     );
   }
 
-  // Add Category Popup (untouched)
-  void _createCategory() {
-    final TextEditingController category = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Add Category",
-            style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                decoration: const InputDecoration(labelText: "Category"),
-                controller: category),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              if (category.text.isEmpty) return;
-              _saveCategory({
-                "category": category.text,
-                "itemNumber": categoryCount,
-              });
-              Navigator.pop(context);
-            },
-            child: const Text("Save", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _saveCategory(Map<String, dynamic> newItem) {
-    setState(() {
-      categories.add(newItem);
-    });
-  }
-
   // Empty Tab Widget
   Widget _emptyTables(String message, int tab) {
     selectedTab = tab;
@@ -146,14 +108,11 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
         children: [
           Text(message, style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 15),
+          if (tab == 0)
           IconButton(
             icon: const Icon(Icons.add_circle, color: Colors.red, size: 55),
             onPressed: () {
-              if (tab == 1) {
-                _createCategory();
-              } else {
-                _createItem(); // ✅ now connected to DB
-              }
+              _createItem(); 
             },
           ),
         ],
@@ -211,57 +170,30 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     return SingleChildScrollView(
       child: DataTable(
         columns: const [
-          DataColumn(
-              label: Text("Category Name",
-                  style:
-                      TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(
-              label: Text("Items in Category",
-                  style:
-                      TextStyle(fontFamily: fontAll, color: Colors.red))),
-          DataColumn(label: Text('')),
+          DataColumn(label: Text("Employee Name")),
+          DataColumn(label: Text("Role")),
+          DataColumn(label: Text("Total Changes")),
+          DataColumn(label: Text("Status")),
+          DataColumn(label: Text("")),
         ],
-        rows: List.generate(categories.length, (i) {
-          final category = categories[i];
+        rows: List.generate(reviewChanges.length, (index) {
+          final record = reviewChanges[index];
           return DataRow(cells: [
-            DataCell(Text(category["category"])),
-            DataCell(Text(category["itemNumber"].toString())),
-            DataCell(
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _deleteCategory(i),
-              ),
-            ),
+            DataCell(Text(record.employeeName)),
+            DataCell(Text(record.role)),
+            DataCell(Text(record.totalChanges.toString())),
+            DataCell(Text(record.status)),
+            DataCell(ElevatedButton(
+              child: const Text("View"),
+              onPressed: () {
+                setState(() {
+                  _isViewingChangeDetail = true;
+                  _selectedChangeRecord = record;
+                });
+              },
+            )),
           ]);
         }),
-      ),
-    );
-  }
-
-  void _deleteCategory(int index) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Delete Category",
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text("Are you sure you want to delete this category?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              setState(() {
-                categories.removeAt(index);
-              });
-              Navigator.pop(context);
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
@@ -308,8 +240,46 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     if (_isInChangeStockMode) {
       return EmployeeChangeStockPage(
         onBack: () async {
-          _toggleChangeStockMode();        // This closes the Change Stock page
-          await _loadItems();  // This refreshes the list!
+          _toggleChangeStockMode(); // This closes the Change Stock page
+          await _loadItems(); // This refreshes the list!
+        },
+        onRecordSaved: (record) {
+          setState(() {
+            reviewChanges.add(record); // Add to Review Changes list
+            selectedTab = 1; // Switch to Review Changes tab automatically
+          });
+        },
+      );
+    }
+
+    if (_isViewingChangeDetail && _selectedChangeRecord != null) {
+      return ReviewChangeDetailPage(
+        record: _selectedChangeRecord!,
+        onBack: () {
+          setState(() {
+            _isViewingChangeDetail = false;
+            _selectedChangeRecord = null;
+          });
+        },
+        onDelete: (rec) {
+          setState(() {
+            reviewChanges.remove(rec);
+            _isViewingChangeDetail = false;
+            _selectedChangeRecord = null;
+            selectedTab = 1;
+          });
+        },
+        onApprove: (rec) {
+          setState(() {
+            final idx = reviewChanges.indexOf(rec);
+            if (idx != -1) reviewChanges[idx].status = 'Updated';
+            try {
+              InventoryPage.pendingChanges.add(rec);
+            } catch (_) {}
+            _isViewingChangeDetail = false;
+            _selectedChangeRecord = null;
+            selectedTab = 1;
+          });
         },
       );
     }
@@ -389,9 +359,9 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                                   "You can manage your items here.",
                                   selectedTab)
                               : _buildItemTable())
-                          : (categories.isEmpty
+                          : (reviewChanges.isEmpty
                               ? _emptyTables(
-                                  "You can add categories here to organize your items.",
+                                  "No changes recorded yet.",
                                   selectedTab)
                               : _buildCategoryTable()),
                     ),
@@ -403,7 +373,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
         ),
       ),
 
-      floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty) || (selectedTab == 1 && categories.isNotEmpty)
+        floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty)
           ? Padding(
               padding: const EdgeInsets.only(bottom: 20),
               child: FloatingActionButton.extended(
