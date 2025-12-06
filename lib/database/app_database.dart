@@ -40,46 +40,7 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 2; // ✅ CHANGED FROM 1 TO 2
 
   /// Migration strategy
-  @override
-  MigrationStrategy get migration {
-    return MigrationStrategy(
-      onCreate: (Migrator m) async {
-        print('📦 Creating database tables...');
-        await m.createAll();
-        print('✅ All tables created successfully');
-      },
-      
-      onUpgrade: (Migrator m, int from, int to) async {
-        print('🔄 Migrating database from version $from to $to...');
-        
-        // Migration from version 1 to 2: Add categories table and categoryId to items
-        if (from == 1 && to == 2) {
-          // Create categories table
-          await m.createTable(categories);
-          print('✅ Created categories table');
-          
-          // Add categoryId column to items table
-          await m.addColumn(items, items.categoryId);
-          print('✅ Added categoryId column to items table');
-        }
-        
-        print('✅ Migration completed successfully');
-      },
-      
-      beforeOpen: (details) async {
-        print('🔓 Opening database...');
-        
-        await customStatement('PRAGMA foreign_keys = ON');
-        
-        if (details.wasCreated) {
-          print('🌱 Database is new, seeding initial data...');
-          await seedDatabase();
-        }
-        
-        print('✅ Database ready for use');
-      },
-    );
-  }
+  
 
   Future<void> seedDatabase() async {
     await DatabaseSeeder.seed(this);
