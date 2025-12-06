@@ -1,8 +1,10 @@
 import 'package:drift/drift.dart';
+import 'categories.dart'; // ✅ Import categories
 
 class Items extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
+  IntColumn get categoryId => integer().nullable().references(Categories, #id)();
   IntColumn get stock => integer().withDefault(const Constant(0))();
   IntColumn get sold => integer().withDefault(const Constant(0))();  // ✅ default 0
   IntColumn get spoilage => integer().withDefault(const Constant(0))(); // ✅ default 0
