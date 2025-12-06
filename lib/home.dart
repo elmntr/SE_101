@@ -1,8 +1,9 @@
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/screen/employee/employee_items.dart';
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/data/database_provider.dart';
-import 'package:chickenjoo_inventory/data/local/app_database.dart';
+
+import 'package:chickenjoo_inventory/database/database_provider.dart';
+import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'screen/franchisee/franchisee_reports.dart';
 import 'screen/franchisee/franchisee_inventory.dart';
 import 'screen/franchisee/franchisee_items.dart';
@@ -31,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _db = DatabaseProvider.instance;
+    _db = DatabaseProvider.database;
     _loadRoleAndMenu();
   }
 
@@ -249,17 +250,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadRoleAndMenu() async {
-    final role = await _db.getRoleByName(widget.signedInUser.role);
-    if (!mounted) return;
+  // Get the user's roleId
+  final roleId = widget.signedInUser.roleId;
 
-    final menu = _buildMenu(role);
+  // Use RolesDao to fetch the Role object by ID
+  final role = await _db.rolesDao.getRoleById(roleId); // <-- implement getRoleById in RolesDao
+  if (!mounted) return;
 
-    setState(() {
-      menuItems = menu;
-      currentPage = menu.first["page"] as Widget;
-      _isLoadingRole = false;
-    });
-  }
+  final menu = _buildMenu(role);
+
+  setState(() {
+    menuItems = menu;
+    currentPage = menu.first["page"] as Widget;
+    _isLoadingRole = false;
+  });
+}
 
   List<Map<String, dynamic>> _buildMenu(Role? role) {
     final List<Map<String, dynamic>> items = [];
@@ -282,11 +287,10 @@ class _HomeScreenState extends State<HomeScreen> {
       items.add({"icon": Icons.person_2, "label": "Employee", "page": const EmployeePage()});
     }
 
-    if (isEmployee){
+    if (isEmployee) {
       items.add({"icon": Icons.shopping_cart, "label": "Items", "page": const EmployeeItemsPage()});
       items.add({"icon": Icons.account_circle, "label": "Account", "page": const EmployeeAccountPage()});
     }
-
 
     return items.isEmpty
         ? [

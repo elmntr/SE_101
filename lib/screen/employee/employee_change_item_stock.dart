@@ -1,8 +1,8 @@
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../data/local/app_database.dart';
-import '../../../data/database_provider.dart';
+import '../../../database/app_database.dart';
+import '../../../database/database_provider.dart';
 import '../../design_constants.dart';
 
 class EmployeeChangeStockPage extends StatefulWidget {
@@ -16,7 +16,8 @@ class EmployeeChangeStockPage extends StatefulWidget {
   });
 
   @override
-  State<EmployeeChangeStockPage> createState() => _EmployeeChangeStockPageState();
+  State<EmployeeChangeStockPage> createState() =>
+      _EmployeeChangeStockPageState();
 }
 
 class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
@@ -24,107 +25,121 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   List<Item> items = [];
   bool isLoading = true;
 
+  // ✅ Track pending changes separately (don't modify actual items yet)
   late List<String> selectedReasons;
+  late List<int> pendingSold;
+  late List<int> pendingSpoilage;
   late List<TextEditingController> qtyControllers;
-
-  
 
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.instance;
+    db = DatabaseProvider.database;
     _loadItems();
   }
 
   @override
   void dispose() {
-    // dispose controllers if initialized
-    try {
-      for (var c in qtyControllers) {
-        c.dispose();
-      }
-    } catch (_) {}
+    for (var c in qtyControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _loadItems() async {
-    final loaded = await db.getAllItems();
+    final loaded = await db.itemsDao.getAllItems();
     setState(() {
       items = loaded;
-      selectedReasons = loaded
-          .map((item) => item.sold > 0 ? 'Sale' : 'Spoilage')
-          .toList();
+      selectedReasons = List.filled(loaded.length, 'Sale');
+      pendingSold = List.filled(loaded.length, 0);
+      pendingSpoilage = List.filled(loaded.length, 0);
+      qtyControllers = List.generate(
+        loaded.length,
+        (_) => TextEditingController(),
+      );
       isLoading = false;
-      qtyControllers = loaded
-          .map((item) => TextEditingController(
-              text: item.sold > 0
-                  ? item.sold.toString()
-                  : (item.spoilage > 0 ? item.spoilage.toString() : '')))
-          .toList();
     });
   }
 
-  int get totalSold => items.fold(0, (sum, item) => sum + item.sold);
-  int get totalSpoiled => items.fold(0, (sum, item) => sum + item.spoilage);
+  // ✅ Calculate totals from pending changes, not from items
+  int get totalSold => pendingSold.fold(0, (sum, qty) => sum + qty);
+  int get totalSpoiled => pendingSpoilage.fold(0, (sum, qty) => sum + qty);
 
-  void _saveChanges() {
-    // Validate controllers: ensure only digits or empty
+  Future<void> _saveChanges() async {
+    // Validate input
+    bool hasChanges = false;
     for (var c in qtyControllers) {
       final txt = c.text.trim();
-        if (txt.isNotEmpty && !RegExp(r'^\d+$').hasMatch(txt)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please enter only numbers for quantities.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
+      if (txt.isNotEmpty) {
+        hasChanges = true;
+        if (!RegExp(r'^\d+$').hasMatch(txt)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Please enter only numbers for quantities.'),
+                backgroundColor: Colors.red),
+          );
+          return;
+        }
       }
     }
 
-    // Update items from controllers before creating record
+    if (!hasChanges) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No changes to save.'),
+            backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    // ✅ Create change record with pending values (not saved to DB yet)
+    List<Item> changedItems = [];
     for (int i = 0; i < items.length; i++) {
-      final txt = qtyControllers[i].text.trim();
-      final qty = txt.isEmpty ? 0 : int.tryParse(txt) ?? 0;
-      if (selectedReasons[i] == 'Sale') {
-        items[i] = items[i].copyWith(sold: qty);
-      } else {
-        items[i] = items[i].copyWith(spoilage: qty);
+      if (pendingSold[i] > 0 || pendingSpoilage[i] > 0) {
+        changedItems.add(items[i].copyWith(
+          sold: pendingSold[i],
+          spoilage: pendingSpoilage[i],
+        ));
       }
+    }
+
+    if (changedItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No changes to save.'),
+            backgroundColor: Colors.orange),
+      );
+      return;
     }
 
     final record = ChangeRecord(
       employeeName: "Employee 1",
       role: "Cashier",
-      items: List.from(items.map((i) => i.copyWith())),
+      items: changedItems,
     );
 
-    // Reset sold/spoilage
+    // ✅ Reset UI without modifying database
     setState(() {
-      items = items.map((i) => i.copyWith(sold: 0, spoilage: 0)).toList();
-      selectedReasons = items.map((i) => "Sale").toList();
-      // clear controllers
+      selectedReasons = List.filled(items.length, 'Sale');
+      pendingSold = List.filled(items.length, 0);
+      pendingSpoilage = List.filled(items.length, 0);
       for (var c in qtyControllers) {
-        c.text = '';
+        c.clear();
       }
     });
 
-    // Send record back (if a handler was provided)
     widget.onRecordSaved?.call(record);
-
-    // Go back to main page
     widget.onBack();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Changes sent for review!"), backgroundColor: Colors.green),
+      const SnackBar(
+          content: Text("Changes sent for review!"),
+          backgroundColor: Colors.green),
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
-    
     if (isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -132,37 +147,26 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     }
 
     return Scaffold(
-
-      backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+      backgroundColor: const Color(0xFFEEEEEE),
       body: Column(
         children: [
+          // Header
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-            ),
             child: Row(
               children: [
                 IconButton(
                   onPressed: widget.onBack,
-                  icon: const Icon(Icons.arrow_back,
-                      size: 30),
+                  icon: const Icon(Icons.arrow_back, size: 30),
                 ),
-
                 const SizedBox(width: 10),
-
                 const Text(
                   "Change Item Stock",
-                  style: TextStyle(
-                    fontFamily: fontAll,
-                    fontSize: 25,
-                  ),
+                  style: TextStyle(fontFamily: fontAll, fontSize: 25),
                 ),
-
                 const Spacer(),
-
                 IconButton(
-                  icon: const Icon(Icons.notifications_outlined,
-                      size: 35,),
+                  icon: const Icon(Icons.notifications_outlined, size: 35),
                   onPressed: () {},
                 ),
               ],
@@ -170,20 +174,19 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
           ),
 
           // Employee Info
-          const SizedBox(width: 16),
           Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12)),
+                color: Colors.white, borderRadius: BorderRadius.circular(12)),
             child: const Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Employee Name:', style: TextStyle(color: Colors.grey)),
+                      Text('Employee Name:',
+                          style: TextStyle(color: Colors.grey)),
                       Text('Employee 1', style: TextStyle(fontSize: 16)),
                     ],
                   ),
@@ -201,50 +204,67 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             ),
           ),
 
-          // Table Header
+          // Table header
           Container(
             color: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: const Row(
               children: [
-                Expanded(flex: 3, child: Padding(
-                  padding: EdgeInsets.only(left: 16),
-                  child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold)),
-                )),
-                Expanded(flex: 2, child: Center(child: Text('Reason', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(flex: 2, child: Center(child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(flex: 2, child: Center(child: Text('Current', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(child: Center(child: Text('Sold', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(child: Center(child: Text('Spoiled', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(flex: 2, child: Center(child: Text('New Stock', style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                    flex: 3,
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 16),
+                      child: Text('Item Name',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    )),
+                Expanded(
+                    flex: 2,
+                    child: Center(
+                        child: Text('Reason',
+                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                    flex: 2,
+                    child: Center(
+                        child: Text('Qty',
+                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                    flex: 2,
+                    child: Center(
+                        child: Text('Current Stock',
+                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                    flex: 2,
+                    child: Center(
+                        child: Text('New Stock',
+                            style: TextStyle(fontWeight: FontWeight.bold)))),
               ],
             ),
           ),
 
-          // Items List
+          // Items list
           Expanded(
-
             child: ListView.builder(
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final item = items[index];
-                final newStock = item.stock - item.sold - item.spoilage;
+                // ✅ Calculate new stock based on pending changes
+                final newStock =
+                    item.stock - pendingSold[index] - pendingSpoilage[index];
 
                 return Container(
                   decoration: const BoxDecoration(
                       color: Colors.white,
-                      border: Border(
-                          bottom: BorderSide(color: Colors.grey))),
+                      border: Border(bottom: BorderSide(color: Colors.grey))),
                   child: Row(
                     children: [
                       Expanded(
-                          flex: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                            child: Text(item.name),
-                          )),
-
-                      // Reason
+                        flex: 3,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 20),
+                          child: Text(item.name),
+                        ),
+                      ),
                       Expanded(
                         flex: 2,
                         child: DropdownButton<String>(
@@ -260,50 +280,76 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                           onChanged: (value) {
                             setState(() {
                               selectedReasons[index] = value!;
-                              if (value == 'Sale') {
-                                items[index] = item.copyWith(spoilage: 0);
-                              } else {
-                                items[index] = item.copyWith(sold: 0);
-                              }
-                              // clear qty input when reason changes
-                              try {
-                                qtyControllers[index].text = '';
-                              } catch (_) {}
+                              // ✅ Clear quantity when switching reason
+                              qtyControllers[index].clear();
+                              pendingSold[index] = 0;
+                              pendingSpoilage[index] = 0;
                             });
                           },
                         ),
                       ),
-
-                      // Qty Input
                       Expanded(
                         flex: 2,
-                        child: TextField(
-                          controller: qtyControllers[index],
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          textAlign: TextAlign.center,
-                          decoration: const InputDecoration(
-                            hintText: '0',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onChanged: (val) {
-                            final qty = int.tryParse(val) ?? 0;
-                            setState(() {
-                              if (selectedReasons[index] == 'Sale') {
-                                items[index] = item.copyWith(sold: qty);
-                              } else {
-                                items[index] = item.copyWith(spoilage: qty);
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: TextField(
+                            controller: qtyControllers[index],
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            textAlign: TextAlign.center,
+                            decoration: const InputDecoration(
+                              hintText: '0',
+                              border: OutlineInputBorder(),
+                              contentPadding:
+                                  EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onChanged: (val) {
+                              final qty = int.tryParse(val) ?? 0;
+                              
+                              // ✅ Prevent entering more than available stock
+                              if (qty > item.stock) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Cannot exceed current stock (${item.stock})'),
+                                    backgroundColor: Colors.orange,
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
+                                qtyControllers[index].text = item.stock.toString();
+                                return;
                               }
-                            });
-                          },
+                              
+                              setState(() {
+                                if (selectedReasons[index] == 'Sale') {
+                                  pendingSold[index] = qty;
+                                  pendingSpoilage[index] = 0;
+                                } else {
+                                  pendingSpoilage[index] = qty;
+                                  pendingSold[index] = 0;
+                                }
+                              });
+                            },
+                          ),
                         ),
                       ),
-
-                      Expanded(flex: 2, child: Center(child: Text(item.stock.toString()))),
-                      Expanded(child: Center(child: Text(item.sold.toString()))),
-                      Expanded(child: Center(child: Text(item.spoilage.toString()))),
-                      Expanded(flex: 2, child: Center(child: Text(newStock < 0 ? '0' : '$newStock'))),
+                      Expanded(
+                          flex: 2,
+                          child: Center(child: Text(item.stock.toString()))),
+                      Expanded(
+                          flex: 2,
+                          child: Center(
+                              child: Text(
+                            newStock < 0 ? '0' : '$newStock',
+                            style: TextStyle(
+                              color: newStock < 0 ? Colors.red : Colors.black,
+                              fontWeight: newStock < 0
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ))),
                     ],
                   ),
                 );

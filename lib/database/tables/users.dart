@@ -1,0 +1,21 @@
+import 'package:drift/drift.dart';
+import 'roles.dart';
+
+class Users extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  TextColumn get email => text().unique()();
+
+  TextColumn get username => text().unique()();
+
+  TextColumn get password => text()();
+
+  TextColumn get phone => text().nullable()();
+
+  IntColumn get roleId => integer().references(Roles, #id)();
+
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastUpdated => dateTime().withDefault(currentDateAndTime)();
+}

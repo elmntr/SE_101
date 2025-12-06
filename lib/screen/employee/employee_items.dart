@@ -3,8 +3,8 @@ import 'package:chickenjoo_inventory/screen/employee/employee_review_changes_pag
 import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import '../../../data/local/app_database.dart'; // ✅ your Drift DB
-import "../../../data/database_provider.dart";
+import '../../../database/app_database.dart'; // ✅ your Drift DB
+import "../../../database/database_provider.dart";
 import 'package:drift/drift.dart' show Value;
 import 'employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
@@ -40,7 +40,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.instance;
+    db = DatabaseProvider.database;
     _loadItems();
   }
 
@@ -51,7 +51,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   }
 
   Future<void> _loadItems() async {
-    final items = await db.getAllItems();
+    final items = await db.itemsDao.getAllItems();
     setState(() {
       dbItems = items;
     });
@@ -148,10 +148,10 @@ void _applyReviewSort(ReviewSort sort) {
             onPressed: () async {
               if (name.text.isEmpty || stock.text.isEmpty) return;
 
-              await db.insertItem(ItemsCompanion.insert(
+              await db.itemsDao.insertItem(
                 name: name.text,
-                stock: Value(int.tryParse(stock.text) ?? 0),
-              ));
+                stock: int.tryParse(stock.text) ?? 0,
+              );
 
               Navigator.pop(context);
               _loadItems(); // ✅ refresh UI
@@ -256,7 +256,7 @@ void _applyReviewSort(ReviewSort sort) {
                         icon:
                             const Icon(Icons.delete, color: Colors.red),
                         onPressed: () async {
-                          await db.deleteItemById(item.id);
+                          await db.itemsDao.deleteItem(item.id);
                           _loadItems();
                         },
                     ),

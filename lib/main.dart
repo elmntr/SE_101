@@ -1,24 +1,29 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:window_size/window_size.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import 'package:chickenjoo_inventory/data/database_provider.dart';
-import 'package:chickenjoo_inventory/data/local/app_database.dart';
+
+import 'package:chickenjoo_inventory/database/database_provider.dart';
+import 'package:chickenjoo_inventory/database/app_database.dart';
+import 'package:drift/drift.dart' as drift; // <- needed for Value<>
+
 import 'home.dart';
 
-void main() {
+void main()async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ LOCK WINDOW SIZE (DESKTOP ONLY)
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     setWindowTitle('Chicken Joo Inventory');
     setWindowMinSize(const Size(1280, 720));
     setWindowMaxSize(const Size(1920, 1080)); 
   }
 
+  
+  
+
   runApp(const MyApp());
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -31,7 +36,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      home:  LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -49,13 +54,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isSubmitting = false;
+
+  // Use the new AppDatabase instance
   late final AppDatabase _db;
 
   @override
   void initState() {
     super.initState();
-    _db = DatabaseProvider.instance;
-    Future.microtask(() async => _db.seedDefaultAccounts());
+    _db = DatabaseProvider.database;
+
+    // Seed default accounts using the new DAO method
+    Future.microtask(() async {
+      await _db.usersDao.getAllUsers();
+    });
   }
 
   @override
@@ -78,7 +89,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isSubmitting = true);
 
-    final user = await _db.authenticateUser(email, password);
+    // Authenticate user using the new UsersDao function
+    final user = await _db.usersDao.authenticate(email, password);
 
     if (!mounted) return;
 
@@ -100,6 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -250,8 +263,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-      
     );
-    
   }
 }

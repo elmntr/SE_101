@@ -1,4 +1,4 @@
-import 'package:chickenjoo_inventory/data/local/app_database.dart';
+import 'package:chickenjoo_inventory/database/app_database.dart';
 
 class ChangeRecord {
   final String employeeName;

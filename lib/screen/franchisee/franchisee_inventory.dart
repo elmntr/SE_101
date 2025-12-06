@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import '../../../data/local/app_database.dart';
-import '../../../data/database_provider.dart';
+import '../../../database/app_database.dart';
+import '../../../database/database_provider.dart';
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 
 class InventoryPage extends StatefulWidget {
@@ -26,15 +26,22 @@ class _InventoryPageState extends State<InventoryPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.instance;
+    db = DatabaseProvider.database;
     _loadItems();
   }
 
   // ✅ Fixed: properly structured and functional
   Future<void> _loadItems() async {
-    final refreshed = await db.getAllItems();
-    setState(() => items = refreshed);
+  final refreshed = await db.itemsDao.getAllItems();
+  print('📊 Loaded ${refreshed.length} items');
+  
+  // ✅ Check if items have valid IDs
+  for (var item in refreshed) {
+    print('  - ${item.name}: id=${item.id}, stock=${item.stock}');
   }
+  
+  setState(() => items = refreshed);
+}
 
   void _applyItemSort(ItemSort sort) {
     setState(() {

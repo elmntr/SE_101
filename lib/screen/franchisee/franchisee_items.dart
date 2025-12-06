@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import '../../../data/local/app_database.dart';
-import "../../../data/database_provider.dart";
+import '../../../database/app_database.dart';
+import "../../../database/database_provider.dart";
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 import 'package:drift/drift.dart' show Value;
 
@@ -29,16 +29,17 @@ class _ItemsPageState extends State<ItemsPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.instance;
+    db = DatabaseProvider.database;
     _loadItems();
   }
 
   Future<void> _loadItems() async {
-    final items = await db.getAllItems();
+    final items = await db.itemsDao.getAllItems();
     setState(() {
       dbItems = items;
     });
   }
+  
 
   // ✅ ADD ITEM POPUP (connected to DB)
   void _createItem() {
@@ -72,10 +73,10 @@ class _ItemsPageState extends State<ItemsPage> {
             onPressed: () async {
               if (name.text.isEmpty || stock.text.isEmpty) return;
 
-              await db.insertItem(ItemsCompanion.insert(
+              await db.itemsDao.insertItem(
                 name: name.text,
-                stock: Value(int.tryParse(stock.text) ?? 0),
-              ));
+                stock: int.tryParse(stock.text) ?? 0,
+              );
 
               Navigator.pop(context);
               _loadItems(); // ✅ refresh UI
@@ -279,7 +280,7 @@ class _ItemsPageState extends State<ItemsPage> {
                       IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () async {
-                            await db.deleteItemById(item.id);
+                            await db.itemsDao.deleteItem(item.id);
                             _loadItems();
                           },
                         ),
