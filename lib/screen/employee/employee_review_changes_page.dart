@@ -2,6 +2,8 @@ import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
+import 'package:chickenjoo_inventory/database/app_database.dart';
+import 'package:chickenjoo_inventory/database/database_provider.dart';
 
 class ReviewChangeDetailPage extends StatelessWidget {
   static List<ChangeRecord> records = [];
@@ -17,6 +19,36 @@ class ReviewChangeDetailPage extends StatelessWidget {
     this.onDelete,
     this.onApprove,
   });
+
+  // ✅ NEW: Apply changes to database
+  Future<void> _applyChangesToDatabase() async {
+    final db = DatabaseProvider.database;
+    
+    print('📊 Starting database update for ${record.items.length} items');
+    
+    for (final item in record.items) {
+      print('🔍 Item: ${item.name} (ID: ${item.id}, Sold: ${item.sold}, Spoilage: ${item.spoilage})');
+      
+      // Validate item ID
+      if (item.id <= 0) {
+        throw Exception('Invalid item ID (${item.id}) for ${item.name}');
+      }
+      
+      // Add sold and deduct from stock
+      if (item.sold > 0) {
+        print('  📉 Adding ${item.sold} sold units...');
+        await db.itemsDao.addSold(item.id, item.sold);
+      }
+      
+      // Add spoilage and deduct from stock
+      if (item.spoilage > 0) {
+        print('  📉 Adding ${item.spoilage} spoilage units...');
+        await db.itemsDao.addSpoilage(item.id, item.spoilage);
+      }
+    }
+    
+    print('✅ Database update completed successfully');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -222,40 +254,117 @@ class ReviewChangeDetailPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(30)),
                         ),
                         onPressed: () async {
+                          print('🔵 Approve button pressed');
+                          
                           final confirmed = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: const Text('Send update to franchisee?'),
+                              title: const Text('Approve and apply changes?'),
                               content: const Text(
-                                  'Send this update to the franchisee inventory?'),
+                                  'This will update the inventory with sold/spoilage data and deduct from stock.'),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text('No'),
+                                  onPressed: () {
+                                    print('🔵 User cancelled approval');
+                                    Navigator.pop(ctx, false);
+                                  },
+                                  child: const Text('Cancel'),
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.green),
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Yes'),
+                                  onPressed: () {
+                                    print('🔵 User confirmed approval');
+                                    Navigator.pop(ctx, true);
+                                  },
+                                  child: const Text('Approve'),
                                 ),
                               ],
                             ),
                           );
+                          
+                          print('🔵 Dialog result: $confirmed');
+                          
                           if (confirmed == true) {
-                            if (onApprove != null) {
-                              onApprove!(record);
-                            } else {
-                              record.status = 'Updated';
-                              try {
-                                InventoryPage.pendingChanges.add(record);
-                              } catch (_) {}
-                              Navigator.pop(context);
+                            print('🔵 Starting approval process...');
+                            
+                            // Show loading indicator
+                            if (!context.mounted) {
+                              print('❌ Context not mounted before showing snackbar');
+                              return;
+                            }
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Applying changes...')),
+                            );
+
+                            try {
+                              print('🔵 Calling _applyChangesToDatabase...');
+                              await _applyChangesToDatabase();
+                              print('✅ Database changes applied');
+                              
+                              // Update status
+                              record.status = 'Approved';
+                              
+                              if (onApprove != null) {
+                                print('🔵 Calling onApprove callback');
+                                onApprove!(record);
+                              } else {
+                                print('🔵 Using default approval handling');
+                                try {
+                                  InventoryPage.pendingChanges.add(record);
+                                  records.remove(record);
+                                } catch (e) {
+                                  print('⚠️ Error updating lists: $e');
+                                }
+                              }
+                              
+                              if (!context.mounted) {
+                                print('❌ Context not mounted after approval');
+                                return;
+                              }
+                              
+                              print('🔵 Showing success message');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('✅ Changes applied successfully!'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              
+                              // Small delay to show the snackbar
+                              await Future.delayed(const Duration(milliseconds: 500));
+                              
+                              if (!context.mounted) {
+                                print('❌ Context not mounted before pop');
+                                return;
+                              }
+                              
+                              print('🔵 Popping navigation');
+                              Navigator.of(context).pop();
+                              print('✅ Navigation popped successfully');
+                              
+                            } catch (e, stackTrace) {
+                              print('❌ ERROR during approval: $e');
+                              print('❌ Stack trace: $stackTrace');
+                              
+                              if (!context.mounted) {
+                                print('❌ Context not mounted during error handling');
+                                return;
+                              }
+                              
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('❌ Error: $e'),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 5),
+                                ),
+                              );
                             }
                           }
                         },
                         child: const Text(
-                          'SEND TO FRANCHISEE',
+                          'APPROVE CHANGES',
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.white,

@@ -1,11 +1,21 @@
-// lib/database/local/database_provider.dart
-import 'package:chickenjoo_inventory/database/app_database.dart';
-
+// lib/database/database_provider.dart
+import 'app_database.dart';
 
 class DatabaseProvider {
-  // Private constructor
-  DatabaseProvider._();
+  static final DatabaseProvider _instance = DatabaseProvider._internal();
+  static AppDatabase? _database;
 
-  // Single instance of AppDatabase
-  static final AppDatabase instance = AppDatabase();
+  DatabaseProvider._internal();
+
+  static DatabaseProvider get instance => _instance;
+
+  // ✅ This is what you should use to get the database
+  static AppDatabase get database {
+    if (_database == null) {
+      _database = AppDatabase();
+      // Seed after first initialization
+      _database!.seedDatabase();
+    }
+    return _database!;
+  }
 }

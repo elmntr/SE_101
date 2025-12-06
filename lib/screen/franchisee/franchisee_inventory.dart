@@ -26,15 +26,22 @@ class _InventoryPageState extends State<InventoryPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.instance;
+    db = DatabaseProvider.database;
     _loadItems();
   }
 
   // ✅ Fixed: properly structured and functional
   Future<void> _loadItems() async {
-    final refreshed = await db.itemsDao.getAllItems();
-    setState(() => items = refreshed);
+  final refreshed = await db.itemsDao.getAllItems();
+  print('📊 Loaded ${refreshed.length} items');
+  
+  // ✅ Check if items have valid IDs
+  for (var item in refreshed) {
+    print('  - ${item.name}: id=${item.id}, stock=${item.stock}');
   }
+  
+  setState(() => items = refreshed);
+}
 
   void _applyItemSort(ItemSort sort) {
     setState(() {

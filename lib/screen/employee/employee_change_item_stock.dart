@@ -25,13 +25,16 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   List<Item> items = [];
   bool isLoading = true;
 
+  // ✅ Track pending changes separately (don't modify actual items yet)
   late List<String> selectedReasons;
+  late List<int> pendingSold;
+  late List<int> pendingSpoilage;
   late List<TextEditingController> qtyControllers;
 
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.instance;
+    db = DatabaseProvider.database;
     _loadItems();
   }
 
@@ -47,63 +50,81 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     final loaded = await db.itemsDao.getAllItems();
     setState(() {
       items = loaded;
-      selectedReasons = loaded
-          .map((item) => item.sold > 0 ? 'Sale' : 'Spoilage')
-          .toList();
-      qtyControllers = loaded
-          .map((item) => TextEditingController(
-              text: item.sold > 0
-                  ? item.sold.toString()
-                  : (item.spoilage > 0 ? item.spoilage.toString() : '')))
-          .toList();
+      selectedReasons = List.filled(loaded.length, 'Sale');
+      pendingSold = List.filled(loaded.length, 0);
+      pendingSpoilage = List.filled(loaded.length, 0);
+      qtyControllers = List.generate(
+        loaded.length,
+        (_) => TextEditingController(),
+      );
       isLoading = false;
     });
   }
 
-  int get totalSold => items.fold(0, (sum, i) => sum + i.sold);
-  int get totalSpoiled => items.fold(0, (sum, i) => sum + i.spoilage);
+  // ✅ Calculate totals from pending changes, not from items
+  int get totalSold => pendingSold.fold(0, (sum, qty) => sum + qty);
+  int get totalSpoiled => pendingSpoilage.fold(0, (sum, qty) => sum + qty);
 
   Future<void> _saveChanges() async {
     // Validate input
+    bool hasChanges = false;
     for (var c in qtyControllers) {
       final txt = c.text.trim();
-      if (txt.isNotEmpty && !RegExp(r'^\d+$').hasMatch(txt)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Please enter only numbers for quantities.'),
-              backgroundColor: Colors.red),
-        );
-        return;
+      if (txt.isNotEmpty) {
+        hasChanges = true;
+        if (!RegExp(r'^\d+$').hasMatch(txt)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Please enter only numbers for quantities.'),
+                backgroundColor: Colors.red),
+          );
+          return;
+        }
       }
     }
 
-    // Update database
-    for (int i = 0; i < items.length; i++) {
-      final qty = int.tryParse(qtyControllers[i].text.trim()) ?? 0;
+    if (!hasChanges) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No changes to save.'),
+            backgroundColor: Colors.orange),
+      );
+      return;
+    }
 
-      if (selectedReasons[i] == 'Sale') {
-        final updated = items[i].copyWith(sold: qty);
-        await db.itemsDao.updateItem(updated);
-        items[i] = updated;
-      } else {
-        final updated = items[i].copyWith(spoilage: qty);
-        await db.itemsDao.updateItem(updated);
-        items[i] = updated;
+    // ✅ Create change record with pending values (not saved to DB yet)
+    List<Item> changedItems = [];
+    for (int i = 0; i < items.length; i++) {
+      if (pendingSold[i] > 0 || pendingSpoilage[i] > 0) {
+        changedItems.add(items[i].copyWith(
+          sold: pendingSold[i],
+          spoilage: pendingSpoilage[i],
+        ));
       }
+    }
+
+    if (changedItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('No changes to save.'),
+            backgroundColor: Colors.orange),
+      );
+      return;
     }
 
     final record = ChangeRecord(
       employeeName: "Employee 1",
       role: "Cashier",
-      items: List.from(items.map((i) => i.copyWith())),
+      items: changedItems,
     );
 
-    // Reset UI
+    // ✅ Reset UI without modifying database
     setState(() {
-      items = items.map((i) => i.copyWith(sold: 0, spoilage: 0)).toList();
-      selectedReasons = items.map((i) => 'Sale').toList();
+      selectedReasons = List.filled(items.length, 'Sale');
+      pendingSold = List.filled(items.length, 0);
+      pendingSpoilage = List.filled(items.length, 0);
       for (var c in qtyControllers) {
-        c.text = '';
+        c.clear();
       }
     });
 
@@ -164,7 +185,8 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Employee Name:', style: TextStyle(color: Colors.grey)),
+                      Text('Employee Name:',
+                          style: TextStyle(color: Colors.grey)),
                       Text('Employee 1', style: TextStyle(fontSize: 16)),
                     ],
                   ),
@@ -188,16 +210,33 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: const Row(
               children: [
-                Expanded(flex: 3, child: Padding(
-                  padding: EdgeInsets.only(left: 16),
-                  child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold)),
-                )),
-                Expanded(flex: 2, child: Center(child: Text('Reason', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(flex: 2, child: Center(child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(flex: 2, child: Center(child: Text('Current', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(child: Center(child: Text('Sold', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(child: Center(child: Text('Spoiled', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(flex: 2, child: Center(child: Text('New Stock', style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                    flex: 3,
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 16),
+                      child: Text('Item Name',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    )),
+                Expanded(
+                    flex: 2,
+                    child: Center(
+                        child: Text('Reason',
+                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                    flex: 2,
+                    child: Center(
+                        child: Text('Qty',
+                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                    flex: 2,
+                    child: Center(
+                        child: Text('Current Stock',
+                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                    flex: 2,
+                    child: Center(
+                        child: Text('New Stock',
+                            style: TextStyle(fontWeight: FontWeight.bold)))),
               ],
             ),
           ),
@@ -208,7 +247,9 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final item = items[index];
-                final newStock = item.stock - item.sold - item.spoilage;
+                // ✅ Calculate new stock based on pending changes
+                final newStock =
+                    item.stock - pendingSold[index] - pendingSpoilage[index];
 
                 return Container(
                   decoration: const BoxDecoration(
@@ -219,7 +260,8 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                       Expanded(
                         flex: 3,
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 20),
                           child: Text(item.name),
                         ),
                       ),
@@ -238,44 +280,76 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                           onChanged: (value) {
                             setState(() {
                               selectedReasons[index] = value!;
-                              if (value == 'Sale') {
-                                items[index] = item.copyWith(spoilage: 0);
-                              } else {
-                                items[index] = item.copyWith(sold: 0);
-                              }
-                              qtyControllers[index].text = '';
+                              // ✅ Clear quantity when switching reason
+                              qtyControllers[index].clear();
+                              pendingSold[index] = 0;
+                              pendingSpoilage[index] = 0;
                             });
                           },
                         ),
                       ),
                       Expanded(
                         flex: 2,
-                        child: TextField(
-                          controller: qtyControllers[index],
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          textAlign: TextAlign.center,
-                          decoration: const InputDecoration(
-                            hintText: '0',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onChanged: (val) {
-                            final qty = int.tryParse(val) ?? 0;
-                            setState(() {
-                              if (selectedReasons[index] == 'Sale') {
-                                items[index] = item.copyWith(sold: qty);
-                              } else {
-                                items[index] = item.copyWith(spoilage: qty);
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: TextField(
+                            controller: qtyControllers[index],
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            textAlign: TextAlign.center,
+                            decoration: const InputDecoration(
+                              hintText: '0',
+                              border: OutlineInputBorder(),
+                              contentPadding:
+                                  EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onChanged: (val) {
+                              final qty = int.tryParse(val) ?? 0;
+                              
+                              // ✅ Prevent entering more than available stock
+                              if (qty > item.stock) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'Cannot exceed current stock (${item.stock})'),
+                                    backgroundColor: Colors.orange,
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
+                                qtyControllers[index].text = item.stock.toString();
+                                return;
                               }
-                            });
-                          },
+                              
+                              setState(() {
+                                if (selectedReasons[index] == 'Sale') {
+                                  pendingSold[index] = qty;
+                                  pendingSpoilage[index] = 0;
+                                } else {
+                                  pendingSpoilage[index] = qty;
+                                  pendingSold[index] = 0;
+                                }
+                              });
+                            },
+                          ),
                         ),
                       ),
-                      Expanded(flex: 2, child: Center(child: Text(item.stock.toString()))),
-                      Expanded(child: Center(child: Text(item.sold.toString()))),
-                      Expanded(child: Center(child: Text(item.spoilage.toString()))),
-                      Expanded(flex: 2, child: Center(child: Text(newStock < 0 ? '0' : '$newStock'))),
+                      Expanded(
+                          flex: 2,
+                          child: Center(child: Text(item.stock.toString()))),
+                      Expanded(
+                          flex: 2,
+                          child: Center(
+                              child: Text(
+                            newStock < 0 ? '0' : '$newStock',
+                            style: TextStyle(
+                              color: newStock < 0 ? Colors.red : Colors.black,
+                              fontWeight: newStock < 0
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ))),
                     ],
                   ),
                 );

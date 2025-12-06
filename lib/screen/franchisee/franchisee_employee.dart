@@ -69,7 +69,7 @@ class _EmployeePageState extends State<EmployeePage> {
   @override
   void initState() {
     super.initState();
-    db = provider.DatabaseProvider.instance;
+    db = provider.DatabaseProvider.database;
 
     _usersSub = db.usersDao.watchAllUsers().listen((users) {
       setState(() {

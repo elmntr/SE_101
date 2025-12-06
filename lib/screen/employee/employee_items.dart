@@ -3,7 +3,7 @@ import 'package:chickenjoo_inventory/screen/employee/employee_review_changes_pag
 import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import '../../../database/app_database.dart';
+import '../../../database/app_database.dart'; // ✅ your Drift DB
 import "../../../database/database_provider.dart";
 import 'package:drift/drift.dart' show Value;
 import 'employee_change_item_stock.dart';
@@ -40,7 +40,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.instance;
+    db = DatabaseProvider.database;
     _loadItems();
   }
 
@@ -50,19 +50,73 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     });
   }
 
-  // ✅ Load items from database
   Future<void> _loadItems() async {
-    final items = await db.itemsDao.getAllItems();;
+    final items = await db.itemsDao.getAllItems();
     setState(() {
       dbItems = items;
     });
   }
 
-  
+  void _applyItemSort(ItemSort sort) {
+  setState(() {
+    _currentSort = sort;
+
+    switch (sort.field) {
+      case ItemSortField.date:
+        dbItems.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
+        break;
+
+      case ItemSortField.name:
+        dbItems.sort((a, b) => a.name.compareTo(b.name));
+        break;
+
+      case ItemSortField.stock:
+        dbItems.sort((a, b) => a.stock.compareTo(b.stock));
+        break;
+
+      case ItemSortField.sale:
+        dbItems.sort((a, b) => a.sold.compareTo(b.sold));
+        break;
+
+      case ItemSortField.spoilage:
+        dbItems.sort((a, b) => b.spoilage.compareTo(a.spoilage));
+        break;
+    }
+
+    if (sort.order == SortOrder.desc) {
+      dbItems = dbItems.reversed.toList();
+    }
+
+  });
+}
+
+void _applyReviewSort(ReviewSort sort) {
+  setState(() {
+    _reviewSort = sort;
+
+    switch (sort.field) {
+      case ReviewSortField.employee:
+        reviewChanges.sort((a, b) => a.employeeName.compareTo(b.employeeName));
+        break;
+      case ReviewSortField.role:
+        reviewChanges.sort((a, b) => a.role.compareTo(b.role));
+        break;
+
+      case ReviewSortField.changes:
+        reviewChanges.sort((a, b) => b.totalChanges.compareTo(a.totalChanges));
+        break;
+    }
+    
+    if (sort.order == SortOrder.desc) {
+      reviewChanges = reviewChanges.reversed.toList();
+    }
+
+  });
+}
 
 
 
-  // ✅ ADD ITEM POPUP (using db.insertItem)
+  // ✅ ADD ITEM POPUP (connected to DB)
   void _createItem() {
     final TextEditingController name = TextEditingController();
     final TextEditingController stock = TextEditingController();
@@ -94,12 +148,10 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
             onPressed: () async {
               if (name.text.isEmpty || stock.text.isEmpty) return;
 
-              // ✅ Using db.insertItem from app_database.dart
               await db.itemsDao.insertItem(
-                  name: name.text,
-                  stock: int.tryParse(stock.text) ?? 0,
+                name: name.text,
+                stock: int.tryParse(stock.text) ?? 0,
               );
-
 
               Navigator.pop(context);
               _loadItems(); // ✅ refresh UI
@@ -133,35 +185,22 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     );
   }
 
-  // ✅ Item Table Widget
+  // ✅ Item Table Widget with "Add Item" button
   Widget _buildItemTable() {
   return LayoutBuilder(
     builder: (context, constraints) {
       final isSmall = constraints.maxWidth < 800;
-
       Widget header(String value) {
         return SizedBox(
-          width: isSmall ? 60 : 100,
-          child: Text(
-            value,
-            maxLines: null,
-            softWrap: true,
-            overflow: TextOverflow.fade,
-            style: const TextStyle(fontFamily: fontAll, color: Colors.red),
-          ),
-        );
-      }
+          width: isSmall ? 60 : 80,
 
-      Widget cell(String value) {
-        return SizedBox(
-          width: isSmall ? 80 : double.infinity,
-          child: Text(
-            value,
-            maxLines: null,
-            softWrap: true,
-            overflow: TextOverflow.fade,
-            style: const TextStyle(fontFamily: fontAll),
-          ),
+            child: Text(
+              value,
+              maxLines: null,                   // ✅ 2–3 lines visible
+              softWrap: true,
+              overflow: TextOverflow.fade,
+              style: const TextStyle(fontFamily: fontAll, color: Colors.red),
+            ),
         );
       }
 
@@ -169,40 +208,62 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
           constraints: BoxConstraints(minWidth: constraints.maxWidth),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: DataTable(
-              columnSpacing: isSmall ? 10 : 60,
-              horizontalMargin: isSmall ? 12 : 24,
-              dataRowMinHeight: kMinInteractiveDimension,
-              dataRowMaxHeight: double.infinity,
-              columns: [
-                DataColumn(label: header("Item Name")),
-                DataColumn(label: header("Stock")),
-                DataColumn(label: header("Sale")),
-                DataColumn(label: header("Spoilage")),
-                DataColumn(label: header("")),
-              ],
-              rows: dbItems.map((item) {
-                return DataRow(
-                  cells: [
-                    DataCell(cell(item.name)),
-                    DataCell(cell(item.stock.toString())),
-                    DataCell(cell(item.sold.toString())),
-                    DataCell(cell(item.spoilage.toString())),
-                    DataCell(
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          await db.itemsDao.deleteItem(item.id); // DAO call
-                          _loadItems(); // refresh
-                        },
-                      ),
+          child: DataTable(
+            headingRowHeight: 48,
+            columnSpacing: isSmall ? 10 : 60,
+            horizontalMargin: isSmall ? 12 : 24,
+            dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
+            dataRowMaxHeight: double.infinity,
+
+            columns: [
+              DataColumn(
+                  label: header("Item Name")),
+              DataColumn(
+                  label: header("Stock")),
+              DataColumn(
+                   label: header("Sale")),
+              DataColumn(
+                   label: header("Spoilage")),
+              DataColumn( label: header("")),
+            ],
+
+            rows: List.generate(dbItems.length, (i) {
+              final item = dbItems[i];
+
+               Widget cell(String value) {
+                return SizedBox(
+                  width: isSmall ? 60 : double.infinity,
+
+                    child: Text(
+                      value,
+                      maxLines: null,                   // ✅ 2–3 lines visible
+                      softWrap: true,
+                      overflow: TextOverflow.fade,
+                      style: const TextStyle(fontFamily: fontAll),
                     ),
-                  ],
                 );
-              }).toList(),
-            ),
+              }
+
+              return DataRow(cells: [
+                DataCell(cell(item.name)),
+                DataCell(cell(item.stock.toString())),
+                DataCell(cell(item.sold.toString())),
+                DataCell(cell(item.spoilage.toString())),
+                DataCell(
+                  SizedBox(
+                    width: double.infinity,
+                    child: IconButton(
+                        icon:
+                            const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () async {
+                          await db.itemsDao.deleteItem(item.id);
+                          _loadItems();
+                        },
+                    ),
+                  ),
+                ),
+              ]);
+            }),
           ),
         ),
       );
@@ -211,10 +272,9 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
 }
 
 
-
   
 
-  // ✅ Category Table Widget (Review Changes)
+  // ✅ Category Table Widget with "Add Category" button
   Widget _buildCategoryTable() {
   return LayoutBuilder(
     builder: (context, constraints) {
@@ -225,7 +285,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
             child: Text(
               value,
-              maxLines: null,
+              maxLines: null,                   // ✅ 2–3 lines visible
               softWrap: true,
               overflow: TextOverflow.fade,
               style: const TextStyle(fontFamily: fontAll, color: Colors.red),
@@ -243,7 +303,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
             headingRowHeight: 48,
             columnSpacing: isSmall ? 10 : 60,
             horizontalMargin: isSmall ? 12 : 24,
-            dataRowMinHeight: kMinInteractiveDimension,
+            dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
             dataRowMaxHeight: double.infinity,
 
             columns: [
@@ -264,7 +324,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
                     child: Text(
                       value,
-                      maxLines: null,
+                      maxLines: null,                   // ✅ 2–3 lines visible
                       softWrap: true,
                       overflow: TextOverflow.fade,
                       style: const TextStyle(fontFamily: fontAll),
@@ -450,7 +510,7 @@ Widget build(BuildContext context) {
                       if (selectedTab == 0)
                         PopupMenuButton<ItemSort>(
                           icon: const Icon(Icons.filter_list, size: 28),
-                          onSelected: null,
+                          onSelected: _applyItemSort,
                           itemBuilder: (context) => const [
                             PopupMenuItem(
                               value: ItemSort(ItemSortField.date, SortOrder.desc),
@@ -491,7 +551,7 @@ Widget build(BuildContext context) {
                         else (
                           PopupMenuButton<ReviewSort>(
                             icon: const Icon(Icons.filter_list, size: 28),
-                            onSelected: null,
+                            onSelected: _applyReviewSort,
                             itemBuilder: (context) => const [
 
                               PopupMenuItem(value: ReviewSort(ReviewSortField.employee, SortOrder.desc), child: Text("Employee (A–Z)")),
@@ -633,7 +693,7 @@ Widget build(BuildContext context) {
               if (selectedTab == 0)
                         PopupMenuButton<ItemSort>(
                           icon: const Icon(Icons.filter_list, size: 28),
-                          onSelected: null,
+                          onSelected: _applyItemSort,
                           itemBuilder: (context) => const [
                             PopupMenuItem(
                               value: ItemSort(ItemSortField.date, SortOrder.desc),
@@ -674,7 +734,7 @@ Widget build(BuildContext context) {
                         else (
                           PopupMenuButton<ReviewSort>(
                             icon: const Icon(Icons.filter_list, size: 28),
-                            onSelected: null,
+                            onSelected: _applyReviewSort,
                             itemBuilder: (context) => const [
 
                               PopupMenuItem(value: ReviewSort(ReviewSortField.employee, SortOrder.desc), child: Text("Employee (A–Z)")),

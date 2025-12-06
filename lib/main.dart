@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:window_size/window_size.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
@@ -9,7 +10,7 @@ import 'package:drift/drift.dart' as drift; // <- needed for Value<>
 
 import 'home.dart';
 
-void main() {
+void main()async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -17,90 +18,11 @@ void main() {
     setWindowMinSize(const Size(1280, 720));
     setWindowMaxSize(const Size(1920, 1080)); 
   }
+
   
   
 
   runApp(const MyApp());
-}
-Future<void> seedTestEmployee(AppDatabase db) async {
-  // Check if role already exists
-  final existingRoles = await db.rolesDao.getAllRoles();
-  Role? employeeRole = existingRoles.firstWhere(
-    (r) => r.name == 'employee',
-    orElse: () => Role(
-      id: 0,
-      name: 'employee',
-      description: 'Test Employee Role',
-      canViewInventory: true,
-      canAddInventory: true,
-      canEditInventory: true,
-      canDeleteInventory: false,
-      canViewReports: false,
-      canExportData: false,
-      canAccessSettings: false,
-      isSystemRole: false,
-      isActive: true,
-      
-      createdAt: DateTime.now(),
-      lastUpdated: DateTime.now(),
-      canManageEmployees: false,
-      canManageRoles: false
-    ),
-  );
-
-  // Insert the role if it didn’t exist
-  if (employeeRole.id == 0) {
-    final roleId = await db.rolesDao.insertRole(
-      RolesCompanion.insert(
-        name: 'employee',
-        description: drift.Value('Test Employee Role'),
-        canViewInventory: drift.Value(true),
-        canAddInventory: drift.Value(true),
-        canEditInventory: drift.Value(true),
-        canDeleteInventory: drift.Value(false),
-        canViewReports: drift.Value(false),
-        canExportData: drift.Value(false),
-        canAccessSettings: drift.Value(false),
-      ),
-    );
-
-    employeeRole = (await db.rolesDao.getAllRoles())
-        .firstWhere((r) => r.id == roleId);
-  }
-
-  // Check if user exists
-  final users = await db.usersDao.getAllUsers();
-  final existingUser =
-      users.firstWhere((u) => u.username == 'test_employee', orElse: () => User(
-        id: 0,
-        username: 'test_employee',
-        email: 'employee@test.com',
-        password: '123456',
-        phone: '',
-        roleId: employeeRole!.id,
-        isActive: true,
-        createdAt: DateTime.now(),
-        lastUpdated: DateTime.now(),
-      ));
-       // 2️⃣ Insert a test employee user
-  final existingUsers = await db.usersDao.getAllUsers();
-  final alreadyExists = existingUsers.any((u) => u.username == 'employee');
-
-  if (!alreadyExists) {
-    await db.usersDao.insertUser(
-      UsersCompanion.insert(
-        username: 'employee',
-        email: 'employee@example.com',
-        password: 'password123',
-        roleId: employeeRole.id, // ✅ non-null
-        isActive: drift.Value(true),
-      ),
-    );
-  }
-
-  
-
-  print('✅ Test employee account created: test_employee / 123456');
 }
 
 class MyApp extends StatelessWidget {
@@ -114,7 +36,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      home:  LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -139,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _db = DatabaseProvider.instance;
+    _db = DatabaseProvider.database;
 
     // Seed default accounts using the new DAO method
     Future.microtask(() async {
