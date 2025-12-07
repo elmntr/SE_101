@@ -12,9 +12,7 @@ import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 class EmployeeItemsPage extends StatefulWidget {
   final User user;
   final Role role;
-
   const EmployeeItemsPage({super.key, required this.user, required this.role});
-
   @override
   State<EmployeeItemsPage> createState() => _EmployeeItemsPageState();
 }
@@ -409,6 +407,9 @@ Widget build(BuildContext context) {
   // ✅ CHANGE STOCK MODE
   if (_isInChangeStockMode) {
     return EmployeeChangeStockPage(
+      user: widget.user,            // ✅ ADDED
+      role: widget.role, 
+
       onBack: () async {
         _toggleChangeStockMode();
         await _loadItems();
@@ -425,6 +426,7 @@ Widget build(BuildContext context) {
   // ✅ VIEW CHANGE DETAIL
   if (_isViewingChangeDetail && _selectedChangeRecord != null) {
     return ReviewChangeDetailPage(
+      
       record: _selectedChangeRecord!,
       onBack: () {
         setState(() {
