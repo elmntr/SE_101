@@ -10,7 +10,10 @@ import 'employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 
 class EmployeeItemsPage extends StatefulWidget {
-  const EmployeeItemsPage({super.key});
+  final User user;
+  final Role role;
+
+  const EmployeeItemsPage({super.key, required this.user, required this.role});
 
   @override
   State<EmployeeItemsPage> createState() => _EmployeeItemsPageState();
