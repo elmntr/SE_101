@@ -11,11 +11,10 @@ class DatabaseProvider {
 
   // ✅ This is what you should use to get the database
   static AppDatabase get database {
-    if (_database == null) {
+    
       _database = AppDatabase();
-      // Seed after first initialization
-      _database!.seedDatabase();
-    }
+    
+    
     return _database!;
   }
 }
