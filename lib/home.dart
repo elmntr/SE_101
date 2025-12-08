@@ -439,6 +439,7 @@ Future<List<Map<String, dynamic>>> buildMenuForUser(
     isActive: true,
     createdAt: DateTime.now(),
     lastUpdated: DateTime.now(),
+    isSynced: false
   );
 
   final defaultUser = User(
@@ -450,6 +451,7 @@ Future<List<Map<String, dynamic>>> buildMenuForUser(
     isActive: true,
     createdAt: DateTime.now(),
     lastUpdated: DateTime.now(),
+    isSynced: false
   );
 
   final user = userWithRole?.user ?? defaultUser;

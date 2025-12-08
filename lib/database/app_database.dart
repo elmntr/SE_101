@@ -36,8 +36,32 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   /// IMPORTANT: Change this to 2 since you're adding a new table and column
+   // ✅ UPDATED: Increment schema version for new sync columns
   @override
-  int get schemaVersion => 2; // ✅ CHANGED FROM 1 TO 2
+  int get schemaVersion => 3;
+
+  // ✅ NEW: Handle migration from v1 to v2
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (Migrator m) async {
+        await m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 2) {
+          // Add sync columns to existing tables
+          await m.addColumn(items, items.cloudId);
+          
+          await m.addColumn(users, users.isSynced);
+          await m.addColumn(users, users.cloudId);
+          
+          await m.addColumn(roles, roles.isSynced);
+          await m.addColumn(roles, roles.cloudId);
+          
+          print('✅ Database migrated to v2 with sync columns');
+        }
+      },
+    );
 
   /// Migration strategy
   
@@ -47,5 +71,6 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-LazyDatabase _openConnection() => localDB.DatabaseConnection.open();
+static LazyDatabase _openConnection() => localDB.DatabaseConnection.open();
 Future<void> deleteDatabaseFile() => localDB.DatabaseConnection.deleteDatabase();
+}

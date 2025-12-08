@@ -21,6 +21,13 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     return (select(items)..where((t) => t.isDeleted.equals(false))).watch();
   }
 
+  /// ✅ UPDATED: Get unsynced items for sync service
+  Future<List<Item>> getUnsyncedItems() async {
+    return await (select(items)
+      ..where((t) => t.isSynced.equals(false)))
+      .get();
+  }
+
   /// ✅ NEW: Get items with their category info
   Future<List<ItemWithCategory>> getItemsWithCategories() async {
     final query = select(items).join([
@@ -50,23 +57,30 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     });
   }
 
-  /// Insert a new item with optional category
+  /// ✅ UPDATED: Insert a new item - marks as unsynced
   Future<int> insertItem({
     required String name, 
-    int stock = 0, 
-    int? categoryId
+    int stock = 0,
+    String? cloudId,
   }) {
     return into(items).insert(
       ItemsCompanion.insert(
         name: name,
         stock: Value(stock),
-        categoryId: Value(categoryId), // ✅ Add category
+        isSynced: Value(false), // Mark as needing sync
+        cloudId: Value(cloudId),
       ),
     );
   }
 
   /// Update an existing item
-  Future<bool> updateItem(Item item) => update(items).replace(item);
+  Future<bool> updateItem(Item item) async {
+    final updated = item.copyWith(
+      isSynced: false,
+      lastUpdated: DateTime.now(),
+    );
+    return update(items).replace(updated);
+  }
 
   /// ✅ NEW: Assign category to item
   Future<int> assignCategory(int itemId, int? categoryId) {
@@ -87,6 +101,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         sold: Value(item.sold + quantity),
         stock: Value(item.stock - quantity),
         lastUpdated: Value(DateTime.now()),
+        isSynced: Value(false), // Mark as needing sync
       ),
     );
   }
@@ -100,6 +115,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         spoilage: Value(item.spoilage + quantity),
         stock: Value(item.stock - quantity),
         lastUpdated: Value(DateTime.now()),
+        isSynced: Value(false), // Mark as needing sync
       ),
     );
   }
@@ -110,6 +126,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       ItemsCompanion(
         stock: Value(newStock),
         lastUpdated: Value(DateTime.now()),
+        isSynced: Value(false), // Mark as needing sync
       ),
     );
   }
@@ -122,15 +139,83 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       ItemsCompanion(
         stock: Value(item.stock + quantity),
         lastUpdated: Value(DateTime.now()),
+        isSynced: Value(false), // Mark as needing sync
       ),
     );
   }
 
-  /// Soft-delete item
   Future<int> softDeleteItem(int id) =>
       (update(items)..where((t) => t.id.equals(id)))
-          .write(ItemsCompanion(isDeleted: Value(true)));
+          .write(ItemsCompanion(
+            isDeleted: Value(true),
+            isSynced: Value(false), // Mark as needing sync
+            lastUpdated: Value(DateTime.now()),
+          ));
 
   /// Hard-delete item
   Future<int> deleteItem(int id) => (delete(items)..where((t) => t.id.equals(id))).go();
+
+  /// ✅ NEW: Mark item as synced (called by sync service)
+  Future<int> markAsSynced(int itemId, {String? cloudId}) async {
+    return (update(items)..where((t) => t.id.equals(itemId))).write(
+      ItemsCompanion(
+        isSynced: Value(true),
+        cloudId: Value(cloudId),
+      ),
+    );
+  }
+
+  /// ✅ NEW: Upsert from cloud (used during sync pull)
+  Future<void> upsertFromCloud({
+    required int id,
+    required String name,
+    required int stock,
+    required int sold,
+    required int spoilage,
+    required DateTime createdAt,
+    required DateTime lastUpdated,
+    required bool isDeleted,
+    required String cloudId,
+  }) async {
+    final existing = await (select(items)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+
+    if (existing == null) {
+      // Insert new from cloud
+      await into(items).insert(
+        ItemsCompanion.insert(
+          id: Value(id),
+          name: name,
+          stock: Value(stock),
+          sold: Value(sold),
+          spoilage: Value(spoilage),
+          createdAt: Value(createdAt),
+          lastUpdated: Value(lastUpdated),
+          isDeleted: Value(isDeleted),
+          isSynced: Value(true),
+          cloudId: Value(cloudId),
+        ),
+      );
+    } else {
+      // Update existing from cloud
+      await (update(items)..where((t) => t.id.equals(id))).write(
+        ItemsCompanion(
+          name: Value(name),
+          stock: Value(stock),
+          sold: Value(sold),
+          spoilage: Value(spoilage),
+          lastUpdated: Value(lastUpdated),
+          isDeleted: Value(isDeleted),
+          isSynced: Value(true),
+          cloudId: Value(cloudId),
+        ),
+      );
+    }
+  }
+
+  /// ✅ NEW: Get item by cloud ID
+  Future<Item?> getItemByCloudId(String cloudId) async {
+    return (select(items)..where((t) => t.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
 }

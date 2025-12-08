@@ -4,6 +4,8 @@ import '../../../database/app_database.dart';
 import "../../../database/database_provider.dart";
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 import 'package:drift/drift.dart' show Value;
+import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/helpers/sync_helper.dart';
 
 class ItemsPage extends StatefulWidget {
   const ItemsPage({Key? key}) : super(key: key);
@@ -77,6 +79,7 @@ class _ItemsPageState extends State<ItemsPage> {
                 name: name.text,
                 stock: int.tryParse(stock.text) ?? 0,
               );
+              await SyncHelper.syncAfterItemChange();
 
               Navigator.pop(context);
               _loadItems(); // ✅ refresh UI
