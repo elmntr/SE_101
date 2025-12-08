@@ -28,15 +28,6 @@ enum EmployeeSortField {
   email, // Sort by employee email
   date   // Sort by date created/added
 }
-
-/// Filters for employee list
-enum EmployeeFilter { 
-  all,     // Show all employees
-  admin,   // Show only admins
-  manager, // Show only managers
-  staff,   // Show only staff
-}
-
 /// Fields available for sorting Roles
 enum RoleSortField { 
   name,      // Sort by role name
@@ -84,4 +75,15 @@ class ReviewSort {
   final ReviewSortField field; // Field to sort by
   final SortOrder order;       // Sort order (asc or desc)
   const ReviewSort(this.field, this.order);
+}
+
+
+
+
+/// Filters for employee list
+enum EmployeeFilter { 
+  all,     // Show all employees
+  admin,   // Show only admins
+  manager, // Show only managers
+  staff,   // Show only staff
 }

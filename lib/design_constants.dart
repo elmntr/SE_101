@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 const String fontAll = 'Montserrat';
 const String imageAll = 'assets/images/chicken_joo_logo.png';
+const Color colorAll = Colors.red;
 
 class AppLayout {
   const AppLayout._();

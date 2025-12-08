@@ -7,7 +7,7 @@ import '../../../database/app_database.dart'; // ✅ your Drift DB
 import "../../../database/database_provider.dart";
 import 'package:drift/drift.dart' show Value;
 import 'employee_change_item_stock.dart';
-import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
+import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 
 class EmployeeItemsPage extends StatefulWidget {
   const EmployeeItemsPage({super.key});
