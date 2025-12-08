@@ -28,11 +28,31 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
   /// Insert a new user.
   /// Drift requires a Companion class for inserts.
-  Future<int> insertUser(UsersCompanion user) => into(users).insert(user);
+  /// ✅ UPDATED: Insert user - marks as unsynced
+  Future<int> insertUser(UsersCompanion user) {
+    return into(users).insert(
+      user.copyWith(
+        isSynced: Value(false),
+      ),
+    );
+  }
 
   /// Update an existing user.
   /// `replace` updates the row that matches the primary key (id).
-  Future<bool> updateUser(User user) => update(users).replace(user);
+  /// ✅ UPDATED: Update user - marks as unsynced
+  Future<bool> updateUser(User user) async {
+    final updated = user.copyWith(
+      isSynced: false,
+      lastUpdated: DateTime.now(),
+    );
+    return update(users).replace(updated);
+  }
+
+/// Get a single user by ID
+  Future<User?> getUserById(int id) async {
+    final query = select(users)..where((tbl) => tbl.id.equals(id));
+    return query.getSingleOrNull(); // Returns null if not found
+  }
 
   /// Delete a user by its ID.
   Future<int> deleteUserById(int id) =>
@@ -89,7 +109,91 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   /// Only writes to the `roleId` column.
   Future<int> assignRoleToUser(int userId, int roleId) {
     return (update(users)..where((tbl) => tbl.id.equals(userId))).write(
-      UsersCompanion(roleId: Value(roleId)),
+      UsersCompanion(
+        roleId: Value(roleId),
+        isSynced: Value(false),
+        lastUpdated: Value(DateTime.now()),
+      ),
     );
+  }
+
+  /// ✅ NEW: Get unsynced users for sync service
+  Future<List<User>> getUnsyncedUsers() async {
+    return await (select(users)
+      ..where((t) => t.isSynced.equals(false)))
+      .get();
+  }
+
+  /// ✅ NEW: Mark user as synced
+  Future<int> markAsSynced(int userId, {String? cloudId}) async {
+    return (update(users)..where((t) => t.id.equals(userId))).write(
+      UsersCompanion(
+        isSynced: Value(true),
+        cloudId: Value(cloudId),
+      ),
+    );
+  }
+
+  /// ✅ NEW: Upsert from cloud (used during sync pull)
+  Future<void> upsertFromCloud({
+    required int id,
+    required String email,
+    required String username,
+    required String password,
+    String? phone,
+    required int roleId,
+    required bool isActive,
+    required DateTime createdAt,
+    required DateTime lastUpdated,
+    required String cloudId,
+  }) async {
+    final existing = await (select(users)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+
+    if (existing == null) {
+      // Insert new from cloud
+      await into(users).insert(
+        UsersCompanion.insert(
+          id: Value(id),
+          email: email,
+          username: username,
+          password: password,
+          phone: Value(phone),
+          roleId: roleId,
+          isActive: Value(isActive),
+          createdAt: Value(createdAt),
+          lastUpdated: Value(lastUpdated),
+          isSynced: Value(true),
+          cloudId: Value(cloudId),
+        ),
+      );
+    } else {
+      // Update existing from cloud
+      await (update(users)..where((t) => t.id.equals(id))).write(
+        UsersCompanion(
+          email: Value(email),
+          username: Value(username),
+          password: Value(password),
+          phone: Value(phone),
+          roleId: Value(roleId),
+          isActive: Value(isActive),
+          lastUpdated: Value(lastUpdated),
+          isSynced: Value(true),
+          cloudId: Value(cloudId),
+        ),
+      );
+    }
+  }
+
+  /// ✅ NEW: Get user by cloud ID
+  Future<User?> getUserByCloudId(String cloudId) async {
+    return (select(users)..where((t) => t.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
+  /// ✅ NEW: Get user by email (useful for sync)
+  Future<User?> getUserByEmail(String email) async {
+    return (select(users)..where((t) => t.email.equals(email)))
+        .getSingleOrNull();
   }
 }

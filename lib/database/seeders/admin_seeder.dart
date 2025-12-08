@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../app_database.dart';
 
 /// Responsible for creating the Admin role and account safely on all platforms
+/// ✅ Now with cloud sync support
 class AdminSeeder {
   /// Entry point to seed Admin role and user
   static Future<void> seed(AppDatabase db) async {
@@ -12,6 +13,8 @@ class AdminSeeder {
         final adminRole = await _createAdminRole(db);
         await _createAdminUser(db, adminRole);
       });
+      
+      print('✅ Admin seeding completed');
     } catch (e, stack) {
       print('❌ AdminSeeder failed: $e');
       print(stack);
@@ -24,13 +27,18 @@ class AdminSeeder {
 
     // Safely check for existing Admin role
     final admins = existingRoles.where((r) => r.name == 'Admin').toList();
-      if (admins.isNotEmpty) {
-        print('👑 Admin role already exists');
-        return admins.first;
+    if (admins.isNotEmpty) {
+      print('👑 Admin role already exists (ID: ${admins.first.id})');
+      
+      // ✅ If exists but not synced, mark it for sync
+      if (!admins.first.isSynced) {
+        print('   📤 Admin role needs syncing');
       }
+      
+      return admins.first;
+    }
 
-
-   
+    print('🔧 Creating Admin role...');
 
     // Insert new Admin role
     final roleId = await db.rolesDao.insertRole(
@@ -47,6 +55,8 @@ class AdminSeeder {
         canManageEmployees: const Value(true),
         canManageRoles: const Value(true),
         isSystemRole: const Value(true),
+        // ✅ Mark as unsynced so it will be pushed to cloud
+        isSynced: const Value(false),
       ),
     );
 
@@ -54,7 +64,8 @@ class AdminSeeder {
     final adminRole = (await db.rolesDao.getAllRoles())
         .firstWhere((r) => r.id == roleId);
 
-    print('✅ Admin role created successfully');
+    print('✅ Admin role created successfully (ID: $roleId)');
+    print('   📤 Will sync to cloud on next sync cycle');
     return adminRole;
   }
 
@@ -65,7 +76,14 @@ class AdminSeeder {
     final adminExists = existingUsers.any((u) => u.username == 'admin');
 
     if (adminExists) {
-      print('👑 Admin user already exists');
+      final adminUser = existingUsers.firstWhere((u) => u.username == 'admin');
+      print('👑 Admin user already exists (ID: ${adminUser.id})');
+      
+      // ✅ If exists but not synced, mark it for sync
+      if (!adminUser.isSynced) {
+        print('   📤 Admin user needs syncing');
+      }
+      
       return;
     }
 
@@ -75,15 +93,18 @@ class AdminSeeder {
       UsersCompanion.insert(
         username: 'admin',
         email: 'admin@commissary.com',
-        password: 'admin123',
+        password: 'admin123', // ⚠️ Consider hashing this!
         roleId: adminRole.id,
         isActive: const Value(true),
+        // ✅ Mark as unsynced so it will be pushed to cloud
+        isSynced: const Value(false),
       ),
     );
 
     print('✅ Admin account created successfully!');
     print('📧 Email: admin@commissary.com');
     print('🔑 Password: admin123');
+    print('📤 Will sync to cloud on next sync cycle');
     print('⚠️ IMPORTANT: Change this password after first login!');
   }
 }

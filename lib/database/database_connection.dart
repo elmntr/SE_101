@@ -29,7 +29,7 @@ class DatabaseConnection {
       print('Database file does not exist.');
     }
   }
-  Future<void> deleteOldDatabase() async {
+  static Future<void> deleteOldDatabase() async {
   final dir = await getApplicationDocumentsDirectory();
   final file = File(p.join(dir.path, 'app_inventory.db'));
   if (await file.exists()) {

@@ -18,4 +18,7 @@ class Users extends Table {
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastUpdated => dateTime().withDefault(currentDateAndTime)();
+
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
+  TextColumn get cloudId => text().nullable()();
 }

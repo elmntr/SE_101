@@ -542,6 +542,17 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -554,6 +565,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     lastUpdated,
     isSynced,
     isDeleted,
+    cloudId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -629,6 +641,12 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
       );
     }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    }
     return context;
   }
 
@@ -678,6 +696,10 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_deleted'],
       )!,
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      ),
     );
   }
 
@@ -698,6 +720,7 @@ class Item extends DataClass implements Insertable<Item> {
   final DateTime lastUpdated;
   final bool isSynced;
   final bool isDeleted;
+  final String? cloudId;
   const Item({
     required this.id,
     required this.name,
@@ -709,6 +732,7 @@ class Item extends DataClass implements Insertable<Item> {
     required this.lastUpdated,
     required this.isSynced,
     required this.isDeleted,
+    this.cloudId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -725,6 +749,9 @@ class Item extends DataClass implements Insertable<Item> {
     map['last_updated'] = Variable<DateTime>(lastUpdated);
     map['is_synced'] = Variable<bool>(isSynced);
     map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || cloudId != null) {
+      map['cloud_id'] = Variable<String>(cloudId);
+    }
     return map;
   }
 
@@ -742,6 +769,9 @@ class Item extends DataClass implements Insertable<Item> {
       lastUpdated: Value(lastUpdated),
       isSynced: Value(isSynced),
       isDeleted: Value(isDeleted),
+      cloudId: cloudId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudId),
     );
   }
 
@@ -761,6 +791,7 @@ class Item extends DataClass implements Insertable<Item> {
       lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      cloudId: serializer.fromJson<String?>(json['cloudId']),
     );
   }
   @override
@@ -777,6 +808,7 @@ class Item extends DataClass implements Insertable<Item> {
       'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
       'isSynced': serializer.toJson<bool>(isSynced),
       'isDeleted': serializer.toJson<bool>(isDeleted),
+      'cloudId': serializer.toJson<String?>(cloudId),
     };
   }
 
@@ -791,6 +823,7 @@ class Item extends DataClass implements Insertable<Item> {
     DateTime? lastUpdated,
     bool? isSynced,
     bool? isDeleted,
+    Value<String?> cloudId = const Value.absent(),
   }) => Item(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -802,6 +835,7 @@ class Item extends DataClass implements Insertable<Item> {
     lastUpdated: lastUpdated ?? this.lastUpdated,
     isSynced: isSynced ?? this.isSynced,
     isDeleted: isDeleted ?? this.isDeleted,
+    cloudId: cloudId.present ? cloudId.value : this.cloudId,
   );
   Item copyWithCompanion(ItemsCompanion data) {
     return Item(
@@ -819,6 +853,7 @@ class Item extends DataClass implements Insertable<Item> {
           : this.lastUpdated,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
     );
   }
 
@@ -834,7 +869,8 @@ class Item extends DataClass implements Insertable<Item> {
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('isSynced: $isSynced, ')
-          ..write('isDeleted: $isDeleted')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('cloudId: $cloudId')
           ..write(')'))
         .toString();
   }
@@ -851,6 +887,7 @@ class Item extends DataClass implements Insertable<Item> {
     lastUpdated,
     isSynced,
     isDeleted,
+    cloudId,
   );
   @override
   bool operator ==(Object other) =>
@@ -865,7 +902,8 @@ class Item extends DataClass implements Insertable<Item> {
           other.createdAt == this.createdAt &&
           other.lastUpdated == this.lastUpdated &&
           other.isSynced == this.isSynced &&
-          other.isDeleted == this.isDeleted);
+          other.isDeleted == this.isDeleted &&
+          other.cloudId == this.cloudId);
 }
 
 class ItemsCompanion extends UpdateCompanion<Item> {
@@ -879,6 +917,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<DateTime> lastUpdated;
   final Value<bool> isSynced;
   final Value<bool> isDeleted;
+  final Value<String?> cloudId;
   const ItemsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -890,6 +929,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.lastUpdated = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.cloudId = const Value.absent(),
   });
   ItemsCompanion.insert({
     this.id = const Value.absent(),
@@ -902,6 +942,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.lastUpdated = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.cloudId = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Item> custom({
     Expression<int>? id,
@@ -914,6 +955,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Expression<DateTime>? lastUpdated,
     Expression<bool>? isSynced,
     Expression<bool>? isDeleted,
+    Expression<String>? cloudId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -926,6 +968,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       if (lastUpdated != null) 'last_updated': lastUpdated,
       if (isSynced != null) 'is_synced': isSynced,
       if (isDeleted != null) 'is_deleted': isDeleted,
+      if (cloudId != null) 'cloud_id': cloudId,
     });
   }
 
@@ -940,6 +983,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Value<DateTime>? lastUpdated,
     Value<bool>? isSynced,
     Value<bool>? isDeleted,
+    Value<String?>? cloudId,
   }) {
     return ItemsCompanion(
       id: id ?? this.id,
@@ -952,6 +996,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       lastUpdated: lastUpdated ?? this.lastUpdated,
       isSynced: isSynced ?? this.isSynced,
       isDeleted: isDeleted ?? this.isDeleted,
+      cloudId: cloudId ?? this.cloudId,
     );
   }
 
@@ -988,6 +1033,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
     return map;
   }
 
@@ -1003,7 +1051,8 @@ class ItemsCompanion extends UpdateCompanion<Item> {
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('isSynced: $isSynced, ')
-          ..write('isDeleted: $isDeleted')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('cloudId: $cloudId')
           ..write(')'))
         .toString();
   }
@@ -1240,6 +1289,32 @@ class $RolesTable extends Roles with TableInfo<$RolesTable, Role> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1258,6 +1333,8 @@ class $RolesTable extends Roles with TableInfo<$RolesTable, Role> {
     isActive,
     canManageEmployees,
     canManageRoles,
+    isSynced,
+    cloudId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1402,6 +1479,18 @@ class $RolesTable extends Roles with TableInfo<$RolesTable, Role> {
         ),
       );
     }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    }
     return context;
   }
 
@@ -1475,6 +1564,14 @@ class $RolesTable extends Roles with TableInfo<$RolesTable, Role> {
         DriftSqlType.bool,
         data['${effectivePrefix}can_manage_roles'],
       )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      ),
     );
   }
 
@@ -1501,6 +1598,8 @@ class Role extends DataClass implements Insertable<Role> {
   final bool isActive;
   final bool canManageEmployees;
   final bool canManageRoles;
+  final bool isSynced;
+  final String? cloudId;
   const Role({
     required this.id,
     required this.name,
@@ -1518,6 +1617,8 @@ class Role extends DataClass implements Insertable<Role> {
     required this.isActive,
     required this.canManageEmployees,
     required this.canManageRoles,
+    required this.isSynced,
+    this.cloudId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1540,6 +1641,10 @@ class Role extends DataClass implements Insertable<Role> {
     map['is_active'] = Variable<bool>(isActive);
     map['can_manage_employees'] = Variable<bool>(canManageEmployees);
     map['can_manage_roles'] = Variable<bool>(canManageRoles);
+    map['is_synced'] = Variable<bool>(isSynced);
+    if (!nullToAbsent || cloudId != null) {
+      map['cloud_id'] = Variable<String>(cloudId);
+    }
     return map;
   }
 
@@ -1563,6 +1668,10 @@ class Role extends DataClass implements Insertable<Role> {
       isActive: Value(isActive),
       canManageEmployees: Value(canManageEmployees),
       canManageRoles: Value(canManageRoles),
+      isSynced: Value(isSynced),
+      cloudId: cloudId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudId),
     );
   }
 
@@ -1588,6 +1697,8 @@ class Role extends DataClass implements Insertable<Role> {
       isActive: serializer.fromJson<bool>(json['isActive']),
       canManageEmployees: serializer.fromJson<bool>(json['canManageEmployees']),
       canManageRoles: serializer.fromJson<bool>(json['canManageRoles']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      cloudId: serializer.fromJson<String?>(json['cloudId']),
     );
   }
   @override
@@ -1610,6 +1721,8 @@ class Role extends DataClass implements Insertable<Role> {
       'isActive': serializer.toJson<bool>(isActive),
       'canManageEmployees': serializer.toJson<bool>(canManageEmployees),
       'canManageRoles': serializer.toJson<bool>(canManageRoles),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'cloudId': serializer.toJson<String?>(cloudId),
     };
   }
 
@@ -1630,6 +1743,8 @@ class Role extends DataClass implements Insertable<Role> {
     bool? isActive,
     bool? canManageEmployees,
     bool? canManageRoles,
+    bool? isSynced,
+    Value<String?> cloudId = const Value.absent(),
   }) => Role(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -1647,6 +1762,8 @@ class Role extends DataClass implements Insertable<Role> {
     isActive: isActive ?? this.isActive,
     canManageEmployees: canManageEmployees ?? this.canManageEmployees,
     canManageRoles: canManageRoles ?? this.canManageRoles,
+    isSynced: isSynced ?? this.isSynced,
+    cloudId: cloudId.present ? cloudId.value : this.cloudId,
   );
   Role copyWithCompanion(RolesCompanion data) {
     return Role(
@@ -1690,6 +1807,8 @@ class Role extends DataClass implements Insertable<Role> {
       canManageRoles: data.canManageRoles.present
           ? data.canManageRoles.value
           : this.canManageRoles,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
     );
   }
 
@@ -1711,7 +1830,9 @@ class Role extends DataClass implements Insertable<Role> {
           ..write('isSystemRole: $isSystemRole, ')
           ..write('isActive: $isActive, ')
           ..write('canManageEmployees: $canManageEmployees, ')
-          ..write('canManageRoles: $canManageRoles')
+          ..write('canManageRoles: $canManageRoles, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('cloudId: $cloudId')
           ..write(')'))
         .toString();
   }
@@ -1734,6 +1855,8 @@ class Role extends DataClass implements Insertable<Role> {
     isActive,
     canManageEmployees,
     canManageRoles,
+    isSynced,
+    cloudId,
   );
   @override
   bool operator ==(Object other) =>
@@ -1754,7 +1877,9 @@ class Role extends DataClass implements Insertable<Role> {
           other.isSystemRole == this.isSystemRole &&
           other.isActive == this.isActive &&
           other.canManageEmployees == this.canManageEmployees &&
-          other.canManageRoles == this.canManageRoles);
+          other.canManageRoles == this.canManageRoles &&
+          other.isSynced == this.isSynced &&
+          other.cloudId == this.cloudId);
 }
 
 class RolesCompanion extends UpdateCompanion<Role> {
@@ -1774,6 +1899,8 @@ class RolesCompanion extends UpdateCompanion<Role> {
   final Value<bool> isActive;
   final Value<bool> canManageEmployees;
   final Value<bool> canManageRoles;
+  final Value<bool> isSynced;
+  final Value<String?> cloudId;
   const RolesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -1791,6 +1918,8 @@ class RolesCompanion extends UpdateCompanion<Role> {
     this.isActive = const Value.absent(),
     this.canManageEmployees = const Value.absent(),
     this.canManageRoles = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.cloudId = const Value.absent(),
   });
   RolesCompanion.insert({
     this.id = const Value.absent(),
@@ -1809,6 +1938,8 @@ class RolesCompanion extends UpdateCompanion<Role> {
     this.isActive = const Value.absent(),
     this.canManageEmployees = const Value.absent(),
     this.canManageRoles = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.cloudId = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Role> custom({
     Expression<int>? id,
@@ -1827,6 +1958,8 @@ class RolesCompanion extends UpdateCompanion<Role> {
     Expression<bool>? isActive,
     Expression<bool>? canManageEmployees,
     Expression<bool>? canManageRoles,
+    Expression<bool>? isSynced,
+    Expression<String>? cloudId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1847,6 +1980,8 @@ class RolesCompanion extends UpdateCompanion<Role> {
       if (canManageEmployees != null)
         'can_manage_employees': canManageEmployees,
       if (canManageRoles != null) 'can_manage_roles': canManageRoles,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (cloudId != null) 'cloud_id': cloudId,
     });
   }
 
@@ -1867,6 +2002,8 @@ class RolesCompanion extends UpdateCompanion<Role> {
     Value<bool>? isActive,
     Value<bool>? canManageEmployees,
     Value<bool>? canManageRoles,
+    Value<bool>? isSynced,
+    Value<String?>? cloudId,
   }) {
     return RolesCompanion(
       id: id ?? this.id,
@@ -1885,6 +2022,8 @@ class RolesCompanion extends UpdateCompanion<Role> {
       isActive: isActive ?? this.isActive,
       canManageEmployees: canManageEmployees ?? this.canManageEmployees,
       canManageRoles: canManageRoles ?? this.canManageRoles,
+      isSynced: isSynced ?? this.isSynced,
+      cloudId: cloudId ?? this.cloudId,
     );
   }
 
@@ -1939,6 +2078,12 @@ class RolesCompanion extends UpdateCompanion<Role> {
     if (canManageRoles.present) {
       map['can_manage_roles'] = Variable<bool>(canManageRoles.value);
     }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
     return map;
   }
 
@@ -1960,7 +2105,9 @@ class RolesCompanion extends UpdateCompanion<Role> {
           ..write('isSystemRole: $isSystemRole, ')
           ..write('isActive: $isActive, ')
           ..write('canManageEmployees: $canManageEmployees, ')
-          ..write('canManageRoles: $canManageRoles')
+          ..write('canManageRoles: $canManageRoles, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('cloudId: $cloudId')
           ..write(')'))
         .toString();
   }
@@ -2077,6 +2224,32 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2088,6 +2261,8 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     isActive,
     createdAt,
     lastUpdated,
+    isSynced,
+    cloudId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2163,6 +2338,18 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         ),
       );
     }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    }
     return context;
   }
 
@@ -2208,6 +2395,14 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_updated'],
       )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      ),
     );
   }
 
@@ -2227,6 +2422,8 @@ class User extends DataClass implements Insertable<User> {
   final bool isActive;
   final DateTime createdAt;
   final DateTime lastUpdated;
+  final bool isSynced;
+  final String? cloudId;
   const User({
     required this.id,
     required this.username,
@@ -2237,6 +2434,8 @@ class User extends DataClass implements Insertable<User> {
     required this.isActive,
     required this.createdAt,
     required this.lastUpdated,
+    required this.isSynced,
+    this.cloudId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2252,6 +2451,10 @@ class User extends DataClass implements Insertable<User> {
     map['is_active'] = Variable<bool>(isActive);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['last_updated'] = Variable<DateTime>(lastUpdated);
+    map['is_synced'] = Variable<bool>(isSynced);
+    if (!nullToAbsent || cloudId != null) {
+      map['cloud_id'] = Variable<String>(cloudId);
+    }
     return map;
   }
 
@@ -2268,6 +2471,10 @@ class User extends DataClass implements Insertable<User> {
       isActive: Value(isActive),
       createdAt: Value(createdAt),
       lastUpdated: Value(lastUpdated),
+      isSynced: Value(isSynced),
+      cloudId: cloudId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudId),
     );
   }
 
@@ -2286,6 +2493,8 @@ class User extends DataClass implements Insertable<User> {
       isActive: serializer.fromJson<bool>(json['isActive']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      cloudId: serializer.fromJson<String?>(json['cloudId']),
     );
   }
   @override
@@ -2301,6 +2510,8 @@ class User extends DataClass implements Insertable<User> {
       'isActive': serializer.toJson<bool>(isActive),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'cloudId': serializer.toJson<String?>(cloudId),
     };
   }
 
@@ -2314,6 +2525,8 @@ class User extends DataClass implements Insertable<User> {
     bool? isActive,
     DateTime? createdAt,
     DateTime? lastUpdated,
+    bool? isSynced,
+    Value<String?> cloudId = const Value.absent(),
   }) => User(
     id: id ?? this.id,
     username: username ?? this.username,
@@ -2324,6 +2537,8 @@ class User extends DataClass implements Insertable<User> {
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
     lastUpdated: lastUpdated ?? this.lastUpdated,
+    isSynced: isSynced ?? this.isSynced,
+    cloudId: cloudId.present ? cloudId.value : this.cloudId,
   );
   User copyWithCompanion(UsersCompanion data) {
     return User(
@@ -2338,6 +2553,8 @@ class User extends DataClass implements Insertable<User> {
       lastUpdated: data.lastUpdated.present
           ? data.lastUpdated.value
           : this.lastUpdated,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
     );
   }
 
@@ -2352,7 +2569,9 @@ class User extends DataClass implements Insertable<User> {
           ..write('roleId: $roleId, ')
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
-          ..write('lastUpdated: $lastUpdated')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('cloudId: $cloudId')
           ..write(')'))
         .toString();
   }
@@ -2368,6 +2587,8 @@ class User extends DataClass implements Insertable<User> {
     isActive,
     createdAt,
     lastUpdated,
+    isSynced,
+    cloudId,
   );
   @override
   bool operator ==(Object other) =>
@@ -2381,7 +2602,9 @@ class User extends DataClass implements Insertable<User> {
           other.roleId == this.roleId &&
           other.isActive == this.isActive &&
           other.createdAt == this.createdAt &&
-          other.lastUpdated == this.lastUpdated);
+          other.lastUpdated == this.lastUpdated &&
+          other.isSynced == this.isSynced &&
+          other.cloudId == this.cloudId);
 }
 
 class UsersCompanion extends UpdateCompanion<User> {
@@ -2394,6 +2617,8 @@ class UsersCompanion extends UpdateCompanion<User> {
   final Value<bool> isActive;
   final Value<DateTime> createdAt;
   final Value<DateTime> lastUpdated;
+  final Value<bool> isSynced;
+  final Value<String?> cloudId;
   const UsersCompanion({
     this.id = const Value.absent(),
     this.username = const Value.absent(),
@@ -2404,6 +2629,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.cloudId = const Value.absent(),
   });
   UsersCompanion.insert({
     this.id = const Value.absent(),
@@ -2415,6 +2642,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.cloudId = const Value.absent(),
   }) : username = Value(username),
        email = Value(email),
        password = Value(password),
@@ -2429,6 +2658,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     Expression<bool>? isActive,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastUpdated,
+    Expression<bool>? isSynced,
+    Expression<String>? cloudId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2440,6 +2671,8 @@ class UsersCompanion extends UpdateCompanion<User> {
       if (isActive != null) 'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt,
       if (lastUpdated != null) 'last_updated': lastUpdated,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (cloudId != null) 'cloud_id': cloudId,
     });
   }
 
@@ -2453,6 +2686,8 @@ class UsersCompanion extends UpdateCompanion<User> {
     Value<bool>? isActive,
     Value<DateTime>? createdAt,
     Value<DateTime>? lastUpdated,
+    Value<bool>? isSynced,
+    Value<String?>? cloudId,
   }) {
     return UsersCompanion(
       id: id ?? this.id,
@@ -2464,6 +2699,8 @@ class UsersCompanion extends UpdateCompanion<User> {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      isSynced: isSynced ?? this.isSynced,
+      cloudId: cloudId ?? this.cloudId,
     );
   }
 
@@ -2497,6 +2734,12 @@ class UsersCompanion extends UpdateCompanion<User> {
     if (lastUpdated.present) {
       map['last_updated'] = Variable<DateTime>(lastUpdated.value);
     }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
     return map;
   }
 
@@ -2511,7 +2754,9 @@ class UsersCompanion extends UpdateCompanion<User> {
           ..write('roleId: $roleId, ')
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
-          ..write('lastUpdated: $lastUpdated')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('cloudId: $cloudId')
           ..write(')'))
         .toString();
   }
@@ -2863,6 +3108,7 @@ typedef $$ItemsTableCreateCompanionBuilder =
       Value<DateTime> lastUpdated,
       Value<bool> isSynced,
       Value<bool> isDeleted,
+      Value<String?> cloudId,
     });
 typedef $$ItemsTableUpdateCompanionBuilder =
     ItemsCompanion Function({
@@ -2876,6 +3122,7 @@ typedef $$ItemsTableUpdateCompanionBuilder =
       Value<DateTime> lastUpdated,
       Value<bool> isSynced,
       Value<bool> isDeleted,
+      Value<String?> cloudId,
     });
 
 final class $$ItemsTableReferences
@@ -2950,6 +3197,11 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<bool> get isDeleted => $composableBuilder(
     column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3031,6 +3283,11 @@ class $$ItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3092,6 +3349,9 @@ class $$ItemsTableAnnotationComposer
 
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -3155,6 +3415,7 @@ class $$ItemsTableTableManager
                 Value<DateTime> lastUpdated = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
               }) => ItemsCompanion(
                 id: id,
                 name: name,
@@ -3166,6 +3427,7 @@ class $$ItemsTableTableManager
                 lastUpdated: lastUpdated,
                 isSynced: isSynced,
                 isDeleted: isDeleted,
+                cloudId: cloudId,
               ),
           createCompanionCallback:
               ({
@@ -3179,6 +3441,7 @@ class $$ItemsTableTableManager
                 Value<DateTime> lastUpdated = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
               }) => ItemsCompanion.insert(
                 id: id,
                 name: name,
@@ -3190,6 +3453,7 @@ class $$ItemsTableTableManager
                 lastUpdated: lastUpdated,
                 isSynced: isSynced,
                 isDeleted: isDeleted,
+                cloudId: cloudId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3274,6 +3538,8 @@ typedef $$RolesTableCreateCompanionBuilder =
       Value<bool> isActive,
       Value<bool> canManageEmployees,
       Value<bool> canManageRoles,
+      Value<bool> isSynced,
+      Value<String?> cloudId,
     });
 typedef $$RolesTableUpdateCompanionBuilder =
     RolesCompanion Function({
@@ -3293,6 +3559,8 @@ typedef $$RolesTableUpdateCompanionBuilder =
       Value<bool> isActive,
       Value<bool> canManageEmployees,
       Value<bool> canManageRoles,
+      Value<bool> isSynced,
+      Value<String?> cloudId,
     });
 
 final class $$RolesTableReferences
@@ -3404,6 +3672,16 @@ class $$RolesTableFilterComposer extends Composer<_$AppDatabase, $RolesTable> {
 
   ColumnFilters<bool> get canManageRoles => $composableBuilder(
     column: $table.canManageRoles,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3521,6 +3799,16 @@ class $$RolesTableOrderingComposer
     column: $table.canManageRoles,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RolesTableAnnotationComposer
@@ -3604,6 +3892,12 @@ class $$RolesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
+
   Expression<T> usersRefs<T extends Object>(
     Expression<T> Function($$UsersTableAnnotationComposer a) f,
   ) {
@@ -3674,6 +3968,8 @@ class $$RolesTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> canManageEmployees = const Value.absent(),
                 Value<bool> canManageRoles = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
               }) => RolesCompanion(
                 id: id,
                 name: name,
@@ -3691,6 +3987,8 @@ class $$RolesTableTableManager
                 isActive: isActive,
                 canManageEmployees: canManageEmployees,
                 canManageRoles: canManageRoles,
+                isSynced: isSynced,
+                cloudId: cloudId,
               ),
           createCompanionCallback:
               ({
@@ -3710,6 +4008,8 @@ class $$RolesTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<bool> canManageEmployees = const Value.absent(),
                 Value<bool> canManageRoles = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
               }) => RolesCompanion.insert(
                 id: id,
                 name: name,
@@ -3727,6 +4027,8 @@ class $$RolesTableTableManager
                 isActive: isActive,
                 canManageEmployees: canManageEmployees,
                 canManageRoles: canManageRoles,
+                isSynced: isSynced,
+                cloudId: cloudId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3786,6 +4088,8 @@ typedef $$UsersTableCreateCompanionBuilder =
       Value<bool> isActive,
       Value<DateTime> createdAt,
       Value<DateTime> lastUpdated,
+      Value<bool> isSynced,
+      Value<String?> cloudId,
     });
 typedef $$UsersTableUpdateCompanionBuilder =
     UsersCompanion Function({
@@ -3798,6 +4102,8 @@ typedef $$UsersTableUpdateCompanionBuilder =
       Value<bool> isActive,
       Value<DateTime> createdAt,
       Value<DateTime> lastUpdated,
+      Value<bool> isSynced,
+      Value<String?> cloudId,
     });
 
 final class $$UsersTableReferences
@@ -3867,6 +4173,16 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
 
   ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
     column: $table.lastUpdated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3943,6 +4259,16 @@ class $$UsersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$RolesTableOrderingComposer get roleId {
     final $$RolesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4001,6 +4327,12 @@ class $$UsersTableAnnotationComposer
     column: $table.lastUpdated,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
 
   $$RolesTableAnnotationComposer get roleId {
     final $$RolesTableAnnotationComposer composer = $composerBuilder(
@@ -4063,6 +4395,8 @@ class $$UsersTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
               }) => UsersCompanion(
                 id: id,
                 username: username,
@@ -4073,6 +4407,8 @@ class $$UsersTableTableManager
                 isActive: isActive,
                 createdAt: createdAt,
                 lastUpdated: lastUpdated,
+                isSynced: isSynced,
+                cloudId: cloudId,
               ),
           createCompanionCallback:
               ({
@@ -4085,6 +4421,8 @@ class $$UsersTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
               }) => UsersCompanion.insert(
                 id: id,
                 username: username,
@@ -4095,6 +4433,8 @@ class $$UsersTableTableManager
                 isActive: isActive,
                 createdAt: createdAt,
                 lastUpdated: lastUpdated,
+                isSynced: isSynced,
+                cloudId: cloudId,
               ),
           withReferenceMapper: (p0) => p0
               .map(

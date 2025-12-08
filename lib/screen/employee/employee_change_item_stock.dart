@@ -12,7 +12,7 @@ class EmployeeChangeStockPage extends StatefulWidget {
   const EmployeeChangeStockPage({
     super.key,
     required this.onBack,
-    this.onRecordSaved,
+    this.onRecordSaved, required User user, Role? role,
   });
 
   @override
