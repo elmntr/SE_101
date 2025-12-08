@@ -1,6 +1,7 @@
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/screen/employee/employee_review_changes_page.dart';
 import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
+import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart'; // ✅ your Drift DB
@@ -10,8 +11,9 @@ import 'employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 
 class EmployeeItemsPage extends StatefulWidget {
-  const EmployeeItemsPage({super.key});
-
+  final User user;
+  final Role role;
+  const EmployeeItemsPage({super.key, required this.user, required this.role});
   @override
   State<EmployeeItemsPage> createState() => _EmployeeItemsPageState();
 }
@@ -406,6 +408,9 @@ Widget build(BuildContext context) {
   // ✅ CHANGE STOCK MODE
   if (_isInChangeStockMode) {
     return EmployeeChangeStockPage(
+      user: widget.user,            // ✅ ADDED
+      role: widget.role, 
+
       onBack: () async {
         _toggleChangeStockMode();
         await _loadItems();
@@ -422,6 +427,7 @@ Widget build(BuildContext context) {
   // ✅ VIEW CHANGE DETAIL
   if (_isViewingChangeDetail && _selectedChangeRecord != null) {
     return ReviewChangeDetailPage(
+      
       record: _selectedChangeRecord!,
       onBack: () {
         setState(() {
@@ -613,11 +619,59 @@ Widget build(BuildContext context) {
                   ),
                   child: selectedTab == 0
                       ? (dbItems.isEmpty
-                          ? _emptyTables("You can manage your items here.", 0)
-                          : _buildItemTable())
+                        ? emptyTables(
+                            message: "You can manage your items here.",
+                            onAddPressed: _createItem,
+                            buttonType: EmptyButtonType.icon,
+                            buttonText: null)
+                        : buildUniversalTable(
+                            headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
+                            rows: dbItems.map((item) => [
+                              item.name.toString(),
+                              item.stock.toString(),
+                              item.sold.toString(),
+                              item.spoilage.toString(),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () async {
+                                  await db.itemsDao.deleteItem(item.id);
+                                  _loadItems();
+                                },
+                              ),
+                            ]).toList(),
+                          ))
                       : (reviewChanges.isEmpty
-                          ? _emptyTables("You can add categories here.", 1)
-                          : _buildCategoryTable()),
+                            ? emptyTables(
+                                message: "You can view employee stock changes here.",
+                                onAddPressed: null,
+                                buttonType: EmptyButtonType.none,
+                                buttonText: null)
+                            : buildUniversalTable(
+                                headers: ["Employee", "Role", "Changes", "Status", ""],
+                                rows: List.generate(reviewChanges.length, (i) {
+                                  final record = reviewChanges[i];
+                                  return [
+                                    record.employeeName.toString(),
+                                    record.role.toString(),
+                                    record.totalChanges.toString(),
+                                    record.status,
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: Center(
+                                        child: ElevatedButton(
+                                          child: const Text("View"),
+                                          onPressed: () {
+                                            setState(() {
+                                              _isViewingChangeDetail = true;
+                                              _selectedChangeRecord = record;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ];
+                                }),
+                              ))
                 ),
               ),
             ],
@@ -800,15 +854,59 @@ Widget build(BuildContext context) {
                     ),
                     child: selectedTab == 0
                         ? (dbItems.isEmpty
-                            ? _emptyTables(
-                                "You can manage your items here.",
-                                selectedTab)
-                            : _buildItemTable())
+                          ? emptyTables(
+                              message: "You can manage your items here.",
+                              onAddPressed: _createItem,
+                              buttonType: EmptyButtonType.icon,
+                              buttonText: null)
+                          : buildUniversalTable(
+                              headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
+                              rows: dbItems.map((item) => [
+                                item.name.toString(),
+                                item.stock.toString(),
+                                item.sold.toString(),
+                                item.spoilage.toString(),
+                                IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () async {
+                                    await db.itemsDao.deleteItem(item.id);
+                                    _loadItems();
+                                  },
+                                ),
+                              ]).toList(),
+                            ))
                         : (reviewChanges.isEmpty
-                            ? _emptyTables(
-                                "You can add categories here to organize your items.",
-                                selectedTab)
-                            : _buildCategoryTable()),
+                            ? emptyTables(
+                                    message: "You can view employee stock changes here.",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null)
+                                : buildUniversalTable(
+                                  headers: ["Employee", "Role", "Changes", "Status", ""],
+                                  rows: List.generate(reviewChanges.length, (i) {
+                                    final record = reviewChanges[i];
+                                    return [
+                                      record.employeeName.toString(),
+                                      record.role.toString(),
+                                      record.totalChanges.toString(),
+                                      record.status,
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: Center(
+                                          child: ElevatedButton(
+                                            child: const Text("View"),
+                                            onPressed: () {
+                                              setState(() {
+                                                _isViewingChangeDetail = true;
+                                                _selectedChangeRecord = record;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ];
+                                  }),
+                              ))
                   ),
                 ),
               ],

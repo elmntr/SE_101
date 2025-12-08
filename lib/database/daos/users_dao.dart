@@ -33,7 +33,11 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   /// Update an existing user.
   /// `replace` updates the row that matches the primary key (id).
   Future<bool> updateUser(User user) => update(users).replace(user);
-
+/// Get a single user by ID
+  Future<User?> getUserById(int id) async {
+    final query = select(users)..where((tbl) => tbl.id.equals(id));
+    return query.getSingleOrNull(); // Returns null if not found
+  }
   /// Delete a user by its ID.
   Future<int> deleteUserById(int id) =>
       (delete(users)..where((t) => t.id.equals(id))).go();

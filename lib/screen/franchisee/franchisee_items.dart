@@ -505,7 +505,9 @@ class _ItemsPageState extends State<ItemsPage> {
                       ? (dbItems.isEmpty
                           ? emptyTables(
                             message:   "You can manage your items here.",
-                            onAddPressed: _createItem)
+                            onAddPressed: _createItem,
+                            buttonType: EmptyButtonType.icon,
+                            buttonText: null)
                           : buildUniversalTable(
                               headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
                               rows: dbItems.map((item) => [
@@ -526,7 +528,9 @@ class _ItemsPageState extends State<ItemsPage> {
                       : (categories.isEmpty
                           ? emptyTables(
                               message: "You can add categories here.", 
-                              onAddPressed: _createCategory)
+                              onAddPressed: _createCategory,
+                              buttonType: EmptyButtonType.icon,
+                              buttonText: null)
                           : _buildCategoryTable()),
                 ),
               ),
@@ -705,7 +709,9 @@ class _ItemsPageState extends State<ItemsPage> {
                           ? (dbItems.isEmpty
                               ? emptyTables(
                                   message: "You can manage your items here.",
-                                  onAddPressed: _createItem)
+                                  onAddPressed: _createItem,
+                                  buttonType: EmptyButtonType.icon,
+                                  buttonText: null)
                               : buildUniversalTable(
                                   headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
                                   rows: dbItems.map((item) => [
@@ -725,7 +731,9 @@ class _ItemsPageState extends State<ItemsPage> {
                           : (categories.isEmpty
                               ? emptyTables(
                                   message: "You can add categories here to organize your items.",
-                                  onAddPressed: _createCategory)
+                                  onAddPressed: _createCategory,
+                                  buttonType: EmptyButtonType.icon,
+                                  buttonText: null)
                               : buildUniversalTable(
                                   headers: ["Category Name", "Items in Category", ""],
                                   rows: List.generate(categories.length, (i) {

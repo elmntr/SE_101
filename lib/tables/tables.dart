@@ -1,21 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 
+enum EmptyButtonType { none, icon, elevated }
+
 Widget emptyTables({
   required String message,
   VoidCallback? onAddPressed,
+  EmptyButtonType buttonType = EmptyButtonType.none,
+  String? buttonText,
 }) {
   return Center(
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(message, style: const TextStyle(color: Colors.black54)),
-        if (onAddPressed != null) ...[
+        if (buttonType != EmptyButtonType.none && onAddPressed != null) ...[
           const SizedBox(height: 15),
-          IconButton(
-            icon: const Icon(Icons.add_circle, color: colorAll, size: 55),
-            onPressed: onAddPressed,
-          ),
+
+          /// ✅ ICON BUTTON (Add / Plus)
+          if (buttonType == EmptyButtonType.icon)
+            IconButton(
+              icon: const Icon(
+                Icons.add_circle,
+                color: colorAll,
+                size: 55,
+              ),
+              onPressed: onAddPressed,
+            ),
+
+          /// ✅ ELEVATED BUTTON (Request Stock)
+          if (buttonType == EmptyButtonType.elevated)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+              ),
+              onPressed: onAddPressed,
+              child: Text(
+                buttonText ?? "Confirm",
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
         ],
       ],
     ),
