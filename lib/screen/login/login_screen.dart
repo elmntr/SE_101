@@ -1,7 +1,7 @@
 // lib/screens/login/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import 'package:chickenjoo_inventory/database/database_provider.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chickenjoo_inventory/screen/login/widgets/login_form.dart';
@@ -25,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _db = DatabaseProvider.database;
+    _db = database;
 
     // Check for stored user ID
     _checkPersistentLogin();

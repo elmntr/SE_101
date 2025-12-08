@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart'; // your Drift DB
-import "../../../database/database_provider.dart";
+import 'package:chickenjoo_inventory/app_globals.dart';
+
 
 class EmployeeAccountPage extends StatefulWidget {
   final User user; // pass the signed-in user
@@ -26,7 +27,7 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.database;
+    db = database;
 
     // Initialize controllers with DB values
     nameController = TextEditingController(text: widget.user.username);

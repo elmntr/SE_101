@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
-import "../../../database/database_provider.dart";
+import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:chickenjoo_inventory/app_globals.dart';
@@ -31,7 +31,7 @@ class _ItemsPageState extends State<ItemsPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.database;
+    db = database;
     _loadItems();
   }
 

@@ -1,7 +1,7 @@
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
 import '../../../database/app_database.dart';
-import '../../../database/database_provider.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -30,7 +30,7 @@ class _ReportsPageState extends State<ReportsPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.database;
+    db = database;
     _loadData();
   }
 

@@ -2,7 +2,8 @@ import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../database/app_database.dart';
-import '../../../database/database_provider.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
+
 import '../../design_constants.dart';
 
 class EmployeeChangeStockPage extends StatefulWidget {
@@ -34,7 +35,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.database;
+    db = database;
     _loadItems();
   }
 
