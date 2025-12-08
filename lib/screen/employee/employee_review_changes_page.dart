@@ -3,7 +3,8 @@ import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
-import 'package:chickenjoo_inventory/database/database_provider.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
+
 
 class ReviewChangeDetailPage extends StatelessWidget {
   static List<ChangeRecord> records = [];
@@ -22,7 +23,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
 
   // ✅ NEW: Apply changes to database
   Future<void> _applyChangesToDatabase() async {
-    final db = DatabaseProvider.database;
+    final db = database;
     
     print('📊 Starting database update for ${record.items.length} items');
     

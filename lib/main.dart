@@ -27,28 +27,25 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
 
+  // Desktop window size setup
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     setWindowTitle('Chicken Joo Inventory');
     setWindowMinSize(const Size(1280, 720));
     setWindowMaxSize(const Size(1920, 1080));
   }
-  
-  //await DatabaseConnection.deleteOldDatabase();
-  //await DatabaseConnection.deleteDatabase();
-  
-  // ✅ Create database instance ONCE
+
+  // -------------------------------------------------------------
+  // DATABASE INITIALIZATION
+  // -------------------------------------------------------------
   print('🗄️ Initializing database...');
   final db = AppDatabase();
-  
-  // Seed admin account - pass the same instance
-  await AdminSeeder.seed(db); // admin@commissary.com ; admin123
-  
-  // ✅ Optional: Seed test data (comment out if you don't have this method)
-  // await db.seedDatabase();
-  
-  // Initialize Supabase
+
+  // -------------------------------------------------------------
+  // SUPABASE INITIALIZATION
+  // -------------------------------------------------------------
   print('☁️ Initializing Supabase...');
   bool supabaseInitialized = false;
+
   try {
     await Supabase.initialize(
       url: SupabaseConfig.url,
@@ -60,9 +57,12 @@ void main() async {
     print('⚠️ Supabase initialization failed: $e');
     print('📱 App will work in offline-only mode');
   }
-  
-  // ✅ Initialize sync service as local variable first
+
+  // -------------------------------------------------------------
+  // SYNC SERVICE INITIALIZATION
+  // -------------------------------------------------------------
   print('🔄 Initializing sync service...');
+
   final sync = SupabaseSyncService(
     db: db,
     supabase: Supabase.instance.client,
@@ -89,15 +89,17 @@ void main() async {
       };
     },
   );
-  
-  // ✅ Initialize AppGlobals with instances
+
+  // -------------------------------------------------------------
+  // APP GLOBALS INITIALIZATION
+  // -------------------------------------------------------------
   AppGlobals.instance.initialize(
     database: db,
     syncService: sync,
   );
   print('✅ AppGlobals initialized');
-  
-  // Initialize sync (non-blocking)
+
+  // Non-blocking sync service start
   sync.initialize().then((_) {
     print('✅ Sync service initialized');
     _updateSyncStatus();
@@ -105,12 +107,34 @@ void main() async {
     print('⚠️ Sync service initialization failed: $e');
     print('📱 App will continue in offline mode');
   });
-  
-  // Periodic sync status updates for UI
+
+  // Start periodic sync updates
   _startSyncStatusUpdates();
 
+  // -------------------------------------------------------------
+  // DEBUG: PRINT EXISTING USERS
+  // -------------------------------------------------------------
+  // final users = await db.usersDao.getAllUsers();
+  // for (var u in users) {
+  //   print('${u.email} / ${u.password} / ${u.isActive}');
+  // }
+ 
+
+
+  // -------------------------------------------------------------
+  // ADMIN SEEDER (RUN LAST)
+  // -------------------------------------------------------------
+  await AdminSeeder.seed(db);
+  final testHash = hashPassword('admin123');
+  print(testHash);
+  //print("Computed hash = ${hashPassword("admin123")}");
+
+  // -------------------------------------------------------------
+  // RUN APPLICATION
+  // -------------------------------------------------------------
   runApp(const MyApp());
 }
+
 
 /// Update sync status periodically
 void _startSyncStatusUpdates() {

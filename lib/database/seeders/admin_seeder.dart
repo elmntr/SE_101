@@ -3,17 +3,15 @@ import 'package:drift/drift.dart';
 import '../app_database.dart';
 
 /// Responsible for creating the Admin role and account safely on all platforms
-/// ✅ Now with cloud sync support
 class AdminSeeder {
   /// Entry point to seed Admin role and user
   static Future<void> seed(AppDatabase db) async {
     try {
-      // Wrap all operations in a transaction for safety
       await db.transaction(() async {
         final adminRole = await _createAdminRole(db);
         await _createAdminUser(db, adminRole);
       });
-      
+
       print('✅ Admin seeding completed');
     } catch (e, stack) {
       print('❌ AdminSeeder failed: $e');
@@ -25,22 +23,19 @@ class AdminSeeder {
   static Future<Role> _createAdminRole(AppDatabase db) async {
     final existingRoles = await db.rolesDao.getAllRoles();
 
-    // Safely check for existing Admin role
     final admins = existingRoles.where((r) => r.name == 'Admin').toList();
     if (admins.isNotEmpty) {
       print('👑 Admin role already exists (ID: ${admins.first.id})');
-      
-      // ✅ If exists but not synced, mark it for sync
+
       if (!admins.first.isSynced) {
         print('   📤 Admin role needs syncing');
       }
-      
+
       return admins.first;
     }
 
     print('🔧 Creating Admin role...');
 
-    // Insert new Admin role
     final roleId = await db.rolesDao.insertRole(
       RolesCompanion.insert(
         name: 'Admin',
@@ -55,17 +50,14 @@ class AdminSeeder {
         canManageEmployees: const Value(true),
         canManageRoles: const Value(true),
         isSystemRole: const Value(true),
-        // ✅ Mark as unsynced so it will be pushed to cloud
         isSynced: const Value(false),
       ),
     );
 
-    // Retrieve newly created role
     final adminRole = (await db.rolesDao.getAllRoles())
         .firstWhere((r) => r.id == roleId);
 
     print('✅ Admin role created successfully (ID: $roleId)');
-    print('   📤 Will sync to cloud on next sync cycle');
     return adminRole;
   }
 
@@ -76,27 +68,35 @@ class AdminSeeder {
     final adminExists = existingUsers.any((u) => u.username == 'admin');
 
     if (adminExists) {
-      final adminUser = existingUsers.firstWhere((u) => u.username == 'admin');
+      final adminUser =
+          existingUsers.firstWhere((u) => u.username == 'admin');
+
       print('👑 Admin user already exists (ID: ${adminUser.id})');
-      
-      // ✅ If exists but not synced, mark it for sync
+
       if (!adminUser.isSynced) {
         print('   📤 Admin user needs syncing');
       }
-      
+
       return;
     }
 
     print('🔧 Creating Admin user account...');
 
+    // -----------------------------------------------------------------------
+    // ✔️ ALWAYS hash password correctly here
+    // -----------------------------------------------------------------------
+    final hashedPassword = hashPassword('admin123');
+
+    // -----------------------------------------------------------------------
+    // ✔️ Insert admin user with hashed password
+    // -----------------------------------------------------------------------
     await db.usersDao.insertUser(
       UsersCompanion.insert(
         username: 'admin',
         email: 'admin@commissary.com',
-        password: 'admin123', // ⚠️ Consider hashing this!
+        password: hashedPassword,
         roleId: adminRole.id,
         isActive: const Value(true),
-        // ✅ Mark as unsynced so it will be pushed to cloud
         isSynced: const Value(false),
       ),
     );

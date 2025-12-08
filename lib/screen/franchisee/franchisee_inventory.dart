@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
-import '../../../database/database_provider.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 
 class InventoryPage extends StatefulWidget {
@@ -26,7 +26,7 @@ class _InventoryPageState extends State<InventoryPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.database;
+    db = database;
     _loadItems();
   }
 

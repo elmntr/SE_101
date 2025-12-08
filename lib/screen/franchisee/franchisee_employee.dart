@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart'; // ADDED: Access Drift tables.
-import 'package:chickenjoo_inventory/database/database_provider.dart' as provider;
+import 'package:chickenjoo_inventory/app_globals.dart';
+
 import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
 
 import 'package:drift/drift.dart' show Value;
@@ -69,7 +70,7 @@ class _EmployeePageState extends State<EmployeePage> {
   @override
   void initState() {
     super.initState();
-    db = provider.DatabaseProvider.database;
+    db = database;
 
     _usersSub = db.usersDao.watchAllUsers().listen((users) {
       setState(() {
@@ -696,54 +697,64 @@ Widget _buildRoleTable() {
     },
   );
 }
-
+// Show a snackbar indicating role cannot be deleted
+void _showRoleInUseMessage(String roleName, int assignedUsers) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        'Cannot delete "$roleName" while $assignedUsers user(s) are assigned to it.',
+      ),
+    ),
+  );
+}
 
   
-  // Delete Role
-  void _deleteRole(Role role, int assignedUsers) {
-    if (assignedUsers > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cannot delete "${role.name}" while $assignedUsers user(s) are assigned to it.')),
-      );
-      return;
-    }
+  void _deleteRole(Role role, int assignedUsers) async {
+  if (assignedUsers > 0) {
+    _showRoleInUseMessage(role.name, assignedUsers);
+    return;
+  }
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Delete Role", style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
-        content: const Text("Are you sure you want to remove this role?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              final dialogContext = context;
-              final messenger = ScaffoldMessenger.of(dialogContext);
-              final navigator = Navigator.of(dialogContext);
-              final success = await db.rolesDao.deleteRoleById(role.id);
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      title: const Text("Delete Role", style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
+      content: const Text("Are you sure you want to remove this role?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () async {
+            final dialogContext = context;
+            final messenger = ScaffoldMessenger.of(dialogContext);
+            final navigator = Navigator.of(dialogContext);
+
+            try {
+              await db.rolesDao.deleteRoleById(role.id); // may throw exception
               if (!navigator.mounted || !messenger.mounted) return;
               navigator.pop();
-              if (success == 0) {
-                messenger.showSnackBar(
-                  SnackBar(content: Text('Role "${role.name}" deleted.')),
-                );
-              } else {
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('Failed to delete role.')),
-                );
-              }
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
+              messenger.showSnackBar(
+                SnackBar(content: Text('Role "${role.name}" deleted.')),
+              );
+            } on Exception catch (e) {
+              if (!messenger.mounted) return;
+              navigator.pop(); // close dialog
+              messenger.showSnackBar(
+                SnackBar(content: Text('Cannot delete "${role.name}": ${e.toString()}')),
+              );
+            }
+          },
+          child: const Text("Delete", style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
 
   Future<void> _assignRole(User user, int roleId) async {
   final messenger = ScaffoldMessenger.of(context);
