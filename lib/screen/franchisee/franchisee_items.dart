@@ -187,82 +187,6 @@ class _ItemsPageState extends State<ItemsPage> {
     });
   }
 
-
-  // ✅ Item Table Widget with "Add Item" button
-
-
-  // ✅ Category Table Widget with "Add Category" button
-  Widget _buildCategoryTable() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isSmall = constraints.maxWidth < 800;
-        Widget header(String value) {
-          return SizedBox(
-            width: isSmall ? 60 : 80,
-
-              child: Text(
-                value,
-                maxLines: null,                   // ✅ 2–3 lines visible
-                softWrap: true,
-                overflow: TextOverflow.fade,
-                style: const TextStyle(fontFamily: fontAll, color: Colors.red),
-              ),
-          );
-        }
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: DataTable(
-                    columnSpacing: isSmall ? 10 : 60,
-                    horizontalMargin: isSmall ? 12 : 24,
-                    dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
-                    dataRowMaxHeight: double.infinity,
-
-                    columns: [
-                      DataColumn(
-                          label: header("Category Name")),
-                      DataColumn(
-                        label: header("Items in Category")),
-                      DataColumn(label: Text('')),
-                    ],
-                    rows: List.generate(categories.length, (i) {
-                      final category = categories[i];
-
-                      Widget cell(String value) {
-                        return SizedBox(
-                          width: isSmall ? 100 : double.infinity,
-
-                          child: Text(
-                              value,
-                              maxLines: null,                   // ✅ 2–3 lines visible
-                              softWrap: true,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontFamily: fontAll),
-                            ),
-                        );
-                      }
-                      return DataRow(cells: [
-                        DataCell(cell(category["category"])),
-                        DataCell(cell(category["itemNumber"].toString())),
-                        DataCell(
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _deleteCategory(i),
-                          ),
-                        ),
-                      ]);
-                    }),
-                  )
-                ),
-              ),
-            );
-          },
-        );
-      }
-
   void _deleteCategory(int index) {
     showDialog(
       context: context,
@@ -531,7 +455,21 @@ class _ItemsPageState extends State<ItemsPage> {
                               onAddPressed: _createCategory,
                               buttonType: EmptyButtonType.icon,
                               buttonText: null)
-                          : _buildCategoryTable()),
+                          : buildUniversalTable(
+                                  headers: ["Category Name", "Items in Category", ""],
+                                  rows: List.generate(categories.length, (i) {
+                                    final category = categories[i];
+                                    return [
+                                      category["category"].toString(),
+                                      category["itemNumber"].toString(),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        onPressed: () => _deleteCategory(i),
+                                      ),
+                                    ];
+                                  }),
+                                )
+                          ),
                 ),
               ),
             ],

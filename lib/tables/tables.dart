@@ -15,7 +15,7 @@ Widget emptyTables({
       children: [
         Text(message, style: const TextStyle(color: Colors.black54)),
         if (buttonType != EmptyButtonType.none && onAddPressed != null) ...[
-          const SizedBox(height: 15),
+          const SizedBox(height: 5),
 
           /// ✅ ICON BUTTON (Add / Plus)
           if (buttonType == EmptyButtonType.icon)
@@ -23,7 +23,7 @@ Widget emptyTables({
               icon: const Icon(
                 Icons.add_circle,
                 color: colorAll,
-                size: 55,
+                size: 40,
               ),
               onPressed: onAddPressed,
             ),

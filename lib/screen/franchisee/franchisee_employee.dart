@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart'; // ADDED: Access Drift tables.
@@ -642,7 +643,7 @@ Widget _buildRoleTable() {
                     accessWidgets.add(
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        margin: const EdgeInsets.only(right: 6, bottom: 6),
+                        margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.red.shade100,
                           borderRadius: BorderRadius.circular(6),
@@ -946,11 +947,88 @@ Widget build(BuildContext context) {
                       bottomRight: Radius.circular(12),
                     ),
                   ),
-                  child: _isLoading
+                    child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : selectedTab == 0
-                          ? _buildEmployeeTable()
-                          : _buildRoleTable(),
+                          ? (_users.isEmpty
+                              ? emptyTables(message: "No employees found", onAddPressed: _createEmployee, buttonType: EmptyButtonType.icon, buttonText: null)
+                              : buildUniversalTable(
+                                  headers: ["Name", "Email", "Phone", "Role", ""],
+                                  rows: _filteredUsers.map((user) {
+                                    return [
+                                      user.username ?? '-',
+                                      user.email,
+                                      user.phone ?? '-',
+                                      SizedBox(
+                                        child: _roles.isEmpty
+                                        ? const Text('No roles', style: TextStyle(color: Colors.grey))
+                                        : DropdownButton<int>(
+                                            isDense: true,
+                                            isExpanded: true,
+                                            // use roleId as value
+                                            value: user.roleId,
+                                            items: _roles
+                                                .map((role) => DropdownMenuItem<int>(
+                                                      value: role.id,
+                                                      child: Text(
+                                                        role.name,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ))
+                                                .toList(),
+                                            onChanged: (int? newRoleId) async {
+                                              if (newRoleId == null) return;
+                                              await _assignRole(user, newRoleId);
+                                            },
+                                          ),
+
+                                      
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete, color: Colors.red),
+                                          onPressed: () => _deleteEmployee(user),
+                                        )];
+                                        }).toList(),
+                                      ))
+                              : (_roles.isEmpty
+                                ? emptyTables(message: "No roles found", onAddPressed: _createRoleDialog, buttonType: EmptyButtonType.icon, buttonText: null)
+                                : buildUniversalTable(
+                                    headers: ["Role Name", "Access", "Employee", ""],
+                                    rows: _roles.map((role) {
+                                      
+
+                                      final accessWidgets = <Widget>[];
+                                      final accessFlags = _flagsFromRole(role);
+                                      for (int j = 0; j < accessTitles.length; j++) {
+                                        if (accessFlags[j]) {
+                                          accessWidgets.add(
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.red.shade100,
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(accessTitles[j], style: const TextStyle(fontSize: 12)),
+                                            ),
+                                          );
+                                        }
+                                      }
+
+                                      final userCount = _users.where((user) => user.roleId == role.name).length;
+
+                                      return [
+                                        role.name,
+                                        ConstrainedBox(
+                                          constraints: const BoxConstraints(maxWidth: 200),
+                                          child: Wrap(children: accessWidgets),
+                                        ),
+                                        userCount.toString(),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete, color: Colors.red),
+                                          onPressed: () => _deleteRole(role, userCount),)];
+                                        }).toList(),))
+                                          
                 ),
               ),
             ],
@@ -1098,10 +1176,87 @@ Widget build(BuildContext context) {
                           bottomRight: Radius.circular(12),
                         ),
                       ),
-                      child: selectedTab == 0 
-                          ? ( _isLoading ? const Center(child: CircularProgressIndicator()) : _buildEmployeeTable())
-                          : ( _isLoading ? const Center(child: CircularProgressIndicator()) : _buildRoleTable() ),
-              
+                      child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : selectedTab == 0
+                          ? (_users.isEmpty
+                              ? emptyTables(message: "No employees found", onAddPressed: _createEmployee, buttonType: EmptyButtonType.icon, buttonText: null)
+                              : buildUniversalTable(
+                                  headers: ["Name", "Email", "Phone", "Role", ""],
+                                  rows: _filteredUsers.map((user) {
+                                    return [
+                                      user.username ?? '-',
+                                      user.email,
+                                      user.phone ?? '-',
+                                      SizedBox(
+                                        child: _roles.isEmpty
+                                        ? const Text('No roles', style: TextStyle(color: Colors.grey))
+                                        : DropdownButton<int>(
+                                            isDense: true,
+                                            isExpanded: true,
+                                            // use roleId as value
+                                            value: user.roleId,
+                                            items: _roles
+                                                .map((role) => DropdownMenuItem<int>(
+                                                      value: role.id, // role.id is int
+                                                      child: Text(
+                                                        role.name,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ))
+                                                .toList(),
+                                            onChanged: (int? newRoleId) async {
+                                              if (newRoleId == null) return;
+                                              await _assignRole(user, newRoleId);
+                                            },
+                                          ),
+
+                                      
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete, color: Colors.red),
+                                          onPressed: () => _deleteEmployee(user),
+                                        )];
+                                        }).toList(),
+                                      ))
+                              : (_roles.isEmpty
+                                ? emptyTables(message: "No roles found", onAddPressed: _createRoleDialog, buttonType: EmptyButtonType.icon, buttonText: null)
+                                : buildUniversalTable(
+                                    headers: ["Role Name", "Access", "Employee", ""],
+                                    rows: _roles.map((role) {
+                                      
+
+                                      final accessWidgets = <Widget>[];
+                                      final accessFlags = _flagsFromRole(role);
+                                      for (int j = 0; j < accessTitles.length; j++) {
+                                        if (accessFlags[j]) {
+                                          accessWidgets.add(
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.red.shade100,
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(accessTitles[j], style: const TextStyle(fontSize: 12)),
+                                            ),
+                                          );
+                                        }
+                                      }
+
+                                      final userCount = _users.where((user) => user.roleId == role.name).length;
+
+                                      return [
+                                        role.name,
+                                        ConstrainedBox(
+                                          constraints: const BoxConstraints(maxWidth: 200),
+                                          child: Wrap(children: accessWidgets),
+                                        ),
+                                        userCount.toString(),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete, color: Colors.red),
+                                          onPressed: () => _deleteRole(role, userCount),)];
+                                        }).toList(),))
                     ),
                   ),
                 ],
@@ -1111,7 +1266,7 @@ Widget build(BuildContext context) {
         ),
       ),
 
-      floatingActionButton:  (selectedTab == 0 && !_isLoading) || (selectedTab == 1 && !_isLoading) 
+      floatingActionButton:  (selectedTab == 0 && !_isLoading && !_users.isEmpty) || (selectedTab == 1 && !_isLoading && !_roles.isEmpty) 
       ? Container(
           margin: const EdgeInsets.only(bottom: 20), // ✅ overlap without pushing content
           child: FloatingActionButton(
