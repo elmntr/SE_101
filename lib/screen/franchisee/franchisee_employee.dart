@@ -722,8 +722,20 @@ Widget build(BuildContext context) {
                     child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : selectedTab == 0
-                          ? (_users.isEmpty
-                              ? emptyTables(message: "No employees found", onAddPressed: _createEmployee, buttonType: EmptyButtonType.icon, buttonText: null)
+                          ? (_filteredUsers.isEmpty
+                              ? _selectedRoleFilter == null
+                                  ? emptyTables(
+                                      message: "No employees found",
+                                      onAddPressed: _createEmployee,
+                                      buttonType: EmptyButtonType.icon,
+                                      buttonText: null,
+                                    )
+                                  : emptyTables(
+                                      message: "No employees with role \"${_roles.firstWhere((r) => r.id == _selectedRoleFilter).name}\"",
+                                      onAddPressed: _createEmployee,
+                                      buttonType: EmptyButtonType.icon,
+                                      buttonText: null,
+                                    )
                               : buildUniversalTable(
                                   headers: ["Name", "Email", "Phone", "Role", ""],
                                   rows: _filteredUsers.map((user) {
@@ -733,35 +745,34 @@ Widget build(BuildContext context) {
                                       user.phone ?? '-',
                                       SizedBox(
                                         child: _roles.isEmpty
-                                        ? const Text('No roles', style: TextStyle(color: Colors.grey))
-                                        : DropdownButton<int>(
-                                            isDense: true,
-                                            isExpanded: true,
-                                            // use roleId as value
-                                            value: user.roleId,
-                                            items: _roles
-                                                .map((role) => DropdownMenuItem<int>(
-                                                      value: role.id,
-                                                      child: Text(
-                                                        role.name,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ))
-                                                .toList(),
-                                            onChanged: (int? newRoleId) async {
-                                              if (newRoleId == null) return;
-                                              await _assignRole(user, newRoleId);
-                                            },
-                                          ),
+                                            ? const Text('No roles', style: TextStyle(color: Colors.grey))
+                                            : DropdownButton<int>(
+                                                isDense: true,
+                                                isExpanded: true,
+                                                value: user.roleId,
+                                                items: _roles
+                                                    .map((role) => DropdownMenuItem<int>(
+                                                          value: role.id,
+                                                          child: Text(
+                                                            role.name,
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                        ))
+                                                    .toList(),
+                                                onChanged: (int? newRoleId) async {
+                                                  if (newRoleId == null) return;
+                                                  await _assignRole(user, newRoleId);
+                                                },
+                                              ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        onPressed: () => _deleteEmployee(user),
+                                      )
+                                    ];
+                                  }).toList(),
+                                ))
 
-                                      
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.red),
-                                          onPressed: () => _deleteEmployee(user),
-                                        )];
-                                        }).toList(),
-                                      ))
                               : (_roles.isEmpty
                                 ? emptyTables(message: "No roles found", onAddPressed: _createRoleDialog, buttonType: EmptyButtonType.icon, buttonText: null)
                                 : buildUniversalTable(
@@ -809,14 +820,20 @@ Widget build(BuildContext context) {
       ),
 
       // FAB – only show when data is loaded
-      floatingActionButton: _isLoading
-          ? null
-          : FloatingActionButton(
-              backgroundColor: Colors.red[700],
-              onPressed: selectedTab == 0 ? _createEmployee : _createRoleDialog,
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: (!_isLoading && (
+      (selectedTab == 0 && _filteredUsers.isNotEmpty) || 
+      (selectedTab == 1 && _roles.isNotEmpty)
+    ))
+    ? Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        child: FloatingActionButton(
+          backgroundColor: Colors.red[700],
+          onPressed: selectedTab == 0 ? _createEmployee : _createRoleDialog,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+      )
+    : null,
+floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -967,8 +984,20 @@ Widget build(BuildContext context) {
                       child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : selectedTab == 0
-                          ? (_users.isEmpty
-                              ? emptyTables(message: "No employees found", onAddPressed: _createEmployee, buttonType: EmptyButtonType.icon, buttonText: null)
+                          ? (_filteredUsers.isEmpty
+                              ? _selectedRoleFilter == null
+                                  ? emptyTables(
+                                      message: "No employees found",
+                                      onAddPressed: _createEmployee,
+                                      buttonType: EmptyButtonType.icon,
+                                      buttonText: null,
+                                    )
+                                  : emptyTables(
+                                      message: "No employees with role \"${_roles.firstWhere((r) => r.id == _selectedRoleFilter).name}\"",
+                                      onAddPressed: _createEmployee,
+                                      buttonType: EmptyButtonType.icon,
+                                      buttonText: null,
+                                    )
                               : buildUniversalTable(
                                   headers: ["Name", "Email", "Phone", "Role", ""],
                                   rows: _filteredUsers.map((user) {
@@ -978,35 +1007,34 @@ Widget build(BuildContext context) {
                                       user.phone ?? '-',
                                       SizedBox(
                                         child: _roles.isEmpty
-                                        ? const Text('No roles', style: TextStyle(color: Colors.grey))
-                                        : DropdownButton<int>(
-                                            isDense: true,
-                                            isExpanded: true,
-                                            // use roleId as value
-                                            value: user.roleId,
-                                            items: _roles
-                                                .map((role) => DropdownMenuItem<int>(
-                                                      value: role.id, // role.id is int
-                                                      child: Text(
-                                                        role.name,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ))
-                                                .toList(),
-                                            onChanged: (int? newRoleId) async {
-                                              if (newRoleId == null) return;
-                                              await _assignRole(user, newRoleId);
-                                            },
-                                          ),
+                                            ? const Text('No roles', style: TextStyle(color: Colors.grey))
+                                            : DropdownButton<int>(
+                                                isDense: true,
+                                                isExpanded: true,
+                                                value: user.roleId,
+                                                items: _roles
+                                                    .map((role) => DropdownMenuItem<int>(
+                                                          value: role.id,
+                                                          child: Text(
+                                                            role.name,
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                        ))
+                                                    .toList(),
+                                                onChanged: (int? newRoleId) async {
+                                                  if (newRoleId == null) return;
+                                                  await _assignRole(user, newRoleId);
+                                                },
+                                              ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        onPressed: () => _deleteEmployee(user),
+                                      )
+                                    ];
+                                  }).toList(),
+                                ))
 
-                                      
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.red),
-                                          onPressed: () => _deleteEmployee(user),
-                                        )];
-                                        }).toList(),
-                                      ))
                               : (_roles.isEmpty
                                 ? emptyTables(message: "No roles found", onAddPressed: _createRoleDialog, buttonType: EmptyButtonType.icon, buttonText: null)
                                 : buildUniversalTable(
@@ -1054,7 +1082,10 @@ Widget build(BuildContext context) {
         ),
       ),
 
-      floatingActionButton:  (selectedTab == 0 && !_isLoading && !_users.isEmpty) || (selectedTab == 1 && !_isLoading && !_roles.isEmpty) 
+      floatingActionButton:  (!_isLoading && (
+      (selectedTab == 0 && _filteredUsers.isNotEmpty) || 
+      (selectedTab == 1 && _roles.isNotEmpty)
+    )) 
       ? Container(
           margin: const EdgeInsets.only(bottom: 20), // ✅ overlap without pushing content
           child: FloatingActionButton(
