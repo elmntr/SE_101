@@ -26,6 +26,8 @@ class _ReportsPageState extends State<ReportsPage> {
   double totalSpoilage = 0;
 
   final List<String> periods = ['Weekly', 'Monthly', 'Yearly'];
+  
+
 
   @override
   void initState() {
@@ -188,6 +190,8 @@ class _ReportsPageState extends State<ReportsPage> {
     if (selectedItemId == null) return 'All Items';
     return allItems.firstWhere((item) => item.id == selectedItemId).name;
   }
+  
+
 
   @override
   Widget build(BuildContext context) {
@@ -228,82 +232,96 @@ class _ReportsPageState extends State<ReportsPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: PopupMenuButton<int?>(
-                            color: Colors.white,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              decoration: BoxDecoration(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return PopupMenuButton<int?>(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    getSelectedItemName(),
-                                    style: const TextStyle(fontWeight: FontWeight.normal),
+                                constraints: BoxConstraints(
+                                  minWidth: constraints.maxWidth,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                  const Icon(Icons.keyboard_arrow_down),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        getSelectedItemName(),
+                                        style: const TextStyle(fontWeight: FontWeight.normal),
+                                      ),
+                                      const Icon(Icons.keyboard_arrow_down),
+                                    ],
+                                  ),
+                                ),
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: null,
+                                    child: Text('All Items', 
+                                      style: TextStyle(fontWeight: FontWeight.normal)),
+                                  ),
+                                  ...allItems.map((item) => PopupMenuItem(
+                                        value: item.id,
+                                        child: Text(item.name,
+                                          style: const TextStyle(fontWeight: FontWeight.normal)),
+                                      ))
                                 ],
-                              ),
-                            ),
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: null,
-                                child: Text('All Items', 
-                                  style: TextStyle(fontWeight: FontWeight.normal)),
-                              ),
-                              ...allItems.map((item) => PopupMenuItem(
-                                    value: item.id,
-                                    child: Text(item.name,
-                                      style: const TextStyle(fontWeight: FontWeight.normal)),
-                                  ))
-                            ],
-                            onSelected: (value) {
-                              setState(() {
-                                selectedItemId = value;
-                                _calculateChartData();
-                                _calculateTotals();
-                              });
-                            },
+                                onSelected: (value) {
+                                  setState(() {
+                                    selectedItemId = value;
+                                    _calculateChartData();
+                                    _calculateTotals();
+                                  });
+                                },
+                              );
+                            }
                           ),
                         ),
 
                         const SizedBox(width: 8),
 
                         Expanded(
-                          child: PopupMenuButton<String>(
-                            color: Colors.white,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              decoration: BoxDecoration(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return PopupMenuButton<String>(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    selectedPeriod,
-                                    style: const TextStyle(fontWeight: FontWeight.normal),
+                                constraints: BoxConstraints(
+                                  minWidth: constraints.maxWidth,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                  const Icon(Icons.keyboard_arrow_down),
-                                ],
-                              ),
-                            ),
-                            itemBuilder: (context) => periods
-                                .map((period) => PopupMenuItem(
-                                    value: period,
-                                    child: Text(period,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.normal))))
-                                .toList(),
-                            onSelected: (value) {
-                              setState(() {
-                                selectedPeriod = value;
-                                _calculateChartData();
-                              });
-                            },
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        selectedPeriod,
+                                        style: const TextStyle(fontWeight: FontWeight.normal),
+                                      ),
+                                      const Icon(Icons.keyboard_arrow_down),
+                                    ],
+                                  ),
+                                ),
+                                itemBuilder: (context) => periods
+                                    .map((period) => PopupMenuItem(
+                                        value: period,
+                                        child: Text(period,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.normal))))
+                                    .toList(),
+                                onSelected: (value) {
+                                  setState(() {
+                                    selectedPeriod = value;
+                                    _calculateChartData();
+                                  });
+                                },
+                              );
+                            }
                           ),
                         ),
                       ],
@@ -510,72 +528,86 @@ class _ReportsPageState extends State<ReportsPage> {
             Row(
               children: [
                 Expanded(
-                  child: PopupMenuButton<int?>(
-                    color: Colors.white,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(4)),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            getSelectedItemName(),
-                            style: const TextStyle(color: Colors.black, fontSize: 14),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return PopupMenuButton<int?>(
+                        color: Colors.white,
+                        constraints: BoxConstraints(
+                          minWidth: constraints.maxWidth,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(4)),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                getSelectedItemName(),
+                                style: const TextStyle(color: Colors.black, fontSize: 14),
+                              ),
+                              const Icon(Icons.keyboard_arrow_down, color: Colors.black),
+                            ],
                           ),
-                          const Icon(Icons.keyboard_arrow_down, color: Colors.black),
+                        ),
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: null,
+                            child: Text('All Items'),
+                          ),
+                          ...allItems.map((item) => PopupMenuItem(
+                                value: item.id,
+                                child: Text(item.name),
+                              ))
                         ],
-                      ),
-                    ),
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: null,
-                        child: Text('All Items'),
-                      ),
-                      ...allItems.map((item) => PopupMenuItem(
-                            value: item.id,
-                            child: Text(item.name),
-                          ))
-                    ],
-                    onSelected: (value) {
-                      setState(() {
-                        selectedItemId = value;
-                        _calculateChartData();
-                        _calculateTotals();
-                      });
-                    },
+                        onSelected: (value) {
+                          setState(() {
+                            selectedItemId = value;
+                            _calculateChartData();
+                            _calculateTotals();
+                          });
+                        },
+                      );
+                    }
                   ),
                 ),
                 const SizedBox(width: 12),
-                PopupMenuButton<String>(
-                  color: Colors.white,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4)),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          selectedPeriod,
-                          style: const TextStyle(color: Colors.black, fontSize: 14),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    return PopupMenuButton<String>(
+                      color: Colors.white,
+                      constraints: BoxConstraints(
+                        minWidth: 120,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4)),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              selectedPeriod,
+                              style: const TextStyle(color: Colors.black, fontSize: 14),
+                            ),
+                            const Icon(Icons.keyboard_arrow_down, color: Colors.black),
+                          ],
                         ),
-                        const Icon(Icons.keyboard_arrow_down, color: Colors.black),
-                      ],
-                    ),
-                  ),
-                  itemBuilder: (context) => periods
-                      .map((period) =>
-                          PopupMenuItem(value: period, child: Text(period)))
-                      .toList(),
-                  onSelected: (value) {
-                    setState(() {
-                      selectedPeriod = value;
-                      _calculateChartData();
-                    });
-                  },
+                      ),
+                      itemBuilder: (context) => periods
+                          .map((period) =>
+                              PopupMenuItem(value: period, child: Text(period)))
+                          .toList(),
+                      onSelected: (value) {
+                        setState(() {
+                          selectedPeriod = value;
+                          _calculateChartData();
+                        });
+                      },
+                    );
+                  }
                 ),
                 const SizedBox(width: 12),
 

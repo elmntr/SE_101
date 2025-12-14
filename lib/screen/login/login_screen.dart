@@ -54,42 +54,54 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _showSnackBar(String message) {
+    // Clear any existing snackbars before showing a new one
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   Future<void> _handleLogin() async {
+    // Prevent multiple simultaneous login attempts
+    if (_isSubmitting) return;
+
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter both email and password.')),
-      );
+      _showSnackBar('Please enter both email and password.');
       return;
     }
 
     setState(() => _isSubmitting = true);
 
-    final user = await _db.usersDao.authenticate(email, password);
+    try {
+      final user = await _db.usersDao.authenticate(email, password);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() => _isSubmitting = false);
+      if (user == null) {
+        _showSnackBar('Invalid email or password.');
+        setState(() => _isSubmitting = false);
+        return;
+      }
 
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid email or password.')),
+      // Save user ID persistently
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('loggedInUserId', user.id);
+
+      // Navigate to home
+      Navigator.pushReplacementNamed(
+        context,
+        '/home',
+        arguments: user,
       );
-      return;
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('An error occurred. Please try again.');
+      setState(() => _isSubmitting = false);
     }
-
-    // Save user ID persistently
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('loggedInUserId', user.id);
-
-    // Navigate to home
-    Navigator.pushReplacementNamed(
-      context,
-      '/home',
-      arguments: user,
-    );
   }
 
   @override
@@ -98,6 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final loginButtonWidth = AppLayout.loginButtonWidth(context);
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Container(
         decoration: const BoxDecoration(color: Color(0xFFEF4848)),
         child: SafeArea(
@@ -109,18 +122,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const LoginHeader(),
                   const SizedBox(height: 40),
-                  LoginForm(
-                    emailController: _emailController,
-                    passwordController: _passwordController,
-                    isPasswordVisible: _isPasswordVisible,
-                    isSubmitting: _isSubmitting,
-                    onPasswordVisibilityToggle: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
+                  Focus(
+                    onKey: (node, event) {
+                      if (event.logicalKey.keyLabel == 'Enter') {
+                        _handleLogin();
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
                     },
-                    onLogin: _handleLogin,
-                    loginButtonWidth: loginButtonWidth,
+                    child: LoginForm(
+                      emailController: _emailController,
+                      passwordController: _passwordController,
+                      isPasswordVisible: _isPasswordVisible,
+                      isSubmitting: _isSubmitting,
+                      onPasswordVisibilityToggle: () {
+                        setState(() {
+                          _isPasswordVisible = !_isPasswordVisible;
+                        });
+                      },
+                      onLogin: _handleLogin,
+                      loginButtonWidth: loginButtonWidth,
+                    ),
                   ),
                 ],
               ),

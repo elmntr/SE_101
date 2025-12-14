@@ -49,81 +49,129 @@ class _ItemsPageState extends State<ItemsPage> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Add Item",
-            style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                decoration: const InputDecoration(labelText: "Item Name"),
-                controller: name),
-            TextField(
-                decoration: const InputDecoration(labelText: "Initial Stock"),
-                keyboardType: TextInputType.number,
-                controller: stock),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              if (name.text.isEmpty || stock.text.isEmpty) return;
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Add Item",
+                    style: TextStyle(
+                      fontFamily: fontAll,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    decoration: const InputDecoration(labelText: "Item Name"),
+                    controller: name,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    decoration: const InputDecoration(labelText: "Initial Stock"),
+                    keyboardType: TextInputType.number,
+                    controller: stock,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () async {
+                          if (name.text.isEmpty || stock.text.isEmpty) return;
 
-              await db.itemsDao.insertItem(
-                name: name.text,
-                stock: int.tryParse(stock.text) ?? 0,
-              );
+                          await db.itemsDao.insertItem(
+                            name: name.text,
+                            stock: int.tryParse(stock.text) ?? 0,
+                          );
 
-              Navigator.pop(context);
-              _loadItems(); // ✅ refresh UI
-            },
-            child: const Text("Save", style: TextStyle(color: Colors.white)),
+                          Navigator.pop(context);
+                          _loadItems();
+                        },
+                        child: const Text("Save", style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // Add Category Popup (untouched)
+  // Add Category Popup
   void _createCategory() {
     final TextEditingController category = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Add Category",
-            style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                decoration: const InputDecoration(labelText: "Category"),
-                controller: category),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              if (category.text.isEmpty) return;
-              _saveCategory({
-                "category": category.text,
-                "itemNumber": categoryCount,
-              });
-              Navigator.pop(context);
-            },
-            child: const Text("Save", style: TextStyle(color: Colors.white)),
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Add Category",
+                    style: TextStyle(
+                      fontFamily: fontAll,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    decoration: const InputDecoration(labelText: "Category"),
+                    controller: category,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () {
+                          if (category.text.isEmpty) return;
+                          _saveCategory({
+                            "category": category.text,
+                            "itemNumber": categoryCount,
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Save", style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -697,7 +745,7 @@ class _ItemsPageState extends State<ItemsPage> {
 
       floatingActionButton:  (selectedTab == 0 && dbItems.isNotEmpty) || (selectedTab == 1 && categories.isNotEmpty)
       ? Container(
-          margin: const EdgeInsets.only(bottom: 20), // ✅ overlap without pushing content
+          margin: const EdgeInsets.only(bottom: 20),
           child: FloatingActionButton(
             backgroundColor: Colors.red[700],
             onPressed: selectedTab == 0 ? _createItem : _createCategory,
