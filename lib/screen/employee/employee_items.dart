@@ -1,6 +1,7 @@
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/screen/employee/employee_review_changes_page.dart';
 import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
+import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart'; // ✅ your Drift DB
@@ -8,7 +9,7 @@ import 'package:chickenjoo_inventory/app_globals.dart';
 
 import 'package:drift/drift.dart' show Value;
 import 'employee_change_item_stock.dart';
-import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
+import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 
 class EmployeeItemsPage extends StatefulWidget {
   final User user;
@@ -186,184 +187,6 @@ void _applyReviewSort(ReviewSort sort) {
       ),
     );
   }
-
-  // ✅ Item Table Widget with "Add Item" button
-  Widget _buildItemTable() {
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      final isSmall = constraints.maxWidth < 800;
-      Widget header(String value) {
-        return SizedBox(
-          width: isSmall ? 60 : 80,
-
-            child: Text(
-              value,
-              maxLines: null,                   // ✅ 2–3 lines visible
-              softWrap: true,
-              overflow: TextOverflow.fade,
-              style: const TextStyle(fontFamily: fontAll, color: Colors.red),
-            ),
-        );
-      }
-
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: constraints.maxWidth),
-          child: DataTable(
-            headingRowHeight: 48,
-            columnSpacing: isSmall ? 10 : 60,
-            horizontalMargin: isSmall ? 12 : 24,
-            dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
-            dataRowMaxHeight: double.infinity,
-
-            columns: [
-              DataColumn(
-                  label: header("Item Name")),
-              DataColumn(
-                  label: header("Stock")),
-              DataColumn(
-                   label: header("Sale")),
-              DataColumn(
-                   label: header("Spoilage")),
-              DataColumn( label: header("")),
-            ],
-
-            rows: List.generate(dbItems.length, (i) {
-              final item = dbItems[i];
-
-               Widget cell(String value) {
-                return SizedBox(
-                  width: isSmall ? 60 : double.infinity,
-
-                    child: Text(
-                      value,
-                      maxLines: null,                   // ✅ 2–3 lines visible
-                      softWrap: true,
-                      overflow: TextOverflow.fade,
-                      style: const TextStyle(fontFamily: fontAll),
-                    ),
-                );
-              }
-
-              return DataRow(cells: [
-                DataCell(cell(item.name)),
-                DataCell(cell(item.stock.toString())),
-                DataCell(cell(item.sold.toString())),
-                DataCell(cell(item.spoilage.toString())),
-                DataCell(
-                  SizedBox(
-                    width: double.infinity,
-                    child: IconButton(
-                        icon:
-                            const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          await db.itemsDao.deleteItem(item.id);
-                          _loadItems();
-                        },
-                    ),
-                  ),
-                ),
-              ]);
-            }),
-          ),
-        ),
-      );
-    },
-  );
-}
-
-
-  
-
-  // ✅ Category Table Widget with "Add Category" button
-  Widget _buildCategoryTable() {
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      final isSmall = constraints.maxWidth < 800;
-      Widget header(String value) {
-        return SizedBox(
-          width: isSmall ? 40 : 80,
-
-            child: Text(
-              value,
-              maxLines: null,                   // ✅ 2–3 lines visible
-              softWrap: true,
-              overflow: TextOverflow.fade,
-              style: const TextStyle(fontFamily: fontAll, color: Colors.red),
-            ),
-        );
-      }
-
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minWidth: constraints.maxWidth,
-          ),
-          child: DataTable(
-            headingRowHeight: 48,
-            columnSpacing: isSmall ? 10 : 60,
-            horizontalMargin: isSmall ? 12 : 24,
-            dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
-            dataRowMaxHeight: double.infinity,
-
-            columns: [
-              
-              DataColumn(label: header("Employee Name")),
-              DataColumn(label: header("Role")),
-              DataColumn(label: header("Total Changes")),
-              DataColumn(label: header("Status")),
-              DataColumn(label: header("")),
-            ],
-
-            rows: List.generate(reviewChanges.length, (index) {
-              final record = reviewChanges[index];
-
-              Widget cell(String value) {
-                return SizedBox(
-                  width: isSmall ? 60 : double.infinity,
-
-                    child: Text(
-                      value,
-                      maxLines: null,                   // ✅ 2–3 lines visible
-                      softWrap: true,
-                      overflow: TextOverflow.fade,
-                      style: const TextStyle(fontFamily: fontAll),
-                    ),
-                );
-              }
-
-              return DataRow(cells: [
-                DataCell(cell(record.employeeName)),
-                DataCell(cell(record.role)),
-                DataCell(cell(record.totalChanges.toString())),
-                DataCell(cell(record.status)),
-                DataCell(
-                  SizedBox(
-                    width: double.infinity,
-                    child: Center(
-                      child: ElevatedButton(
-                        child: const Text("View"),
-                        onPressed: () {
-                          setState(() {
-                            _isViewingChangeDetail = true;
-                            _selectedChangeRecord = record;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ]);
-            }),
-          ),
-        ),
-      );
-    },
-  );
-}
-
 
   // Tab Builder
   Widget _buildTab(String label, int index) {
@@ -619,11 +442,59 @@ Widget build(BuildContext context) {
                   ),
                   child: selectedTab == 0
                       ? (dbItems.isEmpty
-                          ? _emptyTables("You can manage your items here.", 0)
-                          : _buildItemTable())
+                        ? emptyTables(
+                            message: "You can manage your items here.",
+                            onAddPressed: _createItem,
+                            buttonType: EmptyButtonType.icon,
+                            buttonText: null)
+                        : buildUniversalTable(
+                            headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
+                            rows: dbItems.map((item) => [
+                              item.name.toString(),
+                              item.stock.toString(),
+                              item.sold.toString(),
+                              item.spoilage.toString(),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () async {
+                                  await db.itemsDao.deleteItem(item.id);
+                                  _loadItems();
+                                },
+                              ),
+                            ]).toList(),
+                          ))
                       : (reviewChanges.isEmpty
-                          ? _emptyTables("You can add categories here.", 1)
-                          : _buildCategoryTable()),
+                            ? emptyTables(
+                                message: "You can view employee stock changes here.",
+                                onAddPressed: null,
+                                buttonType: EmptyButtonType.none,
+                                buttonText: null)
+                            : buildUniversalTable(
+                                headers: ["Employee", "Role", "Changes", "Status", ""],
+                                rows: List.generate(reviewChanges.length, (i) {
+                                  final record = reviewChanges[i];
+                                  return [
+                                    record.employeeName.toString(),
+                                    record.role.toString(),
+                                    record.totalChanges.toString(),
+                                    record.status,
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: Center(
+                                        child: ElevatedButton(
+                                          child: const Text("View"),
+                                          onPressed: () {
+                                            setState(() {
+                                              _isViewingChangeDetail = true;
+                                              _selectedChangeRecord = record;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ];
+                                }),
+                              ))
                 ),
               ),
             ],
@@ -806,15 +677,59 @@ Widget build(BuildContext context) {
                     ),
                     child: selectedTab == 0
                         ? (dbItems.isEmpty
-                            ? _emptyTables(
-                                "You can manage your items here.",
-                                selectedTab)
-                            : _buildItemTable())
+                          ? emptyTables(
+                              message: "You can manage your items here.",
+                              onAddPressed: _createItem,
+                              buttonType: EmptyButtonType.icon,
+                              buttonText: null)
+                          : buildUniversalTable(
+                              headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
+                              rows: dbItems.map((item) => [
+                                item.name.toString(),
+                                item.stock.toString(),
+                                item.sold.toString(),
+                                item.spoilage.toString(),
+                                IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () async {
+                                    await db.itemsDao.deleteItem(item.id);
+                                    _loadItems();
+                                  },
+                                ),
+                              ]).toList(),
+                            ))
                         : (reviewChanges.isEmpty
-                            ? _emptyTables(
-                                "You can add categories here to organize your items.",
-                                selectedTab)
-                            : _buildCategoryTable()),
+                            ? emptyTables(
+                                    message: "You can view employee stock changes here.",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null)
+                                : buildUniversalTable(
+                                  headers: ["Employee", "Role", "Changes", "Status", ""],
+                                  rows: List.generate(reviewChanges.length, (i) {
+                                    final record = reviewChanges[i];
+                                    return [
+                                      record.employeeName.toString(),
+                                      record.role.toString(),
+                                      record.totalChanges.toString(),
+                                      record.status,
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: Center(
+                                          child: ElevatedButton(
+                                            child: const Text("View"),
+                                            onPressed: () {
+                                              setState(() {
+                                                _isViewingChangeDetail = true;
+                                                _selectedChangeRecord = record;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ];
+                                  }),
+                              ))
                   ),
                 ),
               ],

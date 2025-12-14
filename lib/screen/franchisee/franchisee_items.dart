@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
-import 'package:chickenjoo_inventory/app_globals.dart';
-import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
+import "../../../database/database_provider.dart";
+import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
+import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/helpers/sync_helper.dart';
@@ -50,82 +51,129 @@ class _ItemsPageState extends State<ItemsPage> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Add Item",
-            style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                decoration: const InputDecoration(labelText: "Item Name"),
-                controller: name),
-            TextField(
-                decoration: const InputDecoration(labelText: "Initial Stock"),
-                keyboardType: TextInputType.number,
-                controller: stock),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              if (name.text.isEmpty || stock.text.isEmpty) return;
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Add Item",
+                    style: TextStyle(
+                      fontFamily: fontAll,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    decoration: const InputDecoration(labelText: "Item Name"),
+                    controller: name,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    decoration: const InputDecoration(labelText: "Initial Stock"),
+                    keyboardType: TextInputType.number,
+                    controller: stock,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () async {
+                          if (name.text.isEmpty || stock.text.isEmpty) return;
 
-              await db.itemsDao.insertItem(
-                name: name.text,
-                stock: int.tryParse(stock.text) ?? 0,
-              );
-              await SyncHelper.syncAfterItemChange();
+                          await db.itemsDao.insertItem(
+                            name: name.text,
+                            stock: int.tryParse(stock.text) ?? 0,
+                          );
 
-              Navigator.pop(context);
-              _loadItems(); // ✅ refresh UI
-            },
-            child: const Text("Save", style: TextStyle(color: Colors.white)),
+                          Navigator.pop(context);
+                          _loadItems();
+                        },
+                        child: const Text("Save", style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // Add Category Popup (untouched)
+  // Add Category Popup
   void _createCategory() {
     final TextEditingController category = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Add Category",
-            style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                decoration: const InputDecoration(labelText: "Category"),
-                controller: category),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              if (category.text.isEmpty) return;
-              _saveCategory({
-                "category": category.text,
-                "itemNumber": categoryCount,
-              });
-              Navigator.pop(context);
-            },
-            child: const Text("Save", style: TextStyle(color: Colors.white)),
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Add Category",
+                    style: TextStyle(
+                      fontFamily: fontAll,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    decoration: const InputDecoration(labelText: "Category"),
+                    controller: category,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () {
+                          if (category.text.isEmpty) return;
+                          _saveCategory({
+                            "category": category.text,
+                            "itemNumber": categoryCount,
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Save", style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -188,188 +236,6 @@ class _ItemsPageState extends State<ItemsPage> {
     }
     });
   }
-
-
-
-  // Empty Tab Widget
-  Widget _emptyTables(String message, int tab) {
-    selectedTab = tab;
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(message, style: const TextStyle(color: Colors.black54)),
-          const SizedBox(height: 15),
-          IconButton(
-            icon: const Icon(Icons.add_circle, color: Colors.red, size: 55),
-            onPressed: () {
-              if (tab == 1) {
-                _createCategory();
-              } else {
-                _createItem(); // ✅ now connected to DB
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ✅ Item Table Widget with "Add Item" button
-  Widget _buildItemTable() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isSmall = constraints.maxWidth < 800;
-        Widget header(String value) {
-          return SizedBox(
-            width: isSmall ? 60 : 100,
-              child: Text(
-                value,
-                maxLines: null,                   // ✅ 2–3 lines visible
-                softWrap: true,
-                overflow: TextOverflow.fade,
-                style: const TextStyle(fontFamily: fontAll, color: Colors.red),
-              ),
-          );
-        }
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: DataTable(
-                columnSpacing: isSmall ? 10 : 60,
-                horizontalMargin: isSmall ? 12 : 24,
-                dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
-                dataRowMaxHeight: double.infinity,
-
-                columns: [
-                  DataColumn(
-                    label: header("Item Name")),
-                  DataColumn(
-                    label: header("Stock")),
-                  DataColumn(
-                    label: header("Sale")),
-                  DataColumn(
-                    label: header("Spoilage")),
-                  DataColumn(
-                    label: header("")),
-                ],
-                rows: List.generate(dbItems.length, (i) {
-                  final item = dbItems[i];
-
-                  Widget cell(String value) {
-                    return SizedBox(
-                      width: isSmall ? 80 : double.infinity,
-
-                       child: Text(
-                          value,
-                          maxLines: null,                   // ✅ 2–3 lines visible
-                          softWrap: true,
-                          overflow: TextOverflow.fade,
-                          style: const TextStyle(fontFamily: fontAll),
-                        ),
-                    );
-                  }
-
-                  return DataRow(cells: [
-                    DataCell(cell(item.name)),
-                    DataCell(cell(item.stock.toString())),
-                    DataCell(cell(item.sold.toString())),
-                    DataCell(cell(item.spoilage.toString())),
-                    DataCell(
-                      IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () async {
-                            await db.itemsDao.deleteItem(item.id);
-                            _loadItems();
-                          },
-                        ),
-                    ),
-                  ]);
-                }),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-
-  // ✅ Category Table Widget with "Add Category" button
-  Widget _buildCategoryTable() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isSmall = constraints.maxWidth < 800;
-        Widget header(String value) {
-          return SizedBox(
-            width: isSmall ? 60 : 80,
-
-              child: Text(
-                value,
-                maxLines: null,                   // ✅ 2–3 lines visible
-                softWrap: true,
-                overflow: TextOverflow.fade,
-                style: const TextStyle(fontFamily: fontAll, color: Colors.red),
-              ),
-          );
-        }
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: DataTable(
-                    columnSpacing: isSmall ? 10 : 60,
-                    horizontalMargin: isSmall ? 12 : 24,
-                    dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
-                    dataRowMaxHeight: double.infinity,
-
-                    columns: [
-                      DataColumn(
-                          label: header("Category Name")),
-                      DataColumn(
-                        label: header("Items in Category")),
-                      DataColumn(label: Text('')),
-                    ],
-                    rows: List.generate(categories.length, (i) {
-                      final category = categories[i];
-
-                      Widget cell(String value) {
-                        return SizedBox(
-                          width: isSmall ? 100 : double.infinity,
-
-                          child: Text(
-                              value,
-                              maxLines: null,                   // ✅ 2–3 lines visible
-                              softWrap: true,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontFamily: fontAll),
-                            ),
-                        );
-                      }
-                      return DataRow(cells: [
-                        DataCell(cell(category["category"])),
-                        DataCell(cell(category["itemNumber"].toString())),
-                        DataCell(
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _deleteCategory(i),
-                          ),
-                        ),
-                      ]);
-                    }),
-                  )
-                ),
-              ),
-            );
-          },
-        );
-      }
 
   void _deleteCategory(int index) {
     showDialog(
@@ -611,13 +477,49 @@ class _ItemsPageState extends State<ItemsPage> {
                   ),
                   child: selectedTab == 0
                       ? (dbItems.isEmpty
-                          ? _emptyTables(
-                              "You can manage your items here.", 0)
-                          : _buildItemTable())
+                          ? emptyTables(
+                            message:   "You can manage your items here.",
+                            onAddPressed: _createItem,
+                            buttonType: EmptyButtonType.icon,
+                            buttonText: null)
+                          : buildUniversalTable(
+                              headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
+                              rows: dbItems.map((item) => [
+                                item.name.toString(),
+                                item.stock.toString(),
+                                item.sold.toString(),
+                                item.spoilage.toString(),
+                                IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () async {
+                                    await db.itemsDao.deleteItem(item.id);
+                                    _loadItems();
+                                  },
+                                ),
+                              ]).toList(),
+                            )
+                          )
                       : (categories.isEmpty
-                          ? _emptyTables(
-                              "You can add categories here.", 1)
-                          : _buildCategoryTable()),
+                          ? emptyTables(
+                              message: "You can add categories here.", 
+                              onAddPressed: _createCategory,
+                              buttonType: EmptyButtonType.icon,
+                              buttonText: null)
+                          : buildUniversalTable(
+                                  headers: ["Category Name", "Items in Category", ""],
+                                  rows: List.generate(categories.length, (i) {
+                                    final category = categories[i];
+                                    return [
+                                      category["category"].toString(),
+                                      category["itemNumber"].toString(),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        onPressed: () => _deleteCategory(i),
+                                      ),
+                                    ];
+                                  }),
+                                )
+                          ),
                 ),
               ),
             ],
@@ -793,18 +695,50 @@ class _ItemsPageState extends State<ItemsPage> {
                       ),
                       child: selectedTab == 0
                           ? (dbItems.isEmpty
-                              ? _emptyTables(
-                                  "You can manage your items here.",
-                                  selectedTab)
-                              : _buildItemTable())
+                              ? emptyTables(
+                                  message: "You can manage your items here.",
+                                  onAddPressed: _createItem,
+                                  buttonType: EmptyButtonType.icon,
+                                  buttonText: null)
+                              : buildUniversalTable(
+                                  headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
+                                  rows: dbItems.map((item) => [
+                                    item.name.toString(),
+                                    item.stock.toString(),
+                                    item.sold.toString(),
+                                    item.spoilage.toString(),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () async {
+                                        await db.itemsDao.deleteItem(item.id);
+                                        _loadItems();
+                                      },
+                                    ),
+                                  ]).toList(),
+                                ))
                           : (categories.isEmpty
-                              ? _emptyTables(
-                                  "You can add categories here to organize your items.",
-                                  selectedTab)
-                              : _buildCategoryTable()),
-                    ),
-                  ),
-                ],
+                              ? emptyTables(
+                                  message: "You can add categories here to organize your items.",
+                                  onAddPressed: _createCategory,
+                                  buttonType: EmptyButtonType.icon,
+                                  buttonText: null)
+                              : buildUniversalTable(
+                                  headers: ["Category Name", "Items in Category", ""],
+                                  rows: List.generate(categories.length, (i) {
+                                    final category = categories[i];
+                                    return [
+                                      category["category"].toString(),
+                                      category["itemNumber"].toString(),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        onPressed: () => _deleteCategory(i),
+                                      ),
+                                    ];
+                                  }),
+                                )
+                            ),
+                          ),
+                      )],
               ),
             ),
           ],
@@ -813,7 +747,7 @@ class _ItemsPageState extends State<ItemsPage> {
 
       floatingActionButton:  (selectedTab == 0 && dbItems.isNotEmpty) || (selectedTab == 1 && categories.isNotEmpty)
       ? Container(
-          margin: const EdgeInsets.only(bottom: 20), // ✅ overlap without pushing content
+          margin: const EdgeInsets.only(bottom: 20),
           child: FloatingActionButton(
             backgroundColor: Colors.red[700],
             onPressed: selectedTab == 0 ? _createItem : _createCategory,

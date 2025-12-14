@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
-import 'package:chickenjoo_inventory/app_globals.dart';
-import 'package:chickenjoo_inventory/sorting/sorting_and_filters.dart';
+import '../../../database/database_provider.dart';
+import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
+import 'package:chickenjoo_inventory/tables/tables.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -70,104 +71,6 @@ class _InventoryPageState extends State<InventoryPage> {
     }
     });
   }
-
-  // Empty Tab Widget
-  Widget _emptyTables(String message, int tab) {
-    selectedTab = tab;
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(message, style: const TextStyle(color: Colors.black54)),
-          const SizedBox(height: 15),
-          if (tab == 2)
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
-              ),
-              onPressed: () {
-                print("Replenish stock button pressed");
-              },
-              child: const Text("Request Stock",
-                  style: TextStyle(color: Colors.white)),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ✅ Inventory Table Widget
-  Widget _buildInventoryTable() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isSmall = constraints.maxWidth < 800;
-        Widget header(String value) {
-          return SizedBox(
-            width: isSmall ? 60 : 100,
-              child: Text(
-                value,
-                maxLines: null,                   // ✅ 2–3 lines visible
-                softWrap: true,
-                overflow: TextOverflow.fade,
-                style: const TextStyle(fontFamily: fontAll, color: Colors.red),
-              ),
-          );
-        }
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: DataTable(
-                    columnSpacing: isSmall ? 10 : 60,
-                    horizontalMargin: isSmall ? 12 : 24,
-                    dataRowMinHeight: kMinInteractiveDimension,  // 48px minimum for accessibility
-                    dataRowMaxHeight: double.infinity,
-                    columns: [
-                      DataColumn(
-                          label: header("Item Name")),
-                      DataColumn(
-                          label: header("Stock")),
-                      DataColumn(
-                          label: Text("Sale",
-                              style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-                      DataColumn(
-                          label: Text("Spoilage",
-                              style: TextStyle(fontFamily: fontAll, color: Colors.red))),
-                    ],
-                    rows: List.generate(items.length, (i) {
-                      final item = items[i];
-                      Widget cell(String value) {
-                        return SizedBox(
-                          width: isSmall ? 80 : double.infinity,
-
-                          child: Text(
-                              value,
-                              maxLines: null,                   // ✅ 2–3 lines visible
-                              softWrap: true,
-                              overflow: TextOverflow.fade,
-                              style: const TextStyle(fontFamily: fontAll),
-                            ),
-                        );
-                      }
-
-                      return DataRow(cells: [
-                        DataCell(cell(item.name)),
-                        DataCell(cell(item.stock.toString())),
-                        DataCell(cell(item.sold.toString())), // ✅ corrected field name
-                        DataCell(cell(item.spoilage.toString())),
-                      ]);
-                    }),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      }
 
   // Tabs
   Widget _buildTab(String label, int index) {
@@ -352,38 +255,44 @@ Widget build(BuildContext context) {
 
                   child: selectedTab == 0
                       ? (items.isEmpty
-                          ? _emptyTables(
-                              "You can manage your items here.", 0)
-                          : _buildInventoryTable())
-                      : selectedTab == 1
-                          ? (InventoryPage.pendingChanges.isEmpty
-                              ? _emptyTables(
-                                  "You can view employee stock updates here.", 1)
-                              : SingleChildScrollView(
-                                  child: DataTable(
-                                    columns: const [
-                                      DataColumn(label: Text("Employee")),
-                                      DataColumn(label: Text("Role")),
-                                      DataColumn(label: Text("Changes")),
-                                      DataColumn(label: Text("Status")),
-                                    ],
-                                    rows: List.generate(
-                                        InventoryPage.pendingChanges.length,
-                                        (index) {
-                                      final record =
-                                          InventoryPage.pendingChanges[index];
-                                      return DataRow(cells: [
-                                        DataCell(Text(record.employeeName)),
-                                        DataCell(Text(record.role)),
-                                        DataCell(Text(
-                                            record.totalChanges.toString())),
-                                        DataCell(Text(record.status)),
-                                      ]);
-                                    }),
-                                  ),
+                            ? emptyTables(
+                                message: "You can manage your items here.",
+                                onAddPressed: null,
+                                buttonType: EmptyButtonType.none,
+                                buttonText: null)
+                            : buildUniversalTable(
+                                  headers: ["Item Name", "Stock", "Sale", "Spoilage",],
+                                  rows: items.map((item) => [
+                                    item.name.toString(),
+                                    item.stock.toString(),
+                                    item.sold.toString(),
+                                    item.spoilage.toString(),
+                                  ]).toList(),
                                 ))
-                          : _emptyTables(
-                              "You can request stock replenishment here.", 2),
+                        : selectedTab == 1
+                            ? (InventoryPage.pendingChanges.isEmpty
+                                ? emptyTables(
+                                    message: "You can view employee stock changes here.",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null)
+                                : buildUniversalTable(
+                                  headers: ["Employee", "Role", "Changes", "Status"],
+                                  rows: List.generate(InventoryPage.pendingChanges.length, (i) {
+                                    final record = InventoryPage.pendingChanges[i];
+                                    return [
+                                      record.employeeName.toString(),
+                                      record.role.toString(),
+                                      record.totalChanges.toString(),
+                                      record.status,
+                                    ];
+                                  }),
+                                ))
+                            : emptyTables(
+                                message: "You can request stock replenishment here.",
+                                onAddPressed: () { print("✅ Request Stock pressed");},
+                                buttonType: EmptyButtonType.elevated,
+                                buttonText: "Request Stock"),
                 ),
               ),
             ],
@@ -521,41 +430,44 @@ Widget build(BuildContext context) {
                     ),
                     child: selectedTab == 0
                         ? (items.isEmpty
-                            ? _emptyTables(
-                                "You can manage your items here.", selectedTab)
-                            : _buildInventoryTable())
+                            ? emptyTables(
+                                message: "You can manage your items here.",
+                                onAddPressed: null,
+                                buttonType: EmptyButtonType.none,
+                                buttonText: null)
+                            : buildUniversalTable(
+                                  headers: ["Item Name", "Stock", "Sale", "Spoilage",],
+                                  rows: items.map((item) => [
+                                    item.name.toString(),
+                                    item.stock.toString(),
+                                    item.sold.toString(),
+                                    item.spoilage.toString(),
+                                  ]).toList(),
+                                ))
                         : selectedTab == 1
                             ? (InventoryPage.pendingChanges.isEmpty
-                                ? _emptyTables(
-                                    "You can view employee stock changes here.",
-                                    selectedTab)
-                                : SingleChildScrollView(
-                                    child: DataTable(
-                                      columns: const [
-                                        DataColumn(label: Text("Employee Name")),
-                                        DataColumn(label: Text("Role")),
-                                        DataColumn(label: Text("Total Changes")),
-                                        DataColumn(label: Text("Status")),
-                                      ],
-                                      rows: List.generate(
-                                          InventoryPage.pendingChanges.length,
-                                          (index) {
-                                        final record =
-                                            InventoryPage.pendingChanges[index];
-                                        return DataRow(cells: [
-                                          DataCell(Text(
-                                              record.employeeName)),
-                                          DataCell(Text(record.role)),
-                                          DataCell(Text(record.totalChanges
-                                              .toString())),
-                                          DataCell(Text(record.status)),
-                                        ]);
-                                      }),
-                                    ),
+                                ? emptyTables(
+                                    message: "You can view employee stock changes here.",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null)
+                                : buildUniversalTable(
+                                  headers: ["Employee", "Role", "Changes", "Status"],
+                                  rows: List.generate(InventoryPage.pendingChanges.length, (i) {
+                                    final record = InventoryPage.pendingChanges[i];
+                                    return [
+                                      record.employeeName.toString(),
+                                      record.role.toString(),
+                                      record.totalChanges.toString(),
+                                      record.status,
+                                    ];
+                                  }),
                                   ))
-                            : _emptyTables(
-                                "You can request stock replenishment here.",
-                                selectedTab),
+                            : emptyTables(
+                                message: "You can request stock replenishment here.",
+                                onAddPressed: () { print("✅ Request Stock pressed");},
+                                buttonType: EmptyButtonType.elevated,
+                                buttonText: "Request Stock"),
                   ),
                 ),
               ],
