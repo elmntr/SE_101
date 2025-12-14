@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:chickenjoo_inventory/database/database_provider.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'screen/franchisee/franchisee_reports.dart';
 import 'screen/franchisee/franchisee_inventory.dart';
@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _db = DatabaseProvider.database;
+    _db = database;
     _loadRoleAndMenu();
   }
 
@@ -439,6 +439,7 @@ Future<List<Map<String, dynamic>>> buildMenuForUser(
     isActive: true,
     createdAt: DateTime.now(),
     lastUpdated: DateTime.now(),
+    isSynced: false
   );
 
   final defaultUser = User(
@@ -450,6 +451,7 @@ Future<List<Map<String, dynamic>>> buildMenuForUser(
     isActive: true,
     createdAt: DateTime.now(),
     lastUpdated: DateTime.now(),
+    isSynced: false
   );
 
   final user = userWithRole?.user ?? defaultUser;

@@ -31,7 +31,11 @@ class Roles extends Table {
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
   // Employee & role management permissions
-BoolColumn get canManageEmployees => boolean().withDefault(const Constant(false))();
-BoolColumn get canManageRoles => boolean().withDefault(const Constant(false))();
+  BoolColumn get canManageEmployees => boolean().withDefault(const Constant(false))();
+  BoolColumn get canManageRoles => boolean().withDefault(const Constant(false))();
+
+   // Sync fields
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
+  TextColumn get cloudId => text().nullable()();
 
 }

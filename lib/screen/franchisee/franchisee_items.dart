@@ -5,6 +5,8 @@ import "../../../database/database_provider.dart";
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:drift/drift.dart' show Value;
+import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/helpers/sync_helper.dart';
 
 class ItemsPage extends StatefulWidget {
   const ItemsPage({Key? key}) : super(key: key);
@@ -30,7 +32,7 @@ class _ItemsPageState extends State<ItemsPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.database;
+    db = database;
     _loadItems();
   }
 

@@ -9,7 +9,7 @@ class DatabaseSeeder {
   /// Coordinates all seeding operations
   static Future<void> seed(AppDatabase db) async {
     await AdminSeeder.seed(db);
-    await EmployeeSeeder.seed(db);
-    await ItemsSeeder.seed(db);
+    //await EmployeeSeeder.seed(db);
+    //await ItemsSeeder.seed(db);
   }
 }

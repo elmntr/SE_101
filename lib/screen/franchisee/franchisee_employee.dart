@@ -72,7 +72,7 @@ class _EmployeePageState extends State<EmployeePage> {
   @override
   void initState() {
     super.initState();
-    db = provider.DatabaseProvider.database;
+    db = database;
 
     _usersSub = db.usersDao.watchAllUsers().listen((users) {
       setState(() {
@@ -465,42 +465,46 @@ void _applyRoleSort(RoleSort sort) {
       return;
     }
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Delete Role", style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
-        content: const Text("Are you sure you want to remove this role?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              final dialogContext = context;
-              final messenger = ScaffoldMessenger.of(dialogContext);
-              final navigator = Navigator.of(dialogContext);
-              final success = await db.rolesDao.deleteRoleById(role.id);
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      title: const Text("Delete Role", style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
+      content: const Text("Are you sure you want to remove this role?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () async {
+            final dialogContext = context;
+            final messenger = ScaffoldMessenger.of(dialogContext);
+            final navigator = Navigator.of(dialogContext);
+
+            try {
+              await db.rolesDao.deleteRoleById(role.id); // may throw exception
               if (!navigator.mounted || !messenger.mounted) return;
               navigator.pop();
-              if (success == 0) {
-                messenger.showSnackBar(
-                  SnackBar(content: Text('Role "${role.name}" deleted.')),
-                );
-              } else {
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('Failed to delete role.')),
-                );
-              }
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
+              messenger.showSnackBar(
+                SnackBar(content: Text('Role "${role.name}" deleted.')),
+              );
+            } on Exception catch (e) {
+              if (!messenger.mounted) return;
+              navigator.pop(); // close dialog
+              messenger.showSnackBar(
+                SnackBar(content: Text('Cannot delete "${role.name}": ${e.toString()}')),
+              );
+            }
+          },
+          child: const Text("Delete", style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
 
   Future<void> _assignRole(User user, int roleId) async {
   final messenger = ScaffoldMessenger.of(context);

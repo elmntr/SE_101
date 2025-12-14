@@ -5,7 +5,8 @@ import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart'; // ✅ your Drift DB
-import "../../../database/database_provider.dart";
+import 'package:chickenjoo_inventory/app_globals.dart';
+
 import 'package:drift/drift.dart' show Value;
 import 'employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
@@ -42,7 +43,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   @override
   void initState() {
     super.initState();
-    db = DatabaseProvider.database;
+    db = database;
     _loadItems();
   }
 

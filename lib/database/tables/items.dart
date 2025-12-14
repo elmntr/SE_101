@@ -12,5 +12,6 @@ class Items extends Table {
   DateTimeColumn get lastUpdated => dateTime().clientDefault(() => DateTime.now())();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get cloudId => text().nullable()();
 }
 
