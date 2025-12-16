@@ -121,9 +121,9 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   }) async {
     try {
       return await (select(items)
-        ..where((t) => t.isSynced.equals(false))
-        ..limit(limit, offset: offset))
-        .get();
+    ..where((t) => t.isSynced.equals(false))
+    ..limit(limit))
+    .get();
     } catch (e) {
       print('❌ Error fetching unsynced items: $e');
       return [];
@@ -412,13 +412,13 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     }
   }
 
-  /// ✅ Soft delete item
+  /// ✅ Soft delete item (marks as deleted, will be cleaned up by sync)
   Future<bool> softDeleteItem(int id) async {
     try {
       final result = await (update(items)..where((t) => t.id.equals(id)))
         .write(ItemsCompanion(
           isDeleted: Value(true),
-          isSynced: Value(false),
+          isSynced: Value(false), // Mark for sync to delete from cloud
           lastUpdated: Value(DateTime.now()),
         ));
       return result > 0;
@@ -428,16 +428,26 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     }
   }
 
-  /// ✅ Hard-delete item
+  /// ✅ PERMANENT DELETE: Hard-delete item from local database
+  /// Note: Cloud deletion is handled by sync service when it detects isDeleted=true
   Future<bool> deleteItem(int id) async {
-    try {
-      final result = await (delete(items)..where((t) => t.id.equals(id))).go();
-      return result > 0;
-    } catch (e) {
-      print('❌ Error deleting item: $e');
-      return false;
-    }
+  try {
+    final result = await (update(items)..where((t) => t.id.equals(id)))
+        .write(
+      ItemsCompanion(
+        isDeleted: const Value(true),
+        isSynced: const Value(false),
+        lastUpdated: Value(DateTime.now()),
+      ),
+    );
+
+    return result > 0;
+  } catch (e) {
+    print('❌ Error soft deleting item: $e');
+    return false;
   }
+}
+
 
   /// ✅ Mark items as synced (batch operation)
   Future<void> markAsSynced(List<int> itemIds, {Map<int, String>? cloudIds}) async {
@@ -543,6 +553,24 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     } catch (e) {
       print('❌ Error fetching low stock items: $e');
       return [];
+    }
+  }
+
+  /// ✅ Clean up locally deleted items (after cloud sync confirms deletion)
+  Future<int> cleanupDeletedItems() async {
+    try {
+      final result = await (delete(items)
+        ..where((t) => t.isDeleted.equals(true) & t.isSynced.equals(true)))
+        .go();
+      
+      if (result > 0) {
+        print('🧹 Cleaned up $result deleted items from local database');
+      }
+      
+      return result;
+    } catch (e) {
+      print('❌ Error cleaning up deleted items: $e');
+      return 0;
     }
   }
 }

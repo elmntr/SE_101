@@ -1,4 +1,3 @@
-
 // lib/database/daos/categories_dao.dart
 import 'package:drift/drift.dart';
 import '../app_database.dart';
@@ -170,7 +169,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
     }
   }
 
-  /// ✅ Hard delete a category (dangerous!)
+  /// ✅ PERMANENT DELETE: Hard delete a category from local database
   Future<bool> deleteCategory(int id) async {
     try {
       // Check if category has items
@@ -180,7 +179,26 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
         throw Exception('Category has $itemCount item(s). Remove items first.');
       }
       
+      // Get category to check if it needs cloud deletion
+      final category = await getCategoryById(id);
+      if (category == null) {
+        print('⚠️ Category $id not found');
+        return false;
+      }
+
+      // If category is not deleted yet, soft delete it first (marks for cloud sync)
+      if (!category.isDeleted) {
+        await softDeleteCategory(id);
+        print('📤 Category $id marked for cloud deletion');
+      }
+      
+      // Then permanently delete from local database
       final result = await (delete(categories)..where((t) => t.id.equals(id))).go();
+      
+      if (result > 0) {
+        print('✅ Category $id permanently deleted from local database');
+      }
+      
       return result > 0;
     } catch (e) {
       print('❌ Error deleting category: $e');
@@ -343,25 +361,6 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
     }
   }
 
-  /// ✅ Bulk assign category to items
-  // Future<int> assignCategoryToItems(int categoryId, List<int> itemIds) async {
-  //   try {
-  //     int updatedCount = 0;
-      
-  //     await db.transaction(() async {
-  //       for (final itemId in itemIds) {
-  //         final result = await db.itemsDao.assignCategory(itemId, categoryId);
-  //         if (result) updatedCount++;
-  //       }
-  //     });
-      
-  //     return updatedCount;
-  //   } catch (e) {
-  //     print('❌ Error bulk assigning category: $e');
-  //     return 0;
-  //   }
-  // }
-
   /// ✅ Remove category from all items (set to null)
   Future<int> removeCategoryFromAllItems(int categoryId) async {
     try {
@@ -432,6 +431,40 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
         totalSpoilage: 0,
         avgStock: 0.0,
       );
+    }
+  }
+
+  /// ✅ Clean up deleted categories (after cloud sync confirms deletion)
+  Future<int> cleanupDeletedCategories() async {
+    try {
+      // Only delete categories that are marked as deleted and have no items
+      final deletedCategories = await (select(categories)
+        ..where((t) => t.isDeleted.equals(true)))
+        .get();
+      
+      int cleanedCount = 0;
+      
+      for (final category in deletedCategories) {
+        final itemCount = await getItemCountInCategory(category.id);
+        if (itemCount == 0) {
+          final result = await (delete(categories)
+            ..where((t) => t.id.equals(category.id)))
+            .go();
+          
+          if (result > 0) {
+            cleanedCount++;
+          }
+        }
+      }
+      
+      if (cleanedCount > 0) {
+        print('🧹 Cleaned up $cleanedCount deleted categories from local database');
+      }
+      
+      return cleanedCount;
+    } catch (e) {
+      print('❌ Error cleaning up deleted categories: $e');
+      return 0;
     }
   }
 }

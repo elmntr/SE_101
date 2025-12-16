@@ -5,7 +5,6 @@ import '../tables/users.dart';
 import '../tables/roles.dart';
 import '../models/user_with_role.dart';
 
-
 part 'users_dao.g.dart';
 
 @DriftAccessor(tables: [Users, Roles])
@@ -74,10 +73,17 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
+  /// ✅ FIXED: Insert user with password hashing
   Future<int> insertUser(UsersCompanion user) async {
     try {
+      // Hash the password before inserting
+      final hashedPassword = user.password.present 
+          ? hashPassword(user.password.value)
+          : throw ArgumentError('Password is required');
+      
       return await into(users).insert(
         user.copyWith(
+          password: Value(hashedPassword), // ✅ Store hashed password
           isSynced: Value(false),
         ),
       );
@@ -91,14 +97,26 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Future<void> insertUsers(List<UsersCompanion> usersList) async {
     try {
       await db.batch((batch) {
-        batch.insertAll(users, usersList);
+        for (final userCompanion in usersList) {
+          // Hash each password
+          final hashedPassword = userCompanion.password.present
+              ? hashPassword(userCompanion.password.value)
+              : throw ArgumentError('Password is required');
+          
+          batch.insert(
+            users,
+            userCompanion.copyWith(
+              password: Value(hashedPassword),
+              isSynced: Value(false),
+            ),
+          );
+        }
       });
     } catch (e) {
       print('❌ Error batch inserting users: $e');
       rethrow;
     }
   }
-
 
   /// ✅ Update an existing user
   Future<bool> updateUser(User user) async {
@@ -147,10 +165,35 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
-  /// ✅ Delete a user by its ID
+  /// ✅ PERMANENT DELETE: Hard-delete user from local and mark for cloud deletion
   Future<bool> deleteUserById(int id) async {
     try {
+      // Get user to check if it has cloudId
+      final user = await getUserById(id);
+      if (user == null) {
+        print('⚠️ User $id not found');
+        return false;
+      }
+
+      // If user has cloudId, mark as inactive and unsynced first
+      // This signals the sync service to delete from cloud
+      if (user.cloudId != null && user.isActive) {
+        await (update(users)..where((t) => t.id.equals(id)))
+          .write(UsersCompanion(
+            isActive: Value(false),
+            isSynced: Value(false),
+            lastUpdated: Value(DateTime.now()),
+          ));
+        print('📤 User $id marked for cloud deletion (cloudId: ${user.cloudId})');
+      }
+      
+      // Then permanently delete from local database
       final result = await (delete(users)..where((t) => t.id.equals(id))).go();
+      
+      if (result > 0) {
+        print('✅ User $id permanently deleted from local database');
+      }
+      
       return result > 0;
     } catch (e) {
       print('❌ Error deleting user: $e');
@@ -243,7 +286,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
   Future<User?> authenticate(String email, String password) async {
     try {
-      // Import the hash function from app_database.dart
+      // Hash the input password to compare
       final hashedPassword = hashPassword(password);
       
       return await (select(users)
@@ -257,7 +300,6 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       return null;
     }
   }
-
 
   /// ✅ Verify password for user
   Future<bool> verifyPassword(int userId, String password) async {
@@ -273,7 +315,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
-  /// ✅ Update user password
+  /// ✅ Update user password (always hashes)
   Future<bool> updatePassword(int userId, String newPassword) async {
     try {
       final hashedPassword = hashPassword(newPassword);
@@ -378,7 +420,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             id: cloudUser['local_id'],
             email: cloudUser['email'],
             username: cloudUser['username'],
-            password: cloudUser['password'],
+            password: cloudUser['password'], // Already hashed from cloud
             phone: cloudUser['phone'],
             roleId: cloudUser['role_id'],
             isActive: cloudUser['is_active'],
@@ -394,42 +436,41 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
+  /// ✅ Upsert from cloud (password is already hashed)
   Future<void> upsertFromCloud({
-  required int id,
-  required String email,
-  required String username,
-  required String password, // already hashed
-  String? phone,
-  required int roleId,
-  required bool isActive,
-  required DateTime createdAt,
-  required DateTime lastUpdated,
-  required String cloudId,
-}) async {
-  try {
-    // Use password as-is; do NOT hash
-    await into(users).insertOnConflictUpdate(
-      UsersCompanion.insert(
-        id: Value(id),
-        email: email,
-        username: username,
-        password: password, // ⬅️ do not hash
-        phone: Value(phone),
-        roleId: roleId,
-        isActive: Value(isActive),
-        createdAt: Value(createdAt),
-        lastUpdated: Value(lastUpdated),
-        isSynced: Value(true),
-        cloudId: Value(cloudId),
-      ),
-    );
-  } catch (e) {
-    print('❌ Error upserting user from cloud: $e');
-    rethrow;
+    required int id,
+    required String email,
+    required String username,
+    required String password, // Already hashed from cloud
+    String? phone,
+    required int roleId,
+    required bool isActive,
+    required DateTime createdAt,
+    required DateTime lastUpdated,
+    required String cloudId,
+  }) async {
+    try {
+      // Password from cloud is already hashed, use as-is
+      await into(users).insertOnConflictUpdate(
+        UsersCompanion.insert(
+          id: Value(id),
+          email: email,
+          username: username,
+          password: password, // ✅ Already hashed
+          phone: Value(phone),
+          roleId: roleId,
+          isActive: Value(isActive),
+          createdAt: Value(createdAt),
+          lastUpdated: Value(lastUpdated),
+          isSynced: Value(true),
+          cloudId: Value(cloudId),
+        ),
+      );
+    } catch (e) {
+      print('❌ Error upserting user from cloud: $e');
+      rethrow;
+    }
   }
-}
-
-
 
   /// ✅ Get user by cloud ID
   Future<User?> getUserByCloudId(String cloudId) async {
@@ -442,16 +483,42 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
+  /// ✅ Hash all existing passwords (run once to fix existing data)
   Future<void> hashAllExistingPasswords() async {
-  final allUsers = await getAllUsers();
-  for (final user in allUsers) {
-    final hashed = hashPassword(user.password);
-    if (user.password != hashed) {
-      await updatePassword(user.id, user.password); // uses existing updatePassword
+    final allUsers = await getAllUsers();
+    int hashedCount = 0;
+    
+    for (final user in allUsers) {
+      // Check if password is already hashed (hashed passwords are 64 chars for SHA-256)
+      if (user.password.length != 64) {
+        final hashed = hashPassword(user.password);
+        await (update(users)..where((t) => t.id.equals(user.id)))
+          .write(UsersCompanion(
+            password: Value(hashed),
+            isSynced: Value(false), // Mark for re-sync
+          ));
+        hashedCount++;
+      }
+    }
+    
+    print('✅ Hashed $hashedCount existing passwords');
+  }
+
+  /// ✅ Clean up inactive users that are synced (after cloud deletion)
+  Future<int> cleanupDeletedUsers() async {
+    try {
+      final result = await (delete(users)
+        ..where((t) => t.isActive.equals(false) & t.isSynced.equals(true)))
+        .go();
+      
+      if (result > 0) {
+        print('🧹 Cleaned up $result inactive users from local database');
+      }
+      
+      return result;
+    } catch (e) {
+      print('❌ Error cleaning up deleted users: $e');
+      return 0;
     }
   }
-  print('✅ All existing passwords hashed.');
-}
-
-  
 }

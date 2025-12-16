@@ -115,7 +115,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
     }
   }
 
-  /// ✅ Delete a role by ID
+  /// ✅ PERMANENT DELETE: Delete a role by ID from local and mark for cloud deletion
   Future<bool> deleteRoleById(int id) async {
     try {
       // Check if role is in use
@@ -125,7 +125,38 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         throw Exception('Role is currently assigned to $usageCount user(s)');
       }
       
+      // Get role to check if it has cloudId
+      final role = await getRoleById(id);
+      if (role == null) {
+        print('⚠️ Role $id not found');
+        return false;
+      }
+
+      // Check if it's a system role
+      if (role.isSystemRole) {
+        print('⚠️ Cannot delete system role $id');
+        throw Exception('System roles cannot be deleted');
+      }
+
+      // If role has cloudId, mark as inactive and unsynced first
+      // This signals the sync service to delete from cloud
+      if (role.cloudId != null && role.isActive) {
+        await (update(roles)..where((t) => t.id.equals(id)))
+          .write(RolesCompanion(
+            isActive: Value(false),
+            isSynced: Value(false),
+            lastUpdated: Value(DateTime.now()),
+          ));
+        print('📤 Role $id marked for cloud deletion (cloudId: ${role.cloudId})');
+      }
+      
+      // Then permanently delete from local database
       final result = await (delete(roles)..where((t) => t.id.equals(id))).go();
+      
+      if (result > 0) {
+        print('✅ Role $id permanently deleted from local database');
+      }
+      
       return result > 0;
     } catch (e) {
       print('❌ Error deleting role: $e');
@@ -394,6 +425,27 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
     } catch (e) {
       print('❌ Error fetching role by cloud ID: $e');
       return null;
+    }
+  }
+
+  /// ✅ Clean up inactive roles that are synced (after cloud deletion)
+  Future<int> cleanupDeletedRoles() async {
+    try {
+      final result = await (delete(roles)
+        ..where((t) => 
+          t.isActive.equals(false) & 
+          t.isSynced.equals(true) &
+          t.isSystemRole.equals(false))) // Never delete system roles
+        .go();
+      
+      if (result > 0) {
+        print('🧹 Cleaned up $result inactive roles from local database');
+      }
+      
+      return result;
+    } catch (e) {
+      print('❌ Error cleaning up deleted roles: $e');
+      return 0;
     }
   }
 }
