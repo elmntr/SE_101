@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
-import "../../../database/database_provider.dart";
+//import "../../../database/database_provider.dart";
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:drift/drift.dart' show Value;
