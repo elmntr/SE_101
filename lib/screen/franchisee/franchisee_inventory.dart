@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
-import '../../../database/database_provider.dart';
+//import '../../../database/database_provider.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});

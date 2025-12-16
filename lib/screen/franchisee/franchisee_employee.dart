@@ -4,8 +4,9 @@ import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart'; // ADDED: Access Drift tables.
-import 'package:chickenjoo_inventory/database/database_provider.dart' as provider;
+//import 'package:chickenjoo_inventory/database/database_provider.dart' as provider;
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
 
 import 'package:drift/drift.dart' show Value;
 
