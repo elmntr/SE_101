@@ -121,9 +121,9 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   }) async {
     try {
       return await (select(items)
-        ..where((t) => t.isSynced.equals(false))
-        ..limit(limit, offset: offset))
-        .get();
+    ..where((t) => t.isSynced.equals(false))
+    ..limit(limit))
+    .get();
     } catch (e) {
       print('❌ Error fetching unsynced items: $e');
       return [];
@@ -431,33 +431,23 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   /// ✅ PERMANENT DELETE: Hard-delete item from local database
   /// Note: Cloud deletion is handled by sync service when it detects isDeleted=true
   Future<bool> deleteItem(int id) async {
-    try {
-      // First, mark as deleted and unsynced so sync service knows to delete from cloud
-      final item = await getItemById(id);
-      if (item == null) {
-        print('⚠️ Item $id not found');
-        return false;
-      }
+  try {
+    final result = await (update(items)..where((t) => t.id.equals(id)))
+        .write(
+      ItemsCompanion(
+        isDeleted: const Value(true),
+        isSynced: const Value(false),
+        lastUpdated: Value(DateTime.now()),
+      ),
+    );
 
-      // If item has cloudId, mark for sync deletion first
-      if (item.cloudId != null && !item.isDeleted) {
-        await softDeleteItem(id);
-        print('📤 Item $id marked for cloud deletion (cloudId: ${item.cloudId})');
-      }
-      
-      // Then permanently delete from local database
-      final result = await (delete(items)..where((t) => t.id.equals(id))).go();
-      
-      if (result > 0) {
-        print('✅ Item $id permanently deleted from local database');
-      }
-      
-      return result > 0;
-    } catch (e) {
-      print('❌ Error deleting item: $e');
-      return false;
-    }
+    return result > 0;
+  } catch (e) {
+    print('❌ Error soft deleting item: $e');
+    return false;
   }
+}
+
 
   /// ✅ Mark items as synced (batch operation)
   Future<void> markAsSynced(List<int> itemIds, {Map<int, String>? cloudIds}) async {
