@@ -124,9 +124,7 @@ void main() async {
   // -------------------------------------------------------------
   // ADMIN SEEDER (RUN LAST)
   // -------------------------------------------------------------
-  await AdminSeeder.seed(db);
-  final testHash = hashPassword('admin123');
-  print(testHash);
+ 
   //print("Computed hash = ${hashPassword("admin123")}");
 
   // -------------------------------------------------------------

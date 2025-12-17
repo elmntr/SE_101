@@ -4,10 +4,11 @@ import '../app_database.dart';
 import '../tables/users.dart';
 import '../tables/roles.dart';
 import '../models/user_with_role.dart';
+import '../tables/organizations.dart';
 
 part 'users_dao.g.dart';
 
-@DriftAccessor(tables: [Users, Roles])
+@DriftAccessor(tables: [Users, Roles, Organizations])
 class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   UsersDao(AppDatabase db) : super(db);
 
@@ -164,6 +165,34 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       return null;
     }
   }
+
+  /// ✅ Get users for a specific organization
+Future<List<User>> getUsersByOrganization(
+  int organizationId, {
+  int? limit,
+  int offset = 0,
+  bool? isActive,
+}) async {
+  try {
+    final query = select(users)
+      ..where((t) => t.organizationId.equals(organizationId));
+    
+    if (isActive != null) {
+      query.where((t) => t.isActive.equals(isActive));
+    }
+    
+    query.orderBy([(t) => OrderingTerm(expression: t.username)]);
+    
+    if (limit != null) {
+      query.limit(limit, offset: offset);
+    }
+    
+    return await query.get();
+  } catch (e) {
+    print('❌ Error fetching users by organization: $e');
+    return [];
+  }
+}
 
   /// ✅ PERMANENT DELETE: Hard-delete user from local and mark for cloud deletion
   Future<bool> deleteUserById(int id) async {
@@ -411,66 +440,72 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
-  /// ✅ Batch upsert from cloud
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudUsers) async {
-    try {
-      await db.transaction(() async {
-        for (final cloudUser in cloudUsers) {
-          await upsertFromCloud(
-            id: cloudUser['local_id'],
-            email: cloudUser['email'],
-            username: cloudUser['username'],
-            password: cloudUser['password'], // Already hashed from cloud
-            phone: cloudUser['phone'],
-            roleId: cloudUser['role_id'],
-            isActive: cloudUser['is_active'],
-            createdAt: DateTime.parse(cloudUser['created_at']),
-            lastUpdated: DateTime.parse(cloudUser['last_updated']),
-            cloudId: cloudUser['cloud_id'],
-          );
-        }
-      });
-    } catch (e) {
-      print('❌ Error batch upserting users from cloud: $e');
-      rethrow;
-    }
+  // /// ✅ Batch upsert from cloud
+  /// ✅ FIXED: Batch upsert from cloud with ALL new columns
+Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudUsers) async {
+  try {
+    await db.transaction(() async {
+      for (final cloudUser in cloudUsers) {
+        await upsertFromCloud(
+          id: cloudUser['local_id'],
+          email: cloudUser['email'],
+          username: cloudUser['username'],
+          password: cloudUser['password'], // Already hashed from cloud
+          phone: cloudUser['phone'],
+          organizationId: cloudUser['organization_id'], // ✅ NEW - Required
+          roleId: cloudUser['role_id'],
+          fullName: cloudUser['full_name'], // ✅ NEW - Optional
+          isActive: cloudUser['is_active'],
+          createdAt: DateTime.parse(cloudUser['created_at']),
+          lastUpdated: DateTime.parse(cloudUser['last_updated']),
+          cloudId: cloudUser['cloud_id'],
+        );
+      }
+    });
+  } catch (e) {
+    print('❌ Error batch upserting users from cloud: $e');
+    rethrow;
   }
+}
 
   /// ✅ Upsert from cloud (password is already hashed)
-  Future<void> upsertFromCloud({
-    required int id,
-    required String email,
-    required String username,
-    required String password, // Already hashed from cloud
-    String? phone,
-    required int roleId,
-    required bool isActive,
-    required DateTime createdAt,
-    required DateTime lastUpdated,
-    required String cloudId,
-  }) async {
-    try {
-      // Password from cloud is already hashed, use as-is
-      await into(users).insertOnConflictUpdate(
-        UsersCompanion.insert(
-          id: Value(id),
-          email: email,
-          username: username,
-          password: password, // ✅ Already hashed
-          phone: Value(phone),
-          roleId: roleId,
-          isActive: Value(isActive),
-          createdAt: Value(createdAt),
-          lastUpdated: Value(lastUpdated),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ),
-      );
-    } catch (e) {
-      print('❌ Error upserting user from cloud: $e');
-      rethrow;
-    }
+Future<void> upsertFromCloud({
+  required int id,
+  required String email,
+  required String username,
+  required String password,
+  String? phone,
+  required int organizationId, // ✅ NEW
+  required int roleId,
+  String? fullName, // ✅ NEW
+  required bool isActive,
+  required DateTime createdAt,
+  required DateTime lastUpdated,
+  required String cloudId,
+}) async {
+  try {
+    await into(users).insertOnConflictUpdate(
+      UsersCompanion.insert(
+        id: Value(id),
+        email: email,
+        username: username,
+        password: password,
+        phone: Value(phone),
+        organizationId: organizationId, // ✅ NEW
+        roleId: roleId,
+        fullName: Value(fullName), // ✅ NEW
+        isActive: Value(isActive),
+        createdAt: Value(createdAt),
+        lastUpdated: Value(lastUpdated),
+        isSynced: Value(true),
+        cloudId: Value(cloudId),
+      ),
+    );
+  } catch (e) {
+    print('❌ Error upserting user from cloud: $e');
+    rethrow;
   }
+}
 
   /// ✅ Get user by cloud ID
   Future<User?> getUserByCloudId(String cloudId) async {
