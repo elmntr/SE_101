@@ -1,213 +1,161 @@
+// lib/main.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/designconstants.dart';
-import 'franchisee(main).dart';
+import 'package:window_size/window_size.dart';
 
-void main() {
+import 'package:chickenjoo_inventory/database/seeders/admin_seeder.dart';
+import 'package:chickenjoo_inventory/database/app_database.dart';
+import 'package:chickenjoo_inventory/database/database_connection.dart';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'config/supabase_config.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'services/supabase_sync_service.dart';
+import 'app_globals.dart'; // ✅ Import AppGlobals
+import 'app.dart';
+
+// Sync status notifier for UI updates
+final syncStatusNotifier = ValueNotifier<Map<String, dynamic>>({
+  'is_syncing': false,
+  'total_unsynced': 0,
+  'status': 'Initializing...',
+  'is_online': true,
+});
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+
+  // Desktop window size setup
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    setWindowTitle('Chicken Joo Inventory');
+    setWindowMinSize(const Size(1280, 720));
+    setWindowMaxSize(const Size(1920, 1080));
+  }
+
+  // -------------------------------------------------------------
+  // DATABASE INITIALIZATION
+  // -------------------------------------------------------------
+  print('🗄️ Initializing database...');
+  final db = AppDatabase();
+
+  // -------------------------------------------------------------
+  // SUPABASE INITIALIZATION
+  // -------------------------------------------------------------
+  print('☁️ Initializing Supabase...');
+  bool supabaseInitialized = false;
+
+  try {
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      anonKey: SupabaseConfig.anonKey,
+    );
+    print('✅ Supabase initialized');
+    supabaseInitialized = true;
+  } catch (e) {
+    print('⚠️ Supabase initialization failed: $e');
+    print('📱 App will work in offline-only mode');
+  }
+
+  // -------------------------------------------------------------
+  // SYNC SERVICE INITIALIZATION
+  // -------------------------------------------------------------
+  print('🔄 Initializing sync service...');
+
+  final sync = SupabaseSyncService(
+    db: db,
+    supabase: Supabase.instance.client,
+    onConnectivityChanged: (isOnline) {
+      print('📡 Connectivity: ${isOnline ? "Online ✅" : "Offline 📵"}');
+      syncStatusNotifier.value = {
+        ...syncStatusNotifier.value,
+        'is_online': isOnline,
+        'status': isOnline ? 'Online' : 'Offline',
+      };
+    },
+    onSyncStatusChanged: (status) {
+      print('🔄 Sync status: $status');
+      syncStatusNotifier.value = {
+        ...syncStatusNotifier.value,
+        'status': status,
+      };
+    },
+    onSyncError: (error) {
+      print('❌ Sync error: $error');
+      syncStatusNotifier.value = {
+        ...syncStatusNotifier.value,
+        'status': 'Error: ${error.length > 30 ? error.substring(0, 30) : error}...',
+      };
+    },
+  );
+
+  // -------------------------------------------------------------
+  // APP GLOBALS INITIALIZATION
+  // -------------------------------------------------------------
+  AppGlobals.instance.initialize(
+    database: db,
+    syncService: sync,
+  );
+  print('✅ AppGlobals initialized');
+
+  // Non-blocking sync service start
+  sync.initialize().then((_) {
+    print('✅ Sync service initialized');
+    _updateSyncStatus();
+  }).catchError((e) {
+    print('⚠️ Sync service initialization failed: $e');
+    print('📱 App will continue in offline mode');
+  });
+
+  // Start periodic sync updates
+  _startSyncStatusUpdates();
+
+  // -------------------------------------------------------------
+  // DEBUG: PRINT EXISTING USERS
+  // -------------------------------------------------------------
+  // final users = await db.usersDao.getAllUsers();
+  // for (var u in users) {
+  //   print('${u.email} / ${u.password} / ${u.isActive}');
+  // }
+ 
+
+
+  // -------------------------------------------------------------
+  // ADMIN SEEDER (RUN LAST)
+  // -------------------------------------------------------------
+  await AdminSeeder.seed(db);
+  final testHash = hashPassword('admin123');
+  print(testHash);
+  //print("Computed hash = ${hashPassword("admin123")}");
+
+  // -------------------------------------------------------------
+  // RUN APPLICATION
+  // -------------------------------------------------------------
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Chicken Joo Inventory',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
-        useMaterial3: true,
-      ),
-      home: const LoginScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
+/// Update sync status periodically
+void _startSyncStatusUpdates() {
+  Future.delayed(const Duration(seconds: 30), () async {
+    await _updateSyncStatus();
+    _startSyncStatusUpdates(); // Recursive call for continuous updates
+  });
 }
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
-
-  @override
-  State<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  void _handleLogin() {
-    /*final email = _emailController.text;
-    final password = _passwordController.text;
-
-    print('Email: $email');
-    print('Password: $password');*/
-
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()),
-  );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final double fieldPadding = AppLayout.fieldPadding(context);
-    final double loginButtonWidth = AppLayout.loginButtonWidth(context);
-
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(color: Color(0xFFEF4848)),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: fieldPadding),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo Container
-                  SizedBox(
-                    width: 300,
-                    child: Image.asset(
-                      imageAll,
-                      height: 80,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  
-
-                  const SizedBox(height: 20),
-
-                  // Inventory System Title
-                  const Text(
-                    'Inventory System',
-                    textAlign: TextAlign.center,
-                    //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
-                    style: TextStyle(
-                      fontFamily: fontAll,
-                      fontSize: 24,
-                      
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // Email Input Field
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
-                      style: const TextStyle(
-                        fontFamily: fontAll,
-                        fontSize: 18,
-                        color: Colors.black,
-                      ),
-                      decoration: const InputDecoration(
-                        hintText: 'Email Address',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 25,
-                          vertical: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Password Input Field
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _passwordController,
-                      obscureText: !_isPasswordVisible,
-                      //Nag implement ako ng Textstyle dito para consistent yung font sa buong app
-                      style: const TextStyle(
-                        fontFamily: fontAll,
-                        fontSize: 18,
-                        color: Colors.black,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Password',
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 25,
-                          vertical: 18,
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // Login Button
-                  SizedBox(
-                    width: loginButtonWidth,
-                    child: ElevatedButton(
-                      onPressed: _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD62828),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 10,
-                      ),
-                      child: const Text(
-                        'LOGIN',
-                        style: TextStyle(
-                          fontFamily: fontAll,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+/// Update the sync status notifier
+Future<void> _updateSyncStatus() async {
+  try {
+    // ✅ Check if initialized before accessing
+    if (AppGlobals.instance.isInitialized) {
+      final status = await syncService.getSyncStatus();
+      syncStatusNotifier.value = {
+        ...syncStatusNotifier.value,
+        ...status,
+      };
+    }
+  } catch (e) {
+    print('Error updating sync status: $e');
   }
 }
