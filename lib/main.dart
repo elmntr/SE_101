@@ -14,6 +14,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/supabase_sync_service.dart';
 import 'app_globals.dart'; // ✅ Import AppGlobals
 import 'app.dart';
+import 'package:path_provider/path_provider.dart';
+
+import 'package:path/path.dart' as p;
 
 // Sync status notifier for UI updates
 final syncStatusNotifier = ValueNotifier<Map<String, dynamic>>({
@@ -26,7 +29,6 @@ final syncStatusNotifier = ValueNotifier<Map<String, dynamic>>({
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-
   // Desktop window size setup
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     setWindowTitle('Chicken Joo Inventory');
@@ -124,7 +126,8 @@ void main() async {
   // -------------------------------------------------------------
   // ADMIN SEEDER (RUN LAST)
   // -------------------------------------------------------------
- 
+  final testHash = hashPassword('admin123');
+  print(testHash);
   //print("Computed hash = ${hashPassword("admin123")}");
 
   // -------------------------------------------------------------
@@ -155,5 +158,14 @@ Future<void> _updateSyncStatus() async {
     }
   } catch (e) {
     print('Error updating sync status: $e');
+  }
+}
+
+Future<void> deleteOldDatabase() async {
+  final dbFolder = await getApplicationDocumentsDirectory();
+  final file = File(p.join(dbFolder.path, 'app_inventory.db'));
+  if (await file.exists()) {
+    await file.delete();
+    print('✅ Old database deleted');
   }
 }

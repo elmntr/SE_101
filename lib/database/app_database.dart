@@ -18,19 +18,19 @@ import 'tables/recipe_ingredients.dart';
 import 'tables/stock_replenishment_requests.dart';
 import 'tables/stock_change_requests.dart';
 
-// ✅ Import MODIFIED tables (replace old imports)
-import 'tables/items.dart'; // Modified version with organizationId, price, etc.
-import 'tables/users.dart'; // Modified version with organizationId
+// ✅ Import MODIFIED tables
+import 'tables/items.dart';
+import 'tables/users.dart';
 
 // ✅ Import existing DAOs
 import 'daos/categories_dao.dart';
 import 'daos/roles_dao.dart';
 
-// ✅ Import MODIFIED DAOs (you'll need to update these)
+// ✅ Import MODIFIED DAOs
 import 'daos/items_dao.dart';
 import 'daos/users_dao.dart';
 
-// ✅ Import NEW DAOs (you'll need to create these)
+// ✅ Import NEW DAOs
 import 'daos/organizations_dao.dart';
 import 'daos/ingredients_dao.dart';
 import 'daos/recipe_ingredients_dao.dart';
@@ -41,97 +41,63 @@ import 'package:flutter/foundation.dart';
 
 part 'app_database.g.dart';
 
-/// ✅ Updated database with all new tables and DAOs
+/// ✅ Complete database with all 9 tables
 @DriftDatabase(
   tables: [
-    // Existing tables
+    // Core tables
+    Organizations,
     Categories,
     Roles,
+    Users,
     
-    // NEW tables
-    Organizations,
+    // Inventory tables
+    Items,
     Ingredients,
     RecipeIngredients,
+    
+    // Request tables
     StockReplenishmentRequests,
     StockChangeRequests,
-    
-    // MODIFIED tables
-    Items,
-    Users,
   ],
   daos: [
-    // Existing DAOs
+    // Core DAOs
+    OrganizationsDao,
     CategoriesDao,
     RolesDao,
+    UsersDao,
     
-    // NEW DAOs
-    OrganizationsDao,
+    // Inventory DAOs
+    ItemsDao,
     IngredientsDao,
     RecipeIngredientsDao,
+    
+    // Request DAOs
     StockReplenishmentRequestsDao,
     StockChangeRequestsDao,
-    
-    // MODIFIED DAOs
-    ItemsDao,
-    UsersDao,
   ]
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5; // ✅ Incremented from 4 to 5 for new tables
+  int get schemaVersion => 1; // ✅ Start fresh at version 1
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
+        print('🏗️ Creating fresh database...');
+        
         // Create all tables
         await m.createAll();
         
         // Create indexes
-        await _createIndexes(m);
+        await _createAllIndexes();
         
         // Seed initial data
         await _seedInitialData();
-      },
-      onUpgrade: (Migrator m, int from, int to) async {
-        // ✅ Migration from version 4 to 5
-        if (from < 5) {
-          print('📦 Migrating database from v$from to v$to...');
-          
-          // Step 1: Create new tables
-          await m.createTable(organizations);
-          await m.createTable(ingredients);
-          await m.createTable(recipeIngredients);
-          await m.createTable(stockReplenishmentRequests);
-          await m.createTable(stockChangeRequests);
-          
-          // Step 2: Add new columns to existing tables
-          await m.addColumn(items, items.organizationId);
-          await m.addColumn(items, items.masterItemId);
-          await m.addColumn(items, items.price);
-          await m.addColumn(items, items.costPrice);
-          await m.addColumn(items, items.unit);
-          await m.addColumn(items, items.minimumStock);
-          await m.addColumn(items, items.description);
-          
-          await m.addColumn(users, users.organizationId);
-          await m.addColumn(users, users.fullName);
-          
-          // Step 3: Create indexes for new tables
-          await _createNewIndexes(m);
-          
-          // Step 4: Migrate existing data
-          await _migrateExistingData();
-          
-          print('✅ Migration to v5 completed');
-        }
         
-        // Legacy migrations
-        if (from < 4) {
-          await _createIndexes(m);
-        }
+        print('✅ Database created successfully!');
       },
       beforeOpen: (details) async {
         // Enable foreign keys
@@ -140,51 +106,10 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  /// ✅ Create indexes for ALL tables
-  Future<void> _createIndexes(Migrator m) async {
-    // Items indexes
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_category ON items(category_id) WHERE is_deleted = 0'
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_sync ON items(is_synced) WHERE is_deleted = 0'
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_cloud_id ON items(cloud_id)'
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_updated ON items(last_updated DESC)'
-    );
+  /// ✅ Create all indexes for optimal performance
+  Future<void> _createAllIndexes() async {
+    print('📑 Creating indexes...');
     
-    // Users indexes
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)'
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_users_role ON users(role_id)'
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_users_cloud_id ON users(cloud_id)'
-    );
-    
-    // Roles indexes
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name)'
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_roles_cloud_id ON roles(cloud_id)'
-    );
-    
-    // Categories indexes
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_categories_deleted ON categories(is_deleted)'
-    );
-    
-    print('✅ Legacy indexes created');
-  }
-
-  /// ✅ Create indexes for NEW tables
-  Future<void> _createNewIndexes(Migrator m) async {
     // Organizations indexes
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_organizations_type ON organizations(type) WHERE is_active = 1'
@@ -194,6 +119,62 @@ class AppDatabase extends _$AppDatabase {
     );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_organizations_cloud_id ON organizations(cloud_id)'
+    );
+    
+    // Categories indexes
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_categories_deleted ON categories(is_deleted)'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name) WHERE is_deleted = 0'
+    );
+    
+    // Roles indexes
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name)'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_roles_active ON roles(is_active)'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_roles_cloud_id ON roles(cloud_id)'
+    );
+    
+    // Users indexes
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_users_organization ON users(organization_id) WHERE is_active = 1'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_users_role ON users(role_id)'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_users_cloud_id ON users(cloud_id)'
+    );
+    
+    // Items indexes
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_items_category ON items(category_id) WHERE is_deleted = 0'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_items_organization ON items(organization_id) WHERE is_deleted = 0'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_items_master ON items(master_item_id) WHERE is_deleted = 0'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_items_sync ON items(is_synced) WHERE is_deleted = 0'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_items_cloud_id ON items(cloud_id)'
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_items_updated ON items(last_updated DESC)'
     );
     
     // Ingredients indexes
@@ -207,15 +188,18 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_ingredients_cloud_id ON ingredients(cloud_id)'
     );
     
-    // RecipeIngredients indexes
+    // Recipe Ingredients indexes
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_item ON recipe_ingredients(item_id) WHERE is_deleted = 0'
     );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_ingredient ON recipe_ingredients(ingredient_id) WHERE is_deleted = 0'
     );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_cloud_id ON recipe_ingredients(cloud_id)'
+    );
     
-    // StockReplenishmentRequests indexes
+    // Stock Replenishment Requests indexes
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_replenishment_franchisee ON stock_replenishment_requests(franchisee_id, status) WHERE is_deleted = 0'
     );
@@ -225,8 +209,11 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_replenishment_status ON stock_replenishment_requests(status) WHERE is_deleted = 0'
     );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_replenishment_cloud_id ON stock_replenishment_requests(cloud_id)'
+    );
     
-    // StockChangeRequests indexes
+    // Stock Change Requests indexes
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_stock_changes_franchisee ON stock_change_requests(franchisee_id, status) WHERE is_deleted = 0'
     );
@@ -236,174 +223,146 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_stock_changes_requested_by ON stock_change_requests(requested_by) WHERE is_deleted = 0'
     );
-    
-    // Items new column indexes
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_organization ON items(organization_id) WHERE is_deleted = 0'
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_master ON items(master_item_id) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_stock_changes_cloud_id ON stock_change_requests(cloud_id)'
     );
     
-    // Users new column index
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_users_organization ON users(organization_id) WHERE is_active = 1'
-    );
-    
-    print('✅ New table indexes created');
+    print('✅ All indexes created');
   }
 
-  /// ✅ Seed initial data (organizations, roles, test users)
+  /// ✅ Seed initial data (commissary, roles, admin user)
   Future<void> _seedInitialData() async {
     print('🌱 Seeding initial data...');
     
     try {
-      // Check if already seeded
-      final existingOrgs = await organizationsDao.getAllOrganizations(limit: 1);
-      if (existingOrgs.isNotEmpty) {
-        print('ℹ️ Database already seeded, skipping...');
-        return;
-      }
-      
-      // 1. Create default commissary organization
+      // 1. Create Main Commissary organization
       final commissaryId = await organizationsDao.insertOrganization(
         OrganizationsCompanion.insert(
           name: 'Main Commissary',
           type: 'commissary',
-          parentCommissaryId: Value(null),
-          contactPerson: Value('Commissary Manager'),
-          email: Value('commissary@example.com'),
-          phone: Value('+63-123-4567'),
+          parentCommissaryId: const Value(null),
+          contactPerson: const Value('Commissary Manager'),
+          email: const Value('commissary@example.com'),
+          phone: const Value('+63-123-4567'),
         ),
       );
       print('✅ Created Main Commissary (ID: $commissaryId)');
       
-      // 2. Create default roles if they don't exist
-      final existingRoles = await rolesDao.getAllRoles(limit: 1);
-      if (existingRoles.isEmpty) {
-        // Commissary Admin role
-        final commissaryAdminRoleId = await rolesDao.insertRole(
-          RolesCompanion.insert(
-            name: 'commissary_admin',
-            description: Value('Full access to commissary operations'),
-            canViewInventory: Value(true),
-            canAddInventory: Value(true),
-            canEditInventory: Value(true),
-            canDeleteInventory: Value(true),
-            canViewReports: Value(true),
-            canExportData: Value(true),
-            canAccessSettings: Value(true),
-            canManageEmployees: Value(true),
-            canManageRoles: Value(true),
-            isSystemRole: Value(true),
-          ),
-        );
-        
-        // Franchisee Owner role
-        final franchiseeOwnerRoleId = await rolesDao.insertRole(
-          RolesCompanion.insert(
-            name: 'franchisee_owner',
-            description: Value('Full access to franchisee operations'),
-            canViewInventory: Value(true),
-            canAddInventory: Value(true),
-            canEditInventory: Value(true),
-            canDeleteInventory: Value(false),
-            canViewReports: Value(true),
-            canExportData: Value(true),
-            canAccessSettings: Value(true),
-            canManageEmployees: Value(true),
-            canManageRoles: Value(false),
-            isSystemRole: Value(true),
-          ),
-        );
-        
-        // Employee role
-        final employeeRoleId = await rolesDao.insertRole(
-          RolesCompanion.insert(
-            name: 'employee',
-            description: Value('Basic employee access'),
-            canViewInventory: Value(true),
-            canAddInventory: Value(false),
-            canEditInventory: Value(true),
-            canDeleteInventory: Value(false),
-            canViewReports: Value(false),
-            canExportData: Value(false),
-            canAccessSettings: Value(false),
-            canManageEmployees: Value(false),
-            canManageRoles: Value(false),
-            isSystemRole: Value(true),
-          ),
-        );
-        
-        print('✅ Created default roles');
-        
-        // 3. Create test commissary admin user
-        final roles = await rolesDao.getAllRoles();
-        final commissaryAdminRole = roles.firstWhere((r) => r.name == 'commissary_admin');
-        
-        await usersDao.insertUser(
-          UsersCompanion.insert(
-            username: 'commissary_admin',
-            email: 'admin@commissary.com',
-            password: 'admin123', // Will be hashed in DAO
-            organizationId: commissaryId,
-            roleId: commissaryAdminRole.id,
-            fullName: Value('Commissary Administrator'),
-            isActive: Value(true),
-          ),
-        );
-        print('✅ Created commissary admin user (username: commissary_admin, password: admin123)');
-      }
+      // 2. Create default roles
+      final adminRoleId = await rolesDao.insertRole(
+        RolesCompanion.insert(
+          name: 'Admin',
+          description: const Value('Full system access'),
+          canViewInventory: const Value(true),
+          canAddInventory: const Value(true),
+          canEditInventory: const Value(true),
+          canDeleteInventory: const Value(true),
+          canViewReports: const Value(true),
+          canExportData: const Value(true),
+          canAccessSettings: const Value(true),
+          canManageEmployees: const Value(true),
+          canManageRoles: const Value(true),
+          isSystemRole: const Value(true),
+        ),
+      );
       
-      print('✅ Initial data seeded successfully');
-    } catch (e) {
+      await rolesDao.insertRole(
+        RolesCompanion.insert(
+          name: 'Manager',
+          description: const Value('Management level access'),
+          canViewInventory: const Value(true),
+          canAddInventory: const Value(true),
+          canEditInventory: const Value(true),
+          canDeleteInventory: const Value(false),
+          canViewReports: const Value(true),
+          canExportData: const Value(true),
+          canAccessSettings: const Value(true),
+          canManageEmployees: const Value(true),
+          canManageRoles: const Value(false),
+          isSystemRole: const Value(true),
+        ),
+      );
+      
+      await rolesDao.insertRole(
+        RolesCompanion.insert(
+          name: 'Employee',
+          description: const Value('Basic employee access'),
+          canViewInventory: const Value(true),
+          canAddInventory: const Value(false),
+          canEditInventory: const Value(true),
+          canDeleteInventory: const Value(false),
+          canViewReports: const Value(false),
+          canExportData: const Value(false),
+          canAccessSettings: const Value(false),
+          canManageEmployees: const Value(false),
+          canManageRoles: const Value(false),
+          isSystemRole: const Value(true),
+        ),
+      );
+      
+      await rolesDao.insertRole(
+        RolesCompanion.insert(
+          name: 'Viewer',
+          description: const Value('Read-only access'),
+          canViewInventory: const Value(true),
+          canAddInventory: const Value(false),
+          canEditInventory: const Value(false),
+          canDeleteInventory: const Value(false),
+          canViewReports: const Value(true),
+          canExportData: const Value(false),
+          canAccessSettings: const Value(false),
+          canManageEmployees: const Value(false),
+          canManageRoles: const Value(false),
+          isSystemRole: const Value(true),
+        ),
+      );
+      
+      print('✅ Created 4 default roles');
+      
+      // 3. Create admin user
+      await usersDao.insertUser(
+        UsersCompanion.insert(
+          username: 'admin',
+          email: 'admin@example.com',
+          password: 'admin123', // Will be hashed in DAO
+          organizationId: commissaryId,
+          roleId: adminRoleId,
+          fullName: const Value('System Administrator'),
+          phone: const Value('+63-123-4567'),
+          isActive: const Value(true),
+        ),
+      );
+      print('✅ Created admin user (username: admin, password: admin123)');
+      
+      // 4. Create sample categories
+      await categoriesDao.insertCategory(
+        name: 'Food',
+        description: 'Food items',
+      );
+      await categoriesDao.insertCategory(
+        name: 'Beverages',
+        description: 'Drink items',
+      );
+      await categoriesDao.insertCategory(
+        name: 'Raw Materials',
+        description: 'Ingredients and supplies',
+      );
+      print('✅ Created 3 sample categories');
+      
+      print('✅ Initial data seeded successfully!');
+      print('');
+      print('═══════════════════════════════════════════');
+      print('  🎉 DATABASE READY!');
+      print('═══════════════════════════════════════════');
+      print('  Login credentials:');
+      print('  Username: admin');
+      print('  Password: admin123');
+      print('═══════════════════════════════════════════');
+      
+    } catch (e, stackTrace) {
       print('❌ Error seeding initial data: $e');
-      // Don't rethrow - continue even if seeding fails
-    }
-  }
-
-  /// ✅ Migrate existing data from old schema to new schema
-  Future<void> _migrateExistingData() async {
-    print('🔄 Migrating existing data...');
-    
-    try {
-      // Get or create default commissary
-      final orgs = await organizationsDao.getAllOrganizations(limit: 1);
-      int defaultCommissaryId;
-      
-      if (orgs.isEmpty) {
-        // Create default commissary if none exists
-        defaultCommissaryId = await organizationsDao.insertOrganization(
-          OrganizationsCompanion.insert(
-            name: 'Default Commissary',
-            type: 'commissary',
-            parentCommissaryId: Value(null),
-          ),
-        );
-        print('✅ Created default commissary for migration');
-      } else {
-        defaultCommissaryId = orgs.first.id;
-        print('✅ Using existing commissary (ID: $defaultCommissaryId)');
-      }
-      
-      // Update all existing items to belong to default commissary
-      await customUpdate(
-        'UPDATE items SET organization_id = ? WHERE organization_id IS NULL',
-        updates: {items},
-        variables: [Variable.withInt(defaultCommissaryId)],
-      );
-      
-      // Update all existing users to belong to default commissary
-      await customUpdate(
-        'UPDATE users SET organization_id = ? WHERE organization_id IS NULL',
-        updates: {users},
-        variables: [Variable.withInt(defaultCommissaryId)],
-      );
-      
-      print('✅ Existing data migrated to default commissary');
-    } catch (e) {
-      print('❌ Error migrating existing data: $e');
-      // Don't rethrow - let migration continue
+      print('Stack trace: $stackTrace');
+      rethrow; // Rethrow to prevent app from starting with incomplete data
     }
   }
 
@@ -429,7 +388,7 @@ LazyDatabase _openConnection() {
 
     if (!file.existsSync()) {
       file.createSync(recursive: true);
-      print('📁 Database created at ${file.path}');
+      print('📁 Creating new database at ${file.path}');
     } else {
       print('📁 Using existing database at ${file.path}');
     }

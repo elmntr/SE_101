@@ -3,6 +3,798 @@
 part of 'app_database.dart';
 
 // ignore_for_file: type=lint
+class $OrganizationsTable extends Organizations
+    with TableInfo<$OrganizationsTable, Organization> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OrganizationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 200,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 50,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parentCommissaryIdMeta =
+      const VerificationMeta('parentCommissaryId');
+  @override
+  late final GeneratedColumn<int> parentCommissaryId = GeneratedColumn<int>(
+    'parent_commissary_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES organizations (id)',
+    ),
+  );
+  static const VerificationMeta _contactPersonMeta = const VerificationMeta(
+    'contactPerson',
+  );
+  @override
+  late final GeneratedColumn<String> contactPerson = GeneratedColumn<String>(
+    'contact_person',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 200),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+    'phone',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 50),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 200),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _addressMeta = const VerificationMeta(
+    'address',
+  );
+  @override
+  late final GeneratedColumn<String> address = GeneratedColumn<String>(
+    'address',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 500),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
+    'lastUpdated',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUpdated = GeneratedColumn<DateTime>(
+    'last_updated',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    type,
+    parentCommissaryId,
+    contactPerson,
+    phone,
+    email,
+    address,
+    createdAt,
+    lastUpdated,
+    isActive,
+    isSynced,
+    cloudId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'organizations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Organization> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('parent_commissary_id')) {
+      context.handle(
+        _parentCommissaryIdMeta,
+        parentCommissaryId.isAcceptableOrUnknown(
+          data['parent_commissary_id']!,
+          _parentCommissaryIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('contact_person')) {
+      context.handle(
+        _contactPersonMeta,
+        contactPerson.isAcceptableOrUnknown(
+          data['contact_person']!,
+          _contactPersonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
+      );
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    }
+    if (data.containsKey('address')) {
+      context.handle(
+        _addressMeta,
+        address.isAcceptableOrUnknown(data['address']!, _addressMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('last_updated')) {
+      context.handle(
+        _lastUpdatedMeta,
+        lastUpdated.isAcceptableOrUnknown(
+          data['last_updated']!,
+          _lastUpdatedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Organization map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Organization(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      parentCommissaryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}parent_commissary_id'],
+      ),
+      contactPerson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contact_person'],
+      ),
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
+      ),
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      ),
+      address: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastUpdated: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_updated'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      ),
+    );
+  }
+
+  @override
+  $OrganizationsTable createAlias(String alias) {
+    return $OrganizationsTable(attachedDatabase, alias);
+  }
+}
+
+class Organization extends DataClass implements Insertable<Organization> {
+  /// Primary key
+  final int id;
+
+  /// Organization name (e.g., "Main Commissary", "Branch Makati")
+  final String name;
+
+  /// Type of organization: 'commissary' or 'franchisee'
+  /// - commissary: Creates ingredients and items, supplies franchisees
+  /// - franchisee: Orders from commissary, sells to customers
+  final String type;
+
+  /// For franchisees: Reference to parent commissary
+  /// For commissary: NULL (they are the top-level)
+  final int? parentCommissaryId;
+
+  /// Contact information
+  final String? contactPerson;
+  final String? phone;
+  final String? email;
+
+  /// Physical address
+  final String? address;
+
+  /// Track when organization was created/modified
+  final DateTime createdAt;
+  final DateTime lastUpdated;
+
+  /// Active status (for soft delete)
+  final bool isActive;
+
+  /// Sync fields for cloud synchronization
+  final bool isSynced;
+  final String? cloudId;
+  const Organization({
+    required this.id,
+    required this.name,
+    required this.type,
+    this.parentCommissaryId,
+    this.contactPerson,
+    this.phone,
+    this.email,
+    this.address,
+    required this.createdAt,
+    required this.lastUpdated,
+    required this.isActive,
+    required this.isSynced,
+    this.cloudId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['type'] = Variable<String>(type);
+    if (!nullToAbsent || parentCommissaryId != null) {
+      map['parent_commissary_id'] = Variable<int>(parentCommissaryId);
+    }
+    if (!nullToAbsent || contactPerson != null) {
+      map['contact_person'] = Variable<String>(contactPerson);
+    }
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
+    if (!nullToAbsent || email != null) {
+      map['email'] = Variable<String>(email);
+    }
+    if (!nullToAbsent || address != null) {
+      map['address'] = Variable<String>(address);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_updated'] = Variable<DateTime>(lastUpdated);
+    map['is_active'] = Variable<bool>(isActive);
+    map['is_synced'] = Variable<bool>(isSynced);
+    if (!nullToAbsent || cloudId != null) {
+      map['cloud_id'] = Variable<String>(cloudId);
+    }
+    return map;
+  }
+
+  OrganizationsCompanion toCompanion(bool nullToAbsent) {
+    return OrganizationsCompanion(
+      id: Value(id),
+      name: Value(name),
+      type: Value(type),
+      parentCommissaryId: parentCommissaryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentCommissaryId),
+      contactPerson: contactPerson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contactPerson),
+      phone: phone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(phone),
+      email: email == null && nullToAbsent
+          ? const Value.absent()
+          : Value(email),
+      address: address == null && nullToAbsent
+          ? const Value.absent()
+          : Value(address),
+      createdAt: Value(createdAt),
+      lastUpdated: Value(lastUpdated),
+      isActive: Value(isActive),
+      isSynced: Value(isSynced),
+      cloudId: cloudId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudId),
+    );
+  }
+
+  factory Organization.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Organization(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      type: serializer.fromJson<String>(json['type']),
+      parentCommissaryId: serializer.fromJson<int?>(json['parentCommissaryId']),
+      contactPerson: serializer.fromJson<String?>(json['contactPerson']),
+      phone: serializer.fromJson<String?>(json['phone']),
+      email: serializer.fromJson<String?>(json['email']),
+      address: serializer.fromJson<String?>(json['address']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      cloudId: serializer.fromJson<String?>(json['cloudId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'type': serializer.toJson<String>(type),
+      'parentCommissaryId': serializer.toJson<int?>(parentCommissaryId),
+      'contactPerson': serializer.toJson<String?>(contactPerson),
+      'phone': serializer.toJson<String?>(phone),
+      'email': serializer.toJson<String?>(email),
+      'address': serializer.toJson<String?>(address),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
+      'isActive': serializer.toJson<bool>(isActive),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'cloudId': serializer.toJson<String?>(cloudId),
+    };
+  }
+
+  Organization copyWith({
+    int? id,
+    String? name,
+    String? type,
+    Value<int?> parentCommissaryId = const Value.absent(),
+    Value<String?> contactPerson = const Value.absent(),
+    Value<String?> phone = const Value.absent(),
+    Value<String?> email = const Value.absent(),
+    Value<String?> address = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? lastUpdated,
+    bool? isActive,
+    bool? isSynced,
+    Value<String?> cloudId = const Value.absent(),
+  }) => Organization(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    type: type ?? this.type,
+    parentCommissaryId: parentCommissaryId.present
+        ? parentCommissaryId.value
+        : this.parentCommissaryId,
+    contactPerson: contactPerson.present
+        ? contactPerson.value
+        : this.contactPerson,
+    phone: phone.present ? phone.value : this.phone,
+    email: email.present ? email.value : this.email,
+    address: address.present ? address.value : this.address,
+    createdAt: createdAt ?? this.createdAt,
+    lastUpdated: lastUpdated ?? this.lastUpdated,
+    isActive: isActive ?? this.isActive,
+    isSynced: isSynced ?? this.isSynced,
+    cloudId: cloudId.present ? cloudId.value : this.cloudId,
+  );
+  Organization copyWithCompanion(OrganizationsCompanion data) {
+    return Organization(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      type: data.type.present ? data.type.value : this.type,
+      parentCommissaryId: data.parentCommissaryId.present
+          ? data.parentCommissaryId.value
+          : this.parentCommissaryId,
+      contactPerson: data.contactPerson.present
+          ? data.contactPerson.value
+          : this.contactPerson,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      email: data.email.present ? data.email.value : this.email,
+      address: data.address.present ? data.address.value : this.address,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastUpdated: data.lastUpdated.present
+          ? data.lastUpdated.value
+          : this.lastUpdated,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Organization(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('type: $type, ')
+          ..write('parentCommissaryId: $parentCommissaryId, ')
+          ..write('contactPerson: $contactPerson, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('address: $address, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isActive: $isActive, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('cloudId: $cloudId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    type,
+    parentCommissaryId,
+    contactPerson,
+    phone,
+    email,
+    address,
+    createdAt,
+    lastUpdated,
+    isActive,
+    isSynced,
+    cloudId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Organization &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.type == this.type &&
+          other.parentCommissaryId == this.parentCommissaryId &&
+          other.contactPerson == this.contactPerson &&
+          other.phone == this.phone &&
+          other.email == this.email &&
+          other.address == this.address &&
+          other.createdAt == this.createdAt &&
+          other.lastUpdated == this.lastUpdated &&
+          other.isActive == this.isActive &&
+          other.isSynced == this.isSynced &&
+          other.cloudId == this.cloudId);
+}
+
+class OrganizationsCompanion extends UpdateCompanion<Organization> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String> type;
+  final Value<int?> parentCommissaryId;
+  final Value<String?> contactPerson;
+  final Value<String?> phone;
+  final Value<String?> email;
+  final Value<String?> address;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastUpdated;
+  final Value<bool> isActive;
+  final Value<bool> isSynced;
+  final Value<String?> cloudId;
+  const OrganizationsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.type = const Value.absent(),
+    this.parentCommissaryId = const Value.absent(),
+    this.contactPerson = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.address = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.cloudId = const Value.absent(),
+  });
+  OrganizationsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required String type,
+    this.parentCommissaryId = const Value.absent(),
+    this.contactPerson = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.email = const Value.absent(),
+    this.address = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.cloudId = const Value.absent(),
+  }) : name = Value(name),
+       type = Value(type);
+  static Insertable<Organization> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? type,
+    Expression<int>? parentCommissaryId,
+    Expression<String>? contactPerson,
+    Expression<String>? phone,
+    Expression<String>? email,
+    Expression<String>? address,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastUpdated,
+    Expression<bool>? isActive,
+    Expression<bool>? isSynced,
+    Expression<String>? cloudId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (type != null) 'type': type,
+      if (parentCommissaryId != null)
+        'parent_commissary_id': parentCommissaryId,
+      if (contactPerson != null) 'contact_person': contactPerson,
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+      if (address != null) 'address': address,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastUpdated != null) 'last_updated': lastUpdated,
+      if (isActive != null) 'is_active': isActive,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (cloudId != null) 'cloud_id': cloudId,
+    });
+  }
+
+  OrganizationsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String>? type,
+    Value<int?>? parentCommissaryId,
+    Value<String?>? contactPerson,
+    Value<String?>? phone,
+    Value<String?>? email,
+    Value<String?>? address,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastUpdated,
+    Value<bool>? isActive,
+    Value<bool>? isSynced,
+    Value<String?>? cloudId,
+  }) {
+    return OrganizationsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      parentCommissaryId: parentCommissaryId ?? this.parentCommissaryId,
+      contactPerson: contactPerson ?? this.contactPerson,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      address: address ?? this.address,
+      createdAt: createdAt ?? this.createdAt,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+      isActive: isActive ?? this.isActive,
+      isSynced: isSynced ?? this.isSynced,
+      cloudId: cloudId ?? this.cloudId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (parentCommissaryId.present) {
+      map['parent_commissary_id'] = Variable<int>(parentCommissaryId.value);
+    }
+    if (contactPerson.present) {
+      map['contact_person'] = Variable<String>(contactPerson.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (address.present) {
+      map['address'] = Variable<String>(address.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastUpdated.present) {
+      map['last_updated'] = Variable<DateTime>(lastUpdated.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OrganizationsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('type: $type, ')
+          ..write('parentCommissaryId: $parentCommissaryId, ')
+          ..write('contactPerson: $contactPerson, ')
+          ..write('phone: $phone, ')
+          ..write('email: $email, ')
+          ..write('address: $address, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isActive: $isActive, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('cloudId: $cloudId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $CategoriesTable extends Categories
     with TableInfo<$CategoriesTable, Category> {
   @override
@@ -1470,12 +2262,11 @@ class RolesCompanion extends UpdateCompanion<Role> {
   }
 }
 
-class $OrganizationsTable extends Organizations
-    with TableInfo<$OrganizationsTable, Organization> {
+class $UsersTable extends Users with TableInfo<$UsersTable, User> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $OrganizationsTable(this.attachedDatabase, [this._alias]);
+  $UsersTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -1489,56 +2280,43 @@ class $OrganizationsTable extends Organizations
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  static const VerificationMeta _usernameMeta = const VerificationMeta(
+    'username',
+  );
   @override
-  late final GeneratedColumn<String> name = GeneratedColumn<String>(
-    'name',
+  late final GeneratedColumn<String> username = GeneratedColumn<String>(
+    'username',
     aliasedName,
     false,
     additionalChecks: GeneratedColumn.checkTextLength(
       minTextLength: 3,
-      maxTextLength: 200,
+      maxTextLength: 100,
     ),
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
-  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
   @override
-  late final GeneratedColumn<String> type = GeneratedColumn<String>(
-    'type',
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
     aliasedName,
     false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 3,
-      maxTextLength: 50,
-    ),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _parentCommissaryIdMeta =
-      const VerificationMeta('parentCommissaryId');
-  @override
-  late final GeneratedColumn<int> parentCommissaryId = GeneratedColumn<int>(
-    'parent_commissary_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES organizations (id)',
-    ),
-  );
-  static const VerificationMeta _contactPersonMeta = const VerificationMeta(
-    'contactPerson',
-  );
-  @override
-  late final GeneratedColumn<String> contactPerson = GeneratedColumn<String>(
-    'contact_person',
-    aliasedName,
-    true,
     additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 200),
     type: DriftSqlType.string,
-    requiredDuringInsert: false,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _passwordMeta = const VerificationMeta(
+    'password',
+  );
+  @override
+  late final GeneratedColumn<String> password = GeneratedColumn<String>(
+    'password',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
   @override
@@ -1550,51 +2328,43 @@ class $OrganizationsTable extends Organizations
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
+    'organizationId',
+  );
   @override
-  late final GeneratedColumn<String> email = GeneratedColumn<String>(
-    'email',
+  late final GeneratedColumn<int> organizationId = GeneratedColumn<int>(
+    'organization_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES organizations (id)',
+    ),
+  );
+  static const VerificationMeta _roleIdMeta = const VerificationMeta('roleId');
+  @override
+  late final GeneratedColumn<int> roleId = GeneratedColumn<int>(
+    'role_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES roles (id)',
+    ),
+  );
+  static const VerificationMeta _fullNameMeta = const VerificationMeta(
+    'fullName',
+  );
+  @override
+  late final GeneratedColumn<String> fullName = GeneratedColumn<String>(
+    'full_name',
     aliasedName,
     true,
     additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 200),
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-  );
-  static const VerificationMeta _addressMeta = const VerificationMeta(
-    'address',
-  );
-  @override
-  late final GeneratedColumn<String> address = GeneratedColumn<String>(
-    'address',
-    aliasedName,
-    true,
-    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 500),
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-    'created_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
-  );
-  static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
-    'lastUpdated',
-  );
-  @override
-  late final GeneratedColumn<DateTime> lastUpdated = GeneratedColumn<DateTime>(
-    'last_updated',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
   );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
@@ -1611,776 +2381,6 @@ class $OrganizationsTable extends Organizations
     ),
     defaultValue: const Constant(true),
   );
-  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
-    'isSynced',
-  );
-  @override
-  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
-    'is_synced',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_synced" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
-  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
-    'cloudId',
-  );
-  @override
-  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
-    'cloud_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    name,
-    type,
-    parentCommissaryId,
-    contactPerson,
-    phone,
-    email,
-    address,
-    createdAt,
-    lastUpdated,
-    isActive,
-    isSynced,
-    cloudId,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'organizations';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<Organization> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('name')) {
-      context.handle(
-        _nameMeta,
-        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_nameMeta);
-    }
-    if (data.containsKey('type')) {
-      context.handle(
-        _typeMeta,
-        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_typeMeta);
-    }
-    if (data.containsKey('parent_commissary_id')) {
-      context.handle(
-        _parentCommissaryIdMeta,
-        parentCommissaryId.isAcceptableOrUnknown(
-          data['parent_commissary_id']!,
-          _parentCommissaryIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('contact_person')) {
-      context.handle(
-        _contactPersonMeta,
-        contactPerson.isAcceptableOrUnknown(
-          data['contact_person']!,
-          _contactPersonMeta,
-        ),
-      );
-    }
-    if (data.containsKey('phone')) {
-      context.handle(
-        _phoneMeta,
-        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
-      );
-    }
-    if (data.containsKey('email')) {
-      context.handle(
-        _emailMeta,
-        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
-      );
-    }
-    if (data.containsKey('address')) {
-      context.handle(
-        _addressMeta,
-        address.isAcceptableOrUnknown(data['address']!, _addressMeta),
-      );
-    }
-    if (data.containsKey('created_at')) {
-      context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
-    }
-    if (data.containsKey('last_updated')) {
-      context.handle(
-        _lastUpdatedMeta,
-        lastUpdated.isAcceptableOrUnknown(
-          data['last_updated']!,
-          _lastUpdatedMeta,
-        ),
-      );
-    }
-    if (data.containsKey('is_active')) {
-      context.handle(
-        _isActiveMeta,
-        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
-      );
-    }
-    if (data.containsKey('is_synced')) {
-      context.handle(
-        _isSyncedMeta,
-        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
-      );
-    }
-    if (data.containsKey('cloud_id')) {
-      context.handle(
-        _cloudIdMeta,
-        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  Organization map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Organization(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}id'],
-      )!,
-      name: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}name'],
-      )!,
-      type: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}type'],
-      )!,
-      parentCommissaryId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}parent_commissary_id'],
-      ),
-      contactPerson: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}contact_person'],
-      ),
-      phone: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}phone'],
-      ),
-      email: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}email'],
-      ),
-      address: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}address'],
-      ),
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      )!,
-      lastUpdated: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}last_updated'],
-      )!,
-      isActive: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_active'],
-      )!,
-      isSynced: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_synced'],
-      )!,
-      cloudId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}cloud_id'],
-      ),
-    );
-  }
-
-  @override
-  $OrganizationsTable createAlias(String alias) {
-    return $OrganizationsTable(attachedDatabase, alias);
-  }
-}
-
-class Organization extends DataClass implements Insertable<Organization> {
-  /// Primary key
-  final int id;
-
-  /// Organization name (e.g., "Main Commissary", "Branch Makati")
-  final String name;
-
-  /// Type of organization: 'commissary' or 'franchisee'
-  /// - commissary: Creates ingredients and items, supplies franchisees
-  /// - franchisee: Orders from commissary, sells to customers
-  final String type;
-
-  /// For franchisees: Reference to parent commissary
-  /// For commissary: NULL (they are the top-level)
-  final int? parentCommissaryId;
-
-  /// Contact information
-  final String? contactPerson;
-  final String? phone;
-  final String? email;
-
-  /// Physical address
-  final String? address;
-
-  /// Track when organization was created/modified
-  final DateTime createdAt;
-  final DateTime lastUpdated;
-
-  /// Active status (for soft delete)
-  final bool isActive;
-
-  /// Sync fields for cloud synchronization
-  final bool isSynced;
-  final String? cloudId;
-  const Organization({
-    required this.id,
-    required this.name,
-    required this.type,
-    this.parentCommissaryId,
-    this.contactPerson,
-    this.phone,
-    this.email,
-    this.address,
-    required this.createdAt,
-    required this.lastUpdated,
-    required this.isActive,
-    required this.isSynced,
-    this.cloudId,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['name'] = Variable<String>(name);
-    map['type'] = Variable<String>(type);
-    if (!nullToAbsent || parentCommissaryId != null) {
-      map['parent_commissary_id'] = Variable<int>(parentCommissaryId);
-    }
-    if (!nullToAbsent || contactPerson != null) {
-      map['contact_person'] = Variable<String>(contactPerson);
-    }
-    if (!nullToAbsent || phone != null) {
-      map['phone'] = Variable<String>(phone);
-    }
-    if (!nullToAbsent || email != null) {
-      map['email'] = Variable<String>(email);
-    }
-    if (!nullToAbsent || address != null) {
-      map['address'] = Variable<String>(address);
-    }
-    map['created_at'] = Variable<DateTime>(createdAt);
-    map['last_updated'] = Variable<DateTime>(lastUpdated);
-    map['is_active'] = Variable<bool>(isActive);
-    map['is_synced'] = Variable<bool>(isSynced);
-    if (!nullToAbsent || cloudId != null) {
-      map['cloud_id'] = Variable<String>(cloudId);
-    }
-    return map;
-  }
-
-  OrganizationsCompanion toCompanion(bool nullToAbsent) {
-    return OrganizationsCompanion(
-      id: Value(id),
-      name: Value(name),
-      type: Value(type),
-      parentCommissaryId: parentCommissaryId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(parentCommissaryId),
-      contactPerson: contactPerson == null && nullToAbsent
-          ? const Value.absent()
-          : Value(contactPerson),
-      phone: phone == null && nullToAbsent
-          ? const Value.absent()
-          : Value(phone),
-      email: email == null && nullToAbsent
-          ? const Value.absent()
-          : Value(email),
-      address: address == null && nullToAbsent
-          ? const Value.absent()
-          : Value(address),
-      createdAt: Value(createdAt),
-      lastUpdated: Value(lastUpdated),
-      isActive: Value(isActive),
-      isSynced: Value(isSynced),
-      cloudId: cloudId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(cloudId),
-    );
-  }
-
-  factory Organization.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Organization(
-      id: serializer.fromJson<int>(json['id']),
-      name: serializer.fromJson<String>(json['name']),
-      type: serializer.fromJson<String>(json['type']),
-      parentCommissaryId: serializer.fromJson<int?>(json['parentCommissaryId']),
-      contactPerson: serializer.fromJson<String?>(json['contactPerson']),
-      phone: serializer.fromJson<String?>(json['phone']),
-      email: serializer.fromJson<String?>(json['email']),
-      address: serializer.fromJson<String?>(json['address']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
-      isActive: serializer.fromJson<bool>(json['isActive']),
-      isSynced: serializer.fromJson<bool>(json['isSynced']),
-      cloudId: serializer.fromJson<String?>(json['cloudId']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'name': serializer.toJson<String>(name),
-      'type': serializer.toJson<String>(type),
-      'parentCommissaryId': serializer.toJson<int?>(parentCommissaryId),
-      'contactPerson': serializer.toJson<String?>(contactPerson),
-      'phone': serializer.toJson<String?>(phone),
-      'email': serializer.toJson<String?>(email),
-      'address': serializer.toJson<String?>(address),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
-      'isActive': serializer.toJson<bool>(isActive),
-      'isSynced': serializer.toJson<bool>(isSynced),
-      'cloudId': serializer.toJson<String?>(cloudId),
-    };
-  }
-
-  Organization copyWith({
-    int? id,
-    String? name,
-    String? type,
-    Value<int?> parentCommissaryId = const Value.absent(),
-    Value<String?> contactPerson = const Value.absent(),
-    Value<String?> phone = const Value.absent(),
-    Value<String?> email = const Value.absent(),
-    Value<String?> address = const Value.absent(),
-    DateTime? createdAt,
-    DateTime? lastUpdated,
-    bool? isActive,
-    bool? isSynced,
-    Value<String?> cloudId = const Value.absent(),
-  }) => Organization(
-    id: id ?? this.id,
-    name: name ?? this.name,
-    type: type ?? this.type,
-    parentCommissaryId: parentCommissaryId.present
-        ? parentCommissaryId.value
-        : this.parentCommissaryId,
-    contactPerson: contactPerson.present
-        ? contactPerson.value
-        : this.contactPerson,
-    phone: phone.present ? phone.value : this.phone,
-    email: email.present ? email.value : this.email,
-    address: address.present ? address.value : this.address,
-    createdAt: createdAt ?? this.createdAt,
-    lastUpdated: lastUpdated ?? this.lastUpdated,
-    isActive: isActive ?? this.isActive,
-    isSynced: isSynced ?? this.isSynced,
-    cloudId: cloudId.present ? cloudId.value : this.cloudId,
-  );
-  Organization copyWithCompanion(OrganizationsCompanion data) {
-    return Organization(
-      id: data.id.present ? data.id.value : this.id,
-      name: data.name.present ? data.name.value : this.name,
-      type: data.type.present ? data.type.value : this.type,
-      parentCommissaryId: data.parentCommissaryId.present
-          ? data.parentCommissaryId.value
-          : this.parentCommissaryId,
-      contactPerson: data.contactPerson.present
-          ? data.contactPerson.value
-          : this.contactPerson,
-      phone: data.phone.present ? data.phone.value : this.phone,
-      email: data.email.present ? data.email.value : this.email,
-      address: data.address.present ? data.address.value : this.address,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      lastUpdated: data.lastUpdated.present
-          ? data.lastUpdated.value
-          : this.lastUpdated,
-      isActive: data.isActive.present ? data.isActive.value : this.isActive,
-      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
-      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('Organization(')
-          ..write('id: $id, ')
-          ..write('name: $name, ')
-          ..write('type: $type, ')
-          ..write('parentCommissaryId: $parentCommissaryId, ')
-          ..write('contactPerson: $contactPerson, ')
-          ..write('phone: $phone, ')
-          ..write('email: $email, ')
-          ..write('address: $address, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('lastUpdated: $lastUpdated, ')
-          ..write('isActive: $isActive, ')
-          ..write('isSynced: $isSynced, ')
-          ..write('cloudId: $cloudId')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    id,
-    name,
-    type,
-    parentCommissaryId,
-    contactPerson,
-    phone,
-    email,
-    address,
-    createdAt,
-    lastUpdated,
-    isActive,
-    isSynced,
-    cloudId,
-  );
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is Organization &&
-          other.id == this.id &&
-          other.name == this.name &&
-          other.type == this.type &&
-          other.parentCommissaryId == this.parentCommissaryId &&
-          other.contactPerson == this.contactPerson &&
-          other.phone == this.phone &&
-          other.email == this.email &&
-          other.address == this.address &&
-          other.createdAt == this.createdAt &&
-          other.lastUpdated == this.lastUpdated &&
-          other.isActive == this.isActive &&
-          other.isSynced == this.isSynced &&
-          other.cloudId == this.cloudId);
-}
-
-class OrganizationsCompanion extends UpdateCompanion<Organization> {
-  final Value<int> id;
-  final Value<String> name;
-  final Value<String> type;
-  final Value<int?> parentCommissaryId;
-  final Value<String?> contactPerson;
-  final Value<String?> phone;
-  final Value<String?> email;
-  final Value<String?> address;
-  final Value<DateTime> createdAt;
-  final Value<DateTime> lastUpdated;
-  final Value<bool> isActive;
-  final Value<bool> isSynced;
-  final Value<String?> cloudId;
-  const OrganizationsCompanion({
-    this.id = const Value.absent(),
-    this.name = const Value.absent(),
-    this.type = const Value.absent(),
-    this.parentCommissaryId = const Value.absent(),
-    this.contactPerson = const Value.absent(),
-    this.phone = const Value.absent(),
-    this.email = const Value.absent(),
-    this.address = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.lastUpdated = const Value.absent(),
-    this.isActive = const Value.absent(),
-    this.isSynced = const Value.absent(),
-    this.cloudId = const Value.absent(),
-  });
-  OrganizationsCompanion.insert({
-    this.id = const Value.absent(),
-    required String name,
-    required String type,
-    this.parentCommissaryId = const Value.absent(),
-    this.contactPerson = const Value.absent(),
-    this.phone = const Value.absent(),
-    this.email = const Value.absent(),
-    this.address = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.lastUpdated = const Value.absent(),
-    this.isActive = const Value.absent(),
-    this.isSynced = const Value.absent(),
-    this.cloudId = const Value.absent(),
-  }) : name = Value(name),
-       type = Value(type);
-  static Insertable<Organization> custom({
-    Expression<int>? id,
-    Expression<String>? name,
-    Expression<String>? type,
-    Expression<int>? parentCommissaryId,
-    Expression<String>? contactPerson,
-    Expression<String>? phone,
-    Expression<String>? email,
-    Expression<String>? address,
-    Expression<DateTime>? createdAt,
-    Expression<DateTime>? lastUpdated,
-    Expression<bool>? isActive,
-    Expression<bool>? isSynced,
-    Expression<String>? cloudId,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (name != null) 'name': name,
-      if (type != null) 'type': type,
-      if (parentCommissaryId != null)
-        'parent_commissary_id': parentCommissaryId,
-      if (contactPerson != null) 'contact_person': contactPerson,
-      if (phone != null) 'phone': phone,
-      if (email != null) 'email': email,
-      if (address != null) 'address': address,
-      if (createdAt != null) 'created_at': createdAt,
-      if (lastUpdated != null) 'last_updated': lastUpdated,
-      if (isActive != null) 'is_active': isActive,
-      if (isSynced != null) 'is_synced': isSynced,
-      if (cloudId != null) 'cloud_id': cloudId,
-    });
-  }
-
-  OrganizationsCompanion copyWith({
-    Value<int>? id,
-    Value<String>? name,
-    Value<String>? type,
-    Value<int?>? parentCommissaryId,
-    Value<String?>? contactPerson,
-    Value<String?>? phone,
-    Value<String?>? email,
-    Value<String?>? address,
-    Value<DateTime>? createdAt,
-    Value<DateTime>? lastUpdated,
-    Value<bool>? isActive,
-    Value<bool>? isSynced,
-    Value<String?>? cloudId,
-  }) {
-    return OrganizationsCompanion(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      type: type ?? this.type,
-      parentCommissaryId: parentCommissaryId ?? this.parentCommissaryId,
-      contactPerson: contactPerson ?? this.contactPerson,
-      phone: phone ?? this.phone,
-      email: email ?? this.email,
-      address: address ?? this.address,
-      createdAt: createdAt ?? this.createdAt,
-      lastUpdated: lastUpdated ?? this.lastUpdated,
-      isActive: isActive ?? this.isActive,
-      isSynced: isSynced ?? this.isSynced,
-      cloudId: cloudId ?? this.cloudId,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (name.present) {
-      map['name'] = Variable<String>(name.value);
-    }
-    if (type.present) {
-      map['type'] = Variable<String>(type.value);
-    }
-    if (parentCommissaryId.present) {
-      map['parent_commissary_id'] = Variable<int>(parentCommissaryId.value);
-    }
-    if (contactPerson.present) {
-      map['contact_person'] = Variable<String>(contactPerson.value);
-    }
-    if (phone.present) {
-      map['phone'] = Variable<String>(phone.value);
-    }
-    if (email.present) {
-      map['email'] = Variable<String>(email.value);
-    }
-    if (address.present) {
-      map['address'] = Variable<String>(address.value);
-    }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (lastUpdated.present) {
-      map['last_updated'] = Variable<DateTime>(lastUpdated.value);
-    }
-    if (isActive.present) {
-      map['is_active'] = Variable<bool>(isActive.value);
-    }
-    if (isSynced.present) {
-      map['is_synced'] = Variable<bool>(isSynced.value);
-    }
-    if (cloudId.present) {
-      map['cloud_id'] = Variable<String>(cloudId.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('OrganizationsCompanion(')
-          ..write('id: $id, ')
-          ..write('name: $name, ')
-          ..write('type: $type, ')
-          ..write('parentCommissaryId: $parentCommissaryId, ')
-          ..write('contactPerson: $contactPerson, ')
-          ..write('phone: $phone, ')
-          ..write('email: $email, ')
-          ..write('address: $address, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('lastUpdated: $lastUpdated, ')
-          ..write('isActive: $isActive, ')
-          ..write('isSynced: $isSynced, ')
-          ..write('cloudId: $cloudId')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $IngredientsTable extends Ingredients
-    with TableInfo<$IngredientsTable, Ingredient> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $IngredientsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-    'id',
-    aliasedName,
-    false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
-  );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
-  @override
-  late final GeneratedColumn<String> name = GeneratedColumn<String>(
-    'name',
-    aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 1,
-      maxTextLength: 200,
-    ),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
-    'categoryId',
-  );
-  @override
-  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
-    'category_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES categories (id)',
-    ),
-  );
-  static const VerificationMeta _commissaryIdMeta = const VerificationMeta(
-    'commissaryId',
-  );
-  @override
-  late final GeneratedColumn<int> commissaryId = GeneratedColumn<int>(
-    'commissary_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES organizations (id)',
-    ),
-  );
-  static const VerificationMeta _stockMeta = const VerificationMeta('stock');
-  @override
-  late final GeneratedColumn<int> stock = GeneratedColumn<int>(
-    'stock',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _spoilageMeta = const VerificationMeta(
-    'spoilage',
-  );
-  @override
-  late final GeneratedColumn<int> spoilage = GeneratedColumn<int>(
-    'spoilage',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
-  @override
-  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
-    'unit',
-    aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 1,
-      maxTextLength: 50,
-    ),
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('pieces'),
-  );
-  static const VerificationMeta _minimumStockMeta = const VerificationMeta(
-    'minimumStock',
-  );
-  @override
-  late final GeneratedColumn<int> minimumStock = GeneratedColumn<int>(
-    'minimum_stock',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _descriptionMeta = const VerificationMeta(
-    'description',
-  );
-  @override
-  late final GeneratedColumn<String> description = GeneratedColumn<String>(
-    'description',
-    aliasedName,
-    true,
-    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 500),
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2391,7 +2391,7 @@ class $IngredientsTable extends Ingredients
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    defaultValue: currentDateAndTime,
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -2403,22 +2403,7 @@ class $IngredientsTable extends Ingredients
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
-  );
-  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
-    'isDeleted',
-  );
-  @override
-  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
-    'is_deleted',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_deleted" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
+    defaultValue: currentDateAndTime,
   );
   static const VerificationMeta _isSyncedMeta = const VerificationMeta(
     'isSynced',
@@ -2449,17 +2434,16 @@ class $IngredientsTable extends Ingredients
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    name,
-    categoryId,
-    commissaryId,
-    stock,
-    spoilage,
-    unit,
-    minimumStock,
-    description,
+    username,
+    email,
+    password,
+    phone,
+    organizationId,
+    roleId,
+    fullName,
+    isActive,
     createdAt,
     lastUpdated,
-    isDeleted,
     isSynced,
     cloudId,
   ];
@@ -2467,10 +2451,10 @@ class $IngredientsTable extends Ingredients
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'ingredients';
+  static const String $name = 'users';
   @override
   VerificationContext validateIntegrity(
-    Insertable<Ingredient> instance, {
+    Insertable<User> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -2478,65 +2462,65 @@ class $IngredientsTable extends Ingredients
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
-    if (data.containsKey('name')) {
+    if (data.containsKey('username')) {
       context.handle(
-        _nameMeta,
-        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+        _usernameMeta,
+        username.isAcceptableOrUnknown(data['username']!, _usernameMeta),
       );
     } else if (isInserting) {
-      context.missing(_nameMeta);
+      context.missing(_usernameMeta);
     }
-    if (data.containsKey('category_id')) {
+    if (data.containsKey('email')) {
       context.handle(
-        _categoryIdMeta,
-        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_emailMeta);
+    }
+    if (data.containsKey('password')) {
+      context.handle(
+        _passwordMeta,
+        password.isAcceptableOrUnknown(data['password']!, _passwordMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_passwordMeta);
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+        _phoneMeta,
+        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
       );
     }
-    if (data.containsKey('commissary_id')) {
+    if (data.containsKey('organization_id')) {
       context.handle(
-        _commissaryIdMeta,
-        commissaryId.isAcceptableOrUnknown(
-          data['commissary_id']!,
-          _commissaryIdMeta,
+        _organizationIdMeta,
+        organizationId.isAcceptableOrUnknown(
+          data['organization_id']!,
+          _organizationIdMeta,
         ),
       );
     } else if (isInserting) {
-      context.missing(_commissaryIdMeta);
+      context.missing(_organizationIdMeta);
     }
-    if (data.containsKey('stock')) {
+    if (data.containsKey('role_id')) {
       context.handle(
-        _stockMeta,
-        stock.isAcceptableOrUnknown(data['stock']!, _stockMeta),
+        _roleIdMeta,
+        roleId.isAcceptableOrUnknown(data['role_id']!, _roleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleIdMeta);
+    }
+    if (data.containsKey('full_name')) {
+      context.handle(
+        _fullNameMeta,
+        fullName.isAcceptableOrUnknown(data['full_name']!, _fullNameMeta),
       );
     }
-    if (data.containsKey('spoilage')) {
+    if (data.containsKey('is_active')) {
       context.handle(
-        _spoilageMeta,
-        spoilage.isAcceptableOrUnknown(data['spoilage']!, _spoilageMeta),
-      );
-    }
-    if (data.containsKey('unit')) {
-      context.handle(
-        _unitMeta,
-        unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
-      );
-    }
-    if (data.containsKey('minimum_stock')) {
-      context.handle(
-        _minimumStockMeta,
-        minimumStock.isAcceptableOrUnknown(
-          data['minimum_stock']!,
-          _minimumStockMeta,
-        ),
-      );
-    }
-    if (data.containsKey('description')) {
-      context.handle(
-        _descriptionMeta,
-        description.isAcceptableOrUnknown(
-          data['description']!,
-          _descriptionMeta,
-        ),
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -2552,12 +2536,6 @@ class $IngredientsTable extends Ingredients
           data['last_updated']!,
           _lastUpdatedMeta,
         ),
-      );
-    }
-    if (data.containsKey('is_deleted')) {
-      context.handle(
-        _isDeletedMeta,
-        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
       );
     }
     if (data.containsKey('is_synced')) {
@@ -2578,45 +2556,45 @@ class $IngredientsTable extends Ingredients
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Ingredient map(Map<String, dynamic> data, {String? tablePrefix}) {
+  User map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Ingredient(
+    return User(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
-      name: attachedDatabase.typeMapping.read(
+      username: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}name'],
+        data['${effectivePrefix}username'],
       )!,
-      categoryId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}category_id'],
-      ),
-      commissaryId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}commissary_id'],
-      )!,
-      stock: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}stock'],
-      )!,
-      spoilage: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}spoilage'],
-      )!,
-      unit: attachedDatabase.typeMapping.read(
+      email: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}unit'],
+        data['${effectivePrefix}email'],
       )!,
-      minimumStock: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}minimum_stock'],
-      ),
-      description: attachedDatabase.typeMapping.read(
+      password: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}description'],
+        data['${effectivePrefix}password'],
+      )!,
+      phone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phone'],
       ),
+      organizationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}organization_id'],
+      )!,
+      roleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}role_id'],
+      )!,
+      fullName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}full_name'],
+      ),
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2624,10 +2602,6 @@ class $IngredientsTable extends Ingredients
       lastUpdated: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_updated'],
-      )!,
-      isDeleted: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_deleted'],
       )!,
       isSynced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -2641,63 +2615,61 @@ class $IngredientsTable extends Ingredients
   }
 
   @override
-  $IngredientsTable createAlias(String alias) {
-    return $IngredientsTable(attachedDatabase, alias);
+  $UsersTable createAlias(String alias) {
+    return $UsersTable(attachedDatabase, alias);
   }
 }
 
-class Ingredient extends DataClass implements Insertable<Ingredient> {
+class User extends DataClass implements Insertable<User> {
   /// Primary key
   final int id;
 
-  /// Ingredient name (e.g., "Chicken Breast", "Garlic", "Soy Sauce")
-  final String name;
+  /// Unique username for login
+  final String username;
 
-  /// Optional category for organization (e.g., "Poultry", "Vegetables", "Spices")
-  final int? categoryId;
+  /// Unique email for login and notifications
+  final String email;
 
-  /// Which commissary owns this ingredient
-  /// Only commissary-type organizations can create ingredients
-  final int commissaryId;
+  /// Hashed password
+  final String password;
 
-  /// Current stock quantity (in base unit)
-  final int stock;
+  /// Optional phone number
+  final String? phone;
 
-  /// Spoiled quantity (deducted from stock when recorded)
-  final int spoilage;
+  /// Which organization this user belongs to
+  /// - Commissary users → commissary organization
+  /// - Franchisee owner/manager → franchisee organization
+  /// - Franchisee employee → franchisee organization
+  final int organizationId;
 
-  /// Unit of measurement (e.g., "kg", "pieces", "liters", "grams")
-  final String unit;
+  /// Role defines permissions (from Roles table)
+  final int roleId;
 
-  /// Minimum stock threshold for alerts (e.g., alert when stock < 10)
-  final int? minimumStock;
+  /// Full name of user
+  final String? fullName;
 
-  /// Optional description or notes
-  final String? description;
+  /// Active status (for soft delete)
+  final bool isActive;
 
-  /// Track when ingredient was created/modified
+  /// Track when user was created/modified
   final DateTime createdAt;
   final DateTime lastUpdated;
-
-  /// Soft delete
-  final bool isDeleted;
 
   /// Sync fields for cloud synchronization
   final bool isSynced;
   final String? cloudId;
-  const Ingredient({
+  const User({
     required this.id,
-    required this.name,
-    this.categoryId,
-    required this.commissaryId,
-    required this.stock,
-    required this.spoilage,
-    required this.unit,
-    this.minimumStock,
-    this.description,
+    required this.username,
+    required this.email,
+    required this.password,
+    this.phone,
+    required this.organizationId,
+    required this.roleId,
+    this.fullName,
+    required this.isActive,
     required this.createdAt,
     required this.lastUpdated,
-    required this.isDeleted,
     required this.isSynced,
     this.cloudId,
   });
@@ -2705,23 +2677,20 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['name'] = Variable<String>(name);
-    if (!nullToAbsent || categoryId != null) {
-      map['category_id'] = Variable<int>(categoryId);
+    map['username'] = Variable<String>(username);
+    map['email'] = Variable<String>(email);
+    map['password'] = Variable<String>(password);
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
     }
-    map['commissary_id'] = Variable<int>(commissaryId);
-    map['stock'] = Variable<int>(stock);
-    map['spoilage'] = Variable<int>(spoilage);
-    map['unit'] = Variable<String>(unit);
-    if (!nullToAbsent || minimumStock != null) {
-      map['minimum_stock'] = Variable<int>(minimumStock);
+    map['organization_id'] = Variable<int>(organizationId);
+    map['role_id'] = Variable<int>(roleId);
+    if (!nullToAbsent || fullName != null) {
+      map['full_name'] = Variable<String>(fullName);
     }
-    if (!nullToAbsent || description != null) {
-      map['description'] = Variable<String>(description);
-    }
+    map['is_active'] = Variable<bool>(isActive);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['last_updated'] = Variable<DateTime>(lastUpdated);
-    map['is_deleted'] = Variable<bool>(isDeleted);
     map['is_synced'] = Variable<bool>(isSynced);
     if (!nullToAbsent || cloudId != null) {
       map['cloud_id'] = Variable<String>(cloudId);
@@ -2729,26 +2698,23 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
     return map;
   }
 
-  IngredientsCompanion toCompanion(bool nullToAbsent) {
-    return IngredientsCompanion(
+  UsersCompanion toCompanion(bool nullToAbsent) {
+    return UsersCompanion(
       id: Value(id),
-      name: Value(name),
-      categoryId: categoryId == null && nullToAbsent
+      username: Value(username),
+      email: Value(email),
+      password: Value(password),
+      phone: phone == null && nullToAbsent
           ? const Value.absent()
-          : Value(categoryId),
-      commissaryId: Value(commissaryId),
-      stock: Value(stock),
-      spoilage: Value(spoilage),
-      unit: Value(unit),
-      minimumStock: minimumStock == null && nullToAbsent
+          : Value(phone),
+      organizationId: Value(organizationId),
+      roleId: Value(roleId),
+      fullName: fullName == null && nullToAbsent
           ? const Value.absent()
-          : Value(minimumStock),
-      description: description == null && nullToAbsent
-          ? const Value.absent()
-          : Value(description),
+          : Value(fullName),
+      isActive: Value(isActive),
       createdAt: Value(createdAt),
       lastUpdated: Value(lastUpdated),
-      isDeleted: Value(isDeleted),
       isSynced: Value(isSynced),
       cloudId: cloudId == null && nullToAbsent
           ? const Value.absent()
@@ -2756,24 +2722,23 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
     );
   }
 
-  factory Ingredient.fromJson(
+  factory User.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Ingredient(
+    return User(
       id: serializer.fromJson<int>(json['id']),
-      name: serializer.fromJson<String>(json['name']),
-      categoryId: serializer.fromJson<int?>(json['categoryId']),
-      commissaryId: serializer.fromJson<int>(json['commissaryId']),
-      stock: serializer.fromJson<int>(json['stock']),
-      spoilage: serializer.fromJson<int>(json['spoilage']),
-      unit: serializer.fromJson<String>(json['unit']),
-      minimumStock: serializer.fromJson<int?>(json['minimumStock']),
-      description: serializer.fromJson<String?>(json['description']),
+      username: serializer.fromJson<String>(json['username']),
+      email: serializer.fromJson<String>(json['email']),
+      password: serializer.fromJson<String>(json['password']),
+      phone: serializer.fromJson<String?>(json['phone']),
+      organizationId: serializer.fromJson<int>(json['organizationId']),
+      roleId: serializer.fromJson<int>(json['roleId']),
+      fullName: serializer.fromJson<String?>(json['fullName']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
-      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
       cloudId: serializer.fromJson<String?>(json['cloudId']),
     );
@@ -2783,77 +2748,67 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'name': serializer.toJson<String>(name),
-      'categoryId': serializer.toJson<int?>(categoryId),
-      'commissaryId': serializer.toJson<int>(commissaryId),
-      'stock': serializer.toJson<int>(stock),
-      'spoilage': serializer.toJson<int>(spoilage),
-      'unit': serializer.toJson<String>(unit),
-      'minimumStock': serializer.toJson<int?>(minimumStock),
-      'description': serializer.toJson<String?>(description),
+      'username': serializer.toJson<String>(username),
+      'email': serializer.toJson<String>(email),
+      'password': serializer.toJson<String>(password),
+      'phone': serializer.toJson<String?>(phone),
+      'organizationId': serializer.toJson<int>(organizationId),
+      'roleId': serializer.toJson<int>(roleId),
+      'fullName': serializer.toJson<String?>(fullName),
+      'isActive': serializer.toJson<bool>(isActive),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
-      'isDeleted': serializer.toJson<bool>(isDeleted),
       'isSynced': serializer.toJson<bool>(isSynced),
       'cloudId': serializer.toJson<String?>(cloudId),
     };
   }
 
-  Ingredient copyWith({
+  User copyWith({
     int? id,
-    String? name,
-    Value<int?> categoryId = const Value.absent(),
-    int? commissaryId,
-    int? stock,
-    int? spoilage,
-    String? unit,
-    Value<int?> minimumStock = const Value.absent(),
-    Value<String?> description = const Value.absent(),
+    String? username,
+    String? email,
+    String? password,
+    Value<String?> phone = const Value.absent(),
+    int? organizationId,
+    int? roleId,
+    Value<String?> fullName = const Value.absent(),
+    bool? isActive,
     DateTime? createdAt,
     DateTime? lastUpdated,
-    bool? isDeleted,
     bool? isSynced,
     Value<String?> cloudId = const Value.absent(),
-  }) => Ingredient(
+  }) => User(
     id: id ?? this.id,
-    name: name ?? this.name,
-    categoryId: categoryId.present ? categoryId.value : this.categoryId,
-    commissaryId: commissaryId ?? this.commissaryId,
-    stock: stock ?? this.stock,
-    spoilage: spoilage ?? this.spoilage,
-    unit: unit ?? this.unit,
-    minimumStock: minimumStock.present ? minimumStock.value : this.minimumStock,
-    description: description.present ? description.value : this.description,
+    username: username ?? this.username,
+    email: email ?? this.email,
+    password: password ?? this.password,
+    phone: phone.present ? phone.value : this.phone,
+    organizationId: organizationId ?? this.organizationId,
+    roleId: roleId ?? this.roleId,
+    fullName: fullName.present ? fullName.value : this.fullName,
+    isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
     lastUpdated: lastUpdated ?? this.lastUpdated,
-    isDeleted: isDeleted ?? this.isDeleted,
     isSynced: isSynced ?? this.isSynced,
     cloudId: cloudId.present ? cloudId.value : this.cloudId,
   );
-  Ingredient copyWithCompanion(IngredientsCompanion data) {
-    return Ingredient(
+  User copyWithCompanion(UsersCompanion data) {
+    return User(
       id: data.id.present ? data.id.value : this.id,
-      name: data.name.present ? data.name.value : this.name,
-      categoryId: data.categoryId.present
-          ? data.categoryId.value
-          : this.categoryId,
-      commissaryId: data.commissaryId.present
-          ? data.commissaryId.value
-          : this.commissaryId,
-      stock: data.stock.present ? data.stock.value : this.stock,
-      spoilage: data.spoilage.present ? data.spoilage.value : this.spoilage,
-      unit: data.unit.present ? data.unit.value : this.unit,
-      minimumStock: data.minimumStock.present
-          ? data.minimumStock.value
-          : this.minimumStock,
-      description: data.description.present
-          ? data.description.value
-          : this.description,
+      username: data.username.present ? data.username.value : this.username,
+      email: data.email.present ? data.email.value : this.email,
+      password: data.password.present ? data.password.value : this.password,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      roleId: data.roleId.present ? data.roleId.value : this.roleId,
+      fullName: data.fullName.present ? data.fullName.value : this.fullName,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastUpdated: data.lastUpdated.present
           ? data.lastUpdated.value
           : this.lastUpdated,
-      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
       cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
     );
@@ -2861,19 +2816,18 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
 
   @override
   String toString() {
-    return (StringBuffer('Ingredient(')
+    return (StringBuffer('User(')
           ..write('id: $id, ')
-          ..write('name: $name, ')
-          ..write('categoryId: $categoryId, ')
-          ..write('commissaryId: $commissaryId, ')
-          ..write('stock: $stock, ')
-          ..write('spoilage: $spoilage, ')
-          ..write('unit: $unit, ')
-          ..write('minimumStock: $minimumStock, ')
-          ..write('description: $description, ')
+          ..write('username: $username, ')
+          ..write('email: $email, ')
+          ..write('password: $password, ')
+          ..write('phone: $phone, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('roleId: $roleId, ')
+          ..write('fullName: $fullName, ')
+          ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
-          ..write('isDeleted: $isDeleted, ')
           ..write('isSynced: $isSynced, ')
           ..write('cloudId: $cloudId')
           ..write(')'))
@@ -2883,151 +2837,145 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
   @override
   int get hashCode => Object.hash(
     id,
-    name,
-    categoryId,
-    commissaryId,
-    stock,
-    spoilage,
-    unit,
-    minimumStock,
-    description,
+    username,
+    email,
+    password,
+    phone,
+    organizationId,
+    roleId,
+    fullName,
+    isActive,
     createdAt,
     lastUpdated,
-    isDeleted,
     isSynced,
     cloudId,
   );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Ingredient &&
+      (other is User &&
           other.id == this.id &&
-          other.name == this.name &&
-          other.categoryId == this.categoryId &&
-          other.commissaryId == this.commissaryId &&
-          other.stock == this.stock &&
-          other.spoilage == this.spoilage &&
-          other.unit == this.unit &&
-          other.minimumStock == this.minimumStock &&
-          other.description == this.description &&
+          other.username == this.username &&
+          other.email == this.email &&
+          other.password == this.password &&
+          other.phone == this.phone &&
+          other.organizationId == this.organizationId &&
+          other.roleId == this.roleId &&
+          other.fullName == this.fullName &&
+          other.isActive == this.isActive &&
           other.createdAt == this.createdAt &&
           other.lastUpdated == this.lastUpdated &&
-          other.isDeleted == this.isDeleted &&
           other.isSynced == this.isSynced &&
           other.cloudId == this.cloudId);
 }
 
-class IngredientsCompanion extends UpdateCompanion<Ingredient> {
+class UsersCompanion extends UpdateCompanion<User> {
   final Value<int> id;
-  final Value<String> name;
-  final Value<int?> categoryId;
-  final Value<int> commissaryId;
-  final Value<int> stock;
-  final Value<int> spoilage;
-  final Value<String> unit;
-  final Value<int?> minimumStock;
-  final Value<String?> description;
+  final Value<String> username;
+  final Value<String> email;
+  final Value<String> password;
+  final Value<String?> phone;
+  final Value<int> organizationId;
+  final Value<int> roleId;
+  final Value<String?> fullName;
+  final Value<bool> isActive;
   final Value<DateTime> createdAt;
   final Value<DateTime> lastUpdated;
-  final Value<bool> isDeleted;
   final Value<bool> isSynced;
   final Value<String?> cloudId;
-  const IngredientsCompanion({
+  const UsersCompanion({
     this.id = const Value.absent(),
-    this.name = const Value.absent(),
-    this.categoryId = const Value.absent(),
-    this.commissaryId = const Value.absent(),
-    this.stock = const Value.absent(),
-    this.spoilage = const Value.absent(),
-    this.unit = const Value.absent(),
-    this.minimumStock = const Value.absent(),
-    this.description = const Value.absent(),
+    this.username = const Value.absent(),
+    this.email = const Value.absent(),
+    this.password = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.roleId = const Value.absent(),
+    this.fullName = const Value.absent(),
+    this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
-    this.isDeleted = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.cloudId = const Value.absent(),
   });
-  IngredientsCompanion.insert({
+  UsersCompanion.insert({
     this.id = const Value.absent(),
-    required String name,
-    this.categoryId = const Value.absent(),
-    required int commissaryId,
-    this.stock = const Value.absent(),
-    this.spoilage = const Value.absent(),
-    this.unit = const Value.absent(),
-    this.minimumStock = const Value.absent(),
-    this.description = const Value.absent(),
+    required String username,
+    required String email,
+    required String password,
+    this.phone = const Value.absent(),
+    required int organizationId,
+    required int roleId,
+    this.fullName = const Value.absent(),
+    this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
-    this.isDeleted = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.cloudId = const Value.absent(),
-  }) : name = Value(name),
-       commissaryId = Value(commissaryId);
-  static Insertable<Ingredient> custom({
+  }) : username = Value(username),
+       email = Value(email),
+       password = Value(password),
+       organizationId = Value(organizationId),
+       roleId = Value(roleId);
+  static Insertable<User> custom({
     Expression<int>? id,
-    Expression<String>? name,
-    Expression<int>? categoryId,
-    Expression<int>? commissaryId,
-    Expression<int>? stock,
-    Expression<int>? spoilage,
-    Expression<String>? unit,
-    Expression<int>? minimumStock,
-    Expression<String>? description,
+    Expression<String>? username,
+    Expression<String>? email,
+    Expression<String>? password,
+    Expression<String>? phone,
+    Expression<int>? organizationId,
+    Expression<int>? roleId,
+    Expression<String>? fullName,
+    Expression<bool>? isActive,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastUpdated,
-    Expression<bool>? isDeleted,
     Expression<bool>? isSynced,
     Expression<String>? cloudId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (name != null) 'name': name,
-      if (categoryId != null) 'category_id': categoryId,
-      if (commissaryId != null) 'commissary_id': commissaryId,
-      if (stock != null) 'stock': stock,
-      if (spoilage != null) 'spoilage': spoilage,
-      if (unit != null) 'unit': unit,
-      if (minimumStock != null) 'minimum_stock': minimumStock,
-      if (description != null) 'description': description,
+      if (username != null) 'username': username,
+      if (email != null) 'email': email,
+      if (password != null) 'password': password,
+      if (phone != null) 'phone': phone,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (roleId != null) 'role_id': roleId,
+      if (fullName != null) 'full_name': fullName,
+      if (isActive != null) 'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt,
       if (lastUpdated != null) 'last_updated': lastUpdated,
-      if (isDeleted != null) 'is_deleted': isDeleted,
       if (isSynced != null) 'is_synced': isSynced,
       if (cloudId != null) 'cloud_id': cloudId,
     });
   }
 
-  IngredientsCompanion copyWith({
+  UsersCompanion copyWith({
     Value<int>? id,
-    Value<String>? name,
-    Value<int?>? categoryId,
-    Value<int>? commissaryId,
-    Value<int>? stock,
-    Value<int>? spoilage,
-    Value<String>? unit,
-    Value<int?>? minimumStock,
-    Value<String?>? description,
+    Value<String>? username,
+    Value<String>? email,
+    Value<String>? password,
+    Value<String?>? phone,
+    Value<int>? organizationId,
+    Value<int>? roleId,
+    Value<String?>? fullName,
+    Value<bool>? isActive,
     Value<DateTime>? createdAt,
     Value<DateTime>? lastUpdated,
-    Value<bool>? isDeleted,
     Value<bool>? isSynced,
     Value<String?>? cloudId,
   }) {
-    return IngredientsCompanion(
+    return UsersCompanion(
       id: id ?? this.id,
-      name: name ?? this.name,
-      categoryId: categoryId ?? this.categoryId,
-      commissaryId: commissaryId ?? this.commissaryId,
-      stock: stock ?? this.stock,
-      spoilage: spoilage ?? this.spoilage,
-      unit: unit ?? this.unit,
-      minimumStock: minimumStock ?? this.minimumStock,
-      description: description ?? this.description,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      password: password ?? this.password,
+      phone: phone ?? this.phone,
+      organizationId: organizationId ?? this.organizationId,
+      roleId: roleId ?? this.roleId,
+      fullName: fullName ?? this.fullName,
+      isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
-      isDeleted: isDeleted ?? this.isDeleted,
       isSynced: isSynced ?? this.isSynced,
       cloudId: cloudId ?? this.cloudId,
     );
@@ -3039,38 +2987,35 @@ class IngredientsCompanion extends UpdateCompanion<Ingredient> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
-    if (name.present) {
-      map['name'] = Variable<String>(name.value);
+    if (username.present) {
+      map['username'] = Variable<String>(username.value);
     }
-    if (categoryId.present) {
-      map['category_id'] = Variable<int>(categoryId.value);
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
     }
-    if (commissaryId.present) {
-      map['commissary_id'] = Variable<int>(commissaryId.value);
+    if (password.present) {
+      map['password'] = Variable<String>(password.value);
     }
-    if (stock.present) {
-      map['stock'] = Variable<int>(stock.value);
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
     }
-    if (spoilage.present) {
-      map['spoilage'] = Variable<int>(spoilage.value);
+    if (organizationId.present) {
+      map['organization_id'] = Variable<int>(organizationId.value);
     }
-    if (unit.present) {
-      map['unit'] = Variable<String>(unit.value);
+    if (roleId.present) {
+      map['role_id'] = Variable<int>(roleId.value);
     }
-    if (minimumStock.present) {
-      map['minimum_stock'] = Variable<int>(minimumStock.value);
+    if (fullName.present) {
+      map['full_name'] = Variable<String>(fullName.value);
     }
-    if (description.present) {
-      map['description'] = Variable<String>(description.value);
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
     if (lastUpdated.present) {
       map['last_updated'] = Variable<DateTime>(lastUpdated.value);
-    }
-    if (isDeleted.present) {
-      map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
     if (isSynced.present) {
       map['is_synced'] = Variable<bool>(isSynced.value);
@@ -3083,19 +3028,18 @@ class IngredientsCompanion extends UpdateCompanion<Ingredient> {
 
   @override
   String toString() {
-    return (StringBuffer('IngredientsCompanion(')
+    return (StringBuffer('UsersCompanion(')
           ..write('id: $id, ')
-          ..write('name: $name, ')
-          ..write('categoryId: $categoryId, ')
-          ..write('commissaryId: $commissaryId, ')
-          ..write('stock: $stock, ')
-          ..write('spoilage: $spoilage, ')
-          ..write('unit: $unit, ')
-          ..write('minimumStock: $minimumStock, ')
-          ..write('description: $description, ')
+          ..write('username: $username, ')
+          ..write('email: $email, ')
+          ..write('password: $password, ')
+          ..write('phone: $phone, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('roleId: $roleId, ')
+          ..write('fullName: $fullName, ')
+          ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
-          ..write('isDeleted: $isDeleted, ')
           ..write('isSynced: $isSynced, ')
           ..write('cloudId: $cloudId')
           ..write(')'))
@@ -4151,6 +4095,847 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   }
 }
 
+class $IngredientsTable extends Ingredients
+    with TableInfo<$IngredientsTable, Ingredient> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IngredientsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 200,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+    'category_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id)',
+    ),
+  );
+  static const VerificationMeta _commissaryIdMeta = const VerificationMeta(
+    'commissaryId',
+  );
+  @override
+  late final GeneratedColumn<int> commissaryId = GeneratedColumn<int>(
+    'commissary_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES organizations (id)',
+    ),
+  );
+  static const VerificationMeta _stockMeta = const VerificationMeta('stock');
+  @override
+  late final GeneratedColumn<int> stock = GeneratedColumn<int>(
+    'stock',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _spoilageMeta = const VerificationMeta(
+    'spoilage',
+  );
+  @override
+  late final GeneratedColumn<int> spoilage = GeneratedColumn<int>(
+    'spoilage',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
+  @override
+  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
+    'unit',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 50,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pieces'),
+  );
+  static const VerificationMeta _minimumStockMeta = const VerificationMeta(
+    'minimumStock',
+  );
+  @override
+  late final GeneratedColumn<int> minimumStock = GeneratedColumn<int>(
+    'minimum_stock',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 500),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
+    'lastUpdated',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUpdated = GeneratedColumn<DateTime>(
+    'last_updated',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    categoryId,
+    commissaryId,
+    stock,
+    spoilage,
+    unit,
+    minimumStock,
+    description,
+    createdAt,
+    lastUpdated,
+    isDeleted,
+    isSynced,
+    cloudId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ingredients';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Ingredient> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('commissary_id')) {
+      context.handle(
+        _commissaryIdMeta,
+        commissaryId.isAcceptableOrUnknown(
+          data['commissary_id']!,
+          _commissaryIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_commissaryIdMeta);
+    }
+    if (data.containsKey('stock')) {
+      context.handle(
+        _stockMeta,
+        stock.isAcceptableOrUnknown(data['stock']!, _stockMeta),
+      );
+    }
+    if (data.containsKey('spoilage')) {
+      context.handle(
+        _spoilageMeta,
+        spoilage.isAcceptableOrUnknown(data['spoilage']!, _spoilageMeta),
+      );
+    }
+    if (data.containsKey('unit')) {
+      context.handle(
+        _unitMeta,
+        unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
+      );
+    }
+    if (data.containsKey('minimum_stock')) {
+      context.handle(
+        _minimumStockMeta,
+        minimumStock.isAcceptableOrUnknown(
+          data['minimum_stock']!,
+          _minimumStockMeta,
+        ),
+      );
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('last_updated')) {
+      context.handle(
+        _lastUpdatedMeta,
+        lastUpdated.isAcceptableOrUnknown(
+          data['last_updated']!,
+          _lastUpdatedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Ingredient map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Ingredient(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}category_id'],
+      ),
+      commissaryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}commissary_id'],
+      )!,
+      stock: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}stock'],
+      )!,
+      spoilage: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}spoilage'],
+      )!,
+      unit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit'],
+      )!,
+      minimumStock: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}minimum_stock'],
+      ),
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastUpdated: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_updated'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      ),
+    );
+  }
+
+  @override
+  $IngredientsTable createAlias(String alias) {
+    return $IngredientsTable(attachedDatabase, alias);
+  }
+}
+
+class Ingredient extends DataClass implements Insertable<Ingredient> {
+  /// Primary key
+  final int id;
+
+  /// Ingredient name (e.g., "Chicken Breast", "Garlic", "Soy Sauce")
+  final String name;
+
+  /// Optional category for organization (e.g., "Poultry", "Vegetables", "Spices")
+  final int? categoryId;
+
+  /// Which commissary owns this ingredient
+  /// Only commissary-type organizations can create ingredients
+  final int commissaryId;
+
+  /// Current stock quantity (in base unit)
+  final int stock;
+
+  /// Spoiled quantity (deducted from stock when recorded)
+  final int spoilage;
+
+  /// Unit of measurement (e.g., "kg", "pieces", "liters", "grams")
+  final String unit;
+
+  /// Minimum stock threshold for alerts (e.g., alert when stock < 10)
+  final int? minimumStock;
+
+  /// Optional description or notes
+  final String? description;
+
+  /// Track when ingredient was created/modified
+  final DateTime createdAt;
+  final DateTime lastUpdated;
+
+  /// Soft delete
+  final bool isDeleted;
+
+  /// Sync fields for cloud synchronization
+  final bool isSynced;
+  final String? cloudId;
+  const Ingredient({
+    required this.id,
+    required this.name,
+    this.categoryId,
+    required this.commissaryId,
+    required this.stock,
+    required this.spoilage,
+    required this.unit,
+    this.minimumStock,
+    this.description,
+    required this.createdAt,
+    required this.lastUpdated,
+    required this.isDeleted,
+    required this.isSynced,
+    this.cloudId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<int>(categoryId);
+    }
+    map['commissary_id'] = Variable<int>(commissaryId);
+    map['stock'] = Variable<int>(stock);
+    map['spoilage'] = Variable<int>(spoilage);
+    map['unit'] = Variable<String>(unit);
+    if (!nullToAbsent || minimumStock != null) {
+      map['minimum_stock'] = Variable<int>(minimumStock);
+    }
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_updated'] = Variable<DateTime>(lastUpdated);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['is_synced'] = Variable<bool>(isSynced);
+    if (!nullToAbsent || cloudId != null) {
+      map['cloud_id'] = Variable<String>(cloudId);
+    }
+    return map;
+  }
+
+  IngredientsCompanion toCompanion(bool nullToAbsent) {
+    return IngredientsCompanion(
+      id: Value(id),
+      name: Value(name),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      commissaryId: Value(commissaryId),
+      stock: Value(stock),
+      spoilage: Value(spoilage),
+      unit: Value(unit),
+      minimumStock: minimumStock == null && nullToAbsent
+          ? const Value.absent()
+          : Value(minimumStock),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      createdAt: Value(createdAt),
+      lastUpdated: Value(lastUpdated),
+      isDeleted: Value(isDeleted),
+      isSynced: Value(isSynced),
+      cloudId: cloudId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudId),
+    );
+  }
+
+  factory Ingredient.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Ingredient(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      categoryId: serializer.fromJson<int?>(json['categoryId']),
+      commissaryId: serializer.fromJson<int>(json['commissaryId']),
+      stock: serializer.fromJson<int>(json['stock']),
+      spoilage: serializer.fromJson<int>(json['spoilage']),
+      unit: serializer.fromJson<String>(json['unit']),
+      minimumStock: serializer.fromJson<int?>(json['minimumStock']),
+      description: serializer.fromJson<String?>(json['description']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      cloudId: serializer.fromJson<String?>(json['cloudId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'categoryId': serializer.toJson<int?>(categoryId),
+      'commissaryId': serializer.toJson<int>(commissaryId),
+      'stock': serializer.toJson<int>(stock),
+      'spoilage': serializer.toJson<int>(spoilage),
+      'unit': serializer.toJson<String>(unit),
+      'minimumStock': serializer.toJson<int?>(minimumStock),
+      'description': serializer.toJson<String?>(description),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'cloudId': serializer.toJson<String?>(cloudId),
+    };
+  }
+
+  Ingredient copyWith({
+    int? id,
+    String? name,
+    Value<int?> categoryId = const Value.absent(),
+    int? commissaryId,
+    int? stock,
+    int? spoilage,
+    String? unit,
+    Value<int?> minimumStock = const Value.absent(),
+    Value<String?> description = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? lastUpdated,
+    bool? isDeleted,
+    bool? isSynced,
+    Value<String?> cloudId = const Value.absent(),
+  }) => Ingredient(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    commissaryId: commissaryId ?? this.commissaryId,
+    stock: stock ?? this.stock,
+    spoilage: spoilage ?? this.spoilage,
+    unit: unit ?? this.unit,
+    minimumStock: minimumStock.present ? minimumStock.value : this.minimumStock,
+    description: description.present ? description.value : this.description,
+    createdAt: createdAt ?? this.createdAt,
+    lastUpdated: lastUpdated ?? this.lastUpdated,
+    isDeleted: isDeleted ?? this.isDeleted,
+    isSynced: isSynced ?? this.isSynced,
+    cloudId: cloudId.present ? cloudId.value : this.cloudId,
+  );
+  Ingredient copyWithCompanion(IngredientsCompanion data) {
+    return Ingredient(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      commissaryId: data.commissaryId.present
+          ? data.commissaryId.value
+          : this.commissaryId,
+      stock: data.stock.present ? data.stock.value : this.stock,
+      spoilage: data.spoilage.present ? data.spoilage.value : this.spoilage,
+      unit: data.unit.present ? data.unit.value : this.unit,
+      minimumStock: data.minimumStock.present
+          ? data.minimumStock.value
+          : this.minimumStock,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastUpdated: data.lastUpdated.present
+          ? data.lastUpdated.value
+          : this.lastUpdated,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Ingredient(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('commissaryId: $commissaryId, ')
+          ..write('stock: $stock, ')
+          ..write('spoilage: $spoilage, ')
+          ..write('unit: $unit, ')
+          ..write('minimumStock: $minimumStock, ')
+          ..write('description: $description, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('cloudId: $cloudId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    categoryId,
+    commissaryId,
+    stock,
+    spoilage,
+    unit,
+    minimumStock,
+    description,
+    createdAt,
+    lastUpdated,
+    isDeleted,
+    isSynced,
+    cloudId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Ingredient &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.categoryId == this.categoryId &&
+          other.commissaryId == this.commissaryId &&
+          other.stock == this.stock &&
+          other.spoilage == this.spoilage &&
+          other.unit == this.unit &&
+          other.minimumStock == this.minimumStock &&
+          other.description == this.description &&
+          other.createdAt == this.createdAt &&
+          other.lastUpdated == this.lastUpdated &&
+          other.isDeleted == this.isDeleted &&
+          other.isSynced == this.isSynced &&
+          other.cloudId == this.cloudId);
+}
+
+class IngredientsCompanion extends UpdateCompanion<Ingredient> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<int?> categoryId;
+  final Value<int> commissaryId;
+  final Value<int> stock;
+  final Value<int> spoilage;
+  final Value<String> unit;
+  final Value<int?> minimumStock;
+  final Value<String?> description;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastUpdated;
+  final Value<bool> isDeleted;
+  final Value<bool> isSynced;
+  final Value<String?> cloudId;
+  const IngredientsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.commissaryId = const Value.absent(),
+    this.stock = const Value.absent(),
+    this.spoilage = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.minimumStock = const Value.absent(),
+    this.description = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.cloudId = const Value.absent(),
+  });
+  IngredientsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.categoryId = const Value.absent(),
+    required int commissaryId,
+    this.stock = const Value.absent(),
+    this.spoilage = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.minimumStock = const Value.absent(),
+    this.description = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.cloudId = const Value.absent(),
+  }) : name = Value(name),
+       commissaryId = Value(commissaryId);
+  static Insertable<Ingredient> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<int>? categoryId,
+    Expression<int>? commissaryId,
+    Expression<int>? stock,
+    Expression<int>? spoilage,
+    Expression<String>? unit,
+    Expression<int>? minimumStock,
+    Expression<String>? description,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastUpdated,
+    Expression<bool>? isDeleted,
+    Expression<bool>? isSynced,
+    Expression<String>? cloudId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (categoryId != null) 'category_id': categoryId,
+      if (commissaryId != null) 'commissary_id': commissaryId,
+      if (stock != null) 'stock': stock,
+      if (spoilage != null) 'spoilage': spoilage,
+      if (unit != null) 'unit': unit,
+      if (minimumStock != null) 'minimum_stock': minimumStock,
+      if (description != null) 'description': description,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastUpdated != null) 'last_updated': lastUpdated,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (cloudId != null) 'cloud_id': cloudId,
+    });
+  }
+
+  IngredientsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<int?>? categoryId,
+    Value<int>? commissaryId,
+    Value<int>? stock,
+    Value<int>? spoilage,
+    Value<String>? unit,
+    Value<int?>? minimumStock,
+    Value<String?>? description,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastUpdated,
+    Value<bool>? isDeleted,
+    Value<bool>? isSynced,
+    Value<String?>? cloudId,
+  }) {
+    return IngredientsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      categoryId: categoryId ?? this.categoryId,
+      commissaryId: commissaryId ?? this.commissaryId,
+      stock: stock ?? this.stock,
+      spoilage: spoilage ?? this.spoilage,
+      unit: unit ?? this.unit,
+      minimumStock: minimumStock ?? this.minimumStock,
+      description: description ?? this.description,
+      createdAt: createdAt ?? this.createdAt,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+      isDeleted: isDeleted ?? this.isDeleted,
+      isSynced: isSynced ?? this.isSynced,
+      cloudId: cloudId ?? this.cloudId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (commissaryId.present) {
+      map['commissary_id'] = Variable<int>(commissaryId.value);
+    }
+    if (stock.present) {
+      map['stock'] = Variable<int>(stock.value);
+    }
+    if (spoilage.present) {
+      map['spoilage'] = Variable<int>(spoilage.value);
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
+    }
+    if (minimumStock.present) {
+      map['minimum_stock'] = Variable<int>(minimumStock.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastUpdated.present) {
+      map['last_updated'] = Variable<DateTime>(lastUpdated.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IngredientsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('commissaryId: $commissaryId, ')
+          ..write('stock: $stock, ')
+          ..write('spoilage: $spoilage, ')
+          ..write('unit: $unit, ')
+          ..write('minimumStock: $minimumStock, ')
+          ..write('description: $description, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('cloudId: $cloudId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $RecipeIngredientsTable extends RecipeIngredients
     with TableInfo<$RecipeIngredientsTable, RecipeIngredient> {
   @override
@@ -4831,791 +5616,6 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredient> {
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('isDeleted: $isDeleted, ')
-          ..write('isSynced: $isSynced, ')
-          ..write('cloudId: $cloudId')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $UsersTable extends Users with TableInfo<$UsersTable, User> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $UsersTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-    'id',
-    aliasedName,
-    false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
-  );
-  static const VerificationMeta _usernameMeta = const VerificationMeta(
-    'username',
-  );
-  @override
-  late final GeneratedColumn<String> username = GeneratedColumn<String>(
-    'username',
-    aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(
-      minTextLength: 3,
-      maxTextLength: 100,
-    ),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
-  );
-  static const VerificationMeta _emailMeta = const VerificationMeta('email');
-  @override
-  late final GeneratedColumn<String> email = GeneratedColumn<String>(
-    'email',
-    aliasedName,
-    false,
-    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 200),
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
-  );
-  static const VerificationMeta _passwordMeta = const VerificationMeta(
-    'password',
-  );
-  @override
-  late final GeneratedColumn<String> password = GeneratedColumn<String>(
-    'password',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
-  @override
-  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
-    'phone',
-    aliasedName,
-    true,
-    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 50),
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
-    'organizationId',
-  );
-  @override
-  late final GeneratedColumn<int> organizationId = GeneratedColumn<int>(
-    'organization_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES organizations (id)',
-    ),
-  );
-  static const VerificationMeta _roleIdMeta = const VerificationMeta('roleId');
-  @override
-  late final GeneratedColumn<int> roleId = GeneratedColumn<int>(
-    'role_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES roles (id)',
-    ),
-  );
-  static const VerificationMeta _fullNameMeta = const VerificationMeta(
-    'fullName',
-  );
-  @override
-  late final GeneratedColumn<String> fullName = GeneratedColumn<String>(
-    'full_name',
-    aliasedName,
-    true,
-    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 200),
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _isActiveMeta = const VerificationMeta(
-    'isActive',
-  );
-  @override
-  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
-    'is_active',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_active" IN (0, 1))',
-    ),
-    defaultValue: const Constant(true),
-  );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-    'created_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
-  );
-  static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
-    'lastUpdated',
-  );
-  @override
-  late final GeneratedColumn<DateTime> lastUpdated = GeneratedColumn<DateTime>(
-    'last_updated',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
-  );
-  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
-    'isSynced',
-  );
-  @override
-  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
-    'is_synced',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_synced" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
-  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
-    'cloudId',
-  );
-  @override
-  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
-    'cloud_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    username,
-    email,
-    password,
-    phone,
-    organizationId,
-    roleId,
-    fullName,
-    isActive,
-    createdAt,
-    lastUpdated,
-    isSynced,
-    cloudId,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'users';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<User> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('username')) {
-      context.handle(
-        _usernameMeta,
-        username.isAcceptableOrUnknown(data['username']!, _usernameMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_usernameMeta);
-    }
-    if (data.containsKey('email')) {
-      context.handle(
-        _emailMeta,
-        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_emailMeta);
-    }
-    if (data.containsKey('password')) {
-      context.handle(
-        _passwordMeta,
-        password.isAcceptableOrUnknown(data['password']!, _passwordMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_passwordMeta);
-    }
-    if (data.containsKey('phone')) {
-      context.handle(
-        _phoneMeta,
-        phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
-      );
-    }
-    if (data.containsKey('organization_id')) {
-      context.handle(
-        _organizationIdMeta,
-        organizationId.isAcceptableOrUnknown(
-          data['organization_id']!,
-          _organizationIdMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_organizationIdMeta);
-    }
-    if (data.containsKey('role_id')) {
-      context.handle(
-        _roleIdMeta,
-        roleId.isAcceptableOrUnknown(data['role_id']!, _roleIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_roleIdMeta);
-    }
-    if (data.containsKey('full_name')) {
-      context.handle(
-        _fullNameMeta,
-        fullName.isAcceptableOrUnknown(data['full_name']!, _fullNameMeta),
-      );
-    }
-    if (data.containsKey('is_active')) {
-      context.handle(
-        _isActiveMeta,
-        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
-      );
-    }
-    if (data.containsKey('created_at')) {
-      context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
-    }
-    if (data.containsKey('last_updated')) {
-      context.handle(
-        _lastUpdatedMeta,
-        lastUpdated.isAcceptableOrUnknown(
-          data['last_updated']!,
-          _lastUpdatedMeta,
-        ),
-      );
-    }
-    if (data.containsKey('is_synced')) {
-      context.handle(
-        _isSyncedMeta,
-        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
-      );
-    }
-    if (data.containsKey('cloud_id')) {
-      context.handle(
-        _cloudIdMeta,
-        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  User map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return User(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}id'],
-      )!,
-      username: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}username'],
-      )!,
-      email: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}email'],
-      )!,
-      password: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}password'],
-      )!,
-      phone: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}phone'],
-      ),
-      organizationId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}organization_id'],
-      )!,
-      roleId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}role_id'],
-      )!,
-      fullName: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}full_name'],
-      ),
-      isActive: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_active'],
-      )!,
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      )!,
-      lastUpdated: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}last_updated'],
-      )!,
-      isSynced: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_synced'],
-      )!,
-      cloudId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}cloud_id'],
-      ),
-    );
-  }
-
-  @override
-  $UsersTable createAlias(String alias) {
-    return $UsersTable(attachedDatabase, alias);
-  }
-}
-
-class User extends DataClass implements Insertable<User> {
-  /// Primary key
-  final int id;
-
-  /// Unique username for login
-  final String username;
-
-  /// Unique email for login and notifications
-  final String email;
-
-  /// Hashed password
-  final String password;
-
-  /// Optional phone number
-  final String? phone;
-
-  /// Which organization this user belongs to
-  /// - Commissary users → commissary organization
-  /// - Franchisee owner/manager → franchisee organization
-  /// - Franchisee employee → franchisee organization
-  final int organizationId;
-
-  /// Role defines permissions (from Roles table)
-  final int roleId;
-
-  /// Full name of user
-  final String? fullName;
-
-  /// Active status (for soft delete)
-  final bool isActive;
-
-  /// Track when user was created/modified
-  final DateTime createdAt;
-  final DateTime lastUpdated;
-
-  /// Sync fields for cloud synchronization
-  final bool isSynced;
-  final String? cloudId;
-  const User({
-    required this.id,
-    required this.username,
-    required this.email,
-    required this.password,
-    this.phone,
-    required this.organizationId,
-    required this.roleId,
-    this.fullName,
-    required this.isActive,
-    required this.createdAt,
-    required this.lastUpdated,
-    required this.isSynced,
-    this.cloudId,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['username'] = Variable<String>(username);
-    map['email'] = Variable<String>(email);
-    map['password'] = Variable<String>(password);
-    if (!nullToAbsent || phone != null) {
-      map['phone'] = Variable<String>(phone);
-    }
-    map['organization_id'] = Variable<int>(organizationId);
-    map['role_id'] = Variable<int>(roleId);
-    if (!nullToAbsent || fullName != null) {
-      map['full_name'] = Variable<String>(fullName);
-    }
-    map['is_active'] = Variable<bool>(isActive);
-    map['created_at'] = Variable<DateTime>(createdAt);
-    map['last_updated'] = Variable<DateTime>(lastUpdated);
-    map['is_synced'] = Variable<bool>(isSynced);
-    if (!nullToAbsent || cloudId != null) {
-      map['cloud_id'] = Variable<String>(cloudId);
-    }
-    return map;
-  }
-
-  UsersCompanion toCompanion(bool nullToAbsent) {
-    return UsersCompanion(
-      id: Value(id),
-      username: Value(username),
-      email: Value(email),
-      password: Value(password),
-      phone: phone == null && nullToAbsent
-          ? const Value.absent()
-          : Value(phone),
-      organizationId: Value(organizationId),
-      roleId: Value(roleId),
-      fullName: fullName == null && nullToAbsent
-          ? const Value.absent()
-          : Value(fullName),
-      isActive: Value(isActive),
-      createdAt: Value(createdAt),
-      lastUpdated: Value(lastUpdated),
-      isSynced: Value(isSynced),
-      cloudId: cloudId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(cloudId),
-    );
-  }
-
-  factory User.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return User(
-      id: serializer.fromJson<int>(json['id']),
-      username: serializer.fromJson<String>(json['username']),
-      email: serializer.fromJson<String>(json['email']),
-      password: serializer.fromJson<String>(json['password']),
-      phone: serializer.fromJson<String?>(json['phone']),
-      organizationId: serializer.fromJson<int>(json['organizationId']),
-      roleId: serializer.fromJson<int>(json['roleId']),
-      fullName: serializer.fromJson<String?>(json['fullName']),
-      isActive: serializer.fromJson<bool>(json['isActive']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
-      isSynced: serializer.fromJson<bool>(json['isSynced']),
-      cloudId: serializer.fromJson<String?>(json['cloudId']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'username': serializer.toJson<String>(username),
-      'email': serializer.toJson<String>(email),
-      'password': serializer.toJson<String>(password),
-      'phone': serializer.toJson<String?>(phone),
-      'organizationId': serializer.toJson<int>(organizationId),
-      'roleId': serializer.toJson<int>(roleId),
-      'fullName': serializer.toJson<String?>(fullName),
-      'isActive': serializer.toJson<bool>(isActive),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
-      'isSynced': serializer.toJson<bool>(isSynced),
-      'cloudId': serializer.toJson<String?>(cloudId),
-    };
-  }
-
-  User copyWith({
-    int? id,
-    String? username,
-    String? email,
-    String? password,
-    Value<String?> phone = const Value.absent(),
-    int? organizationId,
-    int? roleId,
-    Value<String?> fullName = const Value.absent(),
-    bool? isActive,
-    DateTime? createdAt,
-    DateTime? lastUpdated,
-    bool? isSynced,
-    Value<String?> cloudId = const Value.absent(),
-  }) => User(
-    id: id ?? this.id,
-    username: username ?? this.username,
-    email: email ?? this.email,
-    password: password ?? this.password,
-    phone: phone.present ? phone.value : this.phone,
-    organizationId: organizationId ?? this.organizationId,
-    roleId: roleId ?? this.roleId,
-    fullName: fullName.present ? fullName.value : this.fullName,
-    isActive: isActive ?? this.isActive,
-    createdAt: createdAt ?? this.createdAt,
-    lastUpdated: lastUpdated ?? this.lastUpdated,
-    isSynced: isSynced ?? this.isSynced,
-    cloudId: cloudId.present ? cloudId.value : this.cloudId,
-  );
-  User copyWithCompanion(UsersCompanion data) {
-    return User(
-      id: data.id.present ? data.id.value : this.id,
-      username: data.username.present ? data.username.value : this.username,
-      email: data.email.present ? data.email.value : this.email,
-      password: data.password.present ? data.password.value : this.password,
-      phone: data.phone.present ? data.phone.value : this.phone,
-      organizationId: data.organizationId.present
-          ? data.organizationId.value
-          : this.organizationId,
-      roleId: data.roleId.present ? data.roleId.value : this.roleId,
-      fullName: data.fullName.present ? data.fullName.value : this.fullName,
-      isActive: data.isActive.present ? data.isActive.value : this.isActive,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      lastUpdated: data.lastUpdated.present
-          ? data.lastUpdated.value
-          : this.lastUpdated,
-      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
-      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('User(')
-          ..write('id: $id, ')
-          ..write('username: $username, ')
-          ..write('email: $email, ')
-          ..write('password: $password, ')
-          ..write('phone: $phone, ')
-          ..write('organizationId: $organizationId, ')
-          ..write('roleId: $roleId, ')
-          ..write('fullName: $fullName, ')
-          ..write('isActive: $isActive, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('lastUpdated: $lastUpdated, ')
-          ..write('isSynced: $isSynced, ')
-          ..write('cloudId: $cloudId')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    id,
-    username,
-    email,
-    password,
-    phone,
-    organizationId,
-    roleId,
-    fullName,
-    isActive,
-    createdAt,
-    lastUpdated,
-    isSynced,
-    cloudId,
-  );
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is User &&
-          other.id == this.id &&
-          other.username == this.username &&
-          other.email == this.email &&
-          other.password == this.password &&
-          other.phone == this.phone &&
-          other.organizationId == this.organizationId &&
-          other.roleId == this.roleId &&
-          other.fullName == this.fullName &&
-          other.isActive == this.isActive &&
-          other.createdAt == this.createdAt &&
-          other.lastUpdated == this.lastUpdated &&
-          other.isSynced == this.isSynced &&
-          other.cloudId == this.cloudId);
-}
-
-class UsersCompanion extends UpdateCompanion<User> {
-  final Value<int> id;
-  final Value<String> username;
-  final Value<String> email;
-  final Value<String> password;
-  final Value<String?> phone;
-  final Value<int> organizationId;
-  final Value<int> roleId;
-  final Value<String?> fullName;
-  final Value<bool> isActive;
-  final Value<DateTime> createdAt;
-  final Value<DateTime> lastUpdated;
-  final Value<bool> isSynced;
-  final Value<String?> cloudId;
-  const UsersCompanion({
-    this.id = const Value.absent(),
-    this.username = const Value.absent(),
-    this.email = const Value.absent(),
-    this.password = const Value.absent(),
-    this.phone = const Value.absent(),
-    this.organizationId = const Value.absent(),
-    this.roleId = const Value.absent(),
-    this.fullName = const Value.absent(),
-    this.isActive = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.lastUpdated = const Value.absent(),
-    this.isSynced = const Value.absent(),
-    this.cloudId = const Value.absent(),
-  });
-  UsersCompanion.insert({
-    this.id = const Value.absent(),
-    required String username,
-    required String email,
-    required String password,
-    this.phone = const Value.absent(),
-    required int organizationId,
-    required int roleId,
-    this.fullName = const Value.absent(),
-    this.isActive = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.lastUpdated = const Value.absent(),
-    this.isSynced = const Value.absent(),
-    this.cloudId = const Value.absent(),
-  }) : username = Value(username),
-       email = Value(email),
-       password = Value(password),
-       organizationId = Value(organizationId),
-       roleId = Value(roleId);
-  static Insertable<User> custom({
-    Expression<int>? id,
-    Expression<String>? username,
-    Expression<String>? email,
-    Expression<String>? password,
-    Expression<String>? phone,
-    Expression<int>? organizationId,
-    Expression<int>? roleId,
-    Expression<String>? fullName,
-    Expression<bool>? isActive,
-    Expression<DateTime>? createdAt,
-    Expression<DateTime>? lastUpdated,
-    Expression<bool>? isSynced,
-    Expression<String>? cloudId,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (username != null) 'username': username,
-      if (email != null) 'email': email,
-      if (password != null) 'password': password,
-      if (phone != null) 'phone': phone,
-      if (organizationId != null) 'organization_id': organizationId,
-      if (roleId != null) 'role_id': roleId,
-      if (fullName != null) 'full_name': fullName,
-      if (isActive != null) 'is_active': isActive,
-      if (createdAt != null) 'created_at': createdAt,
-      if (lastUpdated != null) 'last_updated': lastUpdated,
-      if (isSynced != null) 'is_synced': isSynced,
-      if (cloudId != null) 'cloud_id': cloudId,
-    });
-  }
-
-  UsersCompanion copyWith({
-    Value<int>? id,
-    Value<String>? username,
-    Value<String>? email,
-    Value<String>? password,
-    Value<String?>? phone,
-    Value<int>? organizationId,
-    Value<int>? roleId,
-    Value<String?>? fullName,
-    Value<bool>? isActive,
-    Value<DateTime>? createdAt,
-    Value<DateTime>? lastUpdated,
-    Value<bool>? isSynced,
-    Value<String?>? cloudId,
-  }) {
-    return UsersCompanion(
-      id: id ?? this.id,
-      username: username ?? this.username,
-      email: email ?? this.email,
-      password: password ?? this.password,
-      phone: phone ?? this.phone,
-      organizationId: organizationId ?? this.organizationId,
-      roleId: roleId ?? this.roleId,
-      fullName: fullName ?? this.fullName,
-      isActive: isActive ?? this.isActive,
-      createdAt: createdAt ?? this.createdAt,
-      lastUpdated: lastUpdated ?? this.lastUpdated,
-      isSynced: isSynced ?? this.isSynced,
-      cloudId: cloudId ?? this.cloudId,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (username.present) {
-      map['username'] = Variable<String>(username.value);
-    }
-    if (email.present) {
-      map['email'] = Variable<String>(email.value);
-    }
-    if (password.present) {
-      map['password'] = Variable<String>(password.value);
-    }
-    if (phone.present) {
-      map['phone'] = Variable<String>(phone.value);
-    }
-    if (organizationId.present) {
-      map['organization_id'] = Variable<int>(organizationId.value);
-    }
-    if (roleId.present) {
-      map['role_id'] = Variable<int>(roleId.value);
-    }
-    if (fullName.present) {
-      map['full_name'] = Variable<String>(fullName.value);
-    }
-    if (isActive.present) {
-      map['is_active'] = Variable<bool>(isActive.value);
-    }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (lastUpdated.present) {
-      map['last_updated'] = Variable<DateTime>(lastUpdated.value);
-    }
-    if (isSynced.present) {
-      map['is_synced'] = Variable<bool>(isSynced.value);
-    }
-    if (cloudId.present) {
-      map['cloud_id'] = Variable<String>(cloudId.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('UsersCompanion(')
-          ..write('id: $id, ')
-          ..write('username: $username, ')
-          ..write('email: $email, ')
-          ..write('password: $password, ')
-          ..write('phone: $phone, ')
-          ..write('organizationId: $organizationId, ')
-          ..write('roleId: $roleId, ')
-          ..write('fullName: $fullName, ')
-          ..write('isActive: $isActive, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('lastUpdated: $lastUpdated, ')
           ..write('isSynced: $isSynced, ')
           ..write('cloudId: $cloudId')
           ..write(')'))
@@ -7780,23 +7780,25 @@ class StockChangeRequestsCompanion extends UpdateCompanion<StockChangeRequest> {
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $OrganizationsTable organizations = $OrganizationsTable(this);
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $RolesTable roles = $RolesTable(this);
-  late final $OrganizationsTable organizations = $OrganizationsTable(this);
-  late final $IngredientsTable ingredients = $IngredientsTable(this);
+  late final $UsersTable users = $UsersTable(this);
   late final $ItemsTable items = $ItemsTable(this);
+  late final $IngredientsTable ingredients = $IngredientsTable(this);
   late final $RecipeIngredientsTable recipeIngredients =
       $RecipeIngredientsTable(this);
-  late final $UsersTable users = $UsersTable(this);
   late final $StockReplenishmentRequestsTable stockReplenishmentRequests =
       $StockReplenishmentRequestsTable(this);
   late final $StockChangeRequestsTable stockChangeRequests =
       $StockChangeRequestsTable(this);
-  late final CategoriesDao categoriesDao = CategoriesDao(this as AppDatabase);
-  late final RolesDao rolesDao = RolesDao(this as AppDatabase);
   late final OrganizationsDao organizationsDao = OrganizationsDao(
     this as AppDatabase,
   );
+  late final CategoriesDao categoriesDao = CategoriesDao(this as AppDatabase);
+  late final RolesDao rolesDao = RolesDao(this as AppDatabase);
+  late final UsersDao usersDao = UsersDao(this as AppDatabase);
+  late final ItemsDao itemsDao = ItemsDao(this as AppDatabase);
   late final IngredientsDao ingredientsDao = IngredientsDao(
     this as AppDatabase,
   );
@@ -7807,20 +7809,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       StockReplenishmentRequestsDao(this as AppDatabase);
   late final StockChangeRequestsDao stockChangeRequestsDao =
       StockChangeRequestsDao(this as AppDatabase);
-  late final ItemsDao itemsDao = ItemsDao(this as AppDatabase);
-  late final UsersDao usersDao = UsersDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
+    organizations,
     categories,
     roles,
-    organizations,
-    ingredients,
-    items,
-    recipeIngredients,
     users,
+    items,
+    ingredients,
+    recipeIngredients,
     stockReplenishmentRequests,
     stockChangeRequests,
   ];
@@ -7843,6 +7843,1106 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ]);
 }
 
+typedef $$OrganizationsTableCreateCompanionBuilder =
+    OrganizationsCompanion Function({
+      Value<int> id,
+      required String name,
+      required String type,
+      Value<int?> parentCommissaryId,
+      Value<String?> contactPerson,
+      Value<String?> phone,
+      Value<String?> email,
+      Value<String?> address,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastUpdated,
+      Value<bool> isActive,
+      Value<bool> isSynced,
+      Value<String?> cloudId,
+    });
+typedef $$OrganizationsTableUpdateCompanionBuilder =
+    OrganizationsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String> type,
+      Value<int?> parentCommissaryId,
+      Value<String?> contactPerson,
+      Value<String?> phone,
+      Value<String?> email,
+      Value<String?> address,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastUpdated,
+      Value<bool> isActive,
+      Value<bool> isSynced,
+      Value<String?> cloudId,
+    });
+
+final class $$OrganizationsTableReferences
+    extends BaseReferences<_$AppDatabase, $OrganizationsTable, Organization> {
+  $$OrganizationsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $OrganizationsTable _parentCommissaryIdTable(_$AppDatabase db) =>
+      db.organizations.createAlias(
+        $_aliasNameGenerator(
+          db.organizations.parentCommissaryId,
+          db.organizations.id,
+        ),
+      );
+
+  $$OrganizationsTableProcessedTableManager? get parentCommissaryId {
+    final $_column = $_itemColumn<int>('parent_commissary_id');
+    if ($_column == null) return null;
+    final manager = $$OrganizationsTableTableManager(
+      $_db,
+      $_db.organizations,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_parentCommissaryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$UsersTable, List<User>> _usersRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.users,
+    aliasName: $_aliasNameGenerator(
+      db.organizations.id,
+      db.users.organizationId,
+    ),
+  );
+
+  $$UsersTableProcessedTableManager get usersRefs {
+    final manager = $$UsersTableTableManager(
+      $_db,
+      $_db.users,
+    ).filter((f) => f.organizationId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_usersRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ItemsTable, List<Item>> _itemsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.items,
+    aliasName: $_aliasNameGenerator(
+      db.organizations.id,
+      db.items.organizationId,
+    ),
+  );
+
+  $$ItemsTableProcessedTableManager get itemsRefs {
+    final manager = $$ItemsTableTableManager(
+      $_db,
+      $_db.items,
+    ).filter((f) => f.organizationId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_itemsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$IngredientsTable, List<Ingredient>>
+  _ingredientsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.ingredients,
+    aliasName: $_aliasNameGenerator(
+      db.organizations.id,
+      db.ingredients.commissaryId,
+    ),
+  );
+
+  $$IngredientsTableProcessedTableManager get ingredientsRefs {
+    final manager = $$IngredientsTableTableManager(
+      $_db,
+      $_db.ingredients,
+    ).filter((f) => f.commissaryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_ingredientsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $StockReplenishmentRequestsTable,
+    List<StockReplenishmentRequest>
+  >
+  _franchiseeReplenishmentRequestsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.stockReplenishmentRequests,
+        aliasName: $_aliasNameGenerator(
+          db.organizations.id,
+          db.stockReplenishmentRequests.franchiseeId,
+        ),
+      );
+
+  $$StockReplenishmentRequestsTableProcessedTableManager
+  get franchiseeReplenishmentRequests {
+    final manager = $$StockReplenishmentRequestsTableTableManager(
+      $_db,
+      $_db.stockReplenishmentRequests,
+    ).filter((f) => f.franchiseeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _franchiseeReplenishmentRequestsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $StockReplenishmentRequestsTable,
+    List<StockReplenishmentRequest>
+  >
+  _commissaryReplenishmentRequestsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.stockReplenishmentRequests,
+        aliasName: $_aliasNameGenerator(
+          db.organizations.id,
+          db.stockReplenishmentRequests.commissaryId,
+        ),
+      );
+
+  $$StockReplenishmentRequestsTableProcessedTableManager
+  get commissaryReplenishmentRequests {
+    final manager = $$StockReplenishmentRequestsTableTableManager(
+      $_db,
+      $_db.stockReplenishmentRequests,
+    ).filter((f) => f.commissaryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _commissaryReplenishmentRequestsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $StockChangeRequestsTable,
+    List<StockChangeRequest>
+  >
+  _stockChangeRequestsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.stockChangeRequests,
+        aliasName: $_aliasNameGenerator(
+          db.organizations.id,
+          db.stockChangeRequests.franchiseeId,
+        ),
+      );
+
+  $$StockChangeRequestsTableProcessedTableManager get stockChangeRequestsRefs {
+    final manager = $$StockChangeRequestsTableTableManager(
+      $_db,
+      $_db.stockChangeRequests,
+    ).filter((f) => f.franchiseeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _stockChangeRequestsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$OrganizationsTableFilterComposer
+    extends Composer<_$AppDatabase, $OrganizationsTable> {
+  $$OrganizationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contactPerson => $composableBuilder(
+    column: $table.contactPerson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$OrganizationsTableFilterComposer get parentCommissaryId {
+    final $$OrganizationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentCommissaryId,
+      referencedTable: $db.organizations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$OrganizationsTableFilterComposer(
+            $db: $db,
+            $table: $db.organizations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> usersRefs(
+    Expression<bool> Function($$UsersTableFilterComposer f) f,
+  ) {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.organizationId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableFilterComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> itemsRefs(
+    Expression<bool> Function($$ItemsTableFilterComposer f) f,
+  ) {
+    final $$ItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.items,
+      getReferencedColumn: (t) => t.organizationId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.items,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> ingredientsRefs(
+    Expression<bool> Function($$IngredientsTableFilterComposer f) f,
+  ) {
+    final $$IngredientsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ingredients,
+      getReferencedColumn: (t) => t.commissaryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$IngredientsTableFilterComposer(
+            $db: $db,
+            $table: $db.ingredients,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> franchiseeReplenishmentRequests(
+    Expression<bool> Function($$StockReplenishmentRequestsTableFilterComposer f)
+    f,
+  ) {
+    final $$StockReplenishmentRequestsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockReplenishmentRequests,
+          getReferencedColumn: (t) => t.franchiseeId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockReplenishmentRequestsTableFilterComposer(
+                $db: $db,
+                $table: $db.stockReplenishmentRequests,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> commissaryReplenishmentRequests(
+    Expression<bool> Function($$StockReplenishmentRequestsTableFilterComposer f)
+    f,
+  ) {
+    final $$StockReplenishmentRequestsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockReplenishmentRequests,
+          getReferencedColumn: (t) => t.commissaryId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockReplenishmentRequestsTableFilterComposer(
+                $db: $db,
+                $table: $db.stockReplenishmentRequests,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> stockChangeRequestsRefs(
+    Expression<bool> Function($$StockChangeRequestsTableFilterComposer f) f,
+  ) {
+    final $$StockChangeRequestsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.stockChangeRequests,
+      getReferencedColumn: (t) => t.franchiseeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StockChangeRequestsTableFilterComposer(
+            $db: $db,
+            $table: $db.stockChangeRequests,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$OrganizationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $OrganizationsTable> {
+  $$OrganizationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contactPerson => $composableBuilder(
+    column: $table.contactPerson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$OrganizationsTableOrderingComposer get parentCommissaryId {
+    final $$OrganizationsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentCommissaryId,
+      referencedTable: $db.organizations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$OrganizationsTableOrderingComposer(
+            $db: $db,
+            $table: $db.organizations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$OrganizationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OrganizationsTable> {
+  $$OrganizationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get contactPerson => $composableBuilder(
+    column: $table.contactPerson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get address =>
+      $composableBuilder(column: $table.address, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
+
+  $$OrganizationsTableAnnotationComposer get parentCommissaryId {
+    final $$OrganizationsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentCommissaryId,
+      referencedTable: $db.organizations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$OrganizationsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.organizations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> usersRefs<T extends Object>(
+    Expression<T> Function($$UsersTableAnnotationComposer a) f,
+  ) {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.users,
+      getReferencedColumn: (t) => t.organizationId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.users,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> itemsRefs<T extends Object>(
+    Expression<T> Function($$ItemsTableAnnotationComposer a) f,
+  ) {
+    final $$ItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.items,
+      getReferencedColumn: (t) => t.organizationId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.items,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> ingredientsRefs<T extends Object>(
+    Expression<T> Function($$IngredientsTableAnnotationComposer a) f,
+  ) {
+    final $$IngredientsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ingredients,
+      getReferencedColumn: (t) => t.commissaryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$IngredientsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.ingredients,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> franchiseeReplenishmentRequests<T extends Object>(
+    Expression<T> Function(
+      $$StockReplenishmentRequestsTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$StockReplenishmentRequestsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockReplenishmentRequests,
+          getReferencedColumn: (t) => t.franchiseeId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockReplenishmentRequestsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.stockReplenishmentRequests,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> commissaryReplenishmentRequests<T extends Object>(
+    Expression<T> Function(
+      $$StockReplenishmentRequestsTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$StockReplenishmentRequestsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockReplenishmentRequests,
+          getReferencedColumn: (t) => t.commissaryId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockReplenishmentRequestsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.stockReplenishmentRequests,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> stockChangeRequestsRefs<T extends Object>(
+    Expression<T> Function($$StockChangeRequestsTableAnnotationComposer a) f,
+  ) {
+    final $$StockChangeRequestsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockChangeRequests,
+          getReferencedColumn: (t) => t.franchiseeId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockChangeRequestsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.stockChangeRequests,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$OrganizationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OrganizationsTable,
+          Organization,
+          $$OrganizationsTableFilterComposer,
+          $$OrganizationsTableOrderingComposer,
+          $$OrganizationsTableAnnotationComposer,
+          $$OrganizationsTableCreateCompanionBuilder,
+          $$OrganizationsTableUpdateCompanionBuilder,
+          (Organization, $$OrganizationsTableReferences),
+          Organization,
+          PrefetchHooks Function({
+            bool parentCommissaryId,
+            bool usersRefs,
+            bool itemsRefs,
+            bool ingredientsRefs,
+            bool franchiseeReplenishmentRequests,
+            bool commissaryReplenishmentRequests,
+            bool stockChangeRequestsRefs,
+          })
+        > {
+  $$OrganizationsTableTableManager(_$AppDatabase db, $OrganizationsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OrganizationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OrganizationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OrganizationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<int?> parentCommissaryId = const Value.absent(),
+                Value<String?> contactPerson = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> address = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+              }) => OrganizationsCompanion(
+                id: id,
+                name: name,
+                type: type,
+                parentCommissaryId: parentCommissaryId,
+                contactPerson: contactPerson,
+                phone: phone,
+                email: email,
+                address: address,
+                createdAt: createdAt,
+                lastUpdated: lastUpdated,
+                isActive: isActive,
+                isSynced: isSynced,
+                cloudId: cloudId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required String type,
+                Value<int?> parentCommissaryId = const Value.absent(),
+                Value<String?> contactPerson = const Value.absent(),
+                Value<String?> phone = const Value.absent(),
+                Value<String?> email = const Value.absent(),
+                Value<String?> address = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+              }) => OrganizationsCompanion.insert(
+                id: id,
+                name: name,
+                type: type,
+                parentCommissaryId: parentCommissaryId,
+                contactPerson: contactPerson,
+                phone: phone,
+                email: email,
+                address: address,
+                createdAt: createdAt,
+                lastUpdated: lastUpdated,
+                isActive: isActive,
+                isSynced: isSynced,
+                cloudId: cloudId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$OrganizationsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                parentCommissaryId = false,
+                usersRefs = false,
+                itemsRefs = false,
+                ingredientsRefs = false,
+                franchiseeReplenishmentRequests = false,
+                commissaryReplenishmentRequests = false,
+                stockChangeRequestsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (usersRefs) db.users,
+                    if (itemsRefs) db.items,
+                    if (ingredientsRefs) db.ingredients,
+                    if (franchiseeReplenishmentRequests)
+                      db.stockReplenishmentRequests,
+                    if (commissaryReplenishmentRequests)
+                      db.stockReplenishmentRequests,
+                    if (stockChangeRequestsRefs) db.stockChangeRequests,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (parentCommissaryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.parentCommissaryId,
+                                    referencedTable:
+                                        $$OrganizationsTableReferences
+                                            ._parentCommissaryIdTable(db),
+                                    referencedColumn:
+                                        $$OrganizationsTableReferences
+                                            ._parentCommissaryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (usersRefs)
+                        await $_getPrefetchedData<
+                          Organization,
+                          $OrganizationsTable,
+                          User
+                        >(
+                          currentTable: table,
+                          referencedTable: $$OrganizationsTableReferences
+                              ._usersRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$OrganizationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).usersRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.organizationId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (itemsRefs)
+                        await $_getPrefetchedData<
+                          Organization,
+                          $OrganizationsTable,
+                          Item
+                        >(
+                          currentTable: table,
+                          referencedTable: $$OrganizationsTableReferences
+                              ._itemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$OrganizationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).itemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.organizationId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (ingredientsRefs)
+                        await $_getPrefetchedData<
+                          Organization,
+                          $OrganizationsTable,
+                          Ingredient
+                        >(
+                          currentTable: table,
+                          referencedTable: $$OrganizationsTableReferences
+                              ._ingredientsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$OrganizationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).ingredientsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.commissaryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (franchiseeReplenishmentRequests)
+                        await $_getPrefetchedData<
+                          Organization,
+                          $OrganizationsTable,
+                          StockReplenishmentRequest
+                        >(
+                          currentTable: table,
+                          referencedTable: $$OrganizationsTableReferences
+                              ._franchiseeReplenishmentRequestsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$OrganizationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).franchiseeReplenishmentRequests,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.franchiseeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (commissaryReplenishmentRequests)
+                        await $_getPrefetchedData<
+                          Organization,
+                          $OrganizationsTable,
+                          StockReplenishmentRequest
+                        >(
+                          currentTable: table,
+                          referencedTable: $$OrganizationsTableReferences
+                              ._commissaryReplenishmentRequestsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$OrganizationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).commissaryReplenishmentRequests,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.commissaryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (stockChangeRequestsRefs)
+                        await $_getPrefetchedData<
+                          Organization,
+                          $OrganizationsTable,
+                          StockChangeRequest
+                        >(
+                          currentTable: table,
+                          referencedTable: $$OrganizationsTableReferences
+                              ._stockChangeRequestsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$OrganizationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).stockChangeRequestsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.franchiseeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$OrganizationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OrganizationsTable,
+      Organization,
+      $$OrganizationsTableFilterComposer,
+      $$OrganizationsTableOrderingComposer,
+      $$OrganizationsTableAnnotationComposer,
+      $$OrganizationsTableCreateCompanionBuilder,
+      $$OrganizationsTableUpdateCompanionBuilder,
+      (Organization, $$OrganizationsTableReferences),
+      Organization,
+      PrefetchHooks Function({
+        bool parentCommissaryId,
+        bool usersRefs,
+        bool itemsRefs,
+        bool ingredientsRefs,
+        bool franchiseeReplenishmentRequests,
+        bool commissaryReplenishmentRequests,
+        bool stockChangeRequestsRefs,
+      })
+    >;
 typedef $$CategoriesTableCreateCompanionBuilder =
     CategoriesCompanion Function({
       Value<int> id,
@@ -7866,6 +8966,25 @@ final class $$CategoriesTableReferences
     extends BaseReferences<_$AppDatabase, $CategoriesTable, Category> {
   $$CategoriesTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
+  static MultiTypedResultKey<$ItemsTable, List<Item>> _itemsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.items,
+    aliasName: $_aliasNameGenerator(db.categories.id, db.items.categoryId),
+  );
+
+  $$ItemsTableProcessedTableManager get itemsRefs {
+    final manager = $$ItemsTableTableManager(
+      $_db,
+      $_db.items,
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_itemsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<$IngredientsTable, List<Ingredient>>
   _ingredientsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.ingredients,
@@ -7882,25 +9001,6 @@ final class $$CategoriesTableReferences
     ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_ingredientsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<$ItemsTable, List<Item>> _itemsRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.items,
-    aliasName: $_aliasNameGenerator(db.categories.id, db.items.categoryId),
-  );
-
-  $$ItemsTableProcessedTableManager get itemsRefs {
-    final manager = $$ItemsTableTableManager(
-      $_db,
-      $_db.items,
-    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_itemsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -7946,31 +9046,6 @@ class $$CategoriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  Expression<bool> ingredientsRefs(
-    Expression<bool> Function($$IngredientsTableFilterComposer f) f,
-  ) {
-    final $$IngredientsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.ingredients,
-      getReferencedColumn: (t) => t.categoryId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$IngredientsTableFilterComposer(
-            $db: $db,
-            $table: $db.ingredients,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
   Expression<bool> itemsRefs(
     Expression<bool> Function($$ItemsTableFilterComposer f) f,
   ) {
@@ -7987,6 +9062,31 @@ class $$CategoriesTableFilterComposer
           }) => $$ItemsTableFilterComposer(
             $db: $db,
             $table: $db.items,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> ingredientsRefs(
+    Expression<bool> Function($$IngredientsTableFilterComposer f) f,
+  ) {
+    final $$IngredientsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ingredients,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$IngredientsTableFilterComposer(
+            $db: $db,
+            $table: $db.ingredients,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -8068,31 +9168,6 @@ class $$CategoriesTableAnnotationComposer
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 
-  Expression<T> ingredientsRefs<T extends Object>(
-    Expression<T> Function($$IngredientsTableAnnotationComposer a) f,
-  ) {
-    final $$IngredientsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.ingredients,
-      getReferencedColumn: (t) => t.categoryId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$IngredientsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.ingredients,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
   Expression<T> itemsRefs<T extends Object>(
     Expression<T> Function($$ItemsTableAnnotationComposer a) f,
   ) {
@@ -8117,6 +9192,31 @@ class $$CategoriesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> ingredientsRefs<T extends Object>(
+    Expression<T> Function($$IngredientsTableAnnotationComposer a) f,
+  ) {
+    final $$IngredientsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ingredients,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$IngredientsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.ingredients,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$CategoriesTableTableManager
@@ -8132,7 +9232,7 @@ class $$CategoriesTableTableManager
           $$CategoriesTableUpdateCompanionBuilder,
           (Category, $$CategoriesTableReferences),
           Category,
-          PrefetchHooks Function({bool ingredientsRefs, bool itemsRefs})
+          PrefetchHooks Function({bool itemsRefs, bool ingredientsRefs})
         > {
   $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
     : super(
@@ -8186,37 +9286,16 @@ class $$CategoriesTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({ingredientsRefs = false, itemsRefs = false}) {
+              ({itemsRefs = false, ingredientsRefs = false}) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
-                    if (ingredientsRefs) db.ingredients,
                     if (itemsRefs) db.items,
+                    if (ingredientsRefs) db.ingredients,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
                     return [
-                      if (ingredientsRefs)
-                        await $_getPrefetchedData<
-                          Category,
-                          $CategoriesTable,
-                          Ingredient
-                        >(
-                          currentTable: table,
-                          referencedTable: $$CategoriesTableReferences
-                              ._ingredientsRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$CategoriesTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).ingredientsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.categoryId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
                       if (itemsRefs)
                         await $_getPrefetchedData<
                           Category,
@@ -8232,6 +9311,27 @@ class $$CategoriesTableTableManager
                                 table,
                                 p0,
                               ).itemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.categoryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (ingredientsRefs)
+                        await $_getPrefetchedData<
+                          Category,
+                          $CategoriesTable,
+                          Ingredient
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoriesTableReferences
+                              ._ingredientsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).ingredientsRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.categoryId == item.id,
@@ -8258,7 +9358,7 @@ typedef $$CategoriesTableProcessedTableManager =
       $$CategoriesTableUpdateCompanionBuilder,
       (Category, $$CategoriesTableReferences),
       Category,
-      PrefetchHooks Function({bool ingredientsRefs, bool itemsRefs})
+      PrefetchHooks Function({bool itemsRefs, bool ingredientsRefs})
     >;
 typedef $$RolesTableCreateCompanionBuilder =
     RolesCompanion Function({
@@ -8817,131 +9917,76 @@ typedef $$RolesTableProcessedTableManager =
       Role,
       PrefetchHooks Function({bool usersRefs})
     >;
-typedef $$OrganizationsTableCreateCompanionBuilder =
-    OrganizationsCompanion Function({
+typedef $$UsersTableCreateCompanionBuilder =
+    UsersCompanion Function({
       Value<int> id,
-      required String name,
-      required String type,
-      Value<int?> parentCommissaryId,
-      Value<String?> contactPerson,
+      required String username,
+      required String email,
+      required String password,
       Value<String?> phone,
-      Value<String?> email,
-      Value<String?> address,
+      required int organizationId,
+      required int roleId,
+      Value<String?> fullName,
+      Value<bool> isActive,
       Value<DateTime> createdAt,
       Value<DateTime> lastUpdated,
-      Value<bool> isActive,
       Value<bool> isSynced,
       Value<String?> cloudId,
     });
-typedef $$OrganizationsTableUpdateCompanionBuilder =
-    OrganizationsCompanion Function({
+typedef $$UsersTableUpdateCompanionBuilder =
+    UsersCompanion Function({
       Value<int> id,
-      Value<String> name,
-      Value<String> type,
-      Value<int?> parentCommissaryId,
-      Value<String?> contactPerson,
+      Value<String> username,
+      Value<String> email,
+      Value<String> password,
       Value<String?> phone,
-      Value<String?> email,
-      Value<String?> address,
+      Value<int> organizationId,
+      Value<int> roleId,
+      Value<String?> fullName,
+      Value<bool> isActive,
       Value<DateTime> createdAt,
       Value<DateTime> lastUpdated,
-      Value<bool> isActive,
       Value<bool> isSynced,
       Value<String?> cloudId,
     });
 
-final class $$OrganizationsTableReferences
-    extends BaseReferences<_$AppDatabase, $OrganizationsTable, Organization> {
-  $$OrganizationsTableReferences(
-    super.$_db,
-    super.$_table,
-    super.$_typedResult,
-  );
+final class $$UsersTableReferences
+    extends BaseReferences<_$AppDatabase, $UsersTable, User> {
+  $$UsersTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $OrganizationsTable _parentCommissaryIdTable(_$AppDatabase db) =>
+  static $OrganizationsTable _organizationIdTable(_$AppDatabase db) =>
       db.organizations.createAlias(
-        $_aliasNameGenerator(
-          db.organizations.parentCommissaryId,
-          db.organizations.id,
-        ),
+        $_aliasNameGenerator(db.users.organizationId, db.organizations.id),
       );
 
-  $$OrganizationsTableProcessedTableManager? get parentCommissaryId {
-    final $_column = $_itemColumn<int>('parent_commissary_id');
-    if ($_column == null) return null;
+  $$OrganizationsTableProcessedTableManager get organizationId {
+    final $_column = $_itemColumn<int>('organization_id')!;
+
     final manager = $$OrganizationsTableTableManager(
       $_db,
       $_db.organizations,
     ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_parentCommissaryIdTable($_db));
+    final item = $_typedResult.readTableOrNull(_organizationIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
 
-  static MultiTypedResultKey<$IngredientsTable, List<Ingredient>>
-  _ingredientsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.ingredients,
-    aliasName: $_aliasNameGenerator(
-      db.organizations.id,
-      db.ingredients.commissaryId,
-    ),
-  );
+  static $RolesTable _roleIdTable(_$AppDatabase db) =>
+      db.roles.createAlias($_aliasNameGenerator(db.users.roleId, db.roles.id));
 
-  $$IngredientsTableProcessedTableManager get ingredientsRefs {
-    final manager = $$IngredientsTableTableManager(
+  $$RolesTableProcessedTableManager get roleId {
+    final $_column = $_itemColumn<int>('role_id')!;
+
+    final manager = $$RolesTableTableManager(
       $_db,
-      $_db.ingredients,
-    ).filter((f) => f.commissaryId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_ingredientsRefsTable($_db));
+      $_db.roles,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_roleIdTable($_db));
+    if (item == null) return manager;
     return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<$ItemsTable, List<Item>> _itemsRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.items,
-    aliasName: $_aliasNameGenerator(
-      db.organizations.id,
-      db.items.organizationId,
-    ),
-  );
-
-  $$ItemsTableProcessedTableManager get itemsRefs {
-    final manager = $$ItemsTableTableManager(
-      $_db,
-      $_db.items,
-    ).filter((f) => f.organizationId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_itemsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<$UsersTable, List<User>> _usersRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.users,
-    aliasName: $_aliasNameGenerator(
-      db.organizations.id,
-      db.users.organizationId,
-    ),
-  );
-
-  $$UsersTableProcessedTableManager get usersRefs {
-    final manager = $$UsersTableTableManager(
-      $_db,
-      $_db.users,
-    ).filter((f) => f.organizationId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_usersRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
+      manager.$state.copyWith(prefetchedData: [item]),
     );
   }
 
@@ -8949,24 +9994,24 @@ final class $$OrganizationsTableReferences
     $StockReplenishmentRequestsTable,
     List<StockReplenishmentRequest>
   >
-  _franchiseeReplenishmentRequestsTable(_$AppDatabase db) =>
+  _replenishmentRequesterTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.stockReplenishmentRequests,
         aliasName: $_aliasNameGenerator(
-          db.organizations.id,
-          db.stockReplenishmentRequests.franchiseeId,
+          db.users.id,
+          db.stockReplenishmentRequests.requestedBy,
         ),
       );
 
   $$StockReplenishmentRequestsTableProcessedTableManager
-  get franchiseeReplenishmentRequests {
+  get replenishmentRequester {
     final manager = $$StockReplenishmentRequestsTableTableManager(
       $_db,
       $_db.stockReplenishmentRequests,
-    ).filter((f) => f.franchiseeId.id.sqlEquals($_itemColumn<int>('id')!));
+    ).filter((f) => f.requestedBy.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _franchiseeReplenishmentRequestsTable($_db),
+      _replenishmentRequesterTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -8977,24 +10022,24 @@ final class $$OrganizationsTableReferences
     $StockReplenishmentRequestsTable,
     List<StockReplenishmentRequest>
   >
-  _commissaryReplenishmentRequestsTable(_$AppDatabase db) =>
+  _replenishmentReviewerTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.stockReplenishmentRequests,
         aliasName: $_aliasNameGenerator(
-          db.organizations.id,
-          db.stockReplenishmentRequests.commissaryId,
+          db.users.id,
+          db.stockReplenishmentRequests.reviewedBy,
         ),
       );
 
   $$StockReplenishmentRequestsTableProcessedTableManager
-  get commissaryReplenishmentRequests {
+  get replenishmentReviewer {
     final manager = $$StockReplenishmentRequestsTableTableManager(
       $_db,
       $_db.stockReplenishmentRequests,
-    ).filter((f) => f.commissaryId.id.sqlEquals($_itemColumn<int>('id')!));
+    ).filter((f) => f.reviewedBy.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(
-      _commissaryReplenishmentRequestsTable($_db),
+      _replenishmentReviewerTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -9005,33 +10050,53 @@ final class $$OrganizationsTableReferences
     $StockChangeRequestsTable,
     List<StockChangeRequest>
   >
-  _stockChangeRequestsRefsTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.stockChangeRequests,
-        aliasName: $_aliasNameGenerator(
-          db.organizations.id,
-          db.stockChangeRequests.franchiseeId,
-        ),
-      );
+  _changeRequesterTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.stockChangeRequests,
+    aliasName: $_aliasNameGenerator(
+      db.users.id,
+      db.stockChangeRequests.requestedBy,
+    ),
+  );
 
-  $$StockChangeRequestsTableProcessedTableManager get stockChangeRequestsRefs {
+  $$StockChangeRequestsTableProcessedTableManager get changeRequester {
     final manager = $$StockChangeRequestsTableTableManager(
       $_db,
       $_db.stockChangeRequests,
-    ).filter((f) => f.franchiseeId.id.sqlEquals($_itemColumn<int>('id')!));
+    ).filter((f) => f.requestedBy.id.sqlEquals($_itemColumn<int>('id')!));
 
-    final cache = $_typedResult.readTableOrNull(
-      _stockChangeRequestsRefsTable($_db),
+    final cache = $_typedResult.readTableOrNull(_changeRequesterTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
     );
+  }
+
+  static MultiTypedResultKey<
+    $StockChangeRequestsTable,
+    List<StockChangeRequest>
+  >
+  _changeReviewerTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.stockChangeRequests,
+    aliasName: $_aliasNameGenerator(
+      db.users.id,
+      db.stockChangeRequests.reviewedBy,
+    ),
+  );
+
+  $$StockChangeRequestsTableProcessedTableManager get changeReviewer {
+    final manager = $$StockChangeRequestsTableTableManager(
+      $_db,
+      $_db.stockChangeRequests,
+    ).filter((f) => f.reviewedBy.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_changeReviewerTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
 }
 
-class $$OrganizationsTableFilterComposer
-    extends Composer<_$AppDatabase, $OrganizationsTable> {
-  $$OrganizationsTableFilterComposer({
+class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
+  $$UsersTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -9043,23 +10108,8 @@ class $$OrganizationsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get type => $composableBuilder(
-    column: $table.type,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get contactPerson => $composableBuilder(
-    column: $table.contactPerson,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get phone => $composableBuilder(
-    column: $table.phone,
+  ColumnFilters<String> get username => $composableBuilder(
+    column: $table.username,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9068,8 +10118,23 @@ class $$OrganizationsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get address => $composableBuilder(
-    column: $table.address,
+  ColumnFilters<String> get password => $composableBuilder(
+    column: $table.password,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fullName => $composableBuilder(
+    column: $table.fullName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9083,11 +10148,6 @@ class $$OrganizationsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get isActive => $composableBuilder(
-    column: $table.isActive,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
     builder: (column) => ColumnFilters(column),
@@ -9098,10 +10158,10 @@ class $$OrganizationsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  $$OrganizationsTableFilterComposer get parentCommissaryId {
+  $$OrganizationsTableFilterComposer get organizationId {
     final $$OrganizationsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.parentCommissaryId,
+      getCurrentColumn: (t) => t.organizationId,
       referencedTable: $db.organizations,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -9121,82 +10181,30 @@ class $$OrganizationsTableFilterComposer
     return composer;
   }
 
-  Expression<bool> ingredientsRefs(
-    Expression<bool> Function($$IngredientsTableFilterComposer f) f,
-  ) {
-    final $$IngredientsTableFilterComposer composer = $composerBuilder(
+  $$RolesTableFilterComposer get roleId {
+    final $$RolesTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.ingredients,
-      getReferencedColumn: (t) => t.commissaryId,
+      getCurrentColumn: (t) => t.roleId,
+      referencedTable: $db.roles,
+      getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$IngredientsTableFilterComposer(
+          }) => $$RolesTableFilterComposer(
             $db: $db,
-            $table: $db.ingredients,
+            $table: $db.roles,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
                 $removeJoinBuilderFromRootComposer,
           ),
     );
-    return f(composer);
+    return composer;
   }
 
-  Expression<bool> itemsRefs(
-    Expression<bool> Function($$ItemsTableFilterComposer f) f,
-  ) {
-    final $$ItemsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.items,
-      getReferencedColumn: (t) => t.organizationId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ItemsTableFilterComposer(
-            $db: $db,
-            $table: $db.items,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<bool> usersRefs(
-    Expression<bool> Function($$UsersTableFilterComposer f) f,
-  ) {
-    final $$UsersTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.users,
-      getReferencedColumn: (t) => t.organizationId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$UsersTableFilterComposer(
-            $db: $db,
-            $table: $db.users,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<bool> franchiseeReplenishmentRequests(
+  Expression<bool> replenishmentRequester(
     Expression<bool> Function($$StockReplenishmentRequestsTableFilterComposer f)
     f,
   ) {
@@ -9205,7 +10213,7 @@ class $$OrganizationsTableFilterComposer
           composer: this,
           getCurrentColumn: (t) => t.id,
           referencedTable: $db.stockReplenishmentRequests,
-          getReferencedColumn: (t) => t.franchiseeId,
+          getReferencedColumn: (t) => t.requestedBy,
           builder:
               (
                 joinBuilder, {
@@ -9223,7 +10231,7 @@ class $$OrganizationsTableFilterComposer
     return f(composer);
   }
 
-  Expression<bool> commissaryReplenishmentRequests(
+  Expression<bool> replenishmentReviewer(
     Expression<bool> Function($$StockReplenishmentRequestsTableFilterComposer f)
     f,
   ) {
@@ -9232,7 +10240,7 @@ class $$OrganizationsTableFilterComposer
           composer: this,
           getCurrentColumn: (t) => t.id,
           referencedTable: $db.stockReplenishmentRequests,
-          getReferencedColumn: (t) => t.commissaryId,
+          getReferencedColumn: (t) => t.reviewedBy,
           builder:
               (
                 joinBuilder, {
@@ -9250,14 +10258,39 @@ class $$OrganizationsTableFilterComposer
     return f(composer);
   }
 
-  Expression<bool> stockChangeRequestsRefs(
+  Expression<bool> changeRequester(
     Expression<bool> Function($$StockChangeRequestsTableFilterComposer f) f,
   ) {
     final $$StockChangeRequestsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.id,
       referencedTable: $db.stockChangeRequests,
-      getReferencedColumn: (t) => t.franchiseeId,
+      getReferencedColumn: (t) => t.requestedBy,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StockChangeRequestsTableFilterComposer(
+            $db: $db,
+            $table: $db.stockChangeRequests,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> changeReviewer(
+    Expression<bool> Function($$StockChangeRequestsTableFilterComposer f) f,
+  ) {
+    final $$StockChangeRequestsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.stockChangeRequests,
+      getReferencedColumn: (t) => t.reviewedBy,
       builder:
           (
             joinBuilder, {
@@ -9276,9 +10309,9 @@ class $$OrganizationsTableFilterComposer
   }
 }
 
-class $$OrganizationsTableOrderingComposer
-    extends Composer<_$AppDatabase, $OrganizationsTable> {
-  $$OrganizationsTableOrderingComposer({
+class $$UsersTableOrderingComposer
+    extends Composer<_$AppDatabase, $UsersTable> {
+  $$UsersTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -9290,23 +10323,8 @@ class $$OrganizationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get type => $composableBuilder(
-    column: $table.type,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get contactPerson => $composableBuilder(
-    column: $table.contactPerson,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get phone => $composableBuilder(
-    column: $table.phone,
+  ColumnOrderings<String> get username => $composableBuilder(
+    column: $table.username,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -9315,8 +10333,23 @@ class $$OrganizationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get address => $composableBuilder(
-    column: $table.address,
+  ColumnOrderings<String> get password => $composableBuilder(
+    column: $table.password,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+    column: $table.phone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fullName => $composableBuilder(
+    column: $table.fullName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -9330,11 +10363,6 @@ class $$OrganizationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get isActive => $composableBuilder(
-    column: $table.isActive,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
     builder: (column) => ColumnOrderings(column),
@@ -9345,10 +10373,10 @@ class $$OrganizationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  $$OrganizationsTableOrderingComposer get parentCommissaryId {
+  $$OrganizationsTableOrderingComposer get organizationId {
     final $$OrganizationsTableOrderingComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.parentCommissaryId,
+      getCurrentColumn: (t) => t.organizationId,
       referencedTable: $db.organizations,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -9367,11 +10395,34 @@ class $$OrganizationsTableOrderingComposer
     );
     return composer;
   }
+
+  $$RolesTableOrderingComposer get roleId {
+    final $$RolesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.roleId,
+      referencedTable: $db.roles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RolesTableOrderingComposer(
+            $db: $db,
+            $table: $db.roles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
-class $$OrganizationsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $OrganizationsTable> {
-  $$OrganizationsTableAnnotationComposer({
+class $$UsersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UsersTable> {
+  $$UsersTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -9381,25 +10432,23 @@ class $$OrganizationsTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<String> get type =>
-      $composableBuilder(column: $table.type, builder: (column) => column);
-
-  GeneratedColumn<String> get contactPerson => $composableBuilder(
-    column: $table.contactPerson,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get phone =>
-      $composableBuilder(column: $table.phone, builder: (column) => column);
+  GeneratedColumn<String> get username =>
+      $composableBuilder(column: $table.username, builder: (column) => column);
 
   GeneratedColumn<String> get email =>
       $composableBuilder(column: $table.email, builder: (column) => column);
 
-  GeneratedColumn<String> get address =>
-      $composableBuilder(column: $table.address, builder: (column) => column);
+  GeneratedColumn<String> get password =>
+      $composableBuilder(column: $table.password, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get fullName =>
+      $composableBuilder(column: $table.fullName, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -9409,19 +10458,16 @@ class $$OrganizationsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get isActive =>
-      $composableBuilder(column: $table.isActive, builder: (column) => column);
-
   GeneratedColumn<bool> get isSynced =>
       $composableBuilder(column: $table.isSynced, builder: (column) => column);
 
   GeneratedColumn<String> get cloudId =>
       $composableBuilder(column: $table.cloudId, builder: (column) => column);
 
-  $$OrganizationsTableAnnotationComposer get parentCommissaryId {
+  $$OrganizationsTableAnnotationComposer get organizationId {
     final $$OrganizationsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.parentCommissaryId,
+      getCurrentColumn: (t) => t.organizationId,
       referencedTable: $db.organizations,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -9441,82 +10487,30 @@ class $$OrganizationsTableAnnotationComposer
     return composer;
   }
 
-  Expression<T> ingredientsRefs<T extends Object>(
-    Expression<T> Function($$IngredientsTableAnnotationComposer a) f,
-  ) {
-    final $$IngredientsTableAnnotationComposer composer = $composerBuilder(
+  $$RolesTableAnnotationComposer get roleId {
+    final $$RolesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.ingredients,
-      getReferencedColumn: (t) => t.commissaryId,
+      getCurrentColumn: (t) => t.roleId,
+      referencedTable: $db.roles,
+      getReferencedColumn: (t) => t.id,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$IngredientsTableAnnotationComposer(
+          }) => $$RolesTableAnnotationComposer(
             $db: $db,
-            $table: $db.ingredients,
+            $table: $db.roles,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
                 $removeJoinBuilderFromRootComposer,
           ),
     );
-    return f(composer);
+    return composer;
   }
 
-  Expression<T> itemsRefs<T extends Object>(
-    Expression<T> Function($$ItemsTableAnnotationComposer a) f,
-  ) {
-    final $$ItemsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.items,
-      getReferencedColumn: (t) => t.organizationId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ItemsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.items,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<T> usersRefs<T extends Object>(
-    Expression<T> Function($$UsersTableAnnotationComposer a) f,
-  ) {
-    final $$UsersTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.users,
-      getReferencedColumn: (t) => t.organizationId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$UsersTableAnnotationComposer(
-            $db: $db,
-            $table: $db.users,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<T> franchiseeReplenishmentRequests<T extends Object>(
+  Expression<T> replenishmentRequester<T extends Object>(
     Expression<T> Function(
       $$StockReplenishmentRequestsTableAnnotationComposer a,
     )
@@ -9527,7 +10521,7 @@ class $$OrganizationsTableAnnotationComposer
           composer: this,
           getCurrentColumn: (t) => t.id,
           referencedTable: $db.stockReplenishmentRequests,
-          getReferencedColumn: (t) => t.franchiseeId,
+          getReferencedColumn: (t) => t.requestedBy,
           builder:
               (
                 joinBuilder, {
@@ -9545,7 +10539,7 @@ class $$OrganizationsTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> commissaryReplenishmentRequests<T extends Object>(
+  Expression<T> replenishmentReviewer<T extends Object>(
     Expression<T> Function(
       $$StockReplenishmentRequestsTableAnnotationComposer a,
     )
@@ -9556,7 +10550,7 @@ class $$OrganizationsTableAnnotationComposer
           composer: this,
           getCurrentColumn: (t) => t.id,
           referencedTable: $db.stockReplenishmentRequests,
-          getReferencedColumn: (t) => t.commissaryId,
+          getReferencedColumn: (t) => t.reviewedBy,
           builder:
               (
                 joinBuilder, {
@@ -9574,7 +10568,7 @@ class $$OrganizationsTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> stockChangeRequestsRefs<T extends Object>(
+  Expression<T> changeRequester<T extends Object>(
     Expression<T> Function($$StockChangeRequestsTableAnnotationComposer a) f,
   ) {
     final $$StockChangeRequestsTableAnnotationComposer composer =
@@ -9582,7 +10576,33 @@ class $$OrganizationsTableAnnotationComposer
           composer: this,
           getCurrentColumn: (t) => t.id,
           referencedTable: $db.stockChangeRequests,
-          getReferencedColumn: (t) => t.franchiseeId,
+          getReferencedColumn: (t) => t.requestedBy,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$StockChangeRequestsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.stockChangeRequests,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> changeReviewer<T extends Object>(
+    Expression<T> Function($$StockChangeRequestsTableAnnotationComposer a) f,
+  ) {
+    final $$StockChangeRequestsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.stockChangeRequests,
+          getReferencedColumn: (t) => t.reviewedBy,
           builder:
               (
                 joinBuilder, {
@@ -9601,129 +10621,121 @@ class $$OrganizationsTableAnnotationComposer
   }
 }
 
-class $$OrganizationsTableTableManager
+class $$UsersTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $OrganizationsTable,
-          Organization,
-          $$OrganizationsTableFilterComposer,
-          $$OrganizationsTableOrderingComposer,
-          $$OrganizationsTableAnnotationComposer,
-          $$OrganizationsTableCreateCompanionBuilder,
-          $$OrganizationsTableUpdateCompanionBuilder,
-          (Organization, $$OrganizationsTableReferences),
-          Organization,
+          $UsersTable,
+          User,
+          $$UsersTableFilterComposer,
+          $$UsersTableOrderingComposer,
+          $$UsersTableAnnotationComposer,
+          $$UsersTableCreateCompanionBuilder,
+          $$UsersTableUpdateCompanionBuilder,
+          (User, $$UsersTableReferences),
+          User,
           PrefetchHooks Function({
-            bool parentCommissaryId,
-            bool ingredientsRefs,
-            bool itemsRefs,
-            bool usersRefs,
-            bool franchiseeReplenishmentRequests,
-            bool commissaryReplenishmentRequests,
-            bool stockChangeRequestsRefs,
+            bool organizationId,
+            bool roleId,
+            bool replenishmentRequester,
+            bool replenishmentReviewer,
+            bool changeRequester,
+            bool changeReviewer,
           })
         > {
-  $$OrganizationsTableTableManager(_$AppDatabase db, $OrganizationsTable table)
+  $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
     : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$OrganizationsTableFilterComposer($db: db, $table: table),
+              $$UsersTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$OrganizationsTableOrderingComposer($db: db, $table: table),
+              $$UsersTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$OrganizationsTableAnnotationComposer($db: db, $table: table),
+              $$UsersTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<String> type = const Value.absent(),
-                Value<int?> parentCommissaryId = const Value.absent(),
-                Value<String?> contactPerson = const Value.absent(),
+                Value<String> username = const Value.absent(),
+                Value<String> email = const Value.absent(),
+                Value<String> password = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
-                Value<String?> email = const Value.absent(),
-                Value<String?> address = const Value.absent(),
+                Value<int> organizationId = const Value.absent(),
+                Value<int> roleId = const Value.absent(),
+                Value<String?> fullName = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> lastUpdated = const Value.absent(),
-                Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<String?> cloudId = const Value.absent(),
-              }) => OrganizationsCompanion(
+              }) => UsersCompanion(
                 id: id,
-                name: name,
-                type: type,
-                parentCommissaryId: parentCommissaryId,
-                contactPerson: contactPerson,
-                phone: phone,
+                username: username,
                 email: email,
-                address: address,
+                password: password,
+                phone: phone,
+                organizationId: organizationId,
+                roleId: roleId,
+                fullName: fullName,
+                isActive: isActive,
                 createdAt: createdAt,
                 lastUpdated: lastUpdated,
-                isActive: isActive,
                 isSynced: isSynced,
                 cloudId: cloudId,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                required String name,
-                required String type,
-                Value<int?> parentCommissaryId = const Value.absent(),
-                Value<String?> contactPerson = const Value.absent(),
+                required String username,
+                required String email,
+                required String password,
                 Value<String?> phone = const Value.absent(),
-                Value<String?> email = const Value.absent(),
-                Value<String?> address = const Value.absent(),
+                required int organizationId,
+                required int roleId,
+                Value<String?> fullName = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> lastUpdated = const Value.absent(),
-                Value<bool> isActive = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<String?> cloudId = const Value.absent(),
-              }) => OrganizationsCompanion.insert(
+              }) => UsersCompanion.insert(
                 id: id,
-                name: name,
-                type: type,
-                parentCommissaryId: parentCommissaryId,
-                contactPerson: contactPerson,
-                phone: phone,
+                username: username,
                 email: email,
-                address: address,
+                password: password,
+                phone: phone,
+                organizationId: organizationId,
+                roleId: roleId,
+                fullName: fullName,
+                isActive: isActive,
                 createdAt: createdAt,
                 lastUpdated: lastUpdated,
-                isActive: isActive,
                 isSynced: isSynced,
                 cloudId: cloudId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
-                (e) => (
-                  e.readTable(table),
-                  $$OrganizationsTableReferences(db, table, e),
-                ),
+                (e) =>
+                    (e.readTable(table), $$UsersTableReferences(db, table, e)),
               )
               .toList(),
           prefetchHooksCallback:
               ({
-                parentCommissaryId = false,
-                ingredientsRefs = false,
-                itemsRefs = false,
-                usersRefs = false,
-                franchiseeReplenishmentRequests = false,
-                commissaryReplenishmentRequests = false,
-                stockChangeRequestsRefs = false,
+                organizationId = false,
+                roleId = false,
+                replenishmentRequester = false,
+                replenishmentReviewer = false,
+                changeRequester = false,
+                changeReviewer = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
-                    if (ingredientsRefs) db.ingredients,
-                    if (itemsRefs) db.items,
-                    if (usersRefs) db.users,
-                    if (franchiseeReplenishmentRequests)
-                      db.stockReplenishmentRequests,
-                    if (commissaryReplenishmentRequests)
-                      db.stockReplenishmentRequests,
-                    if (stockChangeRequestsRefs) db.stockChangeRequests,
+                    if (replenishmentRequester) db.stockReplenishmentRequests,
+                    if (replenishmentReviewer) db.stockReplenishmentRequests,
+                    if (changeRequester) db.stockChangeRequests,
+                    if (changeReviewer) db.stockChangeRequests,
                   ],
                   addJoins:
                       <
@@ -9741,18 +10753,29 @@ class $$OrganizationsTableTableManager
                           dynamic
                         >
                       >(state) {
-                        if (parentCommissaryId) {
+                        if (organizationId) {
                           state =
                               state.withJoin(
                                     currentTable: table,
-                                    currentColumn: table.parentCommissaryId,
-                                    referencedTable:
-                                        $$OrganizationsTableReferences
-                                            ._parentCommissaryIdTable(db),
-                                    referencedColumn:
-                                        $$OrganizationsTableReferences
-                                            ._parentCommissaryIdTable(db)
-                                            .id,
+                                    currentColumn: table.organizationId,
+                                    referencedTable: $$UsersTableReferences
+                                        ._organizationIdTable(db),
+                                    referencedColumn: $$UsersTableReferences
+                                        ._organizationIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+                        if (roleId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.roleId,
+                                    referencedTable: $$UsersTableReferences
+                                        ._roleIdTable(db),
+                                    referencedColumn: $$UsersTableReferences
+                                        ._roleIdTable(db)
+                                        .id,
                                   )
                                   as T;
                         }
@@ -9761,827 +10784,87 @@ class $$OrganizationsTableTableManager
                       },
                   getPrefetchedDataCallback: (items) async {
                     return [
-                      if (ingredientsRefs)
+                      if (replenishmentRequester)
                         await $_getPrefetchedData<
-                          Organization,
-                          $OrganizationsTable,
-                          Ingredient
-                        >(
-                          currentTable: table,
-                          referencedTable: $$OrganizationsTableReferences
-                              ._ingredientsRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$OrganizationsTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).ingredientsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.commissaryId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (itemsRefs)
-                        await $_getPrefetchedData<
-                          Organization,
-                          $OrganizationsTable,
-                          Item
-                        >(
-                          currentTable: table,
-                          referencedTable: $$OrganizationsTableReferences
-                              ._itemsRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$OrganizationsTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).itemsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.organizationId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (usersRefs)
-                        await $_getPrefetchedData<
-                          Organization,
-                          $OrganizationsTable,
-                          User
-                        >(
-                          currentTable: table,
-                          referencedTable: $$OrganizationsTableReferences
-                              ._usersRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$OrganizationsTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).usersRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.organizationId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (franchiseeReplenishmentRequests)
-                        await $_getPrefetchedData<
-                          Organization,
-                          $OrganizationsTable,
+                          User,
+                          $UsersTable,
                           StockReplenishmentRequest
                         >(
                           currentTable: table,
-                          referencedTable: $$OrganizationsTableReferences
-                              ._franchiseeReplenishmentRequestsTable(db),
+                          referencedTable: $$UsersTableReferences
+                              ._replenishmentRequesterTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$OrganizationsTableReferences(
+                              $$UsersTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).franchiseeReplenishmentRequests,
+                              ).replenishmentRequester,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
-                                (e) => e.franchiseeId == item.id,
+                                (e) => e.requestedBy == item.id,
                               ),
                           typedResults: items,
                         ),
-                      if (commissaryReplenishmentRequests)
+                      if (replenishmentReviewer)
                         await $_getPrefetchedData<
-                          Organization,
-                          $OrganizationsTable,
+                          User,
+                          $UsersTable,
                           StockReplenishmentRequest
                         >(
                           currentTable: table,
-                          referencedTable: $$OrganizationsTableReferences
-                              ._commissaryReplenishmentRequestsTable(db),
+                          referencedTable: $$UsersTableReferences
+                              ._replenishmentReviewerTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$OrganizationsTableReferences(
+                              $$UsersTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).commissaryReplenishmentRequests,
+                              ).replenishmentReviewer,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
-                                (e) => e.commissaryId == item.id,
+                                (e) => e.reviewedBy == item.id,
                               ),
                           typedResults: items,
                         ),
-                      if (stockChangeRequestsRefs)
+                      if (changeRequester)
                         await $_getPrefetchedData<
-                          Organization,
-                          $OrganizationsTable,
+                          User,
+                          $UsersTable,
                           StockChangeRequest
                         >(
                           currentTable: table,
-                          referencedTable: $$OrganizationsTableReferences
-                              ._stockChangeRequestsRefsTable(db),
+                          referencedTable: $$UsersTableReferences
+                              ._changeRequesterTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$OrganizationsTableReferences(
+                              $$UsersTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).stockChangeRequestsRefs,
+                              ).changeRequester,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
-                                (e) => e.franchiseeId == item.id,
+                                (e) => e.requestedBy == item.id,
                               ),
                           typedResults: items,
                         ),
-                    ];
-                  },
-                );
-              },
-        ),
-      );
-}
-
-typedef $$OrganizationsTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $OrganizationsTable,
-      Organization,
-      $$OrganizationsTableFilterComposer,
-      $$OrganizationsTableOrderingComposer,
-      $$OrganizationsTableAnnotationComposer,
-      $$OrganizationsTableCreateCompanionBuilder,
-      $$OrganizationsTableUpdateCompanionBuilder,
-      (Organization, $$OrganizationsTableReferences),
-      Organization,
-      PrefetchHooks Function({
-        bool parentCommissaryId,
-        bool ingredientsRefs,
-        bool itemsRefs,
-        bool usersRefs,
-        bool franchiseeReplenishmentRequests,
-        bool commissaryReplenishmentRequests,
-        bool stockChangeRequestsRefs,
-      })
-    >;
-typedef $$IngredientsTableCreateCompanionBuilder =
-    IngredientsCompanion Function({
-      Value<int> id,
-      required String name,
-      Value<int?> categoryId,
-      required int commissaryId,
-      Value<int> stock,
-      Value<int> spoilage,
-      Value<String> unit,
-      Value<int?> minimumStock,
-      Value<String?> description,
-      Value<DateTime> createdAt,
-      Value<DateTime> lastUpdated,
-      Value<bool> isDeleted,
-      Value<bool> isSynced,
-      Value<String?> cloudId,
-    });
-typedef $$IngredientsTableUpdateCompanionBuilder =
-    IngredientsCompanion Function({
-      Value<int> id,
-      Value<String> name,
-      Value<int?> categoryId,
-      Value<int> commissaryId,
-      Value<int> stock,
-      Value<int> spoilage,
-      Value<String> unit,
-      Value<int?> minimumStock,
-      Value<String?> description,
-      Value<DateTime> createdAt,
-      Value<DateTime> lastUpdated,
-      Value<bool> isDeleted,
-      Value<bool> isSynced,
-      Value<String?> cloudId,
-    });
-
-final class $$IngredientsTableReferences
-    extends BaseReferences<_$AppDatabase, $IngredientsTable, Ingredient> {
-  $$IngredientsTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
-      db.categories.createAlias(
-        $_aliasNameGenerator(db.ingredients.categoryId, db.categories.id),
-      );
-
-  $$CategoriesTableProcessedTableManager? get categoryId {
-    final $_column = $_itemColumn<int>('category_id');
-    if ($_column == null) return null;
-    final manager = $$CategoriesTableTableManager(
-      $_db,
-      $_db.categories,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-
-  static $OrganizationsTable _commissaryIdTable(_$AppDatabase db) =>
-      db.organizations.createAlias(
-        $_aliasNameGenerator(db.ingredients.commissaryId, db.organizations.id),
-      );
-
-  $$OrganizationsTableProcessedTableManager get commissaryId {
-    final $_column = $_itemColumn<int>('commissary_id')!;
-
-    final manager = $$OrganizationsTableTableManager(
-      $_db,
-      $_db.organizations,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_commissaryIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-
-  static MultiTypedResultKey<$RecipeIngredientsTable, List<RecipeIngredient>>
-  _recipeIngredientsRefsTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.recipeIngredients,
-        aliasName: $_aliasNameGenerator(
-          db.ingredients.id,
-          db.recipeIngredients.ingredientId,
-        ),
-      );
-
-  $$RecipeIngredientsTableProcessedTableManager get recipeIngredientsRefs {
-    final manager = $$RecipeIngredientsTableTableManager(
-      $_db,
-      $_db.recipeIngredients,
-    ).filter((f) => f.ingredientId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(
-      _recipeIngredientsRefsTable($_db),
-    );
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-}
-
-class $$IngredientsTableFilterComposer
-    extends Composer<_$AppDatabase, $IngredientsTable> {
-  $$IngredientsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get stock => $composableBuilder(
-    column: $table.stock,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get spoilage => $composableBuilder(
-    column: $table.spoilage,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get unit => $composableBuilder(
-    column: $table.unit,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get minimumStock => $composableBuilder(
-    column: $table.minimumStock,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get description => $composableBuilder(
-    column: $table.description,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
-    column: $table.lastUpdated,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isDeleted => $composableBuilder(
-    column: $table.isDeleted,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isSynced => $composableBuilder(
-    column: $table.isSynced,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get cloudId => $composableBuilder(
-    column: $table.cloudId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  $$CategoriesTableFilterComposer get categoryId {
-    final $$CategoriesTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.categoryId,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableFilterComposer(
-            $db: $db,
-            $table: $db.categories,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  $$OrganizationsTableFilterComposer get commissaryId {
-    final $$OrganizationsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.commissaryId,
-      referencedTable: $db.organizations,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$OrganizationsTableFilterComposer(
-            $db: $db,
-            $table: $db.organizations,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  Expression<bool> recipeIngredientsRefs(
-    Expression<bool> Function($$RecipeIngredientsTableFilterComposer f) f,
-  ) {
-    final $$RecipeIngredientsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.recipeIngredients,
-      getReferencedColumn: (t) => t.ingredientId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$RecipeIngredientsTableFilterComposer(
-            $db: $db,
-            $table: $db.recipeIngredients,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-}
-
-class $$IngredientsTableOrderingComposer
-    extends Composer<_$AppDatabase, $IngredientsTable> {
-  $$IngredientsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get stock => $composableBuilder(
-    column: $table.stock,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get spoilage => $composableBuilder(
-    column: $table.spoilage,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get unit => $composableBuilder(
-    column: $table.unit,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get minimumStock => $composableBuilder(
-    column: $table.minimumStock,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get description => $composableBuilder(
-    column: $table.description,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
-    column: $table.lastUpdated,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get isDeleted => $composableBuilder(
-    column: $table.isDeleted,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get isSynced => $composableBuilder(
-    column: $table.isSynced,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get cloudId => $composableBuilder(
-    column: $table.cloudId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  $$CategoriesTableOrderingComposer get categoryId {
-    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.categoryId,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableOrderingComposer(
-            $db: $db,
-            $table: $db.categories,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  $$OrganizationsTableOrderingComposer get commissaryId {
-    final $$OrganizationsTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.commissaryId,
-      referencedTable: $db.organizations,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$OrganizationsTableOrderingComposer(
-            $db: $db,
-            $table: $db.organizations,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$IngredientsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $IngredientsTable> {
-  $$IngredientsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<int> get stock =>
-      $composableBuilder(column: $table.stock, builder: (column) => column);
-
-  GeneratedColumn<int> get spoilage =>
-      $composableBuilder(column: $table.spoilage, builder: (column) => column);
-
-  GeneratedColumn<String> get unit =>
-      $composableBuilder(column: $table.unit, builder: (column) => column);
-
-  GeneratedColumn<int> get minimumStock => $composableBuilder(
-    column: $table.minimumStock,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get description => $composableBuilder(
-    column: $table.description,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
-    column: $table.lastUpdated,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<bool> get isDeleted =>
-      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
-
-  GeneratedColumn<bool> get isSynced =>
-      $composableBuilder(column: $table.isSynced, builder: (column) => column);
-
-  GeneratedColumn<String> get cloudId =>
-      $composableBuilder(column: $table.cloudId, builder: (column) => column);
-
-  $$CategoriesTableAnnotationComposer get categoryId {
-    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.categoryId,
-      referencedTable: $db.categories,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$CategoriesTableAnnotationComposer(
-            $db: $db,
-            $table: $db.categories,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  $$OrganizationsTableAnnotationComposer get commissaryId {
-    final $$OrganizationsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.commissaryId,
-      referencedTable: $db.organizations,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$OrganizationsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.organizations,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  Expression<T> recipeIngredientsRefs<T extends Object>(
-    Expression<T> Function($$RecipeIngredientsTableAnnotationComposer a) f,
-  ) {
-    final $$RecipeIngredientsTableAnnotationComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.recipeIngredients,
-          getReferencedColumn: (t) => t.ingredientId,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$RecipeIngredientsTableAnnotationComposer(
-                $db: $db,
-                $table: $db.recipeIngredients,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
-}
-
-class $$IngredientsTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $IngredientsTable,
-          Ingredient,
-          $$IngredientsTableFilterComposer,
-          $$IngredientsTableOrderingComposer,
-          $$IngredientsTableAnnotationComposer,
-          $$IngredientsTableCreateCompanionBuilder,
-          $$IngredientsTableUpdateCompanionBuilder,
-          (Ingredient, $$IngredientsTableReferences),
-          Ingredient,
-          PrefetchHooks Function({
-            bool categoryId,
-            bool commissaryId,
-            bool recipeIngredientsRefs,
-          })
-        > {
-  $$IngredientsTableTableManager(_$AppDatabase db, $IngredientsTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$IngredientsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$IngredientsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$IngredientsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<int?> categoryId = const Value.absent(),
-                Value<int> commissaryId = const Value.absent(),
-                Value<int> stock = const Value.absent(),
-                Value<int> spoilage = const Value.absent(),
-                Value<String> unit = const Value.absent(),
-                Value<int?> minimumStock = const Value.absent(),
-                Value<String?> description = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> lastUpdated = const Value.absent(),
-                Value<bool> isDeleted = const Value.absent(),
-                Value<bool> isSynced = const Value.absent(),
-                Value<String?> cloudId = const Value.absent(),
-              }) => IngredientsCompanion(
-                id: id,
-                name: name,
-                categoryId: categoryId,
-                commissaryId: commissaryId,
-                stock: stock,
-                spoilage: spoilage,
-                unit: unit,
-                minimumStock: minimumStock,
-                description: description,
-                createdAt: createdAt,
-                lastUpdated: lastUpdated,
-                isDeleted: isDeleted,
-                isSynced: isSynced,
-                cloudId: cloudId,
-              ),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required String name,
-                Value<int?> categoryId = const Value.absent(),
-                required int commissaryId,
-                Value<int> stock = const Value.absent(),
-                Value<int> spoilage = const Value.absent(),
-                Value<String> unit = const Value.absent(),
-                Value<int?> minimumStock = const Value.absent(),
-                Value<String?> description = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> lastUpdated = const Value.absent(),
-                Value<bool> isDeleted = const Value.absent(),
-                Value<bool> isSynced = const Value.absent(),
-                Value<String?> cloudId = const Value.absent(),
-              }) => IngredientsCompanion.insert(
-                id: id,
-                name: name,
-                categoryId: categoryId,
-                commissaryId: commissaryId,
-                stock: stock,
-                spoilage: spoilage,
-                unit: unit,
-                minimumStock: minimumStock,
-                description: description,
-                createdAt: createdAt,
-                lastUpdated: lastUpdated,
-                isDeleted: isDeleted,
-                isSynced: isSynced,
-                cloudId: cloudId,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable(table),
-                  $$IngredientsTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
-          prefetchHooksCallback:
-              ({
-                categoryId = false,
-                commissaryId = false,
-                recipeIngredientsRefs = false,
-              }) {
-                return PrefetchHooks(
-                  db: db,
-                  explicitlyWatchedTables: [
-                    if (recipeIngredientsRefs) db.recipeIngredients,
-                  ],
-                  addJoins:
-                      <
-                        T extends TableManagerState<
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic
-                        >
-                      >(state) {
-                        if (categoryId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.categoryId,
-                                    referencedTable:
-                                        $$IngredientsTableReferences
-                                            ._categoryIdTable(db),
-                                    referencedColumn:
-                                        $$IngredientsTableReferences
-                                            ._categoryIdTable(db)
-                                            .id,
-                                  )
-                                  as T;
-                        }
-                        if (commissaryId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.commissaryId,
-                                    referencedTable:
-                                        $$IngredientsTableReferences
-                                            ._commissaryIdTable(db),
-                                    referencedColumn:
-                                        $$IngredientsTableReferences
-                                            ._commissaryIdTable(db)
-                                            .id,
-                                  )
-                                  as T;
-                        }
-
-                        return state;
-                      },
-                  getPrefetchedDataCallback: (items) async {
-                    return [
-                      if (recipeIngredientsRefs)
+                      if (changeReviewer)
                         await $_getPrefetchedData<
-                          Ingredient,
-                          $IngredientsTable,
-                          RecipeIngredient
+                          User,
+                          $UsersTable,
+                          StockChangeRequest
                         >(
                           currentTable: table,
-                          referencedTable: $$IngredientsTableReferences
-                              ._recipeIngredientsRefsTable(db),
+                          referencedTable: $$UsersTableReferences
+                              ._changeReviewerTable(db),
                           managerFromTypedResult: (p0) =>
-                              $$IngredientsTableReferences(
+                              $$UsersTableReferences(
                                 db,
                                 table,
                                 p0,
-                              ).recipeIngredientsRefs,
+                              ).changeReviewer,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
-                                (e) => e.ingredientId == item.id,
+                                (e) => e.reviewedBy == item.id,
                               ),
                           typedResults: items,
                         ),
@@ -10593,22 +10876,25 @@ class $$IngredientsTableTableManager
       );
 }
 
-typedef $$IngredientsTableProcessedTableManager =
+typedef $$UsersTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $IngredientsTable,
-      Ingredient,
-      $$IngredientsTableFilterComposer,
-      $$IngredientsTableOrderingComposer,
-      $$IngredientsTableAnnotationComposer,
-      $$IngredientsTableCreateCompanionBuilder,
-      $$IngredientsTableUpdateCompanionBuilder,
-      (Ingredient, $$IngredientsTableReferences),
-      Ingredient,
+      $UsersTable,
+      User,
+      $$UsersTableFilterComposer,
+      $$UsersTableOrderingComposer,
+      $$UsersTableAnnotationComposer,
+      $$UsersTableCreateCompanionBuilder,
+      $$UsersTableUpdateCompanionBuilder,
+      (User, $$UsersTableReferences),
+      User,
       PrefetchHooks Function({
-        bool categoryId,
-        bool commissaryId,
-        bool recipeIngredientsRefs,
+        bool organizationId,
+        bool roleId,
+        bool replenishmentRequester,
+        bool replenishmentReviewer,
+        bool changeRequester,
+        bool changeReviewer,
       })
     >;
 typedef $$ItemsTableCreateCompanionBuilder =
@@ -11674,6 +11960,700 @@ typedef $$ItemsTableProcessedTableManager =
         bool stockChangeRequestsRefs,
       })
     >;
+typedef $$IngredientsTableCreateCompanionBuilder =
+    IngredientsCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<int?> categoryId,
+      required int commissaryId,
+      Value<int> stock,
+      Value<int> spoilage,
+      Value<String> unit,
+      Value<int?> minimumStock,
+      Value<String?> description,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastUpdated,
+      Value<bool> isDeleted,
+      Value<bool> isSynced,
+      Value<String?> cloudId,
+    });
+typedef $$IngredientsTableUpdateCompanionBuilder =
+    IngredientsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<int?> categoryId,
+      Value<int> commissaryId,
+      Value<int> stock,
+      Value<int> spoilage,
+      Value<String> unit,
+      Value<int?> minimumStock,
+      Value<String?> description,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastUpdated,
+      Value<bool> isDeleted,
+      Value<bool> isSynced,
+      Value<String?> cloudId,
+    });
+
+final class $$IngredientsTableReferences
+    extends BaseReferences<_$AppDatabase, $IngredientsTable, Ingredient> {
+  $$IngredientsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias(
+        $_aliasNameGenerator(db.ingredients.categoryId, db.categories.id),
+      );
+
+  $$CategoriesTableProcessedTableManager? get categoryId {
+    final $_column = $_itemColumn<int>('category_id');
+    if ($_column == null) return null;
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $OrganizationsTable _commissaryIdTable(_$AppDatabase db) =>
+      db.organizations.createAlias(
+        $_aliasNameGenerator(db.ingredients.commissaryId, db.organizations.id),
+      );
+
+  $$OrganizationsTableProcessedTableManager get commissaryId {
+    final $_column = $_itemColumn<int>('commissary_id')!;
+
+    final manager = $$OrganizationsTableTableManager(
+      $_db,
+      $_db.organizations,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_commissaryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$RecipeIngredientsTable, List<RecipeIngredient>>
+  _recipeIngredientsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.recipeIngredients,
+        aliasName: $_aliasNameGenerator(
+          db.ingredients.id,
+          db.recipeIngredients.ingredientId,
+        ),
+      );
+
+  $$RecipeIngredientsTableProcessedTableManager get recipeIngredientsRefs {
+    final manager = $$RecipeIngredientsTableTableManager(
+      $_db,
+      $_db.recipeIngredients,
+    ).filter((f) => f.ingredientId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _recipeIngredientsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$IngredientsTableFilterComposer
+    extends Composer<_$AppDatabase, $IngredientsTable> {
+  $$IngredientsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get stock => $composableBuilder(
+    column: $table.stock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get spoilage => $composableBuilder(
+    column: $table.spoilage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minimumStock => $composableBuilder(
+    column: $table.minimumStock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CategoriesTableFilterComposer get categoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$OrganizationsTableFilterComposer get commissaryId {
+    final $$OrganizationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.commissaryId,
+      referencedTable: $db.organizations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$OrganizationsTableFilterComposer(
+            $db: $db,
+            $table: $db.organizations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> recipeIngredientsRefs(
+    Expression<bool> Function($$RecipeIngredientsTableFilterComposer f) f,
+  ) {
+    final $$RecipeIngredientsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.recipeIngredients,
+      getReferencedColumn: (t) => t.ingredientId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecipeIngredientsTableFilterComposer(
+            $db: $db,
+            $table: $db.recipeIngredients,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$IngredientsTableOrderingComposer
+    extends Composer<_$AppDatabase, $IngredientsTable> {
+  $$IngredientsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get stock => $composableBuilder(
+    column: $table.stock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get spoilage => $composableBuilder(
+    column: $table.spoilage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minimumStock => $composableBuilder(
+    column: $table.minimumStock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CategoriesTableOrderingComposer get categoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$OrganizationsTableOrderingComposer get commissaryId {
+    final $$OrganizationsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.commissaryId,
+      referencedTable: $db.organizations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$OrganizationsTableOrderingComposer(
+            $db: $db,
+            $table: $db.organizations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$IngredientsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $IngredientsTable> {
+  $$IngredientsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get stock =>
+      $composableBuilder(column: $table.stock, builder: (column) => column);
+
+  GeneratedColumn<int> get spoilage =>
+      $composableBuilder(column: $table.spoilage, builder: (column) => column);
+
+  GeneratedColumn<String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
+
+  GeneratedColumn<int> get minimumStock => $composableBuilder(
+    column: $table.minimumStock,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
+
+  $$CategoriesTableAnnotationComposer get categoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$OrganizationsTableAnnotationComposer get commissaryId {
+    final $$OrganizationsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.commissaryId,
+      referencedTable: $db.organizations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$OrganizationsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.organizations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> recipeIngredientsRefs<T extends Object>(
+    Expression<T> Function($$RecipeIngredientsTableAnnotationComposer a) f,
+  ) {
+    final $$RecipeIngredientsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.recipeIngredients,
+          getReferencedColumn: (t) => t.ingredientId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$RecipeIngredientsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.recipeIngredients,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$IngredientsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $IngredientsTable,
+          Ingredient,
+          $$IngredientsTableFilterComposer,
+          $$IngredientsTableOrderingComposer,
+          $$IngredientsTableAnnotationComposer,
+          $$IngredientsTableCreateCompanionBuilder,
+          $$IngredientsTableUpdateCompanionBuilder,
+          (Ingredient, $$IngredientsTableReferences),
+          Ingredient,
+          PrefetchHooks Function({
+            bool categoryId,
+            bool commissaryId,
+            bool recipeIngredientsRefs,
+          })
+        > {
+  $$IngredientsTableTableManager(_$AppDatabase db, $IngredientsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$IngredientsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$IngredientsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$IngredientsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int?> categoryId = const Value.absent(),
+                Value<int> commissaryId = const Value.absent(),
+                Value<int> stock = const Value.absent(),
+                Value<int> spoilage = const Value.absent(),
+                Value<String> unit = const Value.absent(),
+                Value<int?> minimumStock = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+              }) => IngredientsCompanion(
+                id: id,
+                name: name,
+                categoryId: categoryId,
+                commissaryId: commissaryId,
+                stock: stock,
+                spoilage: spoilage,
+                unit: unit,
+                minimumStock: minimumStock,
+                description: description,
+                createdAt: createdAt,
+                lastUpdated: lastUpdated,
+                isDeleted: isDeleted,
+                isSynced: isSynced,
+                cloudId: cloudId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<int?> categoryId = const Value.absent(),
+                required int commissaryId,
+                Value<int> stock = const Value.absent(),
+                Value<int> spoilage = const Value.absent(),
+                Value<String> unit = const Value.absent(),
+                Value<int?> minimumStock = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+              }) => IngredientsCompanion.insert(
+                id: id,
+                name: name,
+                categoryId: categoryId,
+                commissaryId: commissaryId,
+                stock: stock,
+                spoilage: spoilage,
+                unit: unit,
+                minimumStock: minimumStock,
+                description: description,
+                createdAt: createdAt,
+                lastUpdated: lastUpdated,
+                isDeleted: isDeleted,
+                isSynced: isSynced,
+                cloudId: cloudId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$IngredientsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                categoryId = false,
+                commissaryId = false,
+                recipeIngredientsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (recipeIngredientsRefs) db.recipeIngredients,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (categoryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.categoryId,
+                                    referencedTable:
+                                        $$IngredientsTableReferences
+                                            ._categoryIdTable(db),
+                                    referencedColumn:
+                                        $$IngredientsTableReferences
+                                            ._categoryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (commissaryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.commissaryId,
+                                    referencedTable:
+                                        $$IngredientsTableReferences
+                                            ._commissaryIdTable(db),
+                                    referencedColumn:
+                                        $$IngredientsTableReferences
+                                            ._commissaryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (recipeIngredientsRefs)
+                        await $_getPrefetchedData<
+                          Ingredient,
+                          $IngredientsTable,
+                          RecipeIngredient
+                        >(
+                          currentTable: table,
+                          referencedTable: $$IngredientsTableReferences
+                              ._recipeIngredientsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$IngredientsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).recipeIngredientsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.ingredientId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$IngredientsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $IngredientsTable,
+      Ingredient,
+      $$IngredientsTableFilterComposer,
+      $$IngredientsTableOrderingComposer,
+      $$IngredientsTableAnnotationComposer,
+      $$IngredientsTableCreateCompanionBuilder,
+      $$IngredientsTableUpdateCompanionBuilder,
+      (Ingredient, $$IngredientsTableReferences),
+      Ingredient,
+      PrefetchHooks Function({
+        bool categoryId,
+        bool commissaryId,
+        bool recipeIngredientsRefs,
+      })
+    >;
 typedef $$RecipeIngredientsTableCreateCompanionBuilder =
     RecipeIngredientsCompanion Function({
       Value<int> id,
@@ -12212,986 +13192,6 @@ typedef $$RecipeIngredientsTableProcessedTableManager =
       (RecipeIngredient, $$RecipeIngredientsTableReferences),
       RecipeIngredient,
       PrefetchHooks Function({bool itemId, bool ingredientId})
-    >;
-typedef $$UsersTableCreateCompanionBuilder =
-    UsersCompanion Function({
-      Value<int> id,
-      required String username,
-      required String email,
-      required String password,
-      Value<String?> phone,
-      required int organizationId,
-      required int roleId,
-      Value<String?> fullName,
-      Value<bool> isActive,
-      Value<DateTime> createdAt,
-      Value<DateTime> lastUpdated,
-      Value<bool> isSynced,
-      Value<String?> cloudId,
-    });
-typedef $$UsersTableUpdateCompanionBuilder =
-    UsersCompanion Function({
-      Value<int> id,
-      Value<String> username,
-      Value<String> email,
-      Value<String> password,
-      Value<String?> phone,
-      Value<int> organizationId,
-      Value<int> roleId,
-      Value<String?> fullName,
-      Value<bool> isActive,
-      Value<DateTime> createdAt,
-      Value<DateTime> lastUpdated,
-      Value<bool> isSynced,
-      Value<String?> cloudId,
-    });
-
-final class $$UsersTableReferences
-    extends BaseReferences<_$AppDatabase, $UsersTable, User> {
-  $$UsersTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $OrganizationsTable _organizationIdTable(_$AppDatabase db) =>
-      db.organizations.createAlias(
-        $_aliasNameGenerator(db.users.organizationId, db.organizations.id),
-      );
-
-  $$OrganizationsTableProcessedTableManager get organizationId {
-    final $_column = $_itemColumn<int>('organization_id')!;
-
-    final manager = $$OrganizationsTableTableManager(
-      $_db,
-      $_db.organizations,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_organizationIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-
-  static $RolesTable _roleIdTable(_$AppDatabase db) =>
-      db.roles.createAlias($_aliasNameGenerator(db.users.roleId, db.roles.id));
-
-  $$RolesTableProcessedTableManager get roleId {
-    final $_column = $_itemColumn<int>('role_id')!;
-
-    final manager = $$RolesTableTableManager(
-      $_db,
-      $_db.roles,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_roleIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-
-  static MultiTypedResultKey<
-    $StockReplenishmentRequestsTable,
-    List<StockReplenishmentRequest>
-  >
-  _replenishmentRequesterTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.stockReplenishmentRequests,
-        aliasName: $_aliasNameGenerator(
-          db.users.id,
-          db.stockReplenishmentRequests.requestedBy,
-        ),
-      );
-
-  $$StockReplenishmentRequestsTableProcessedTableManager
-  get replenishmentRequester {
-    final manager = $$StockReplenishmentRequestsTableTableManager(
-      $_db,
-      $_db.stockReplenishmentRequests,
-    ).filter((f) => f.requestedBy.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(
-      _replenishmentRequesterTable($_db),
-    );
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<
-    $StockReplenishmentRequestsTable,
-    List<StockReplenishmentRequest>
-  >
-  _replenishmentReviewerTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.stockReplenishmentRequests,
-        aliasName: $_aliasNameGenerator(
-          db.users.id,
-          db.stockReplenishmentRequests.reviewedBy,
-        ),
-      );
-
-  $$StockReplenishmentRequestsTableProcessedTableManager
-  get replenishmentReviewer {
-    final manager = $$StockReplenishmentRequestsTableTableManager(
-      $_db,
-      $_db.stockReplenishmentRequests,
-    ).filter((f) => f.reviewedBy.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(
-      _replenishmentReviewerTable($_db),
-    );
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<
-    $StockChangeRequestsTable,
-    List<StockChangeRequest>
-  >
-  _changeRequesterTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.stockChangeRequests,
-    aliasName: $_aliasNameGenerator(
-      db.users.id,
-      db.stockChangeRequests.requestedBy,
-    ),
-  );
-
-  $$StockChangeRequestsTableProcessedTableManager get changeRequester {
-    final manager = $$StockChangeRequestsTableTableManager(
-      $_db,
-      $_db.stockChangeRequests,
-    ).filter((f) => f.requestedBy.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_changeRequesterTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<
-    $StockChangeRequestsTable,
-    List<StockChangeRequest>
-  >
-  _changeReviewerTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.stockChangeRequests,
-    aliasName: $_aliasNameGenerator(
-      db.users.id,
-      db.stockChangeRequests.reviewedBy,
-    ),
-  );
-
-  $$StockChangeRequestsTableProcessedTableManager get changeReviewer {
-    final manager = $$StockChangeRequestsTableTableManager(
-      $_db,
-      $_db.stockChangeRequests,
-    ).filter((f) => f.reviewedBy.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_changeReviewerTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-}
-
-class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
-  $$UsersTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get username => $composableBuilder(
-    column: $table.username,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get email => $composableBuilder(
-    column: $table.email,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get password => $composableBuilder(
-    column: $table.password,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get phone => $composableBuilder(
-    column: $table.phone,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get fullName => $composableBuilder(
-    column: $table.fullName,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isActive => $composableBuilder(
-    column: $table.isActive,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
-    column: $table.lastUpdated,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isSynced => $composableBuilder(
-    column: $table.isSynced,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get cloudId => $composableBuilder(
-    column: $table.cloudId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  $$OrganizationsTableFilterComposer get organizationId {
-    final $$OrganizationsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.organizationId,
-      referencedTable: $db.organizations,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$OrganizationsTableFilterComposer(
-            $db: $db,
-            $table: $db.organizations,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  $$RolesTableFilterComposer get roleId {
-    final $$RolesTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.roleId,
-      referencedTable: $db.roles,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$RolesTableFilterComposer(
-            $db: $db,
-            $table: $db.roles,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  Expression<bool> replenishmentRequester(
-    Expression<bool> Function($$StockReplenishmentRequestsTableFilterComposer f)
-    f,
-  ) {
-    final $$StockReplenishmentRequestsTableFilterComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.stockReplenishmentRequests,
-          getReferencedColumn: (t) => t.requestedBy,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$StockReplenishmentRequestsTableFilterComposer(
-                $db: $db,
-                $table: $db.stockReplenishmentRequests,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
-
-  Expression<bool> replenishmentReviewer(
-    Expression<bool> Function($$StockReplenishmentRequestsTableFilterComposer f)
-    f,
-  ) {
-    final $$StockReplenishmentRequestsTableFilterComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.stockReplenishmentRequests,
-          getReferencedColumn: (t) => t.reviewedBy,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$StockReplenishmentRequestsTableFilterComposer(
-                $db: $db,
-                $table: $db.stockReplenishmentRequests,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
-
-  Expression<bool> changeRequester(
-    Expression<bool> Function($$StockChangeRequestsTableFilterComposer f) f,
-  ) {
-    final $$StockChangeRequestsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.stockChangeRequests,
-      getReferencedColumn: (t) => t.requestedBy,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$StockChangeRequestsTableFilterComposer(
-            $db: $db,
-            $table: $db.stockChangeRequests,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<bool> changeReviewer(
-    Expression<bool> Function($$StockChangeRequestsTableFilterComposer f) f,
-  ) {
-    final $$StockChangeRequestsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.stockChangeRequests,
-      getReferencedColumn: (t) => t.reviewedBy,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$StockChangeRequestsTableFilterComposer(
-            $db: $db,
-            $table: $db.stockChangeRequests,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-}
-
-class $$UsersTableOrderingComposer
-    extends Composer<_$AppDatabase, $UsersTable> {
-  $$UsersTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get username => $composableBuilder(
-    column: $table.username,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get email => $composableBuilder(
-    column: $table.email,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get password => $composableBuilder(
-    column: $table.password,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get phone => $composableBuilder(
-    column: $table.phone,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get fullName => $composableBuilder(
-    column: $table.fullName,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get isActive => $composableBuilder(
-    column: $table.isActive,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
-    column: $table.lastUpdated,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get isSynced => $composableBuilder(
-    column: $table.isSynced,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get cloudId => $composableBuilder(
-    column: $table.cloudId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  $$OrganizationsTableOrderingComposer get organizationId {
-    final $$OrganizationsTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.organizationId,
-      referencedTable: $db.organizations,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$OrganizationsTableOrderingComposer(
-            $db: $db,
-            $table: $db.organizations,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  $$RolesTableOrderingComposer get roleId {
-    final $$RolesTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.roleId,
-      referencedTable: $db.roles,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$RolesTableOrderingComposer(
-            $db: $db,
-            $table: $db.roles,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$UsersTableAnnotationComposer
-    extends Composer<_$AppDatabase, $UsersTable> {
-  $$UsersTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get username =>
-      $composableBuilder(column: $table.username, builder: (column) => column);
-
-  GeneratedColumn<String> get email =>
-      $composableBuilder(column: $table.email, builder: (column) => column);
-
-  GeneratedColumn<String> get password =>
-      $composableBuilder(column: $table.password, builder: (column) => column);
-
-  GeneratedColumn<String> get phone =>
-      $composableBuilder(column: $table.phone, builder: (column) => column);
-
-  GeneratedColumn<String> get fullName =>
-      $composableBuilder(column: $table.fullName, builder: (column) => column);
-
-  GeneratedColumn<bool> get isActive =>
-      $composableBuilder(column: $table.isActive, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
-    column: $table.lastUpdated,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<bool> get isSynced =>
-      $composableBuilder(column: $table.isSynced, builder: (column) => column);
-
-  GeneratedColumn<String> get cloudId =>
-      $composableBuilder(column: $table.cloudId, builder: (column) => column);
-
-  $$OrganizationsTableAnnotationComposer get organizationId {
-    final $$OrganizationsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.organizationId,
-      referencedTable: $db.organizations,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$OrganizationsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.organizations,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  $$RolesTableAnnotationComposer get roleId {
-    final $$RolesTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.roleId,
-      referencedTable: $db.roles,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$RolesTableAnnotationComposer(
-            $db: $db,
-            $table: $db.roles,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-
-  Expression<T> replenishmentRequester<T extends Object>(
-    Expression<T> Function(
-      $$StockReplenishmentRequestsTableAnnotationComposer a,
-    )
-    f,
-  ) {
-    final $$StockReplenishmentRequestsTableAnnotationComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.stockReplenishmentRequests,
-          getReferencedColumn: (t) => t.requestedBy,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$StockReplenishmentRequestsTableAnnotationComposer(
-                $db: $db,
-                $table: $db.stockReplenishmentRequests,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
-
-  Expression<T> replenishmentReviewer<T extends Object>(
-    Expression<T> Function(
-      $$StockReplenishmentRequestsTableAnnotationComposer a,
-    )
-    f,
-  ) {
-    final $$StockReplenishmentRequestsTableAnnotationComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.stockReplenishmentRequests,
-          getReferencedColumn: (t) => t.reviewedBy,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$StockReplenishmentRequestsTableAnnotationComposer(
-                $db: $db,
-                $table: $db.stockReplenishmentRequests,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
-
-  Expression<T> changeRequester<T extends Object>(
-    Expression<T> Function($$StockChangeRequestsTableAnnotationComposer a) f,
-  ) {
-    final $$StockChangeRequestsTableAnnotationComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.stockChangeRequests,
-          getReferencedColumn: (t) => t.requestedBy,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$StockChangeRequestsTableAnnotationComposer(
-                $db: $db,
-                $table: $db.stockChangeRequests,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
-
-  Expression<T> changeReviewer<T extends Object>(
-    Expression<T> Function($$StockChangeRequestsTableAnnotationComposer a) f,
-  ) {
-    final $$StockChangeRequestsTableAnnotationComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.id,
-          referencedTable: $db.stockChangeRequests,
-          getReferencedColumn: (t) => t.reviewedBy,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$StockChangeRequestsTableAnnotationComposer(
-                $db: $db,
-                $table: $db.stockChangeRequests,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
-}
-
-class $$UsersTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $UsersTable,
-          User,
-          $$UsersTableFilterComposer,
-          $$UsersTableOrderingComposer,
-          $$UsersTableAnnotationComposer,
-          $$UsersTableCreateCompanionBuilder,
-          $$UsersTableUpdateCompanionBuilder,
-          (User, $$UsersTableReferences),
-          User,
-          PrefetchHooks Function({
-            bool organizationId,
-            bool roleId,
-            bool replenishmentRequester,
-            bool replenishmentReviewer,
-            bool changeRequester,
-            bool changeReviewer,
-          })
-        > {
-  $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$UsersTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$UsersTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$UsersTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> username = const Value.absent(),
-                Value<String> email = const Value.absent(),
-                Value<String> password = const Value.absent(),
-                Value<String?> phone = const Value.absent(),
-                Value<int> organizationId = const Value.absent(),
-                Value<int> roleId = const Value.absent(),
-                Value<String?> fullName = const Value.absent(),
-                Value<bool> isActive = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> lastUpdated = const Value.absent(),
-                Value<bool> isSynced = const Value.absent(),
-                Value<String?> cloudId = const Value.absent(),
-              }) => UsersCompanion(
-                id: id,
-                username: username,
-                email: email,
-                password: password,
-                phone: phone,
-                organizationId: organizationId,
-                roleId: roleId,
-                fullName: fullName,
-                isActive: isActive,
-                createdAt: createdAt,
-                lastUpdated: lastUpdated,
-                isSynced: isSynced,
-                cloudId: cloudId,
-              ),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required String username,
-                required String email,
-                required String password,
-                Value<String?> phone = const Value.absent(),
-                required int organizationId,
-                required int roleId,
-                Value<String?> fullName = const Value.absent(),
-                Value<bool> isActive = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> lastUpdated = const Value.absent(),
-                Value<bool> isSynced = const Value.absent(),
-                Value<String?> cloudId = const Value.absent(),
-              }) => UsersCompanion.insert(
-                id: id,
-                username: username,
-                email: email,
-                password: password,
-                phone: phone,
-                organizationId: organizationId,
-                roleId: roleId,
-                fullName: fullName,
-                isActive: isActive,
-                createdAt: createdAt,
-                lastUpdated: lastUpdated,
-                isSynced: isSynced,
-                cloudId: cloudId,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) =>
-                    (e.readTable(table), $$UsersTableReferences(db, table, e)),
-              )
-              .toList(),
-          prefetchHooksCallback:
-              ({
-                organizationId = false,
-                roleId = false,
-                replenishmentRequester = false,
-                replenishmentReviewer = false,
-                changeRequester = false,
-                changeReviewer = false,
-              }) {
-                return PrefetchHooks(
-                  db: db,
-                  explicitlyWatchedTables: [
-                    if (replenishmentRequester) db.stockReplenishmentRequests,
-                    if (replenishmentReviewer) db.stockReplenishmentRequests,
-                    if (changeRequester) db.stockChangeRequests,
-                    if (changeReviewer) db.stockChangeRequests,
-                  ],
-                  addJoins:
-                      <
-                        T extends TableManagerState<
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic,
-                          dynamic
-                        >
-                      >(state) {
-                        if (organizationId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.organizationId,
-                                    referencedTable: $$UsersTableReferences
-                                        ._organizationIdTable(db),
-                                    referencedColumn: $$UsersTableReferences
-                                        ._organizationIdTable(db)
-                                        .id,
-                                  )
-                                  as T;
-                        }
-                        if (roleId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.roleId,
-                                    referencedTable: $$UsersTableReferences
-                                        ._roleIdTable(db),
-                                    referencedColumn: $$UsersTableReferences
-                                        ._roleIdTable(db)
-                                        .id,
-                                  )
-                                  as T;
-                        }
-
-                        return state;
-                      },
-                  getPrefetchedDataCallback: (items) async {
-                    return [
-                      if (replenishmentRequester)
-                        await $_getPrefetchedData<
-                          User,
-                          $UsersTable,
-                          StockReplenishmentRequest
-                        >(
-                          currentTable: table,
-                          referencedTable: $$UsersTableReferences
-                              ._replenishmentRequesterTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$UsersTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).replenishmentRequester,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.requestedBy == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (replenishmentReviewer)
-                        await $_getPrefetchedData<
-                          User,
-                          $UsersTable,
-                          StockReplenishmentRequest
-                        >(
-                          currentTable: table,
-                          referencedTable: $$UsersTableReferences
-                              ._replenishmentReviewerTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$UsersTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).replenishmentReviewer,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.reviewedBy == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (changeRequester)
-                        await $_getPrefetchedData<
-                          User,
-                          $UsersTable,
-                          StockChangeRequest
-                        >(
-                          currentTable: table,
-                          referencedTable: $$UsersTableReferences
-                              ._changeRequesterTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$UsersTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).changeRequester,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.requestedBy == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (changeReviewer)
-                        await $_getPrefetchedData<
-                          User,
-                          $UsersTable,
-                          StockChangeRequest
-                        >(
-                          currentTable: table,
-                          referencedTable: $$UsersTableReferences
-                              ._changeReviewerTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$UsersTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).changeReviewer,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.reviewedBy == item.id,
-                              ),
-                          typedResults: items,
-                        ),
-                    ];
-                  },
-                );
-              },
-        ),
-      );
-}
-
-typedef $$UsersTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $UsersTable,
-      User,
-      $$UsersTableFilterComposer,
-      $$UsersTableOrderingComposer,
-      $$UsersTableAnnotationComposer,
-      $$UsersTableCreateCompanionBuilder,
-      $$UsersTableUpdateCompanionBuilder,
-      (User, $$UsersTableReferences),
-      User,
-      PrefetchHooks Function({
-        bool organizationId,
-        bool roleId,
-        bool replenishmentRequester,
-        bool replenishmentReviewer,
-        bool changeRequester,
-        bool changeReviewer,
-      })
     >;
 typedef $$StockReplenishmentRequestsTableCreateCompanionBuilder =
     StockReplenishmentRequestsCompanion Function({
@@ -15081,20 +15081,20 @@ typedef $$StockChangeRequestsTableProcessedTableManager =
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$OrganizationsTableTableManager get organizations =>
+      $$OrganizationsTableTableManager(_db, _db.organizations);
   $$CategoriesTableTableManager get categories =>
       $$CategoriesTableTableManager(_db, _db.categories);
   $$RolesTableTableManager get roles =>
       $$RolesTableTableManager(_db, _db.roles);
-  $$OrganizationsTableTableManager get organizations =>
-      $$OrganizationsTableTableManager(_db, _db.organizations);
-  $$IngredientsTableTableManager get ingredients =>
-      $$IngredientsTableTableManager(_db, _db.ingredients);
-  $$ItemsTableTableManager get items =>
-      $$ItemsTableTableManager(_db, _db.items);
-  $$RecipeIngredientsTableTableManager get recipeIngredients =>
-      $$RecipeIngredientsTableTableManager(_db, _db.recipeIngredients);
   $$UsersTableTableManager get users =>
       $$UsersTableTableManager(_db, _db.users);
+  $$ItemsTableTableManager get items =>
+      $$ItemsTableTableManager(_db, _db.items);
+  $$IngredientsTableTableManager get ingredients =>
+      $$IngredientsTableTableManager(_db, _db.ingredients);
+  $$RecipeIngredientsTableTableManager get recipeIngredients =>
+      $$RecipeIngredientsTableTableManager(_db, _db.recipeIngredients);
   $$StockReplenishmentRequestsTableTableManager
   get stockReplenishmentRequests =>
       $$StockReplenishmentRequestsTableTableManager(
