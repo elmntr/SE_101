@@ -191,12 +191,12 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
     } catch (e) {
-      print('❌ Error creating change request: $e');
+      print('Error creating change request: $e');
       rethrow;
     }
   }
 
-  /// ✅ Update draft change request (employee editing)
+  /// Update draft change request (employee editing)
   Future<bool> updateDraftChangeRequest({
     required int requestId,
     int? quantity,
@@ -206,35 +206,29 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       // Only allow editing drafts
       final request = await getChangeRequestById(requestId);
       if (request == null || request.status != 'draft') {
-        print('⚠️ Can only edit draft requests');
+        print('Can only edit draft requests');
         return false;
       }
-      
-      final updates = StockChangeRequestsCompanion(
+
+      final companion = StockChangeRequestsCompanion(
+        quantity: quantity != null ? Value(quantity) : const Value.absent(),
+        reason: reason != null ? Value(reason) : const Value.absent(),
         lastUpdated: Value(DateTime.now()),
-        isSynced: Value(false),
+        isSynced: const Value(false),
       );
-      
-      if (quantity != null) {
-        updates.copyWith(quantity: Value(quantity));
-      }
-      
-      if (reason != null) {
-        updates.copyWith(reason: Value(reason));
-      }
-      
+
       final result = await (update(stockChangeRequests)
         ..where((t) => t.id.equals(requestId)))
-        .write(updates);
-      
+        .write(companion);
+
       return result > 0;
     } catch (e) {
-      print('❌ Error updating draft change request: $e');
+      print('Error updating draft change request: $e');
       return false;
     }
   }
 
-  /// ✅ Submit change request (employee submits for review)
+  /// Submit change request (employee submits for review)
   Future<bool> submitChangeRequest(int requestId) async {
     try {
       // Only allow submitting drafts
