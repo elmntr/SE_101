@@ -4,10 +4,11 @@ import '../app_database.dart';
 import '../tables/items.dart';
 import '../tables/categories.dart';
 import '../models/item_with_category.dart';
+import '../tables/organizations.dart';
 
 part 'items_dao.g.dart';
 
-@DriftAccessor(tables: [Items, Categories])
+@DriftAccessor(tables: [Items, Categories, Organizations])
 class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   ItemsDao(AppDatabase db) : super(db);
 
@@ -212,26 +213,40 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
 
   /// ✅ Insert a new item with error handling
   Future<int> insertItem({
-    required String name, 
-    int stock = 0,
-    int? categoryId,
-    String? cloudId,
-  }) async {
-    try {
-      return await into(items).insert(
-        ItemsCompanion.insert(
-          name: name,
-          categoryId: Value(categoryId),
-          stock: Value(stock),
-          isSynced: Value(false),
-          cloudId: Value(cloudId),
-        ),
-      );
-    } catch (e) {
-      print('❌ Error inserting item: $e');
-      rethrow;
-    }
+  required String name,
+  required int organizationId, // ✅ NEW - Required
+  int stock = 0,
+  int? categoryId,
+  int? masterItemId, // ✅ NEW - For franchisee items
+  double? price, // ✅ NEW - Franchisee's selling price
+  double? costPrice, // ✅ NEW - Cost from commissary
+  String? unit, // ✅ NEW - Unit of measurement
+  int? minimumStock, // ✅ NEW - Low stock threshold
+  String? description, // ✅ NEW - Item description
+  String? cloudId,
+}) async {
+  try {
+    return await into(items).insert(
+      ItemsCompanion.insert(
+        name: name,
+        organizationId: organizationId, // ✅ NEW
+        categoryId: Value(categoryId),
+        masterItemId: Value(masterItemId), // ✅ NEW
+        stock: Value(stock),
+        price: Value(price), // ✅ NEW
+        costPrice: Value(costPrice), // ✅ NEW
+        unit: Value(unit ?? 'piece'), // ✅ NEW with default
+        minimumStock: Value(minimumStock), // ✅ NEW
+        description: Value(description), // ✅ NEW
+        isSynced: Value(false),
+        cloudId: Value(cloudId),
+      ),
+    );
+  } catch (e) {
+    print('❌ Error inserting item: $e');
+    rethrow;
   }
+}
 
   /// ✅ Batch insert for efficiency
   Future<void> insertItems(List<ItemsCompanion> itemsList) async {
@@ -270,6 +285,60 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       return null;
     }
   }
+  Future<List<Item>> getItemsByOrganization(
+  int organizationId, {
+  int? limit,
+  int offset = 0,
+}) async {
+  try {
+    final query = select(items)
+      ..where((t) => 
+        t.organizationId.equals(organizationId) &
+        t.isDeleted.equals(false))
+      ..orderBy([(t) => OrderingTerm(expression: t.name)]);
+    
+    if (limit != null) {
+      query.limit(limit, offset: offset);
+    }
+    
+    return await query.get();
+  } catch (e) {
+    print('❌ Error fetching items by organization: $e');
+    return [];
+  }
+}
+
+/// ✅ Get franchisee items (items with masterItemId)
+Future<List<Item>> getFranchiseeItems(int franchiseeId) async {
+  try {
+    return await (select(items)
+      ..where((t) => 
+        t.organizationId.equals(franchiseeId) &
+        t.masterItemId.isNotNull() &
+        t.isDeleted.equals(false))
+      ..orderBy([(t) => OrderingTerm(expression: t.name)]))
+      .get();
+  } catch (e) {
+    print('❌ Error fetching franchisee items: $e');
+    return [];
+  }
+}
+
+/// ✅ Get commissary master items (items without masterItemId)
+Future<List<Item>> getCommissaryMasterItems(int commissaryId) async {
+  try {
+    return await (select(items)
+      ..where((t) => 
+        t.organizationId.equals(commissaryId) &
+        t.masterItemId.isNull() &
+        t.isDeleted.equals(false))
+      ..orderBy([(t) => OrderingTerm(expression: t.name)]))
+      .get();
+  } catch (e) {
+    print('❌ Error fetching commissary master items: $e');
+    return [];
+  }
+}
 
   /// ✅ Assign category to item
   Future<bool> assignCategory(int itemId, int? categoryId) async {
@@ -471,64 +540,85 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   }
 
   /// ✅ Batch upsert from cloud
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudItems) async {
-    try {
-      await db.transaction(() async {
-        for (final cloudItem in cloudItems) {
-          await upsertFromCloud(
-            id: cloudItem['local_id'],
-            name: cloudItem['name'],
-            stock: cloudItem['stock'],
-            sold: cloudItem['sold'] ?? 0,
-            spoilage: cloudItem['spoilage'] ?? 0,
-            categoryId: cloudItem['category_id'],
-            createdAt: DateTime.parse(cloudItem['created_at']),
-            lastUpdated: DateTime.parse(cloudItem['last_updated']),
-            isDeleted: cloudItem['is_deleted'] ?? false,
-            cloudId: cloudItem['cloud_id'],
-          );
-        }
-      });
-    } catch (e) {
-      print('❌ Error batch upserting from cloud: $e');
-      rethrow;
-    }
+ /// ✅ FIXED: Batch upsert from cloud with ALL new columns
+Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudItems) async {
+  try {
+    await db.transaction(() async {
+      for (final cloudItem in cloudItems) {
+        await upsertFromCloud(
+          id: cloudItem['local_id'],
+          name: cloudItem['name'],
+          organizationId: cloudItem['organization_id'], // ✅ NEW
+          stock: cloudItem['stock'],
+          sold: cloudItem['sold'] ?? 0,
+          spoilage: cloudItem['spoilage'] ?? 0,
+          categoryId: cloudItem['category_id'],
+          masterItemId: cloudItem['master_item_id'], // ✅ NEW
+          price: cloudItem['price']?.toDouble(), // ✅ NEW
+          costPrice: cloudItem['cost_price']?.toDouble(), // ✅ NEW
+          unit: cloudItem['unit'], // ✅ NEW
+          minimumStock: cloudItem['minimum_stock'], // ✅ NEW
+          description: cloudItem['description'], // ✅ NEW
+          createdAt: DateTime.parse(cloudItem['created_at']),
+          lastUpdated: DateTime.parse(cloudItem['last_updated']),
+          isDeleted: cloudItem['is_deleted'] ?? false,
+          cloudId: cloudItem['cloud_id'],
+        );
+      }
+    });
+  } catch (e) {
+    print('❌ Error batch upserting from cloud: $e');
+    rethrow;
   }
+}
 
-  /// ✅ Upsert from cloud (individual)
   Future<void> upsertFromCloud({
-    required int id,
-    required String name,
-    required int stock,
-    required int sold,
-    required int spoilage,
-    int? categoryId,
-    required DateTime createdAt,
-    required DateTime lastUpdated,
-    required bool isDeleted,
-    required String cloudId,
-  }) async {
-    try {
-      await into(items).insertOnConflictUpdate(
-        ItemsCompanion.insert(
-          id: Value(id),
-          name: name,
-          categoryId: Value(categoryId),
-          stock: Value(stock),
-          sold: Value(sold),
-          spoilage: Value(spoilage),
-          createdAt: Value(createdAt),
-          lastUpdated: Value(lastUpdated),
-          isDeleted: Value(isDeleted),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ),
-      );
-    } catch (e) {
-      print('❌ Error upserting item from cloud: $e');
-      rethrow;
-    }
+  required int id,
+  required String name,
+  required int organizationId, // ✅ NEW
+  required int stock,
+  required int sold,
+  required int spoilage,
+  int? categoryId,
+  int? masterItemId, // ✅ NEW
+  double? price, // ✅ NEW
+  double? costPrice, // ✅ NEW
+  String? unit, // ✅ NEW
+  int? minimumStock, // ✅ NEW
+  String? description, // ✅ NEW
+  required DateTime createdAt,
+  required DateTime lastUpdated,
+  required bool isDeleted,
+  required String cloudId,
+}) async {
+  try {
+    await into(items).insertOnConflictUpdate(
+      ItemsCompanion.insert(
+        id: Value(id),
+        name: name,
+        organizationId: organizationId, // ✅ NEW
+        categoryId: Value(categoryId),
+        masterItemId: Value(masterItemId), // ✅ NEW
+        stock: Value(stock),
+        sold: Value(sold),
+        spoilage: Value(spoilage),
+        price: Value(price), // ✅ NEW
+        costPrice: Value(costPrice), // ✅ NEW
+        unit: Value(unit ?? 'piece'), // ✅ NEW
+        minimumStock: Value(minimumStock), // ✅ NEW
+        description: Value(description), // ✅ NEW
+        createdAt: Value(createdAt),
+        lastUpdated: Value(lastUpdated),
+        isDeleted: Value(isDeleted),
+        isSynced: Value(true),
+        cloudId: Value(cloudId),
+      ),
+    );
+  } catch (e) {
+    print('❌ Error upserting item from cloud: $e');
+    rethrow;
   }
+}
 
   /// ✅ Get item by cloud ID
   Future<Item?> getItemByCloudId(String cloudId) async {

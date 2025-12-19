@@ -442,17 +442,20 @@ Future<List<Map<String, dynamic>>> buildMenuForUser(
     isSynced: false
   );
 
-  final defaultUser = User(
-    id: 0,
-    username: 'guest',
-    email: 'guest@example.com',
-    password: '',
-    roleId: 0,
-    isActive: true,
-    createdAt: DateTime.now(),
-    lastUpdated: DateTime.now(),
-    isSynced: false
-  );
+ final defaultUser = User(
+  id: 0,
+  username: 'guest',
+  fullName: 'Guest User',         // NEW field
+  email: 'guest@example.com',
+  password: '',
+  roleId: 0,
+  organizationId: 0,              // NEW field
+  isActive: true,
+  createdAt: DateTime.now(),
+  lastUpdated: DateTime.now(),
+  isSynced: false
+);
+
 
   final user = userWithRole?.user ?? defaultUser;
   final role = userWithRole?.role ?? defaultRole;
