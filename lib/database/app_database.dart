@@ -77,16 +77,20 @@ part 'app_database.g.dart';
   ]
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  final bool _seedData;
+
+  AppDatabase({bool seedData = true}) : _seedData = seedData, super(_openConnection());
+
+  AppDatabase.test(QueryExecutor executor) : _seedData = false, super(executor);
 
   @override
-  int get schemaVersion => 1; // ✅ Start fresh at version 1
+  int get schemaVersion => 1; // Start fresh at version 1
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
-        print('🏗️ Creating fresh database...');
+        print(' Creating fresh database...');
         
         // Create all tables
         await m.createAll();
@@ -95,9 +99,11 @@ class AppDatabase extends _$AppDatabase {
         await _createAllIndexes();
         
         // Seed initial data
-        await _seedInitialData();
+        if (_seedData) {
+          await _seedInitialData();
+        }
         
-        print('✅ Database created successfully!');
+        print(' Database created successfully!');
       },
       beforeOpen: (details) async {
         // Enable foreign keys

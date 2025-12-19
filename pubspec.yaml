@@ -40,4 +40,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/chicken_joo_logo.png
-    - .env
+    # .env removed for testing 
