@@ -22,6 +22,7 @@ class EmployeeChangeStockPage extends StatefulWidget {
     this.onRecordSaved,
   });
 
+
   @override
   State<EmployeeChangeStockPage> createState() =>
       _EmployeeChangeStockPageState();

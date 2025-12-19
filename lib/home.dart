@@ -8,6 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/connectivity_service.dart';
+import '../connection_status_indicator.dart';
+import 'utils/sync_status.dart';
+
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'screen/franchisee/franchisee_reports.dart';
@@ -31,6 +35,13 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isSideBarOpen = false;
   bool showLabels = false;
   late AppDatabase _db;
+  
+  SyncStatus _syncStatus = SyncStatus.synced;
+  DateTime? _lastSyncTime;
+
+  late ConnectivityService _connectivityService;
+  bool _isOnline = true;
+
 
   List<Map<String, dynamic>> menuItems = [];
   bool _isLoadingRole = true;
@@ -40,6 +51,19 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _db = database;
     _loadRoleAndMenu();
+    _connectivityService = ConnectivityService();
+    _connectivityService.connectionStream.listen((status) {
+      setState(() {
+        _isOnline = status;
+        _syncStatus = SyncStatus.synced;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivityService.dispose();
+    super.dispose();
   }
 
   void toggleSidebar() {
@@ -111,6 +135,11 @@ class _HomeScreenState extends State<HomeScreen> {
           iconTheme: const IconThemeData(color: Colors.white),
           actions: [
             // ✅ PROFILE MENU WITH LOGOUT
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ConnectionStatusIndicator(isOnline: _isOnline, syncStatus: _syncStatus),
+            ),
+            
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: PopupMenuButton<String>(
@@ -255,6 +284,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           // ✅ PROFILE MENU WITH LOGOUT
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ConnectionStatusIndicator(isOnline: _isOnline, syncStatus: _syncStatus),
+          ),
+          
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: PopupMenuButton<String>(
@@ -405,6 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
   if (!mounted) return;
   setState(() {
     menuItems = menu;
+    selectedIndex = 0;
     currentPage = menu.isNotEmpty ? menu.first["page"] as Widget : const SizedBox.shrink();
     _isLoadingRole = false;
   });
