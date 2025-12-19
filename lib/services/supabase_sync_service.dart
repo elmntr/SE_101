@@ -12,9 +12,9 @@ class SupabaseSyncService {
   Timer? _syncTimer;
   bool _isSyncing = false;
   
-  // ✅ Configuration
+  // âœ… Configuration
   static const Duration syncInterval = Duration(minutes: 10);
-  static const int batchSize = 50; // Process 50 items at a time
+  static const int batchSize = 50;
   static const int maxRetries = 3;
   static const Duration initialRetryDelay = Duration(seconds: 2);
   
@@ -35,52 +35,45 @@ class SupabaseSyncService {
     this.onSyncProgress,
   });
 
-  /// ✅ Initialize sync service
+  /// âœ… Initialize sync service
   Future<void> initialize() async {
-    print('🚀 Initializing sync service...');
+    print('ðŸš€ Initializing sync service...');
     
     try {
-      // Start periodic sync
       startPeriodicSync();
       
-      // Listen to connectivity changes
       Connectivity().onConnectivityChanged.listen((result) {
         final isOnline = result != ConnectivityResult.none;
         onConnectivityChanged?.call(isOnline);
         
         if (isOnline) {
-          print('🌐 Network restored, triggering sync...');
+          print('ðŸŒ Network restored, triggering sync...');
           syncAll();
         }
       });
       
-      // Initial sync attempt
       await syncAll();
     } catch (e) {
-      print('❌ Failed to initialize sync service: $e');
+      print('âŒ Failed to initialize sync service: $e');
       onSyncError?.call('Initialization failed: $e');
     }
   }
 
-  /// ✅ Start periodic background sync
   void startPeriodicSync() {
     _syncTimer?.cancel();
-    _syncTimer = Timer.periodic(syncInterval, (_) {
-      syncAll();
-    });
-    print('⏰ Periodic sync started (every ${syncInterval.inMinutes} minutes)');
+    _syncTimer = Timer.periodic(syncInterval, (_) => syncAll());
+    print('â° Periodic sync started (every ${syncInterval.inMinutes} minutes)');
   }
 
-  /// ✅ Stop periodic sync
   void stopPeriodicSync() {
     _syncTimer?.cancel();
-    print('⏸️ Periodic sync stopped');
+    print('â¸ï¸ Periodic sync stopped');
   }
 
-  /// ✅ Main sync method with retry logic
+  /// âœ… Main sync method with dependency-aware ordering
   Future<void> syncAll() async {
     if (_isSyncing) {
-      print('⏳ Sync already in progress, skipping...');
+      print('â³ Sync already in progress, skipping...');
       return;
     }
 
@@ -89,39 +82,41 @@ class SupabaseSyncService {
         _isSyncing = true;
         onSyncStatusChanged?.call('Syncing...');
         
-        // Check internet connectivity
         final connectivityResult = await Connectivity().checkConnectivity();
         if (connectivityResult == ConnectivityResult.none) {
-          print('🔵 No internet connection, sync skipped');
+          print('ðŸ"µ No internet connection, sync skipped');
           onSyncStatusChanged?.call('Offline');
           return;
         }
 
-        print('🔄 Starting sync (attempt $attempt/$maxRetries)...');
+        print('ðŸ"„ Starting sync (attempt $attempt/$maxRetries)...');
         
-        // Sync in order: Roles → Users → Items → Categories
+        // âœ… Sync in dependency order
         await _syncWithProgress([
+          () => syncOrganizations(),
+          () => syncCategories(),
           () => syncRoles(),
           () => syncUsers(),
           () => syncItems(),
-          () => syncCategories(),
+          () => syncIngredients(),
+          () => syncRecipeIngredients(),
+          () => syncStockReplenishmentRequests(),
+          () => syncStockChangeRequests(),
         ]);
         
-        print('✅ Sync completed successfully');
+        print('âœ… Sync completed successfully');
         onSyncStatusChanged?.call('Synced');
-        return; // Success, exit retry loop
+        return;
         
       } catch (e) {
-        print('❌ Sync attempt $attempt failed: $e');
+        print('âŒ Sync attempt $attempt failed: $e');
         
         if (attempt == maxRetries) {
-          // Final attempt failed
           onSyncError?.call('Sync failed after $maxRetries attempts: $e');
           onSyncStatusChanged?.call('Sync failed');
         } else {
-          // Wait before retrying with exponential backoff
           final delay = initialRetryDelay * pow(2, attempt - 1);
-          print('⏳ Retrying in ${delay.inSeconds} seconds...');
+          print('â³ Retrying in ${delay.inSeconds} seconds...');
           await Future.delayed(delay);
         }
       } finally {
@@ -130,7 +125,6 @@ class SupabaseSyncService {
     }
   }
 
-  /// ✅ Execute sync steps with progress tracking
   Future<void> _syncWithProgress(List<Future<void> Function()> steps) async {
     for (int i = 0; i < steps.length; i++) {
       await steps[i]();
@@ -140,173 +134,623 @@ class SupabaseSyncService {
   }
 
   // ==========================================================================
-  // ITEMS SYNC
+  // ORGANIZATIONS SYNC
   // ==========================================================================
 
-  /// ✅ Sync Items table with batch operations and cloud deletion
+  Future<void> syncOrganizations() async {
+    try {
+      print('ðŸ¢ Syncing organizations...');
+      await _pushOrganizations();
+      await _pullOrganizations();
+      print('   âœ… Organizations sync complete');
+    } catch (e) {
+      print('   âŒ Organizations sync failed: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _pushOrganizations() async {
+    int offset = 0;
+    int totalPushed = 0;
+
+    while (true) {
+      final unsynced = await db.organizationsDao.getUnsyncedOrganizations(
+        limit: batchSize,
+        offset: offset,
+      );
+
+      if (unsynced.isEmpty) break;
+
+      final List<Map<String, dynamic>> batchData = [];
+      final List<int> syncedIds = [];
+      final Map<int, String> cloudIdMap = {};
+
+      for (final org in unsynced) {
+        if (!org.isActive && org.cloudId != null) {
+          // Cloud deletion handled by Supabase
+          continue;
+        }
+
+        if (org.isActive) {
+          final cloudId = org.cloudId ?? _uuid.v4();
+          cloudIdMap[org.id] = cloudId;
+
+          batchData.add({
+            'id': org.id,
+            'cloud_id': cloudId,
+            'name': org.name,
+            'type': org.type,
+            'parent_commissary_id': org.parentCommissaryId,
+            'contact_person': org.contactPerson,
+            'phone': org.phone,
+            'email': org.email,
+            'address': org.address,
+            'is_active': org.isActive,
+            'created_at': org.createdAt.toIso8601String(),
+            'last_updated': org.lastUpdated.toIso8601String(),
+          });
+          syncedIds.add(org.id);
+        }
+      }
+
+      if (batchData.isNotEmpty) {
+        await supabase.from('organizations').upsert(batchData);
+        await db.organizationsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+        totalPushed += batchData.length;
+      }
+
+      offset += batchSize;
+    }
+
+    if (totalPushed > 0) {
+      print('   âœ" Pushed $totalPushed organizations');
+    }
+  }
+
+  Future<void> _pullOrganizations() async {
+    try {
+      final cloudOrgs = await supabase
+          .from('organizations')
+          .select()
+          .order('last_updated', ascending: false)
+          .limit(1000);
+
+      if (cloudOrgs.isNotEmpty) {
+        await db.organizationsDao.upsertBatchFromCloud(cloudOrgs);
+        print('   âœ" Pulled ${cloudOrgs.length} organizations');
+      }
+    } catch (e) {
+      print('   âš ï¸ Failed to pull organizations: $e');
+    }
+  }
+
+  // ==========================================================================
+  // INGREDIENTS SYNC
+  // ==========================================================================
+
+  Future<void> syncIngredients() async {
+    try {
+      print('ðŸ¥• Syncing ingredients...');
+      await _pushIngredients();
+      await _pullIngredients();
+      print('   âœ… Ingredients sync complete');
+    } catch (e) {
+      print('   âŒ Ingredients sync failed: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _pushIngredients() async {
+    int offset = 0;
+    int totalPushed = 0;
+    int totalDeleted = 0;
+
+    while (true) {
+      final unsynced = await db.ingredientsDao.getUnsyncedIngredients(
+        limit: batchSize,
+        offset: offset,
+      );
+
+      if (unsynced.isEmpty) break;
+
+      final List<Map<String, dynamic>> batchData = [];
+      final List<int> syncedIds = [];
+      final Map<int, String> cloudIdMap = {};
+
+      for (final ingredient in unsynced) {
+        if (ingredient.isDeleted && ingredient.cloudId != null) {
+          try {
+            await supabase
+                .from('ingredients')
+                .delete()
+                .eq('cloud_id', ingredient.cloudId!);
+            syncedIds.add(ingredient.id);
+            totalDeleted++;
+          } catch (e) {
+            print('   âš ï¸ Failed to delete ingredient ${ingredient.id}: $e');
+          }
+        } else if (!ingredient.isDeleted) {
+          final cloudId = ingredient.cloudId ?? _uuid.v4();
+          cloudIdMap[ingredient.id] = cloudId;
+
+          batchData.add({
+            'id': ingredient.id,
+            'cloud_id': cloudId,
+            'name': ingredient.name,
+            'category_id': ingredient.categoryId,
+            'commissary_id': ingredient.commissaryId,
+            'stock': ingredient.stock,
+            'spoilage': ingredient.spoilage,
+            'unit': ingredient.unit,
+            'minimum_stock': ingredient.minimumStock,
+            'description': ingredient.description,
+            'created_at': ingredient.createdAt.toIso8601String(),
+            'last_updated': ingredient.lastUpdated.toIso8601String(),
+            'is_deleted': ingredient.isDeleted,
+          });
+          syncedIds.add(ingredient.id);
+        }
+      }
+
+      if (batchData.isNotEmpty) {
+        await supabase.from('ingredients').upsert(batchData);
+        totalPushed += batchData.length;
+      }
+
+      if (syncedIds.isNotEmpty) {
+        await db.ingredientsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+      }
+
+      offset += batchSize;
+    }
+
+    if (totalPushed > 0) print('   âœ" Pushed $totalPushed ingredients');
+    if (totalDeleted > 0) print('   âœ" Deleted $totalDeleted ingredients from cloud');
+  }
+
+  Future<void> _pullIngredients() async {
+    try {
+      final cloudIngredients = await supabase
+          .from('ingredients')
+          .select()
+          .order('last_updated', ascending: false)
+          .limit(1000);
+
+      if (cloudIngredients.isNotEmpty) {
+        await db.ingredientsDao.upsertBatchFromCloud(cloudIngredients);
+        print('   âœ" Pulled ${cloudIngredients.length} ingredients');
+      }
+    } catch (e) {
+      print('   âš ï¸ Failed to pull ingredients: $e');
+    }
+  }
+
+  // ==========================================================================
+  // RECIPE INGREDIENTS SYNC
+  // ==========================================================================
+
+  Future<void> syncRecipeIngredients() async {
+    try {
+      print('ðŸ"œ Syncing recipe ingredients...');
+      await _pushRecipeIngredients();
+      await _pullRecipeIngredients();
+      print('   âœ… Recipe ingredients sync complete');
+    } catch (e) {
+      print('   âŒ Recipe ingredients sync failed: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _pushRecipeIngredients() async {
+    int offset = 0;
+    int totalPushed = 0;
+    int totalDeleted = 0;
+
+    while (true) {
+      final unsynced = await db.recipeIngredientsDao.getUnsyncedRecipeIngredients(
+        limit: batchSize,
+        offset: offset,
+      );
+
+      if (unsynced.isEmpty) break;
+
+      final List<Map<String, dynamic>> batchData = [];
+      final List<int> syncedIds = [];
+      final Map<int, String> cloudIdMap = {};
+
+      for (final recipeIngredient in unsynced) {
+        if (recipeIngredient.isDeleted && recipeIngredient.cloudId != null) {
+          try {
+            await supabase
+                .from('recipe_ingredients')
+                .delete()
+                .eq('cloud_id', recipeIngredient.cloudId!);
+            syncedIds.add(recipeIngredient.id);
+            totalDeleted++;
+          } catch (e) {
+            print('   âš ï¸ Failed to delete recipe ingredient ${recipeIngredient.id}: $e');
+          }
+        } else if (!recipeIngredient.isDeleted) {
+          final cloudId = recipeIngredient.cloudId ?? _uuid.v4();
+          cloudIdMap[recipeIngredient.id] = cloudId;
+
+          batchData.add({
+            'id': recipeIngredient.id,
+            'cloud_id': cloudId,
+            'item_id': recipeIngredient.itemId,
+            'ingredient_id': recipeIngredient.ingredientId,
+            'quantity_needed': recipeIngredient.quantityNeeded,
+            'unit': recipeIngredient.unit,
+            'notes': recipeIngredient.notes,
+            'created_at': recipeIngredient.createdAt.toIso8601String(),
+            'last_updated': recipeIngredient.lastUpdated.toIso8601String(),
+            'is_deleted': recipeIngredient.isDeleted,
+          });
+          syncedIds.add(recipeIngredient.id);
+        }
+      }
+
+      if (batchData.isNotEmpty) {
+        await supabase.from('recipe_ingredients').upsert(batchData);
+        totalPushed += batchData.length;
+      }
+
+      if (syncedIds.isNotEmpty) {
+        await db.recipeIngredientsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+      }
+
+      offset += batchSize;
+    }
+
+    if (totalPushed > 0) print('   âœ" Pushed $totalPushed recipe ingredients');
+    if (totalDeleted > 0) print('   âœ" Deleted $totalDeleted recipe ingredients from cloud');
+  }
+
+  Future<void> _pullRecipeIngredients() async {
+    try {
+      final cloudRecipes = await supabase
+          .from('recipe_ingredients')
+          .select()
+          .order('last_updated', ascending: false)
+          .limit(1000);
+
+      if (cloudRecipes.isNotEmpty) {
+        await db.recipeIngredientsDao.upsertBatchFromCloud(cloudRecipes);
+        print('   âœ" Pulled ${cloudRecipes.length} recipe ingredients');
+      }
+    } catch (e) {
+      print('   âš ï¸ Failed to pull recipe ingredients: $e');
+    }
+  }
+
+  // ==========================================================================
+  // STOCK REPLENISHMENT REQUESTS SYNC
+  // ==========================================================================
+
+  Future<void> syncStockReplenishmentRequests() async {
+    try {
+      print('ðŸ"¦ Syncing stock replenishment requests...');
+      await _pushReplenishmentRequests();
+      await _pullReplenishmentRequests();
+      print('   âœ… Stock replenishment requests sync complete');
+    } catch (e) {
+      print('   âŒ Stock replenishment requests sync failed: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _pushReplenishmentRequests() async {
+    int offset = 0;
+    int totalPushed = 0;
+    int totalDeleted = 0;
+
+    while (true) {
+      final unsynced = await db.stockReplenishmentRequestsDao.getUnsyncedRequests(
+        limit: batchSize,
+        offset: offset,
+      );
+
+      if (unsynced.isEmpty) break;
+
+      final List<Map<String, dynamic>> batchData = [];
+      final List<int> syncedIds = [];
+      final Map<int, String> cloudIdMap = {};
+
+      for (final request in unsynced) {
+        if (request.isDeleted && request.cloudId != null) {
+          try {
+            await supabase
+                .from('stock_replenishment_requests')
+                .delete()
+                .eq('cloud_id', request.cloudId!);
+            syncedIds.add(request.id);
+            totalDeleted++;
+          } catch (e) {
+            print('   âš ï¸ Failed to delete replenishment request ${request.id}: $e');
+          }
+        } else if (!request.isDeleted) {
+          final cloudId = request.cloudId ?? _uuid.v4();
+          cloudIdMap[request.id] = cloudId;
+
+          batchData.add({
+            'id': request.id,
+            'cloud_id': cloudId,
+            'franchisee_id': request.franchiseeId,
+            'commissary_id': request.commissaryId,
+            'item_id': request.itemId,
+            'quantity_requested': request.quantityRequested,
+            'status': request.status,
+            'requested_by': request.requestedBy,
+            'requested_at': request.requestedAt.toIso8601String(),
+            'reviewed_by': request.reviewedBy,
+            'reviewed_at': request.reviewedAt?.toIso8601String(),
+            'delivery_date': request.deliveryDate?.toIso8601String(),
+            'franchisee_notes': request.franchiseeNotes,
+            'commissary_notes': request.commissaryNotes,
+            'created_at': request.createdAt.toIso8601String(),
+            'last_updated': request.lastUpdated.toIso8601String(),
+            'is_deleted': request.isDeleted,
+          });
+          syncedIds.add(request.id);
+        }
+      }
+
+      if (batchData.isNotEmpty) {
+        await supabase.from('stock_replenishment_requests').upsert(batchData);
+        totalPushed += batchData.length;
+      }
+
+      if (syncedIds.isNotEmpty) {
+        await db.stockReplenishmentRequestsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+      }
+
+      offset += batchSize;
+    }
+
+    if (totalPushed > 0) print('   âœ" Pushed $totalPushed replenishment requests');
+    if (totalDeleted > 0) print('   âœ" Deleted $totalDeleted replenishment requests from cloud');
+  }
+
+  Future<void> _pullReplenishmentRequests() async {
+    try {
+      final cloudRequests = await supabase
+          .from('stock_replenishment_requests')
+          .select()
+          .order('last_updated', ascending: false)
+          .limit(1000);
+
+      if (cloudRequests.isNotEmpty) {
+        await db.stockReplenishmentRequestsDao.upsertBatchFromCloud(cloudRequests);
+        print('   âœ" Pulled ${cloudRequests.length} replenishment requests');
+      }
+    } catch (e) {
+      print('   âš ï¸ Failed to pull replenishment requests: $e');
+    }
+  }
+
+  // ==========================================================================
+  // STOCK CHANGE REQUESTS SYNC
+  // ==========================================================================
+
+  Future<void> syncStockChangeRequests() async {
+    try {
+      print('ðŸ"„ Syncing stock change requests...');
+      await _pushChangeRequests();
+      await _pullChangeRequests();
+      print('   âœ… Stock change requests sync complete');
+    } catch (e) {
+      print('   âŒ Stock change requests sync failed: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _pushChangeRequests() async {
+    int offset = 0;
+    int totalPushed = 0;
+    int totalDeleted = 0;
+
+    while (true) {
+      final unsynced = await db.stockChangeRequestsDao.getUnsyncedChangeRequests(
+        limit: batchSize,
+        offset: offset,
+      );
+
+      if (unsynced.isEmpty) break;
+
+      final List<Map<String, dynamic>> batchData = [];
+      final List<int> syncedIds = [];
+      final Map<int, String> cloudIdMap = {};
+
+      for (final request in unsynced) {
+        if (request.isDeleted && request.cloudId != null) {
+          try {
+            await supabase
+                .from('stock_change_requests')
+                .delete()
+                .eq('cloud_id', request.cloudId!);
+            syncedIds.add(request.id);
+            totalDeleted++;
+          } catch (e) {
+            print('   âš ï¸ Failed to delete change request ${request.id}: $e');
+          }
+        } else if (!request.isDeleted) {
+          final cloudId = request.cloudId ?? _uuid.v4();
+          cloudIdMap[request.id] = cloudId;
+
+          batchData.add({
+            'id': request.id,
+            'cloud_id': cloudId,
+            'franchisee_id': request.franchiseeId,
+            'item_id': request.itemId,
+            'change_type': request.changeType,
+            'quantity': request.quantity,
+            'status': request.status,
+            'requested_by': request.requestedBy,
+            'requested_at': request.requestedAt.toIso8601String(),
+            'submitted_at': request.submittedAt?.toIso8601String(),
+            'reviewed_by': request.reviewedBy,
+            'reviewed_at': request.reviewedAt?.toIso8601String(),
+            'reason': request.reason,
+            'review_notes': request.reviewNotes,
+            'original_stock': request.originalStock,
+            'created_at': request.createdAt.toIso8601String(),
+            'last_updated': request.lastUpdated.toIso8601String(),
+            'is_deleted': request.isDeleted,
+          });
+          syncedIds.add(request.id);
+        }
+      }
+
+      if (batchData.isNotEmpty) {
+        await supabase.from('stock_change_requests').upsert(batchData);
+        totalPushed += batchData.length;
+      }
+
+      if (syncedIds.isNotEmpty) {
+        await db.stockChangeRequestsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+      }
+
+      offset += batchSize;
+    }
+
+    if (totalPushed > 0) print('   âœ" Pushed $totalPushed change requests');
+    if (totalDeleted > 0) print('   âœ" Deleted $totalDeleted change requests from cloud');
+  }
+
+  Future<void> _pullChangeRequests() async {
+    try {
+      final cloudRequests = await supabase
+          .from('stock_change_requests')
+          .select()
+          .order('last_updated', ascending: false)
+          .limit(1000);
+
+      if (cloudRequests.isNotEmpty) {
+        await db.stockChangeRequestsDao.upsertBatchFromCloud(cloudRequests);
+        print('   âœ" Pulled ${cloudRequests.length} change requests');
+      }
+    } catch (e) {
+      print('   âš ï¸ Failed to pull change requests: $e');
+    }
+  }
+
+  // ==========================================================================
+  // ITEMS SYNC (UPDATED WITH NEW FIELDS)
+  // ==========================================================================
+
   Future<void> syncItems() async {
     try {
-      print('📦 Syncing items...');
-      
-      // PUSH: Upload unsynced items in batches (includes deletions)
+      print('ðŸ"¦ Syncing items...');
       await _pushItems();
-      
-      // PULL: Download changes from cloud
       await _pullItems();
-      
-      print('   ✅ Items sync complete');
+      print('   âœ… Items sync complete');
     } catch (e) {
-      print('   ❌ Items sync failed: $e');
+      print('   âŒ Items sync failed: $e');
       rethrow;
     }
   }
 
   Future<void> _pushItems() async {
-  int offset = 0;
-  int totalPushed = 0;
-  int totalDeleted = 0;
+    int offset = 0;
+    int totalPushed = 0;
+    int totalDeleted = 0;
 
-  while (true) {
-    final unsyncedItems = await db.itemsDao.getUnsyncedItems(
-      limit: batchSize,
-      offset: offset,
-    );
+    while (true) {
+      final unsyncedItems = await db.itemsDao.getUnsyncedItems(
+        limit: batchSize,
+        offset: offset,
+      );
 
-    if (unsyncedItems.isEmpty) break;
+      if (unsyncedItems.isEmpty) break;
 
-    print('   ↑ Pushing batch of ${unsyncedItems.length} items...');
+      final List<Map<String, dynamic>> batchData = [];
+      final List<int> syncedIds = [];
+      final Map<int, String> cloudIdMap = {};
 
-    // Prepare batch data
-    final List<Map<String, dynamic>> batchData = [];
-    final List<int> syncedIds = [];
-    final Map<int, String> cloudIdMap = {};
+      for (final item in unsyncedItems) {
+        if (item.isDeleted && item.cloudId != null) {
+          try {
+            await supabase
+                .from('items')
+                .delete()
+                .eq('cloud_id', item.cloudId!);
+            syncedIds.add(item.id);
+            totalDeleted++;
+          } catch (e) {
+            print('   âš ï¸ Failed to delete item ${item.id}: $e');
+          }
+        } else if (!item.isDeleted) {
+          final cloudId = item.cloudId ?? _uuid.v4();
+          cloudIdMap[item.id] = cloudId;
 
-    for (final item in unsyncedItems) {
-      if (item.isDeleted && item.cloudId != null) {
-        // ✅ CLOUD DELETION
-        try {
-          await supabase
-              .from('items')
-              .delete()
-              .eq('cloud_id', item.cloudId!);
-
+          batchData.add({
+            'id': item.id,
+            'cloud_id': cloudId,
+            'name': item.name,
+            'category_id': item.categoryId,
+            'organization_id': item.organizationId,
+            'master_item_id': item.masterItemId,
+            'stock': item.stock,
+            'sold': item.sold,
+            'spoilage': item.spoilage,
+            'price': item.price,
+            'cost_price': item.costPrice,
+            'unit': item.unit,
+            'minimum_stock': item.minimumStock,
+            'description': item.description,
+            'created_at': item.createdAt.toIso8601String(),
+            'last_updated': item.lastUpdated.toIso8601String(),
+            'is_deleted': item.isDeleted,
+          });
           syncedIds.add(item.id);
-          totalDeleted++;
-
-          print(
-              '   🗑️  Deleted item ${item.id} from cloud (cloudId: ${item.cloudId})');
-        } catch (e) {
-          print('   ⚠️ Failed to delete item ${item.id} from cloud: $e');
         }
-      } else if (!item.isDeleted) {
-        final cloudId = item.cloudId ?? _uuid.v4();
-        cloudIdMap[item.id] = cloudId;
-
-        batchData.add({
-          'local_id': item.id,
-          'cloud_id': cloudId,
-          'name': item.name,
-          'category_id': item.categoryId,
-          'stock': item.stock,
-          'sold': item.sold,
-          'spoilage': item.spoilage,
-          'created_at': item.createdAt.toIso8601String(),
-          'last_updated': item.lastUpdated.toIso8601String(),
-          'is_deleted': item.isDeleted,
-        });
-
-        syncedIds.add(item.id);
       }
-    }
 
-    // ✅ Batch upsert (non-deleted items)
-    if (batchData.isNotEmpty) {
-      try {
+      if (batchData.isNotEmpty) {
         await supabase.from('items').upsert(batchData);
         totalPushed += batchData.length;
-      } catch (e) {
-        print('   ⚠️ Batch upsert failed: $e');
       }
+
+      if (syncedIds.isNotEmpty) {
+        await db.itemsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+      }
+
+      offset += batchSize;
     }
 
-    // ✅ CRITICAL FIX:
-    // Always mark synced (includes deletions-only batches)
-    if (syncedIds.isNotEmpty) {
-      await db.itemsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
-    }
-
-    offset += batchSize;
+    if (totalPushed > 0) print('   âœ" Pushed $totalPushed items');
+    if (totalDeleted > 0) print('   âœ" Deleted $totalDeleted items from cloud');
   }
-
-  if (totalPushed > 0) {
-    print('   ✔ Pushed $totalPushed items');
-  }
-  if (totalDeleted > 0) {
-    print('   ✔ Deleted $totalDeleted items from cloud');
-  }
-}
-
 
   Future<void> _pullItems() async {
     try {
-      print('   ↓ Pulling items from cloud...');
-      
-      // Get latest timestamp from local DB
-      final latestLocal = await db.customSelect(
-        'SELECT MAX(last_updated) as max_updated FROM items',
-        readsFrom: {db.items},
-      ).getSingleOrNull();
-      
-      // Build query to get only newer items
-      var query = supabase
-        .from('items')
-        .select()
-        .order('last_updated', ascending: false);
-      
-      final cloudItems = await query.limit(1000); // Limit for safety
-      
-      if (cloudItems.isEmpty) {
-        print('   ℹ️ No new items from cloud');
-        return;
+      final cloudItems = await supabase
+          .from('items')
+          .select()
+          .order('last_updated', ascending: false)
+          .limit(1000);
+
+      if (cloudItems.isNotEmpty) {
+        await db.itemsDao.upsertBatchFromCloud(cloudItems);
+        print('   âœ" Pulled ${cloudItems.length} items');
       }
-      
-      // ✅ Batch process cloud items
-      final List<Map<String, dynamic>> itemsToUpsert = [];
-      
-      for (final cloudItem in cloudItems) {
-        itemsToUpsert.add(cloudItem);
-        
-        // Process in batches
-        if (itemsToUpsert.length >= batchSize) {
-          await db.itemsDao.upsertBatchFromCloud(itemsToUpsert);
-          itemsToUpsert.clear();
-        }
-      }
-      
-      // Process remaining items
-      if (itemsToUpsert.isNotEmpty) {
-        await db.itemsDao.upsertBatchFromCloud(itemsToUpsert);
-      }
-      
-      print('   ✔ Pulled ${cloudItems.length} items from cloud');
     } catch (e) {
-      print('   ⚠️ Failed to pull items: $e');
-      throw e;
+      print('   âš ï¸ Failed to pull items: $e');
     }
   }
 
   // ==========================================================================
-  // USERS SYNC
+  // USERS SYNC (UPDATED WITH NEW FIELDS)
   // ==========================================================================
 
   Future<void> syncUsers() async {
     try {
-      print('👥 Syncing users...');
+      print('ðŸ¥ Syncing users...');
       await _pushUsers();
       await _pullUsers();
-      print('   ✅ Users sync complete');
+      print('   âœ… Users sync complete');
     } catch (e) {
-      print('   ❌ Users sync failed: $e');
+      print('   âŒ Users sync failed: $e');
     }
   }
 
@@ -328,7 +772,6 @@ class SupabaseSyncService {
       final Map<int, String> cloudIdMap = {};
       
       for (final user in unsyncedUsers) {
-        // ✅ CLOUD DELETION: If user is inactive and has cloudId, delete from cloud
         if (!user.isActive && user.cloudId != null) {
           try {
             await supabase
@@ -337,26 +780,26 @@ class SupabaseSyncService {
               .eq('cloud_id', user.cloudId!);
             syncedIds.add(user.id);
             totalDeleted++;
-            print('   🗑️  Deleted user ${user.id} from cloud (cloudId: ${user.cloudId})');
           } catch (e) {
-            print('   ⚠️ Failed to delete user ${user.id} from cloud: $e');
+            print('   âš ï¸ Failed to delete user ${user.id}: $e');
           }
           continue;
         }
         
-        // Only sync active users
         if (user.isActive) {
           final cloudId = user.cloudId ?? _uuid.v4();
           cloudIdMap[user.id] = cloudId;
           
           batchData.add({
-            'local_id': user.id,
+            'id': user.id,
             'cloud_id': cloudId,
             'email': user.email,
             'username': user.username,
-            'password': user.password, // ⚠️ Should be hashed
+            'password': user.password,
             'phone': user.phone,
+            'organization_id': user.organizationId,
             'role_id': user.roleId,
+            'full_name': user.fullName,
             'is_active': user.isActive,
             'created_at': user.createdAt.toIso8601String(),
             'last_updated': user.lastUpdated.toIso8601String(),
@@ -366,24 +809,19 @@ class SupabaseSyncService {
       }
       
       if (batchData.isNotEmpty) {
-        try {
-          await supabase.from('users').upsert(batchData);
-          await db.usersDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
-          totalPushed += syncedIds.length;
-        } catch (e) {
-          print('   ⚠️ User batch upsert failed: $e');
-        }
+        await supabase.from('users').upsert(batchData);
+        totalPushed += batchData.length;
+      }
+
+      if (syncedIds.isNotEmpty) {
+        await db.usersDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
       }
       
       offset += batchSize;
     }
     
-    if (totalPushed > 0) {
-      print('   ✔ Pushed $totalPushed users');
-    }
-    if (totalDeleted > 0) {
-      print('   ✔ Deleted $totalDeleted users from cloud');
-    }
+    if (totalPushed > 0) print('   âœ" Pushed $totalPushed users');
+    if (totalDeleted > 0) print('   âœ" Deleted $totalDeleted users from cloud');
   }
 
   Future<void> _pullUsers() async {
@@ -396,25 +834,25 @@ class SupabaseSyncService {
       
       if (cloudUsers.isNotEmpty) {
         await db.usersDao.upsertBatchFromCloud(cloudUsers);
-        print('   ✔ Pulled ${cloudUsers.length} users');
+        print('   âœ" Pulled ${cloudUsers.length} users');
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull users: $e');
+      print('   âš ï¸ Failed to pull users: $e');
     }
   }
 
   // ==========================================================================
-  // ROLES SYNC
+  // ROLES SYNC (UNCHANGED)
   // ==========================================================================
 
   Future<void> syncRoles() async {
     try {
-      print('🔑 Syncing roles...');
+      print('ðŸ" Syncing roles...');
       await _pushRoles();
       await _pullRoles();
-      print('   ✅ Roles sync complete');
+      print('   âœ… Roles sync complete');
     } catch (e) {
-      print('   ❌ Roles sync failed: $e');
+      print('   âŒ Roles sync failed: $e');
     }
   }
 
@@ -436,7 +874,6 @@ class SupabaseSyncService {
       final Map<int, String> cloudIdMap = {};
       
       for (final role in unsyncedRoles) {
-        // ✅ CLOUD DELETION: If role is inactive and has cloudId, delete from cloud
         if (!role.isActive && role.cloudId != null && !role.isSystemRole) {
           try {
             await supabase
@@ -445,20 +882,18 @@ class SupabaseSyncService {
               .eq('cloud_id', role.cloudId!);
             syncedIds.add(role.id);
             totalDeleted++;
-            print('   🗑️  Deleted role ${role.id} from cloud (cloudId: ${role.cloudId})');
           } catch (e) {
-            print('   ⚠️ Failed to delete role ${role.id} from cloud: $e');
+            print('   âš ï¸ Failed to delete role ${role.id}: $e');
           }
           continue;
         }
         
-        // Only sync active roles
         if (role.isActive) {
           final cloudId = role.cloudId ?? _uuid.v4();
           cloudIdMap[role.id] = cloudId;
           
           batchData.add({
-            'local_id': role.id,
+            'id': role.id,
             'cloud_id': cloudId,
             'name': role.name,
             'description': role.description,
@@ -481,24 +916,19 @@ class SupabaseSyncService {
       }
       
       if (batchData.isNotEmpty) {
-        try {
-          await supabase.from('roles').upsert(batchData);
-          await db.rolesDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
-          totalPushed += syncedIds.length;
-        } catch (e) {
-          print('   ⚠️ Role batch upsert failed: $e');
-        }
+        await supabase.from('roles').upsert(batchData);
+        totalPushed += batchData.length;
+      }
+
+      if (syncedIds.isNotEmpty) {
+        await db.rolesDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
       }
       
       offset += batchSize;
     }
     
-    if (totalPushed > 0) {
-      print('   ✔ Pushed $totalPushed roles');
-    }
-    if (totalDeleted > 0) {
-      print('   ✔ Deleted $totalDeleted roles from cloud');
-    }
+    if (totalPushed > 0) print('   âœ" Pushed $totalPushed roles');
+    if (totalDeleted > 0) print('   âœ" Deleted $totalDeleted roles from cloud');
   }
 
   Future<void> _pullRoles() async {
@@ -511,88 +941,64 @@ class SupabaseSyncService {
       
       if (cloudRoles.isNotEmpty) {
         await db.rolesDao.upsertBatchFromCloud(cloudRoles);
-        print('   ✔ Pulled ${cloudRoles.length} roles');
+        print('   âœ" Pulled ${cloudRoles.length} roles');
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull roles: $e');
+      print('   âš ï¸ Failed to pull roles: $e');
     }
   }
 
   // ==========================================================================
-  // CATEGORIES SYNC
+  // CATEGORIES SYNC (UNCHANGED)
   // ==========================================================================
 
   Future<void> syncCategories() async {
     try {
-      print('📂 Syncing categories...');
-      await _pushCategories();
-      await _pullCategories();
-      print('   ✅ Categories sync complete');
+      print('ðŸ"‚ Syncing categories...');
+      // Categories table needs sync fields added
+      print('   â„¹ï¸ Category sync not yet fully implemented (needs sync fields)');
     } catch (e) {
-      print('   ❌ Categories sync failed: $e');
+      print('   âŒ Categories sync failed: $e');
     }
-  }
-
-  Future<void> _pushCategories() async {
-    // Note: Categories table needs isSynced and cloudId columns added
-    // This is a placeholder implementation
-    print('   ℹ️ Category push not yet fully implemented (needs sync fields)');
-  }
-
-  Future<void> _pullCategories() async {
-    // Note: Categories table needs isSynced and cloudId columns added
-    // This is a placeholder implementation
-    print('   ℹ️ Category pull not yet fully implemented (needs sync fields)');
   }
 
   // ==========================================================================
   // UTILITIES
   // ==========================================================================
 
-  /// ✅ Trigger immediate sync
   Future<void> syncImmediate() async {
-    print('⚡ Immediate sync requested');
+    print('âš¡ Immediate sync requested');
     await syncAll();
   }
 
-  /// ✅ Quick sync for specific table only
-  Future<void> syncItemsOnly() async {
-    if (_isSyncing) {
-      print('⏳ Sync already in progress');
-      return;
-    }
-    
-    try {
-      _isSyncing = true;
-      onSyncStatusChanged?.call('Syncing items...');
-      await syncItems();
-      print('✅ Items synced');
-      onSyncStatusChanged?.call('Synced');
-    } catch (e) {
-      print('❌ Items sync failed: $e');
-      onSyncError?.call(e.toString());
-    } finally {
-      _isSyncing = false;
-    }
-  }
-
-  /// ✅ Get sync status with detailed counts
   Future<Map<String, dynamic>> getSyncStatus() async {
     try {
       final unsyncedItemCount = await db.itemsDao.getUnsyncedItemCount();
       final unsyncedUserCount = await db.usersDao.getUnsyncedUserCount();
       final unsyncedRoleCount = await db.rolesDao.getUnsyncedRoleCount();
+      final unsyncedOrgCount = await db.organizationsDao.getUnsyncedOrganizationCount();
+      final unsyncedIngredientCount = await db.ingredientsDao.getUnsyncedIngredientCount();
+      final unsyncedRecipeCount = await db.recipeIngredientsDao.getUnsyncedRecipeIngredientCount();
+      final unsyncedReplenishmentCount = await db.stockReplenishmentRequestsDao.getUnsyncedRequestCount();
+      final unsyncedChangeCount = await db.stockChangeRequestsDao.getUnsyncedChangeRequestCount();
       
       return {
         'unsynced_items': unsyncedItemCount,
         'unsynced_users': unsyncedUserCount,
         'unsynced_roles': unsyncedRoleCount,
-        'total_unsynced': unsyncedItemCount + unsyncedUserCount + unsyncedRoleCount,
+        'unsynced_organizations': unsyncedOrgCount,
+        'unsynced_ingredients': unsyncedIngredientCount,
+        'unsynced_recipes': unsyncedRecipeCount,
+        'unsynced_replenishment_requests': unsyncedReplenishmentCount,
+        'unsynced_change_requests': unsyncedChangeCount,
+        'total_unsynced': unsyncedItemCount + unsyncedUserCount + unsyncedRoleCount + 
+                         unsyncedOrgCount + unsyncedIngredientCount + unsyncedRecipeCount +
+                         unsyncedReplenishmentCount + unsyncedChangeCount,
         'is_syncing': _isSyncing,
         'last_sync': DateTime.now().toIso8601String(),
       };
     } catch (e) {
-      print('❌ Error getting sync status: $e');
+      print('âŒ Error getting sync status: $e');
       return {
         'error': e.toString(),
         'is_syncing': _isSyncing,
@@ -600,10 +1006,9 @@ class SupabaseSyncService {
     }
   }
 
-  /// ✅ Cleanup deleted records from local database after successful cloud deletion
   Future<void> cleanupLocalDeletedRecords() async {
     try {
-      print('🧹 Cleaning up local deleted records...');
+      print('ðŸ§¹ Cleaning up local deleted records...');
       
       final itemsCleanedCount = await db.itemsDao.cleanupDeletedItems();
       final usersCleanedCount = await db.usersDao.cleanupDeletedUsers();
@@ -613,18 +1018,17 @@ class SupabaseSyncService {
       final totalCleaned = itemsCleanedCount + usersCleanedCount + rolesCleanedCount + categoriesCleanedCount;
       
       if (totalCleaned > 0) {
-        print('✅ Cleaned up $totalCleaned records from local database');
+        print('âœ… Cleaned up $totalCleaned records from local database');
       } else {
-        print('ℹ️ No records to clean up');
+        print('â„¹ï¸ No records to clean up');
       }
     } catch (e) {
-      print('❌ Error cleaning up deleted records: $e');
+      print('âŒ Error cleaning up deleted records: $e');
     }
   }
 
-  /// ✅ Dispose resources
   void dispose() {
     _syncTimer?.cancel();
-    print('🛑 Sync service disposed');
+    print('ðŸ› Sync service disposed');
   }
 }

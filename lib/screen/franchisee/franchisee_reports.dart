@@ -21,13 +21,13 @@ class _ReportsPageState extends State<ReportsPage> {
 
   // Data from database
   List<Item> allItems = [];
+  int? currentOrganizationId; // ✅ FIXED: Track current user's organization
   Map<String, List<double>> chartData = {};
   double totalSold = 0;
   double totalSpoilage = 0;
+  bool isLoading = true;
 
   final List<String> periods = ['Weekly', 'Monthly', 'Yearly'];
-  
-
 
   @override
   void initState() {
@@ -36,15 +36,48 @@ class _ReportsPageState extends State<ReportsPage> {
     _loadData();
   }
 
-  /// Load items and calculate chart data
+  /// ✅ FIXED: Load items for current user's organization
   Future<void> _loadData() async {
-    final items = await db.itemsDao.getAllItems();
+    setState(() => isLoading = true);
     
-    setState(() {
-      allItems = items;
-      _calculateChartData();
-      _calculateTotals();
-    });
+    try {
+      // Get current user (TODO: Replace with actual session management)
+      final currentUser = await db.usersDao.getUserById(1);
+      
+      if (currentUser != null) {
+        currentOrganizationId = currentUser.organizationId;
+        
+        // Load items for this organization
+        final items = await db.itemsDao.getItemsByOrganization(
+          currentOrganizationId!,
+        );
+        
+        if (mounted) {
+          setState(() {
+            allItems = items;
+            _calculateChartData();
+            _calculateTotals();
+            isLoading = false;
+          });
+        }
+      } else {
+        // Fallback to all items if no user found
+        final items = await db.itemsDao.getAllItems();
+        if (mounted) {
+          setState(() {
+            allItems = items;
+            _calculateChartData();
+            _calculateTotals();
+            isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ Error loading reports data: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
   }
 
   /// Calculate chart data based on selected item and period
@@ -188,13 +221,18 @@ class _ReportsPageState extends State<ReportsPage> {
 
   String getSelectedItemName() {
     if (selectedItemId == null) return 'All Items';
-    return allItems.firstWhere((item) => item.id == selectedItemId).name;
+    final item = allItems.firstWhere((item) => item.id == selectedItemId, orElse: () => allItems.first);
+    return item.name;
   }
-  
-
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     // Get current data for the selected metric
     final data = chartData[selectedMetric] ?? List.filled(7, 0.0);
     final maxValue = data.isEmpty ? 1.0 : data.reduce((a, b) => a > b ? a : b);
@@ -577,7 +615,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   builder: (context, constraints) {
                     return PopupMenuButton<String>(
                       color: Colors.white,
-                      constraints: BoxConstraints(
+                      constraints: const BoxConstraints(
                         minWidth: 120,
                       ),
                       child: Container(
