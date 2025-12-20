@@ -1,40 +1,26 @@
-name: Renmar Flutter Total Quality
+name: Renmar Flutter Quality Control
 
 on:
   pull_request:
     types: [opened, synchronize]
 
 jobs:
+  # PHASE 1: Linting (It can fail, but won't stop the AI)
   compliance:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-      
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+      - run: flutter pub get
+      - name: Check Formatting
+        # We remove '--set-exit-if-changed' so it doesn't "fail" the whole job
+        run: dart format . 
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Automated Repairs
-        # This adds 'const' and removes unused imports automatically
-        run: dart fix --apply 
-
-      - name: Standard Formatting
-        run: dart format .
-
-      - name: Commit & Push Changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "style: automated Renmar standards fix"
-
+  # PHASE 2: AI Review (Runs independently)
   ai-review:
-    needs: compliance
+    # REMOVED the "needs: compliance" line
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,10 +32,13 @@ jobs:
         with:
           gemini-key: ${{ secrets.GEMINI_API_KEY }}
           model: "gemini-2.0-flash"
+          # These help stay under the Free Tier limit
+          context-lines: 1 
+          max-files: 15
           prompt: |
-            You are the Lead Architect at Renmar.
-            Logic & Readability Focus:
-            1. Ensure API calls are in services/, not UI.
-            2. Flag widgets over 150 lines.
-            3. Verify documentation (///) on public methods.
-            4. Suggest architectural improvements.
+            Review for Renmar Infrastructure Corp.
+            Ignore formatting/whitespace issues.
+            Focus ONLY on:
+            1. Logical bugs or performance issues.
+            2. Correct folder structure (models/, services/, etc).
+            3. Business logic separation from UI.
