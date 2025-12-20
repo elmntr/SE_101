@@ -1,6 +1,5 @@
 // test/daos/categories_dao_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:matcher/matcher.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import '../database/test_database.dart';
@@ -31,7 +30,10 @@ void main() {
     await categoriesDao.insertCategory(name: 'Desserts');
     final allCategories = await categoriesDao.getAllCategories();
     expect(allCategories.length, 2);
-    expect(allCategories.map((c) => c.name), containsAll(['Drinks', 'Desserts']));
+    expect(
+      allCategories.map((c) => c.name),
+      containsAll(['Drinks', 'Desserts']),
+    );
   });
 
   test('3. Update category changes its name', () async {
@@ -79,14 +81,17 @@ void main() {
     expect(category, isNull);
   });
 
-  test('9. Get category count reflects number of non-deleted categories', () async {
-    await categoriesDao.insertCategory(name: 'One');
-    await categoriesDao.insertCategory(name: 'Two');
-    final id = await categoriesDao.insertCategory(name: 'Three');
-    await categoriesDao.softDeleteCategory(id);
-    final count = await categoriesDao.getCategoryCount();
-    expect(count, 2);
-  });
+  test(
+    '9. Get category count reflects number of non-deleted categories',
+    () async {
+      await categoriesDao.insertCategory(name: 'One');
+      await categoriesDao.insertCategory(name: 'Two');
+      final id = await categoriesDao.insertCategory(name: 'Three');
+      await categoriesDao.softDeleteCategory(id);
+      final count = await categoriesDao.getCategoryCount();
+      expect(count, 2);
+    },
+  );
 
   test('10. Batch insert adds multiple categories', () async {
     final companions = [
@@ -99,25 +104,55 @@ void main() {
   });
 
   test('11. Soft delete fails if category has items', () async {
-    final categoryId = await categoriesDao.insertCategory(name: 'Category with Items');
-    final commissaryId = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Commissary', type: 'commissary'));
-    final orgId = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Org', type: 'franchisee', parentCommissaryId: Value(commissaryId)));
-    await db.itemsDao.insertItem(name: 'Test Item', organizationId: orgId, categoryId: categoryId);
+    final categoryId = await categoriesDao.insertCategory(
+      name: 'Category with Items',
+    );
+    final commissaryId = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(name: 'Commissary', type: 'commissary'),
+    );
+    final orgId = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(
+        name: 'Org',
+        type: 'franchisee',
+        parentCommissaryId: Value(commissaryId),
+      ),
+    );
+    await db.itemsDao.insertItem(
+      name: 'Test Item',
+      organizationId: orgId,
+      categoryId: categoryId,
+    );
 
     expect(() => categoriesDao.softDeleteCategory(categoryId), throwsException);
   });
 
   test('12. Permanent delete fails if category has items', () async {
-    final categoryId = await categoriesDao.insertCategory(name: 'Category with Items');
-    final commissaryId = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Commissary', type: 'commissary'));
-    final orgId = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Org', type: 'franchisee', parentCommissaryId: Value(commissaryId)));
-    await db.itemsDao.insertItem(name: 'Test Item', organizationId: orgId, categoryId: categoryId);
+    final categoryId = await categoriesDao.insertCategory(
+      name: 'Category with Items',
+    );
+    final commissaryId = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(name: 'Commissary', type: 'commissary'),
+    );
+    final orgId = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(
+        name: 'Org',
+        type: 'franchisee',
+        parentCommissaryId: Value(commissaryId),
+      ),
+    );
+    await db.itemsDao.insertItem(
+      name: 'Test Item',
+      organizationId: orgId,
+      categoryId: categoryId,
+    );
 
     expect(() => categoriesDao.deleteCategory(categoryId), throwsException);
   });
 
   test('13. Permanent delete succeeds for empty category', () async {
-    final categoryId = await categoriesDao.insertCategory(name: 'Empty Category');
+    final categoryId = await categoriesDao.insertCategory(
+      name: 'Empty Category',
+    );
     final success = await categoriesDao.deleteCategory(categoryId);
     expect(success, isTrue);
     final category = await categoriesDao.getCategoryById(categoryId);
@@ -127,9 +162,21 @@ void main() {
   test('14. Get empty categories returns categories with no items', () async {
     final cat1Id = await categoriesDao.insertCategory(name: 'Has Item');
     await categoriesDao.insertCategory(name: 'Is Empty');
-    final commissaryId = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Commissary', type: 'commissary'));
-    final orgId = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Org', type: 'franchisee', parentCommissaryId: Value(commissaryId)));
-    await db.itemsDao.insertItem(name: 'Test Item', organizationId: orgId, categoryId: cat1Id);
+    final commissaryId = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(name: 'Commissary', type: 'commissary'),
+    );
+    final orgId = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(
+        name: 'Org',
+        type: 'franchisee',
+        parentCommissaryId: Value(commissaryId),
+      ),
+    );
+    await db.itemsDao.insertItem(
+      name: 'Test Item',
+      organizationId: orgId,
+      categoryId: cat1Id,
+    );
 
     final emptyCategories = await categoriesDao.getEmptyCategories();
     expect(emptyCategories.length, 1);
@@ -140,12 +187,32 @@ void main() {
     final cat1Id = await categoriesDao.insertCategory(name: 'One Item');
     final cat2Id = await categoriesDao.insertCategory(name: 'Two Items');
     await categoriesDao.insertCategory(name: 'Zero Items');
-    final commissaryId = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Commissary', type: 'commissary'));
-    final orgId = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Org', type: 'franchisee', parentCommissaryId: Value(commissaryId)));
+    final commissaryId = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(name: 'Commissary', type: 'commissary'),
+    );
+    final orgId = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(
+        name: 'Org',
+        type: 'franchisee',
+        parentCommissaryId: Value(commissaryId),
+      ),
+    );
 
-    await db.itemsDao.insertItem(name: 'Item A', organizationId: orgId, categoryId: cat1Id);
-    await db.itemsDao.insertItem(name: 'Item B', organizationId: orgId, categoryId: cat2Id);
-    await db.itemsDao.insertItem(name: 'Item C', organizationId: orgId, categoryId: cat2Id);
+    await db.itemsDao.insertItem(
+      name: 'Item A',
+      organizationId: orgId,
+      categoryId: cat1Id,
+    );
+    await db.itemsDao.insertItem(
+      name: 'Item B',
+      organizationId: orgId,
+      categoryId: cat2Id,
+    );
+    await db.itemsDao.insertItem(
+      name: 'Item C',
+      organizationId: orgId,
+      categoryId: cat2Id,
+    );
 
     final results = await categoriesDao.getCategoriesWithItemCounts();
     final oneItemCat = results.firstWhere((c) => c.name == 'One Item');
@@ -157,13 +224,16 @@ void main() {
     expect(zeroItemsCat.itemCount, 0);
   });
 
-   test('16. Search query in getAllCategories filters results', () async {
+  test('16. Search query in getAllCategories filters results', () async {
     await categoriesDao.insertCategory(name: 'Apple Pie');
     await categoriesDao.insertCategory(name: 'Apple Juice');
     await categoriesDao.insertCategory(name: 'Banana Pie');
 
     final results = await categoriesDao.getAllCategories(searchQuery: 'Apple');
     expect(results.length, 2);
-    expect(results.map((c) => c.name), containsAll(['Apple Pie', 'Apple Juice']));
+    expect(
+      results.map((c) => c.name),
+      containsAll(['Apple Pie', 'Apple Juice']),
+    );
   });
 }

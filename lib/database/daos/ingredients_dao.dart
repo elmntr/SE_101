@@ -8,15 +8,16 @@ import '../tables/organizations.dart';
 part 'ingredients_dao.g.dart';
 
 /// IngredientsDao - Manage raw materials/ingredients for commissary
-/// 
+///
 /// Business Logic:
 /// - Only commissary can create/manage ingredients
 /// - Ingredients have stock and spoilage (NO sold - they're not sold directly)
 /// - Ingredients are used in recipes to create items
 /// - Track stock levels for alerts when low
 @DriftAccessor(tables: [Ingredients, Categories, Organizations])
-class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDaoMixin {
-  IngredientsDao(AppDatabase db) : super(db);
+class IngredientsDao extends DatabaseAccessor<AppDatabase>
+    with _$IngredientsDaoMixin {
+  IngredientsDao(super.db);
 
   static const int defaultPageSize = 50;
   static const int maxPageSize = 100;
@@ -37,22 +38,22 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
     try {
       final query = select(ingredients)
         ..where((t) => t.isDeleted.equals(false));
-      
+
       // Search filter
       if (searchQuery != null && searchQuery.isNotEmpty) {
         query.where((t) => t.name.contains(searchQuery));
       }
-      
+
       // Category filter
       if (categoryId != null) {
         query.where((t) => t.categoryId.equals(categoryId));
       }
-      
+
       // Commissary filter
       if (commissaryId != null) {
         query.where((t) => t.commissaryId.equals(commissaryId));
       }
-      
+
       // Sorting
       query.orderBy([
         (t) {
@@ -66,19 +67,25 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
             case IngredientSortOrder.stockDesc:
               return OrderingTerm(expression: t.stock, mode: OrderingMode.desc);
             case IngredientSortOrder.newestFirst:
-              return OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc);
+              return OrderingTerm(
+                expression: t.createdAt,
+                mode: OrderingMode.desc,
+              );
             case IngredientSortOrder.oldestFirst:
-              return OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc);
+              return OrderingTerm(
+                expression: t.createdAt,
+                mode: OrderingMode.asc,
+              );
           }
-        }
+        },
       ]);
-      
+
       // Pagination
       if (limit != null) {
         final safeLimit = limit > maxPageSize ? maxPageSize : limit;
         query.limit(safeLimit, offset: offset);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching ingredients: $e');
@@ -96,19 +103,19 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
       final query = selectOnly(ingredients)
         ..addColumns([ingredients.id.count()])
         ..where(ingredients.isDeleted.equals(false));
-      
+
       if (searchQuery != null && searchQuery.isNotEmpty) {
         query.where(ingredients.name.contains(searchQuery));
       }
-      
+
       if (categoryId != null) {
         query.where(ingredients.categoryId.equals(categoryId));
       }
-      
+
       if (commissaryId != null) {
         query.where(ingredients.commissaryId.equals(commissaryId));
       }
-      
+
       final result = await query.getSingle();
       return result.read(ingredients.id.count()) ?? 0;
     } catch (e) {
@@ -126,15 +133,15 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
     try {
       final query = select(ingredients)
         ..where((t) => t.isDeleted.equals(false));
-      
+
       if (commissaryId != null) {
         query.where((t) => t.commissaryId.equals(commissaryId));
       }
-      
+
       query
         ..orderBy([(t) => OrderingTerm(expression: t.name)])
         ..limit(limit, offset: offset);
-      
+
       return query.watch();
     } catch (e) {
       print('❌ Error watching ingredients: $e');
@@ -174,7 +181,9 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
   }
 
   /// ✅ Batch insert ingredients
-  Future<void> insertIngredients(List<IngredientsCompanion> ingredientsList) async {
+  Future<void> insertIngredients(
+    List<IngredientsCompanion> ingredientsList,
+  ) async {
     try {
       await db.batch((batch) {
         batch.insertAll(ingredients, ingredientsList);
@@ -202,8 +211,9 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
   /// ✅ Get ingredient by ID
   Future<Ingredient?> getIngredientById(int id) async {
     try {
-      return await (select(ingredients)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+      return await (select(
+        ingredients,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching ingredient by ID: $e');
       return null;
@@ -211,15 +221,18 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
   }
 
   /// ✅ Get ingredient by name
-  Future<Ingredient?> getIngredientByName(String name, {int? commissaryId}) async {
+  Future<Ingredient?> getIngredientByName(
+    String name, {
+    int? commissaryId,
+  }) async {
     try {
       final query = select(ingredients)
         ..where((t) => t.name.equals(name) & t.isDeleted.equals(false));
-      
+
       if (commissaryId != null) {
         query.where((t) => t.commissaryId.equals(commissaryId));
       }
-      
+
       return await query.getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching ingredient by name: $e');
@@ -236,7 +249,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
     if (quantity <= 0) {
       throw ArgumentError('Quantity must be positive');
     }
-    
+
     try {
       final result = await customUpdate(
         'UPDATE ingredients SET '
@@ -251,7 +264,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
           Variable.withInt(ingredientId),
         ],
       );
-      
+
       return result > 0;
     } catch (e) {
       print('❌ Error adding ingredient stock: $e');
@@ -264,7 +277,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
     if (quantity <= 0) {
       throw ArgumentError('Quantity must be positive');
     }
-    
+
     try {
       final result = await customUpdate(
         'UPDATE ingredients SET '
@@ -280,12 +293,12 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
           Variable.withInt(quantity),
         ],
       );
-      
+
       if (result == 0) {
         print('⚠️ Insufficient stock for ingredient $ingredientId');
         return false;
       }
-      
+
       return true;
     } catch (e) {
       print('❌ Error deducting ingredient stock: $e');
@@ -298,7 +311,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
     if (quantity <= 0) {
       throw ArgumentError('Quantity must be positive');
     }
-    
+
     try {
       final result = await customUpdate(
         'UPDATE ingredients SET '
@@ -316,12 +329,12 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
           Variable.withInt(quantity),
         ],
       );
-      
+
       if (result == 0) {
         print('⚠️ Insufficient stock for ingredient $ingredientId');
         return false;
       }
-      
+
       return true;
     } catch (e) {
       print('❌ Error adding ingredient spoilage: $e');
@@ -334,16 +347,18 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
     if (newStock < 0) {
       throw ArgumentError('Stock cannot be negative');
     }
-    
+
     try {
-      final result = await (update(ingredients)..where((t) => t.id.equals(ingredientId)))
-        .write(
-          IngredientsCompanion(
-            stock: Value(newStock),
-            lastUpdated: Value(DateTime.now()),
-            isSynced: Value(false),
-          ),
-        );
+      final result =
+          await (update(
+            ingredients,
+          )..where((t) => t.id.equals(ingredientId))).write(
+            IngredientsCompanion(
+              stock: Value(newStock),
+              lastUpdated: Value(DateTime.now()),
+              isSynced: Value(false),
+            ),
+          );
       return result > 0;
     } catch (e) {
       print('❌ Error updating ingredient stock: $e');
@@ -358,7 +373,8 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
   /// ✅ Get low stock ingredients
   Future<List<Ingredient>> getLowStockIngredients({int? commissaryId}) async {
     try {
-      final query = '''
+      final query =
+          '''
         SELECT * FROM ingredients
         WHERE is_deleted = 0
         AND minimum_stock IS NOT NULL
@@ -366,13 +382,13 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
         ${commissaryId != null ? 'AND commissary_id = ?' : ''}
         ORDER BY stock ASC
       ''';
-      
+
       final results = await customSelect(
         query,
         variables: commissaryId != null ? [Variable.withInt(commissaryId)] : [],
         readsFrom: {ingredients},
       ).get();
-      
+
       return results.map((row) {
         return Ingredient(
           id: row.read<int>('id'),
@@ -402,13 +418,13 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
     try {
       final query = select(ingredients)
         ..where((t) => t.isDeleted.equals(false) & t.stock.equals(0));
-      
+
       if (commissaryId != null) {
         query.where((t) => t.commissaryId.equals(commissaryId));
       }
-      
+
       query.orderBy([(t) => OrderingTerm(expression: t.name)]);
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching out of stock ingredients: $e');
@@ -426,17 +442,21 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
       // Check if ingredient is used in any recipes
       final recipeCount = await _getRecipeUsageCount(id);
       if (recipeCount > 0) {
-        print('⚠️ Cannot delete ingredient $id: used in $recipeCount recipe(s)');
+        print(
+          '⚠️ Cannot delete ingredient $id: used in $recipeCount recipe(s)',
+        );
         throw Exception('Ingredient is used in $recipeCount recipe(s)');
       }
-      
+
       final result = await (update(ingredients)..where((t) => t.id.equals(id)))
-        .write(IngredientsCompanion(
-          isDeleted: Value(true),
-          isSynced: Value(false),
-          lastUpdated: Value(DateTime.now()),
-        ));
-      
+          .write(
+            IngredientsCompanion(
+              isDeleted: Value(true),
+              isSynced: Value(false),
+              lastUpdated: Value(DateTime.now()),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error soft deleting ingredient: $e');
@@ -451,9 +471,9 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
         ..addColumns([db.recipeIngredients.id.count()])
         ..where(
           db.recipeIngredients.ingredientId.equals(ingredientId) &
-          db.recipeIngredients.isDeleted.equals(false)
+              db.recipeIngredients.isDeleted.equals(false),
         );
-      
+
       final result = await query.getSingle();
       return result.read(db.recipeIngredients.id.count()) ?? 0;
     } catch (e) {
@@ -473,9 +493,9 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
   }) async {
     try {
       return await (select(ingredients)
-        ..where((t) => t.isSynced.equals(false))
-        ..limit(limit, offset: offset))
-        .get();
+            ..where((t) => t.isSynced.equals(false))
+            ..limit(limit, offset: offset))
+          .get();
     } catch (e) {
       print('❌ Error fetching unsynced ingredients: $e');
       return [];
@@ -488,7 +508,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
       final query = selectOnly(ingredients)
         ..addColumns([ingredients.id.count()])
         ..where(ingredients.isSynced.equals(false));
-      
+
       final result = await query.getSingle();
       return result.read(ingredients.id.count()) ?? 0;
     } catch (e) {
@@ -498,7 +518,10 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
   }
 
   /// ✅ Mark ingredients as synced (batch)
-  Future<void> markAsSynced(List<int> ingredientIds, {Map<int, String>? cloudIds}) async {
+  Future<void> markAsSynced(
+    List<int> ingredientIds, {
+    Map<int, String>? cloudIds,
+  }) async {
     try {
       await db.batch((batch) {
         for (final id in ingredientIds) {
@@ -519,7 +542,9 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
   }
 
   /// ✅ Batch upsert from cloud
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudIngredients) async {
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudIngredients,
+  ) async {
     try {
       await db.transaction(() async {
         for (final cloudIngredient in cloudIngredients) {
@@ -590,8 +615,9 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase> with _$IngredientsDao
   /// ✅ Get ingredient by cloud ID
   Future<Ingredient?> getIngredientByCloudId(String cloudId) async {
     try {
-      return await (select(ingredients)..where((t) => t.cloudId.equals(cloudId)))
-        .getSingleOrNull();
+      return await (select(
+        ingredients,
+      )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching ingredient by cloud ID: $e');
       return null;

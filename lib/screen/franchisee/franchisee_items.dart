@@ -3,11 +3,10 @@ import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
-import 'package:drift/drift.dart' show Value;
 import 'package:chickenjoo_inventory/app_globals.dart';
 
 class ItemsPage extends StatefulWidget {
-  const ItemsPage({Key? key}) : super(key: key);
+  const ItemsPage({super.key});
 
   @override
   State<ItemsPage> createState() => _ItemsPageState();
@@ -23,7 +22,10 @@ class _ItemsPageState extends State<ItemsPage> {
   bool _isLoading = true;
 
   ItemSort _currentSort = ItemSort(ItemSortField.name, SortOrder.desc);
-  CategorySort _currentCategorySort = CategorySort(CategorySortField.name, SortOrder.desc);
+  CategorySort _currentCategorySort = CategorySort(
+    CategorySortField.name,
+    SortOrder.desc,
+  );
 
   @override
   void initState() {
@@ -34,11 +36,11 @@ class _ItemsPageState extends State<ItemsPage> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final items = await db.itemsDao.getAllItems();
       final categories = await db.categoriesDao.getAllCategories();
-      
+
       if (mounted) {
         setState(() {
           dbItems = items;
@@ -90,29 +92,37 @@ class _ItemsPageState extends State<ItemsPage> {
                     ),
                     const SizedBox(height: 16),
                     TextField(
-                      decoration: const InputDecoration(labelText: "Initial Stock"),
+                      decoration: const InputDecoration(
+                        labelText: "Initial Stock",
+                      ),
                       keyboardType: TextInputType.number,
                       controller: stock,
                     ),
                     const SizedBox(height: 16),
                     TextField(
-                      decoration: const InputDecoration(labelText: "Price (Optional)"),
+                      decoration: const InputDecoration(
+                        labelText: "Price (Optional)",
+                      ),
                       keyboardType: TextInputType.number,
                       controller: price,
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(labelText: "Category (Optional)"),
-                      value: selectedCategoryId,
+                      decoration: const InputDecoration(
+                        labelText: "Category (Optional)",
+                      ),
+                      initialValue: selectedCategoryId,
                       items: [
                         const DropdownMenuItem<int>(
                           value: null,
                           child: Text('No Category'),
                         ),
-                        ...dbCategories.map((cat) => DropdownMenuItem<int>(
-                          value: cat.id,
-                          child: Text(cat.name),
-                        )),
+                        ...dbCategories.map(
+                          (cat) => DropdownMenuItem<int>(
+                            value: cat.id,
+                            child: Text(cat.name),
+                          ),
+                        ),
                       ],
                       onChanged: (value) {
                         setDialogState(() {
@@ -130,46 +140,65 @@ class _ItemsPageState extends State<ItemsPage> {
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                          ),
                           onPressed: () async {
                             final dialogContext = context;
-                            final messenger = ScaffoldMessenger.of(dialogContext);
+                            final messenger = ScaffoldMessenger.of(
+                              dialogContext,
+                            );
                             final navigator = Navigator.of(dialogContext);
 
                             if (name.text.isEmpty) {
                               messenger.showSnackBar(
-                                const SnackBar(content: Text('Item name is required')),
+                                const SnackBar(
+                                  content: Text('Item name is required'),
+                                ),
                               );
                               return;
                             }
 
                             try {
                               // Get user's organization ID
-                              final currentUser = await db.usersDao.getUserById(1); // TODO: Get from session
-                              final organizationId = currentUser?.organizationId ?? 1;
+                              final currentUser = await db.usersDao.getUserById(
+                                1,
+                              ); // TODO: Get from session
+                              final organizationId =
+                                  currentUser?.organizationId ?? 1;
 
                               await db.itemsDao.insertItem(
                                 name: name.text,
                                 organizationId: organizationId,
                                 stock: int.tryParse(stock.text) ?? 0,
                                 categoryId: selectedCategoryId,
-                                price: price.text.isNotEmpty ? double.tryParse(price.text) : null,
+                                price: price.text.isNotEmpty
+                                    ? double.tryParse(price.text)
+                                    : null,
                               );
 
-                              if (!navigator.mounted || !messenger.mounted) return;
+                              if (!navigator.mounted || !messenger.mounted)
+                                return;
                               navigator.pop();
                               messenger.showSnackBar(
-                                const SnackBar(content: Text('Item added successfully')),
+                                const SnackBar(
+                                  content: Text('Item added successfully'),
+                                ),
                               );
                               _loadData();
                             } catch (e) {
                               if (!messenger.mounted) return;
                               messenger.showSnackBar(
-                                SnackBar(content: Text('Error adding item: $e')),
+                                SnackBar(
+                                  content: Text('Error adding item: $e'),
+                                ),
                               );
                             }
                           },
-                          child: const Text("Save", style: TextStyle(color: Colors.white)),
+                          child: const Text(
+                            "Save",
+                            style: TextStyle(color: Colors.white),
+                          ),
                         ),
                       ],
                     ),
@@ -211,12 +240,16 @@ class _ItemsPageState extends State<ItemsPage> {
                   ),
                   const SizedBox(height: 20),
                   TextField(
-                    decoration: const InputDecoration(labelText: "Category Name"),
+                    decoration: const InputDecoration(
+                      labelText: "Category Name",
+                    ),
                     controller: categoryName,
                   ),
                   const SizedBox(height: 16),
                   TextField(
-                    decoration: const InputDecoration(labelText: "Description (Optional)"),
+                    decoration: const InputDecoration(
+                      labelText: "Description (Optional)",
+                    ),
                     controller: description,
                     maxLines: 3,
                   ),
@@ -230,7 +263,9 @@ class _ItemsPageState extends State<ItemsPage> {
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
                         onPressed: () async {
                           final dialogContext = context;
                           final messenger = ScaffoldMessenger.of(dialogContext);
@@ -238,7 +273,9 @@ class _ItemsPageState extends State<ItemsPage> {
 
                           if (categoryName.text.isEmpty) {
                             messenger.showSnackBar(
-                              const SnackBar(content: Text('Category name is required')),
+                              const SnackBar(
+                                content: Text('Category name is required'),
+                              ),
                             );
                             return;
                           }
@@ -246,23 +283,33 @@ class _ItemsPageState extends State<ItemsPage> {
                           try {
                             await db.categoriesDao.insertCategory(
                               name: categoryName.text,
-                              description: description.text.isEmpty ? null : description.text,
+                              description: description.text.isEmpty
+                                  ? null
+                                  : description.text,
                             );
 
-                            if (!navigator.mounted || !messenger.mounted) return;
+                            if (!navigator.mounted || !messenger.mounted)
+                              return;
                             navigator.pop();
                             messenger.showSnackBar(
-                              const SnackBar(content: Text('Category added successfully')),
+                              const SnackBar(
+                                content: Text('Category added successfully'),
+                              ),
                             );
                             _loadData();
                           } catch (e) {
                             if (!messenger.mounted) return;
                             messenger.showSnackBar(
-                              SnackBar(content: Text('Error adding category: $e')),
+                              SnackBar(
+                                content: Text('Error adding category: $e'),
+                              ),
                             );
                           }
                         },
-                        child: const Text("Save", style: TextStyle(color: Colors.white)),
+                        child: const Text(
+                          "Save",
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -350,16 +397,16 @@ class _ItemsPageState extends State<ItemsPage> {
       try {
         await db.itemsDao.deleteItem(item.id);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${item.name} deleted')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('${item.name} deleted')));
           _loadData();
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting item: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error deleting item: $e')));
         }
       }
     }
@@ -390,16 +437,16 @@ class _ItemsPageState extends State<ItemsPage> {
       try {
         await db.categoriesDao.deleteCategory(category.id);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${category.name} deleted')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('${category.name} deleted')));
           _loadData();
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${e.toString()}')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
         }
       }
     }
@@ -427,11 +474,14 @@ class _ItemsPageState extends State<ItemsPage> {
                         color: Colors.black.withOpacity(0.12),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ]
                   : [],
             ),
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),
@@ -454,9 +504,15 @@ class _ItemsPageState extends State<ItemsPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Items', style: TextStyle(fontSize: 26, fontFamily: fontAll)),
+                        const Text(
+                          'Items',
+                          style: TextStyle(fontSize: 26, fontFamily: fontAll),
+                        ),
                         IconButton(
-                          icon: const Icon(Icons.notifications_outlined, size: 28),
+                          icon: const Icon(
+                            Icons.notifications_outlined,
+                            size: 28,
+                          ),
                           onPressed: () {},
                         ),
                       ],
@@ -487,14 +543,50 @@ class _ItemsPageState extends State<ItemsPage> {
                             icon: const Icon(Icons.filter_list, size: 28),
                             onSelected: _applyItemSort,
                             itemBuilder: (context) => const [
-                              PopupMenuItem(value: ItemSort(ItemSortField.date, SortOrder.desc), child: Text("Date Modified (Newest)")),
-                              PopupMenuItem(value: ItemSort(ItemSortField.date, SortOrder.asc), child: Text("Date Modified (Oldest)")),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.date,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Date Modified (Newest)"),
+                              ),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.date,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Date Modified (Oldest)"),
+                              ),
                               PopupMenuDivider(),
-                              PopupMenuItem(value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
-                              PopupMenuItem(value: ItemSort(ItemSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.name,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Name (A–Z)"),
+                              ),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.name,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Name (Z–A)"),
+                              ),
                               PopupMenuDivider(),
-                              PopupMenuItem(value: ItemSort(ItemSortField.stock, SortOrder.desc), child: Text("Stock (Low → High)")),
-                              PopupMenuItem(value: ItemSort(ItemSortField.stock, SortOrder.asc), child: Text("Stock (High → Low)")),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.stock,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Stock (Low → High)"),
+                              ),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.stock,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Stock (High → Low)"),
+                              ),
                             ],
                           )
                         else
@@ -502,11 +594,35 @@ class _ItemsPageState extends State<ItemsPage> {
                             icon: const Icon(Icons.filter_list, size: 28),
                             onSelected: _applyCategorySort,
                             itemBuilder: (context) => const [
-                              PopupMenuItem(value: CategorySort(CategorySortField.date, SortOrder.desc), child: Text("Date Modified (Newest)")),
-                              PopupMenuItem(value: CategorySort(CategorySortField.date, SortOrder.asc), child: Text("Date Modified (Oldest)")),
+                              PopupMenuItem(
+                                value: CategorySort(
+                                  CategorySortField.date,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Date Modified (Newest)"),
+                              ),
+                              PopupMenuItem(
+                                value: CategorySort(
+                                  CategorySortField.date,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Date Modified (Oldest)"),
+                              ),
                               PopupMenuDivider(),
-                              PopupMenuItem(value: CategorySort(CategorySortField.name, SortOrder.desc), child: Text("Category (A–Z)")),
-                              PopupMenuItem(value: CategorySort(CategorySortField.name, SortOrder.asc), child: Text("Category (Z–A)")),
+                              PopupMenuItem(
+                                value: CategorySort(
+                                  CategorySortField.name,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Category (A–Z)"),
+                              ),
+                              PopupMenuItem(
+                                value: CategorySort(
+                                  CategorySortField.name,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Category (Z–A)"),
+                              ),
                             ],
                           ),
                       ],
@@ -541,57 +657,91 @@ class _ItemsPageState extends State<ItemsPage> {
                     child: _isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : selectedTab == 0
-                            ? (dbItems.isEmpty
-                                ? emptyTables(
-                                    message: "You can manage your items here.",
-                                    onAddPressed: _createItem,
-                                    buttonType: EmptyButtonType.icon,
-                                    buttonText: null)
-                                : buildUniversalTable(
-                                    headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
-                                    rows: dbItems.map((item) => [
-                                      item.name,
-                                      item.stock.toString(),
-                                      item.sold.toString(),
-                                      item.spoilage.toString(),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete, color: Colors.red),
-                                        onPressed: () => _deleteItem(item),
-                                      ),
-                                    ]).toList(),
-                                  ))
-                            : (dbCategories.isEmpty
-                                ? emptyTables(
-                                    message: "You can add categories here.",
-                                    onAddPressed: _createCategory,
-                                    buttonType: EmptyButtonType.icon,
-                                    buttonText: null)
-                                : FutureBuilder<List<Map<String, dynamic>>>(
-                                    future: _buildCategoryRows(),
-                                    builder: (context, snapshot) {
-                                      if (!snapshot.hasData) {
-                                        return const Center(child: CircularProgressIndicator());
-                                      }
-                                      return buildUniversalTable(
-                                        headers: ["Category Name", "Items in Category", ""],
-                                        rows: snapshot.data!.map((row) => [
-                                          row['name'],
-                                          row['itemCount'].toString(),
+                        ? (dbItems.isEmpty
+                              ? emptyTables(
+                                  message: "You can manage your items here.",
+                                  onAddPressed: _createItem,
+                                  buttonType: EmptyButtonType.icon,
+                                  buttonText: null,
+                                )
+                              : buildUniversalTable(
+                                  headers: [
+                                    "Item Name",
+                                    "Stock",
+                                    "Sale",
+                                    "Spoilage",
+                                    "",
+                                  ],
+                                  rows: dbItems
+                                      .map(
+                                        (item) => [
+                                          item.name,
+                                          item.stock.toString(),
+                                          item.sold.toString(),
+                                          item.spoilage.toString(),
                                           IconButton(
-                                            icon: const Icon(Icons.delete, color: Colors.red),
-                                            onPressed: () => _deleteCategory(row['category']),
+                                            icon: const Icon(
+                                              Icons.delete,
+                                              color: Colors.red,
+                                            ),
+                                            onPressed: () => _deleteItem(item),
                                           ),
-                                        ]).toList(),
+                                        ],
+                                      )
+                                      .toList(),
+                                ))
+                        : (dbCategories.isEmpty
+                              ? emptyTables(
+                                  message: "You can add categories here.",
+                                  onAddPressed: _createCategory,
+                                  buttonType: EmptyButtonType.icon,
+                                  buttonText: null,
+                                )
+                              : FutureBuilder<List<Map<String, dynamic>>>(
+                                  future: _buildCategoryRows(),
+                                  builder: (context, snapshot) {
+                                    if (!snapshot.hasData) {
+                                      return const Center(
+                                        child: CircularProgressIndicator(),
                                       );
-                                    },
-                                  )),
+                                    }
+                                    return buildUniversalTable(
+                                      headers: [
+                                        "Category Name",
+                                        "Items in Category",
+                                        "",
+                                      ],
+                                      rows: snapshot.data!
+                                          .map(
+                                            (row) => [
+                                              row['name'],
+                                              row['itemCount'].toString(),
+                                              IconButton(
+                                                icon: const Icon(
+                                                  Icons.delete,
+                                                  color: Colors.red,
+                                                ),
+                                                onPressed: () =>
+                                                    _deleteCategory(
+                                                      row['category'],
+                                                    ),
+                                              ),
+                                            ],
+                                          )
+                                          .toList(),
+                                    );
+                                  },
+                                )),
                   ),
                 ),
               ],
             ),
           ),
         ),
-        floatingActionButton: (!_isLoading && ((selectedTab == 0 && dbItems.isNotEmpty) || (selectedTab == 1 && dbCategories.isNotEmpty)))
+        floatingActionButton:
+            (!_isLoading &&
+                ((selectedTab == 0 && dbItems.isNotEmpty) ||
+                    (selectedTab == 1 && dbCategories.isNotEmpty)))
             ? FloatingActionButton(
                 backgroundColor: Colors.red[700],
                 onPressed: selectedTab == 0 ? _createItem : _createCategory,
@@ -610,7 +760,10 @@ class _ItemsPageState extends State<ItemsPage> {
           children: [
             Row(
               children: [
-                const Text("Items", style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+                const Text(
+                  "Items",
+                  style: TextStyle(fontSize: 30, fontFamily: fontAll),
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Container(
@@ -632,8 +785,14 @@ class _ItemsPageState extends State<ItemsPage> {
                     icon: const Icon(Icons.filter_list, size: 28),
                     onSelected: _applyItemSort,
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
-                      PopupMenuItem(value: ItemSort(ItemSortField.stock, SortOrder.desc), child: Text("Stock (Low → High)")),
+                      PopupMenuItem(
+                        value: ItemSort(ItemSortField.name, SortOrder.desc),
+                        child: Text("Name (A–Z)"),
+                      ),
+                      PopupMenuItem(
+                        value: ItemSort(ItemSortField.stock, SortOrder.desc),
+                        child: Text("Stock (Low → High)"),
+                      ),
                     ],
                   )
                 else
@@ -641,7 +800,13 @@ class _ItemsPageState extends State<ItemsPage> {
                     icon: const Icon(Icons.filter_list, size: 28),
                     onSelected: _applyCategorySort,
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: CategorySort(CategorySortField.name, SortOrder.desc), child: Text("Category (A–Z)")),
+                      PopupMenuItem(
+                        value: CategorySort(
+                          CategorySortField.name,
+                          SortOrder.desc,
+                        ),
+                        child: Text("Category (A–Z)"),
+                      ),
                     ],
                   ),
                 IconButton(
@@ -680,50 +845,83 @@ class _ItemsPageState extends State<ItemsPage> {
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : selectedTab == 0
-                              ? (dbItems.isEmpty
-                                  ? emptyTables(
-                                      message: "You can manage your items here.",
-                                      onAddPressed: _createItem,
-                                      buttonType: EmptyButtonType.icon,
-                                      buttonText: null)
-                                  : buildUniversalTable(
-                                      headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
-                                      rows: dbItems.map((item) => [
-                                        item.name,
-                                        item.stock.toString(),
-                                        item.sold.toString(),
-                                        item.spoilage.toString(),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.red),
-                                          onPressed: () => _deleteItem(item),
-                                        ),
-                                      ]).toList(),
-                                    ))
-                              : (dbCategories.isEmpty
-                                  ? emptyTables(
-                                      message: "You can add categories here to organize your items.",
-                                      onAddPressed: _createCategory,
-                                      buttonType: EmptyButtonType.icon,
-                                      buttonText: null)
-                                  : FutureBuilder<List<Map<String, dynamic>>>(
-                                      future: _buildCategoryRows(),
-                                      builder: (context, snapshot) {
-                                        if (!snapshot.hasData) {
-                                          return const Center(child: CircularProgressIndicator());
-                                        }
-                                        return buildUniversalTable(
-                                          headers: ["Category Name", "Items in Category", ""],
-                                          rows: snapshot.data!.map((row) => [
-                                            row['name'],
-                                            row['itemCount'].toString(),
+                          ? (dbItems.isEmpty
+                                ? emptyTables(
+                                    message: "You can manage your items here.",
+                                    onAddPressed: _createItem,
+                                    buttonType: EmptyButtonType.icon,
+                                    buttonText: null,
+                                  )
+                                : buildUniversalTable(
+                                    headers: [
+                                      "Item Name",
+                                      "Stock",
+                                      "Sale",
+                                      "Spoilage",
+                                      "",
+                                    ],
+                                    rows: dbItems
+                                        .map(
+                                          (item) => [
+                                            item.name,
+                                            item.stock.toString(),
+                                            item.sold.toString(),
+                                            item.spoilage.toString(),
                                             IconButton(
-                                              icon: const Icon(Icons.delete, color: Colors.red),
-                                              onPressed: () => _deleteCategory(row['category']),
+                                              icon: const Icon(
+                                                Icons.delete,
+                                                color: Colors.red,
+                                              ),
+                                              onPressed: () =>
+                                                  _deleteItem(item),
                                             ),
-                                          ]).toList(),
+                                          ],
+                                        )
+                                        .toList(),
+                                  ))
+                          : (dbCategories.isEmpty
+                                ? emptyTables(
+                                    message:
+                                        "You can add categories here to organize your items.",
+                                    onAddPressed: _createCategory,
+                                    buttonType: EmptyButtonType.icon,
+                                    buttonText: null,
+                                  )
+                                : FutureBuilder<List<Map<String, dynamic>>>(
+                                    future: _buildCategoryRows(),
+                                    builder: (context, snapshot) {
+                                      if (!snapshot.hasData) {
+                                        return const Center(
+                                          child: CircularProgressIndicator(),
                                         );
-                                      },
-                                    )),
+                                      }
+                                      return buildUniversalTable(
+                                        headers: [
+                                          "Category Name",
+                                          "Items in Category",
+                                          "",
+                                        ],
+                                        rows: snapshot.data!
+                                            .map(
+                                              (row) => [
+                                                row['name'],
+                                                row['itemCount'].toString(),
+                                                IconButton(
+                                                  icon: const Icon(
+                                                    Icons.delete,
+                                                    color: Colors.red,
+                                                  ),
+                                                  onPressed: () =>
+                                                      _deleteCategory(
+                                                        row['category'],
+                                                      ),
+                                                ),
+                                              ],
+                                            )
+                                            .toList(),
+                                      );
+                                    },
+                                  )),
                     ),
                   ),
                 ],
@@ -732,7 +930,10 @@ class _ItemsPageState extends State<ItemsPage> {
           ],
         ),
       ),
-      floatingActionButton: (!_isLoading && ((selectedTab == 0 && dbItems.isNotEmpty) || (selectedTab == 1 && dbCategories.isNotEmpty)))
+      floatingActionButton:
+          (!_isLoading &&
+              ((selectedTab == 0 && dbItems.isNotEmpty) ||
+                  (selectedTab == 1 && dbCategories.isNotEmpty)))
           ? Container(
               margin: const EdgeInsets.only(bottom: 20),
               child: FloatingActionButton(
@@ -748,16 +949,18 @@ class _ItemsPageState extends State<ItemsPage> {
 
   Future<List<Map<String, dynamic>>> _buildCategoryRows() async {
     final rows = <Map<String, dynamic>>[];
-    
+
     for (final category in dbCategories) {
-      final itemCount = await db.categoriesDao.getItemCountInCategory(category.id);
+      final itemCount = await db.categoriesDao.getItemCountInCategory(
+        category.id,
+      );
       rows.add({
         'name': category.name,
         'itemCount': itemCount,
         'category': category,
       });
     }
-    
+
     return rows;
   }
 }
