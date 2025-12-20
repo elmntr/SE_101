@@ -2,9 +2,7 @@ import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
-
 
 class ReviewChangeDetailPage extends StatelessWidget {
   static List<ChangeRecord> records = [];
@@ -24,30 +22,32 @@ class ReviewChangeDetailPage extends StatelessWidget {
   // ✅ NEW: Apply changes to database
   Future<void> _applyChangesToDatabase() async {
     final db = database;
-    
+
     print('📊 Starting database update for ${record.items.length} items');
-    
+
     for (final item in record.items) {
-      print('🔍 Item: ${item.name} (ID: ${item.id}, Sold: ${item.sold}, Spoilage: ${item.spoilage})');
-      
+      print(
+        '🔍 Item: ${item.name} (ID: ${item.id}, Sold: ${item.sold}, Spoilage: ${item.spoilage})',
+      );
+
       // Validate item ID
       if (item.id <= 0) {
         throw Exception('Invalid item ID (${item.id}) for ${item.name}');
       }
-      
+
       // Add sold and deduct from stock
       if (item.sold > 0) {
         print('  📉 Adding ${item.sold} sold units...');
         await db.itemsDao.addSold(item.id, item.sold);
       }
-      
+
       // Add spoilage and deduct from stock
       if (item.spoilage > 0) {
         print('  📉 Adding ${item.spoilage} spoilage units...');
         await db.itemsDao.addSpoilage(item.id, item.spoilage);
       }
     }
-    
+
     print('✅ Database update completed successfully');
   }
 
@@ -70,10 +70,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
                 const SizedBox(width: 10),
                 const Text(
                   "Review Change Details",
-                  style: TextStyle(
-                    fontFamily: fontAll,
-                    fontSize: 25,
-                  ),
+                  style: TextStyle(fontFamily: fontAll, fontSize: 25),
                 ),
                 const Spacer(),
                 IconButton(
@@ -90,16 +87,23 @@ class ReviewChangeDetailPage extends StatelessWidget {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Employee Name:', style: TextStyle(color: Colors.grey)),
-                      Text(record.employeeName, style: const TextStyle(fontSize: 16)),
+                      const Text(
+                        'Employee Name:',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      Text(
+                        record.employeeName,
+                        style: const TextStyle(fontSize: 16),
+                      ),
                     ],
                   ),
                 ),
@@ -116,7 +120,10 @@ class ReviewChangeDetailPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Status:', style: TextStyle(color: Colors.grey)),
+                      const Text(
+                        'Status:',
+                        style: TextStyle(color: Colors.grey),
+                      ),
                       Text(record.status, style: const TextStyle(fontSize: 16)),
                     ],
                   ),
@@ -135,12 +142,37 @@ class ReviewChangeDetailPage extends StatelessWidget {
                   flex: 3,
                   child: Padding(
                     padding: EdgeInsets.only(left: 16),
-                    child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Item Name',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
-                Expanded(child: Center(child: Text('Sold', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(child: Center(child: Text('Spoilage', style: TextStyle(fontWeight: FontWeight.bold)))),
-                Expanded(flex: 2, child: Center(child: Text('Current Stock', style: TextStyle(fontWeight: FontWeight.bold)))),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      'Sold',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      'Spoilage',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Center(
+                    child: Text(
+                      'Current Stock',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -154,22 +186,30 @@ class ReviewChangeDetailPage extends StatelessWidget {
                 return Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey),
-                    ),
+                    border: Border(bottom: BorderSide(color: Colors.grey)),
                   ),
                   child: Row(
                     children: [
                       Expanded(
                         flex: 3,
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 20,
+                          ),
                           child: Text(item.name),
                         ),
                       ),
-                      Expanded(child: Center(child: Text(item.sold.toString()))),
-                      Expanded(child: Center(child: Text(item.spoilage.toString()))),
-                      Expanded(flex: 2, child: Center(child: Text(item.stock.toString()))),
+                      Expanded(
+                        child: Center(child: Text(item.sold.toString())),
+                      ),
+                      Expanded(
+                        child: Center(child: Text(item.spoilage.toString())),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Center(child: Text(item.stock.toString())),
+                      ),
                     ],
                   ),
                 );
@@ -201,7 +241,8 @@ class ReviewChangeDetailPage extends StatelessWidget {
                           backgroundColor: Colors.red,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30)),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
                         ),
                         onPressed: () async {
                           final confirmed = await showDialog<bool>(
@@ -209,7 +250,8 @@ class ReviewChangeDetailPage extends StatelessWidget {
                             builder: (ctx) => AlertDialog(
                               title: const Text('Delete update?'),
                               content: const Text(
-                                  'Are you sure you want to delete this update?'),
+                                'Are you sure you want to delete this update?',
+                              ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, false),
@@ -217,7 +259,8 @@ class ReviewChangeDetailPage extends StatelessWidget {
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red),
+                                    backgroundColor: Colors.red,
+                                  ),
                                   onPressed: () => Navigator.pop(ctx, true),
                                   child: const Text('Yes'),
                                 ),
@@ -252,17 +295,19 @@ class ReviewChangeDetailPage extends StatelessWidget {
                           backgroundColor: const Color(0xFF0A8F1A),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30)),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
                         ),
                         onPressed: () async {
                           print('🔵 Approve button pressed');
-                          
+
                           final confirmed = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
                               title: const Text('Approve and apply changes?'),
                               content: const Text(
-                                  'This will update the inventory with sold/spoilage data and deduct from stock.'),
+                                'This will update the inventory with sold/spoilage data and deduct from stock.',
+                              ),
                               actions: [
                                 TextButton(
                                   onPressed: () {
@@ -273,7 +318,8 @@ class ReviewChangeDetailPage extends StatelessWidget {
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green),
+                                    backgroundColor: Colors.green,
+                                  ),
                                   onPressed: () {
                                     print('🔵 User confirmed approval');
                                     Navigator.pop(ctx, true);
@@ -283,30 +329,34 @@ class ReviewChangeDetailPage extends StatelessWidget {
                               ],
                             ),
                           );
-                          
+
                           print('🔵 Dialog result: $confirmed');
-                          
+
                           if (confirmed == true) {
                             print('🔵 Starting approval process...');
-                            
+
                             // Show loading indicator
                             if (!context.mounted) {
-                              print('❌ Context not mounted before showing snackbar');
+                              print(
+                                '❌ Context not mounted before showing snackbar',
+                              );
                               return;
                             }
-                            
+
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Applying changes...')),
+                              const SnackBar(
+                                content: Text('Applying changes...'),
+                              ),
                             );
 
                             try {
                               print('🔵 Calling _applyChangesToDatabase...');
                               await _applyChangesToDatabase();
                               print('✅ Database changes applied');
-                              
+
                               // Update status
                               record.status = 'Approved';
-                              
+
                               if (onApprove != null) {
                                 print('🔵 Calling onApprove callback');
                                 onApprove!(record);
@@ -319,41 +369,46 @@ class ReviewChangeDetailPage extends StatelessWidget {
                                   print('⚠️ Error updating lists: $e');
                                 }
                               }
-                              
+
                               if (!context.mounted) {
                                 print('❌ Context not mounted after approval');
                                 return;
                               }
-                              
+
                               print('🔵 Showing success message');
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('✅ Changes applied successfully!'),
+                                  content: Text(
+                                    '✅ Changes applied successfully!',
+                                  ),
                                   backgroundColor: Colors.green,
                                 ),
                               );
-                              
+
                               // Small delay to show the snackbar
-                              await Future.delayed(const Duration(milliseconds: 500));
-                              
+                              await Future.delayed(
+                                const Duration(milliseconds: 500),
+                              );
+
                               if (!context.mounted) {
                                 print('❌ Context not mounted before pop');
                                 return;
                               }
-                              
+
                               print('🔵 Popping navigation');
                               Navigator.of(context).pop();
                               print('✅ Navigation popped successfully');
-                              
                             } catch (e, stackTrace) {
                               print('❌ ERROR during approval: $e');
                               print('❌ Stack trace: $stackTrace');
-                              
+
                               if (!context.mounted) {
-                                print('❌ Context not mounted during error handling');
+                                print(
+                                  '❌ Context not mounted during error handling',
+                                );
                                 return;
                               }
-                              
+
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text('❌ Error: $e'),

@@ -1,6 +1,5 @@
 // test/daos/roles_dao_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:matcher/matcher.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import '../database/test_database.dart';
@@ -20,7 +19,9 @@ void main() {
   });
 
   test('1. Insert role successfully', () async {
-    final id = await rolesDao.insertRole(RolesCompanion.insert(name: 'Cashier'));
+    final id = await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'Cashier'),
+    );
     final role = await rolesDao.getRoleById(id);
     expect(role, isNotNull);
     expect(role!.name, 'Cashier');
@@ -34,16 +35,22 @@ void main() {
   });
 
   test('3. Update role changes its properties', () async {
-    final id = await rolesDao.insertRole(RolesCompanion.insert(name: 'Old Name'));
+    final id = await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'Old Name'),
+    );
     final role = (await rolesDao.getRoleById(id))!;
-    await rolesDao.updateRole(role.copyWith(name: 'New Name', canViewReports: true));
+    await rolesDao.updateRole(
+      role.copyWith(name: 'New Name', canViewReports: true),
+    );
     final updated = await rolesDao.getRoleById(id);
     expect(updated!.name, 'New Name');
     expect(updated.canViewReports, isTrue);
   });
 
   test('4. Deactivate role marks it as inactive', () async {
-    final id = await rolesDao.insertRole(RolesCompanion.insert(name: 'To Deactivate'));
+    final id = await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'To Deactivate'),
+    );
     await rolesDao.deactivateRole(id);
     final role = await rolesDao.getRoleById(id);
     expect(role!.isActive, isFalse);
@@ -51,7 +58,9 @@ void main() {
 
   test('5. Get all roles with isActive=true ignores inactive roles', () async {
     await rolesDao.insertRole(RolesCompanion.insert(name: 'Active'));
-    final idToDeactivate = await rolesDao.insertRole(RolesCompanion.insert(name: 'Inactive'));
+    final idToDeactivate = await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'Inactive'),
+    );
     await rolesDao.deactivateRole(idToDeactivate);
     final roles = await rolesDao.getAllRoles(isActive: true);
     expect(roles.length, 1);
@@ -59,21 +68,43 @@ void main() {
   });
 
   test('6. Delete role fails if it is in use', () async {
-    final roleId = await rolesDao.insertRole(RolesCompanion.insert(name: 'In Use'));
-    final commissaryId = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Commissary', type: 'commissary'));
-    final orgId = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Org', type: 'franchisee', parentCommissaryId: Value(commissaryId)));
-    await db.usersDao.insertUser(UsersCompanion.insert(username: 'test', email: 'a@b.c', password: 'pw', organizationId: orgId, roleId: roleId));
+    final roleId = await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'In Use'),
+    );
+    final commissaryId = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(name: 'Commissary', type: 'commissary'),
+    );
+    final orgId = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(
+        name: 'Org',
+        type: 'franchisee',
+        parentCommissaryId: Value(commissaryId),
+      ),
+    );
+    await db.usersDao.insertUser(
+      UsersCompanion.insert(
+        username: 'test',
+        email: 'a@b.c',
+        password: 'pw',
+        organizationId: orgId,
+        roleId: roleId,
+      ),
+    );
 
     expect(() => rolesDao.deleteRoleById(roleId), throwsException);
   });
 
   test('7. Delete role fails for system roles', () async {
-    final roleId = await rolesDao.insertRole(RolesCompanion.insert(name: 'System Role', isSystemRole: Value(true)));
+    final roleId = await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'System Role', isSystemRole: Value(true)),
+    );
     expect(() => rolesDao.deleteRoleById(roleId), throwsException);
   });
 
   test('8. Delete role succeeds for unused, non-system role', () async {
-    final roleId = await rolesDao.insertRole(RolesCompanion.insert(name: 'Unused'));
+    final roleId = await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'Unused'),
+    );
     final success = await rolesDao.deleteRoleById(roleId);
     expect(success, isTrue);
     final role = await rolesDao.getRoleById(roleId);
@@ -88,7 +119,9 @@ void main() {
   });
 
   test('10. Get system roles returns only system roles', () async {
-    await rolesDao.insertRole(RolesCompanion.insert(name: 'System', isSystemRole: Value(true)));
+    await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'System', isSystemRole: Value(true)),
+    );
     await rolesDao.insertRole(RolesCompanion.insert(name: 'Custom'));
     final systemRoles = await rolesDao.getSystemRoles();
     expect(systemRoles.length, 1);
@@ -96,7 +129,9 @@ void main() {
   });
 
   test('11. Get custom roles returns only non-system roles', () async {
-    await rolesDao.insertRole(RolesCompanion.insert(name: 'System', isSystemRole: Value(true)));
+    await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'System', isSystemRole: Value(true)),
+    );
     await rolesDao.insertRole(RolesCompanion.insert(name: 'Custom'));
     final customRoles = await rolesDao.getCustomRoles();
     expect(customRoles.length, 1);
@@ -104,8 +139,12 @@ void main() {
   });
 
   test('12. Get roles with permission filters correctly', () async {
-    await rolesDao.insertRole(RolesCompanion.insert(name: 'Viewer', canViewInventory: Value(true)));
-    await rolesDao.insertRole(RolesCompanion.insert(name: 'Editor', canEditInventory: Value(true)));
+    await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'Viewer', canViewInventory: Value(true)),
+    );
+    await rolesDao.insertRole(
+      RolesCompanion.insert(name: 'Editor', canEditInventory: Value(true)),
+    );
     await rolesDao.insertRole(RolesCompanion.insert(name: 'NoPerms'));
 
     final viewers = await rolesDao.getRolesWithPermission('view_inventory');

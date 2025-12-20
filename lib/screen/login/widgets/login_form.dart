@@ -62,10 +62,7 @@ class LoginForm extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-              ),
+              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
             ],
           ),
           child: TextField(
@@ -85,9 +82,7 @@ class LoginForm extends StatelessWidget {
               ),
               suffixIcon: IconButton(
                 icon: Icon(
-                  isPasswordVisible
-                      ? Icons.visibility
-                      : Icons.visibility_off,
+                  isPasswordVisible ? Icons.visibility : Icons.visibility_off,
                   color: Colors.grey,
                 ),
                 onPressed: onPasswordVisibilityToggle,

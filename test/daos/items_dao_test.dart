@@ -1,6 +1,5 @@
 // test/daos/items_dao_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:matcher/matcher.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import '../database/test_database.dart';
@@ -16,10 +15,17 @@ void main() {
     db = createTestDatabase();
     itemsDao = db.itemsDao;
     commissaryId = await db.organizationsDao.insertOrganization(
-      OrganizationsCompanion.insert(name: 'Test Commissary', type: 'commissary'),
+      OrganizationsCompanion.insert(
+        name: 'Test Commissary',
+        type: 'commissary',
+      ),
     );
     orgId = await db.organizationsDao.insertOrganization(
-      OrganizationsCompanion.insert(name: 'Test Franchisee', type: 'franchisee', parentCommissaryId: Value(commissaryId)),
+      OrganizationsCompanion.insert(
+        name: 'Test Franchisee',
+        type: 'franchisee',
+        parentCommissaryId: Value(commissaryId),
+      ),
     );
   });
 
@@ -43,9 +49,15 @@ void main() {
   });
 
   test('3. Update item changes its properties', () async {
-    final id = await itemsDao.insertItem(name: 'Pizza', organizationId: orgId, price: 10.0);
+    final id = await itemsDao.insertItem(
+      name: 'Pizza',
+      organizationId: orgId,
+      price: 10.0,
+    );
     final item = (await itemsDao.getItemById(id))!;
-    await itemsDao.updateItem(item.copyWith(name: 'Calzone', price: Value(12.5)));
+    await itemsDao.updateItem(
+      item.copyWith(name: 'Calzone', price: Value(12.5)),
+    );
     final updated = await itemsDao.getItemById(id);
     expect(updated!.name, 'Calzone');
     expect(updated.price, 12.5);
@@ -60,7 +72,10 @@ void main() {
 
   test('5. Get all items ignores soft-deleted ones', () async {
     await itemsDao.insertItem(name: 'Visible', organizationId: orgId);
-    final idToDelete = await itemsDao.insertItem(name: 'Invisible', organizationId: orgId);
+    final idToDelete = await itemsDao.insertItem(
+      name: 'Invisible',
+      organizationId: orgId,
+    );
     await itemsDao.softDeleteItem(idToDelete);
     final items = await itemsDao.getAllItems();
     expect(items.length, 1);
@@ -68,14 +83,22 @@ void main() {
   });
 
   test('6. Add stock increases stock quantity', () async {
-    final id = await itemsDao.insertItem(name: 'Taco', organizationId: orgId, stock: 20);
+    final id = await itemsDao.insertItem(
+      name: 'Taco',
+      organizationId: orgId,
+      stock: 20,
+    );
     await itemsDao.addStock(id, 10);
     final item = await itemsDao.getItemById(id);
     expect(item!.stock, 30);
   });
 
   test('7. Add sold decreases stock and increases sold', () async {
-    final id = await itemsDao.insertItem(name: 'Burrito', organizationId: orgId, stock: 50);
+    final id = await itemsDao.insertItem(
+      name: 'Burrito',
+      organizationId: orgId,
+      stock: 50,
+    );
     await itemsDao.addSold(id, 5);
     final item = await itemsDao.getItemById(id);
     expect(item!.stock, 45);
@@ -83,7 +106,11 @@ void main() {
   });
 
   test('8. Add sold fails with insufficient stock', () async {
-    final id = await itemsDao.insertItem(name: 'Nachos', organizationId: orgId, stock: 2);
+    final id = await itemsDao.insertItem(
+      name: 'Nachos',
+      organizationId: orgId,
+      stock: 2,
+    );
     final success = await itemsDao.addSold(id, 5);
     expect(success, isFalse);
     final item = await itemsDao.getItemById(id);
@@ -92,7 +119,11 @@ void main() {
   });
 
   test('9. Add spoilage decreases stock and increases spoilage', () async {
-    final id = await itemsDao.insertItem(name: 'Enchilada', organizationId: orgId, stock: 30);
+    final id = await itemsDao.insertItem(
+      name: 'Enchilada',
+      organizationId: orgId,
+      stock: 30,
+    );
     await itemsDao.addSpoilage(id, 3);
     final item = await itemsDao.getItemById(id);
     expect(item!.stock, 27);
@@ -101,12 +132,20 @@ void main() {
 
   test('10. Get items with categories returns correct data', () async {
     final catId = await db.categoriesDao.insertCategory(name: 'Mexican');
-    await itemsDao.insertItem(name: 'Quesadilla', organizationId: orgId, categoryId: catId);
+    await itemsDao.insertItem(
+      name: 'Quesadilla',
+      organizationId: orgId,
+      categoryId: catId,
+    );
     await itemsDao.insertItem(name: 'Uncategorized', organizationId: orgId);
 
     final itemsWithCat = await itemsDao.getItemsWithCategories();
-    final categorized = itemsWithCat.firstWhere((iwc) => iwc.item.name == 'Quesadilla');
-    final uncategorized = itemsWithCat.firstWhere((iwc) => iwc.item.name == 'Uncategorized');
+    final categorized = itemsWithCat.firstWhere(
+      (iwc) => iwc.item.name == 'Quesadilla',
+    );
+    final uncategorized = itemsWithCat.firstWhere(
+      (iwc) => iwc.item.name == 'Uncategorized',
+    );
 
     expect(categorized.category, isNotNull);
     expect(categorized.category!.name, 'Mexican');
@@ -114,8 +153,16 @@ void main() {
   });
 
   test('11. Get low stock items returns items below threshold', () async {
-    await itemsDao.insertItem(name: 'Low Stock', organizationId: orgId, stock: 5);
-    await itemsDao.insertItem(name: 'High Stock', organizationId: orgId, stock: 20);
+    await itemsDao.insertItem(
+      name: 'Low Stock',
+      organizationId: orgId,
+      stock: 5,
+    );
+    await itemsDao.insertItem(
+      name: 'High Stock',
+      organizationId: orgId,
+      stock: 20,
+    );
     final lowStock = await itemsDao.getLowStockItems(10);
     expect(lowStock.length, 1);
     expect(lowStock.first.name, 'Low Stock');
@@ -123,14 +170,23 @@ void main() {
 
   test('12. Assign category updates the item', () async {
     final catId = await db.categoriesDao.insertCategory(name: 'Main Course');
-    final itemId = await itemsDao.insertItem(name: 'Steak', organizationId: orgId);
+    final itemId = await itemsDao.insertItem(
+      name: 'Steak',
+      organizationId: orgId,
+    );
     await itemsDao.assignCategory(itemId, catId);
     final item = await itemsDao.getItemById(itemId);
     expect(item!.categoryId, catId);
   });
 
   test('13. Get items by organization filters correctly', () async {
-    final org2Id = await db.organizationsDao.insertOrganization(OrganizationsCompanion.insert(name: 'Other Franchisee', type: 'franchisee', parentCommissaryId: Value(commissaryId)));
+    final org2Id = await db.organizationsDao.insertOrganization(
+      OrganizationsCompanion.insert(
+        name: 'Other Franchisee',
+        type: 'franchisee',
+        parentCommissaryId: Value(commissaryId),
+      ),
+    );
     await itemsDao.insertItem(name: 'Item A', organizationId: orgId);
     await itemsDao.insertItem(name: 'Item B', organizationId: org2Id);
 
@@ -151,7 +207,10 @@ void main() {
   });
 
   test('15. Permanent delete marks item as deleted and unsynced', () async {
-    final id = await itemsDao.insertItem(name: 'To Delete', organizationId: orgId);
+    final id = await itemsDao.insertItem(
+      name: 'To Delete',
+      organizationId: orgId,
+    );
     await itemsDao.markAsSynced([id]); // Mark as synced first
     await itemsDao.deleteItem(id);
 

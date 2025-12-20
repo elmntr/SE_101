@@ -10,7 +10,7 @@ part 'users_dao.g.dart';
 
 @DriftAccessor(tables: [Users, Roles, Organizations])
 class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
-  UsersDao(AppDatabase db) : super(db);
+  UsersDao(super.db);
 
   static const int defaultPageSize = 50;
 
@@ -22,17 +22,17 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   }) async {
     try {
       final query = select(users);
-      
+
       if (isActive != null) {
         query.where((t) => t.isActive.equals(isActive));
       }
-      
+
       query.orderBy([(t) => OrderingTerm(expression: t.username)]);
-      
+
       if (limit != null) {
         query.limit(limit, offset: offset);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching users: $e');
@@ -43,13 +43,12 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   /// ✅ Count users
   Future<int> getUserCount({bool? isActive}) async {
     try {
-      final query = selectOnly(users)
-        ..addColumns([users.id.count()]);
-      
+      final query = selectOnly(users)..addColumns([users.id.count()]);
+
       if (isActive != null) {
         query.where(users.isActive.equals(isActive));
       }
-      
+
       final result = await query.getSingle();
       return result.read(users.id.count()) ?? 0;
     } catch (e) {
@@ -65,9 +64,9 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   }) {
     try {
       return (select(users)
-        ..orderBy([(t) => OrderingTerm(expression: t.username)])
-        ..limit(limit, offset: offset))
-        .watch();
+            ..orderBy([(t) => OrderingTerm(expression: t.username)])
+            ..limit(limit, offset: offset))
+          .watch();
     } catch (e) {
       print('❌ Error watching users: $e');
       return Stream.value([]);
@@ -78,10 +77,10 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Future<int> insertUser(UsersCompanion user) async {
     try {
       // Hash the password before inserting
-      final hashedPassword = user.password.present 
+      final hashedPassword = user.password.present
           ? hashPassword(user.password.value)
           : throw ArgumentError('Password is required');
-      
+
       return await into(users).insert(
         user.copyWith(
           password: Value(hashedPassword), // ✅ Store hashed password
@@ -103,7 +102,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
           final hashedPassword = userCompanion.password.present
               ? hashPassword(userCompanion.password.value)
               : throw ArgumentError('Password is required');
-          
+
           batch.insert(
             users,
             userCompanion.copyWith(
@@ -136,8 +135,9 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   /// ✅ Get a single user by ID
   Future<User?> getUserById(int id) async {
     try {
-      return await (select(users)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+      return await (select(
+        users,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching user by ID: $e');
       return null;
@@ -147,8 +147,9 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   /// ✅ Get user by username
   Future<User?> getUserByUsername(String username) async {
     try {
-      return await (select(users)..where((t) => t.username.equals(username)))
-        .getSingleOrNull();
+      return await (select(
+        users,
+      )..where((t) => t.username.equals(username))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching user by username: $e');
       return null;
@@ -158,8 +159,9 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   /// ✅ Get user by email
   Future<User?> getUserByEmail(String email) async {
     try {
-      return await (select(users)..where((t) => t.email.equals(email)))
-        .getSingleOrNull();
+      return await (select(
+        users,
+      )..where((t) => t.email.equals(email))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching user by email: $e');
       return null;
@@ -167,32 +169,32 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   }
 
   /// ✅ Get users for a specific organization
-Future<List<User>> getUsersByOrganization(
-  int organizationId, {
-  int? limit,
-  int offset = 0,
-  bool? isActive,
-}) async {
-  try {
-    final query = select(users)
-      ..where((t) => t.organizationId.equals(organizationId));
-    
-    if (isActive != null) {
-      query.where((t) => t.isActive.equals(isActive));
+  Future<List<User>> getUsersByOrganization(
+    int organizationId, {
+    int? limit,
+    int offset = 0,
+    bool? isActive,
+  }) async {
+    try {
+      final query = select(users)
+        ..where((t) => t.organizationId.equals(organizationId));
+
+      if (isActive != null) {
+        query.where((t) => t.isActive.equals(isActive));
+      }
+
+      query.orderBy([(t) => OrderingTerm(expression: t.username)]);
+
+      if (limit != null) {
+        query.limit(limit, offset: offset);
+      }
+
+      return await query.get();
+    } catch (e) {
+      print('❌ Error fetching users by organization: $e');
+      return [];
     }
-    
-    query.orderBy([(t) => OrderingTerm(expression: t.username)]);
-    
-    if (limit != null) {
-      query.limit(limit, offset: offset);
-    }
-    
-    return await query.get();
-  } catch (e) {
-    print('❌ Error fetching users by organization: $e');
-    return [];
   }
-}
 
   /// ✅ PERMANENT DELETE: Hard-delete user from local and mark for cloud deletion
   Future<bool> deleteUserById(int id) async {
@@ -207,22 +209,25 @@ Future<List<User>> getUsersByOrganization(
       // If user has cloudId, mark as inactive and unsynced first
       // This signals the sync service to delete from cloud
       if (user.cloudId != null && user.isActive) {
-        await (update(users)..where((t) => t.id.equals(id)))
-          .write(UsersCompanion(
+        await (update(users)..where((t) => t.id.equals(id))).write(
+          UsersCompanion(
             isActive: Value(false),
             isSynced: Value(false),
             lastUpdated: Value(DateTime.now()),
-          ));
-        print('📤 User $id marked for cloud deletion (cloudId: ${user.cloudId})');
+          ),
+        );
+        print(
+          '📤 User $id marked for cloud deletion (cloudId: ${user.cloudId})',
+        );
       }
-      
+
       // Then permanently delete from local database
       final result = await (delete(users)..where((t) => t.id.equals(id))).go();
-      
+
       if (result > 0) {
         print('✅ User $id permanently deleted from local database');
       }
-      
+
       return result > 0;
     } catch (e) {
       print('❌ Error deleting user: $e');
@@ -233,12 +238,13 @@ Future<List<User>> getUsersByOrganization(
   /// ✅ Soft delete user (deactivate)
   Future<bool> deactivateUser(int id) async {
     try {
-      final result = await (update(users)..where((t) => t.id.equals(id)))
-        .write(UsersCompanion(
+      final result = await (update(users)..where((t) => t.id.equals(id))).write(
+        UsersCompanion(
           isActive: Value(false),
           lastUpdated: Value(DateTime.now()),
           isSynced: Value(false),
-        ));
+        ),
+      );
       return result > 0;
     } catch (e) {
       print('❌ Error deactivating user: $e');
@@ -257,16 +263,16 @@ Future<List<User>> getUsersByOrganization(
     bool? isActive,
   }) async {
     try {
-      final query = select(users).join([
-        leftOuterJoin(roles, roles.id.equalsExp(users.roleId)),
-      ]);
+      final query = select(
+        users,
+      ).join([leftOuterJoin(roles, roles.id.equalsExp(users.roleId))]);
 
       if (isActive != null) {
         query.where(users.isActive.equals(isActive));
       }
 
       query.orderBy([OrderingTerm(expression: users.username)]);
-      
+
       if (limit != null) {
         query.limit(limit, offset: offset);
       }
@@ -290,11 +296,12 @@ Future<List<User>> getUsersByOrganization(
     int offset = 0,
   }) {
     try {
-      final query = select(users).join([
-        leftOuterJoin(roles, roles.id.equalsExp(users.roleId)),
-      ])
-        ..orderBy([OrderingTerm(expression: users.username)])
-        ..limit(limit, offset: offset);
+      final query =
+          select(
+              users,
+            ).join([leftOuterJoin(roles, roles.id.equalsExp(users.roleId))])
+            ..orderBy([OrderingTerm(expression: users.username)])
+            ..limit(limit, offset: offset);
 
       return query.watch().map((rows) {
         return rows.map((row) {
@@ -317,13 +324,14 @@ Future<List<User>> getUsersByOrganization(
     try {
       // Hash the input password to compare
       final hashedPassword = hashPassword(password);
-      
-      return await (select(users)
-        ..where((u) =>
-          u.email.equals(email) &
-          u.password.equals(hashedPassword) &
-          u.isActive.equals(true)))
-        .getSingleOrNull();
+
+      return await (select(users)..where(
+            (u) =>
+                u.email.equals(email) &
+                u.password.equals(hashedPassword) &
+                u.isActive.equals(true),
+          ))
+          .getSingleOrNull();
     } catch (e) {
       print('❌ Authentication failed: $e');
       return null;
@@ -335,7 +343,7 @@ Future<List<User>> getUsersByOrganization(
     try {
       final user = await getUserById(userId);
       if (user == null) return false;
-      
+
       final hashedPassword = hashPassword(password);
       return user.password == hashedPassword;
     } catch (e) {
@@ -348,14 +356,16 @@ Future<List<User>> getUsersByOrganization(
   Future<bool> updatePassword(int userId, String newPassword) async {
     try {
       final hashedPassword = hashPassword(newPassword);
-      
+
       final result = await (update(users)..where((t) => t.id.equals(userId)))
-        .write(UsersCompanion(
-          password: Value(hashedPassword),
-          lastUpdated: Value(DateTime.now()),
-          isSynced: Value(false),
-        ));
-      
+          .write(
+            UsersCompanion(
+              password: Value(hashedPassword),
+              lastUpdated: Value(DateTime.now()),
+              isSynced: Value(false),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error updating password: $e');
@@ -371,12 +381,14 @@ Future<List<User>> getUsersByOrganization(
   Future<bool> assignRoleToUser(int userId, int roleId) async {
     try {
       final result = await (update(users)..where((t) => t.id.equals(userId)))
-        .write(UsersCompanion(
-          roleId: Value(roleId),
-          isSynced: Value(false),
-          lastUpdated: Value(DateTime.now()),
-        ));
-      
+          .write(
+            UsersCompanion(
+              roleId: Value(roleId),
+              isSynced: Value(false),
+              lastUpdated: Value(DateTime.now()),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error assigning role: $e');
@@ -389,15 +401,12 @@ Future<List<User>> getUsersByOrganization(
   // ============================================================================
 
   /// ✅ Get unsynced users (paginated)
-  Future<List<User>> getUnsyncedUsers({
-    int limit = 100,
-    int offset = 0,
-  }) async {
+  Future<List<User>> getUnsyncedUsers({int limit = 100, int offset = 0}) async {
     try {
       return await (select(users)
-        ..where((t) => t.isSynced.equals(false))
-        ..limit(limit, offset: offset))
-        .get();
+            ..where((t) => t.isSynced.equals(false))
+            ..limit(limit, offset: offset))
+          .get();
     } catch (e) {
       print('❌ Error fetching unsynced users: $e');
       return [];
@@ -410,7 +419,7 @@ Future<List<User>> getUsersByOrganization(
       final query = selectOnly(users)
         ..addColumns([users.id.count()])
         ..where(users.isSynced.equals(false));
-      
+
       final result = await query.getSingle();
       return result.read(users.id.count()) ?? 0;
     } catch (e) {
@@ -420,7 +429,10 @@ Future<List<User>> getUsersByOrganization(
   }
 
   /// ✅ Mark users as synced (batch)
-  Future<void> markAsSynced(List<int> userIds, {Map<int, String>? cloudIds}) async {
+  Future<void> markAsSynced(
+    List<int> userIds, {
+    Map<int, String>? cloudIds,
+  }) async {
     try {
       await db.batch((batch) {
         for (final id in userIds) {
@@ -442,76 +454,79 @@ Future<List<User>> getUsersByOrganization(
 
   // /// ✅ Batch upsert from cloud
   /// ✅ FIXED: Batch upsert from cloud with ALL new columns
-Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudUsers) async {
-  try {
-    await db.transaction(() async {
-      for (final cloudUser in cloudUsers) {
-        await upsertFromCloud(
-          id: cloudUser['local_id'],
-          email: cloudUser['email'],
-          username: cloudUser['username'],
-          password: cloudUser['password'], // Already hashed from cloud
-          phone: cloudUser['phone'],
-          organizationId: cloudUser['organization_id'], // ✅ NEW - Required
-          roleId: cloudUser['role_id'],
-          fullName: cloudUser['full_name'], // ✅ NEW - Optional
-          isActive: cloudUser['is_active'],
-          createdAt: DateTime.parse(cloudUser['created_at']),
-          lastUpdated: DateTime.parse(cloudUser['last_updated']),
-          cloudId: cloudUser['cloud_id'],
-        );
-      }
-    });
-  } catch (e) {
-    print('❌ Error batch upserting users from cloud: $e');
-    rethrow;
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudUsers,
+  ) async {
+    try {
+      await db.transaction(() async {
+        for (final cloudUser in cloudUsers) {
+          await upsertFromCloud(
+            id: cloudUser['local_id'],
+            email: cloudUser['email'],
+            username: cloudUser['username'],
+            password: cloudUser['password'], // Already hashed from cloud
+            phone: cloudUser['phone'],
+            organizationId: cloudUser['organization_id'], // ✅ NEW - Required
+            roleId: cloudUser['role_id'],
+            fullName: cloudUser['full_name'], // ✅ NEW - Optional
+            isActive: cloudUser['is_active'],
+            createdAt: DateTime.parse(cloudUser['created_at']),
+            lastUpdated: DateTime.parse(cloudUser['last_updated']),
+            cloudId: cloudUser['cloud_id'],
+          );
+        }
+      });
+    } catch (e) {
+      print('❌ Error batch upserting users from cloud: $e');
+      rethrow;
+    }
   }
-}
 
   /// ✅ Upsert from cloud (password is already hashed)
-Future<void> upsertFromCloud({
-  required int id,
-  required String email,
-  required String username,
-  required String password,
-  String? phone,
-  required int organizationId, // ✅ NEW
-  required int roleId,
-  String? fullName, // ✅ NEW
-  required bool isActive,
-  required DateTime createdAt,
-  required DateTime lastUpdated,
-  required String cloudId,
-}) async {
-  try {
-    await into(users).insertOnConflictUpdate(
-      UsersCompanion.insert(
-        id: Value(id),
-        email: email,
-        username: username,
-        password: password,
-        phone: Value(phone),
-        organizationId: organizationId, // ✅ NEW
-        roleId: roleId,
-        fullName: Value(fullName), // ✅ NEW
-        isActive: Value(isActive),
-        createdAt: Value(createdAt),
-        lastUpdated: Value(lastUpdated),
-        isSynced: Value(true),
-        cloudId: Value(cloudId),
-      ),
-    );
-  } catch (e) {
-    print('❌ Error upserting user from cloud: $e');
-    rethrow;
+  Future<void> upsertFromCloud({
+    required int id,
+    required String email,
+    required String username,
+    required String password,
+    String? phone,
+    required int organizationId, // ✅ NEW
+    required int roleId,
+    String? fullName, // ✅ NEW
+    required bool isActive,
+    required DateTime createdAt,
+    required DateTime lastUpdated,
+    required String cloudId,
+  }) async {
+    try {
+      await into(users).insertOnConflictUpdate(
+        UsersCompanion.insert(
+          id: Value(id),
+          email: email,
+          username: username,
+          password: password,
+          phone: Value(phone),
+          organizationId: organizationId, // ✅ NEW
+          roleId: roleId,
+          fullName: Value(fullName), // ✅ NEW
+          isActive: Value(isActive),
+          createdAt: Value(createdAt),
+          lastUpdated: Value(lastUpdated),
+          isSynced: Value(true),
+          cloudId: Value(cloudId),
+        ),
+      );
+    } catch (e) {
+      print('❌ Error upserting user from cloud: $e');
+      rethrow;
+    }
   }
-}
 
   /// ✅ Get user by cloud ID
   Future<User?> getUserByCloudId(String cloudId) async {
     try {
-      return await (select(users)..where((t) => t.cloudId.equals(cloudId)))
-        .getSingleOrNull();
+      return await (select(
+        users,
+      )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching user by cloud ID: $e');
       return null;
@@ -522,34 +537,35 @@ Future<void> upsertFromCloud({
   Future<void> hashAllExistingPasswords() async {
     final allUsers = await getAllUsers();
     int hashedCount = 0;
-    
+
     for (final user in allUsers) {
       // Check if password is already hashed (hashed passwords are 64 chars for SHA-256)
       if (user.password.length != 64) {
         final hashed = hashPassword(user.password);
-        await (update(users)..where((t) => t.id.equals(user.id)))
-          .write(UsersCompanion(
+        await (update(users)..where((t) => t.id.equals(user.id))).write(
+          UsersCompanion(
             password: Value(hashed),
             isSynced: Value(false), // Mark for re-sync
-          ));
+          ),
+        );
         hashedCount++;
       }
     }
-    
+
     print('✅ Hashed $hashedCount existing passwords');
   }
 
   /// ✅ Clean up inactive users that are synced (after cloud deletion)
   Future<int> cleanupDeletedUsers() async {
     try {
-      final result = await (delete(users)
-        ..where((t) => t.isActive.equals(false) & t.isSynced.equals(true)))
-        .go();
-      
+      final result = await (delete(
+        users,
+      )..where((t) => t.isActive.equals(false) & t.isSynced.equals(true))).go();
+
       if (result > 0) {
         print('🧹 Cleaned up $result inactive users from local database');
       }
-      
+
       return result;
     } catch (e) {
       print('❌ Error cleaning up deleted users: $e');

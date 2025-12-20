@@ -11,11 +11,7 @@ class LoginHeader extends StatelessWidget {
       children: [
         SizedBox(
           width: 300,
-          child: Image.asset(
-            imageAll,
-            height: 80,
-            fit: BoxFit.contain,
-          ),
+          child: Image.asset(imageAll, height: 80, fit: BoxFit.contain),
         ),
         const SizedBox(height: 20),
         const Text(
