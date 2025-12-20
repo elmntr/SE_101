@@ -3,9 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_size/window_size.dart';
 
-import 'package:chickenjoo_inventory/database/seeders/admin_seeder.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
-import 'package:chickenjoo_inventory/database/database_connection.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -87,7 +85,8 @@ void main() async {
       print('❌ Sync error: $error');
       syncStatusNotifier.value = {
         ...syncStatusNotifier.value,
-        'status': 'Error: ${error.length > 30 ? error.substring(0, 30) : error}...',
+        'status':
+            'Error: ${error.length > 30 ? error.substring(0, 30) : error}...',
       };
     },
   );
@@ -95,20 +94,20 @@ void main() async {
   // -------------------------------------------------------------
   // APP GLOBALS INITIALIZATION
   // -------------------------------------------------------------
-  AppGlobals.instance.initialize(
-    database: db,
-    syncService: sync,
-  );
+  AppGlobals.instance.initialize(database: db, syncService: sync);
   print('✅ AppGlobals initialized');
 
   // Non-blocking sync service start
-  sync.initialize().then((_) {
-    print('✅ Sync service initialized');
-    _updateSyncStatus();
-  }).catchError((e) {
-    print('⚠️ Sync service initialization failed: $e');
-    print('📱 App will continue in offline mode');
-  });
+  sync
+      .initialize()
+      .then((_) {
+        print('✅ Sync service initialized');
+        _updateSyncStatus();
+      })
+      .catchError((e) {
+        print('⚠️ Sync service initialization failed: $e');
+        print('📱 App will continue in offline mode');
+      });
 
   // Start periodic sync updates
   _startSyncStatusUpdates();
@@ -120,8 +119,6 @@ void main() async {
   // for (var u in users) {
   //   print('${u.email} / ${u.password} / ${u.isActive}');
   // }
- 
-
 
   // -------------------------------------------------------------
   // ADMIN SEEDER (RUN LAST)
@@ -135,7 +132,6 @@ void main() async {
   // -------------------------------------------------------------
   runApp(const MyApp());
 }
-
 
 /// Update sync status periodically
 void _startSyncStatusUpdates() {
@@ -151,10 +147,7 @@ Future<void> _updateSyncStatus() async {
     // ✅ Check if initialized before accessing
     if (AppGlobals.instance.isInitialized) {
       final status = await syncService.getSyncStatus();
-      syncStatusNotifier.value = {
-        ...syncStatusNotifier.value,
-        ...status,
-      };
+      syncStatusNotifier.value = {...syncStatusNotifier.value, ...status};
     }
   } catch (e) {
     print('Error updating sync status: $e');

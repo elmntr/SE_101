@@ -8,7 +8,7 @@ import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:drift/drift.dart' show Value;
 
 class EmployeePage extends StatefulWidget {
-  const EmployeePage({Key? key}) : super(key: key);
+  const EmployeePage({super.key});
 
   @override
   State<EmployeePage> createState() => _EmployeePageState();
@@ -23,7 +23,10 @@ class _EmployeePageState extends State<EmployeePage> {
   List<Role> _roles = [];
   int? _currentOrganizationId; // Store current user's organization
 
-  EmployeeSort _currentEmployeeSort = EmployeeSort(EmployeeSortField.name, SortOrder.desc);
+  EmployeeSort _currentEmployeeSort = EmployeeSort(
+    EmployeeSortField.name,
+    SortOrder.desc,
+  );
   RoleSort _currentRoleSort = RoleSort(RoleSortField.name, SortOrder.desc);
   int? _selectedRoleFilter;
   static const int _allRolesKey = -1;
@@ -75,12 +78,14 @@ class _EmployeePageState extends State<EmployeePage> {
     super.initState();
     db = database;
     _loadCurrentOrganization();
-    
+
     _usersSub = db.usersDao.watchAllUsers().listen((users) {
       setState(() {
         // Filter users by current organization
         if (_currentOrganizationId != null) {
-          _users = users.where((u) => u.organizationId == _currentOrganizationId).toList();
+          _users = users
+              .where((u) => u.organizationId == _currentOrganizationId)
+              .toList();
         } else {
           _users = users;
         }
@@ -120,14 +125,18 @@ class _EmployeePageState extends State<EmployeePage> {
   void _createEmployee() {
     if (_roles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please create a role before adding employees.')),
+        const SnackBar(
+          content: Text('Please create a role before adding employees.'),
+        ),
       );
       return;
     }
 
     if (_currentOrganizationId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Organization not found. Please try again.')),
+        const SnackBar(
+          content: Text('Organization not found. Please try again.'),
+        ),
       );
       return;
     }
@@ -142,18 +151,37 @@ class _EmployeePageState extends State<EmployeePage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          title: const Text("Add Employee", style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 24,
+          ),
+          title: const Text(
+            "Add Employee",
+            style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(decoration: const InputDecoration(labelText: "Full Name"), controller: employeeName),
+                TextField(
+                  decoration: const InputDecoration(labelText: "Full Name"),
+                  controller: employeeName,
+                ),
                 const SizedBox(height: 12),
-                TextField(decoration: const InputDecoration(labelText: "Email"), controller: employeeEmail),
+                TextField(
+                  decoration: const InputDecoration(labelText: "Email"),
+                  controller: employeeEmail,
+                ),
                 const SizedBox(height: 12),
-                TextField(decoration: const InputDecoration(labelText: "Phone (Optional)"), controller: employeePN),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: "Phone (Optional)",
+                  ),
+                  controller: employeePN,
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   decoration: const InputDecoration(labelText: "Password"),
@@ -162,13 +190,15 @@ class _EmployeePageState extends State<EmployeePage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
-                  value: selectedRoleId,
+                  initialValue: selectedRoleId,
                   decoration: const InputDecoration(labelText: 'Role'),
                   items: _roles
-                      .map((role) => DropdownMenuItem<int>(
-                            value: role.id,
-                            child: Text(role.name),
-                          ))
+                      .map(
+                        (role) => DropdownMenuItem<int>(
+                          value: role.id,
+                          child: Text(role.name),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     setDialogState(() {
@@ -180,7 +210,10 @@ class _EmployeePageState extends State<EmployeePage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () async {
@@ -193,9 +226,16 @@ class _EmployeePageState extends State<EmployeePage> {
                 final phone = employeePN.text.trim();
                 final password = employeePassword.text;
 
-                if (name.isEmpty || email.isEmpty || password.isEmpty || selectedRoleId == null) {
+                if (name.isEmpty ||
+                    email.isEmpty ||
+                    password.isEmpty ||
+                    selectedRoleId == null) {
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Name, email, password, and role are required.')),
+                    const SnackBar(
+                      content: Text(
+                        'Name, email, password, and role are required.',
+                      ),
+                    ),
                   );
                   return;
                 }
@@ -215,12 +255,16 @@ class _EmployeePageState extends State<EmployeePage> {
                   if (!navigator.mounted || !messenger.mounted) return;
                   navigator.pop();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Employee added successfully.')),
+                    const SnackBar(
+                      content: Text('Employee added successfully.'),
+                    ),
                   );
                 } on Exception catch (e) {
                   if (!messenger.mounted) return;
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Failed to add employee: ${e.toString()}')),
+                    SnackBar(
+                      content: Text('Failed to add employee: ${e.toString()}'),
+                    ),
                   );
                 }
               },
@@ -257,7 +301,7 @@ class _EmployeePageState extends State<EmployeePage> {
           _roles.sort((a, b) => b.id.compareTo(a.id));
           break;
       }
-      
+
       if (sort.order == SortOrder.desc) {
         _roles = _roles.reversed.toList();
       }
@@ -283,17 +327,21 @@ class _EmployeePageState extends State<EmployeePage> {
           builder: (context, setStateDialog) {
             return SingleChildScrollView(
               child: SizedBox(
-                width: MediaQuery.of(context).size.width > 600 ? 600 : double.maxFinite,
+                width: MediaQuery.of(context).size.width > 600
+                    ? 600
+                    : double.maxFinite,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Add Role",
-                        style: TextStyle(
-                          fontFamily: fontAll,
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                        )),
+                    const Text(
+                      "Add Role",
+                      style: TextStyle(
+                        fontFamily: fontAll,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 25),
                     TextField(
                       controller: roleName,
@@ -320,19 +368,25 @@ class _EmployeePageState extends State<EmployeePage> {
                       maxLines: 2,
                     ),
                     const SizedBox(height: 25),
-                    const Text("Access",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontFamily: fontAll,
-                          fontWeight: FontWeight.w600,
-                        )),
+                    const Text(
+                      "Access",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontFamily: fontAll,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     Wrap(
-                      spacing: MediaQuery.of(context).size.width > 600 ? 50 : 10,
+                      spacing: MediaQuery.of(context).size.width > 600
+                          ? 50
+                          : 10,
                       runSpacing: 10,
                       children: List.generate(access.length, (i) {
                         return SizedBox(
-                          width: MediaQuery.of(context).size.width > 600 ? 160 : 140,
+                          width: MediaQuery.of(context).size.width > 600
+                              ? 160
+                              : 140,
                           child: Row(
                             children: [
                               Checkbox(
@@ -369,10 +423,7 @@ class _EmployeePageState extends State<EmployeePage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 40,
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -382,7 +433,7 @@ class _EmployeePageState extends State<EmployeePage> {
               final messenger = ScaffoldMessenger.of(dialogContext);
               final navigator = Navigator.of(dialogContext);
               final name = roleName.text.trim();
-              
+
               if (name.isEmpty) {
                 messenger.showSnackBar(
                   const SnackBar(content: Text('Role name is required.')),
@@ -391,7 +442,13 @@ class _EmployeePageState extends State<EmployeePage> {
               }
 
               try {
-                await db.rolesDao.insertRole(_buildRoleCompanion(name, roleDescription.text.trim(), access));
+                await db.rolesDao.insertRole(
+                  _buildRoleCompanion(
+                    name,
+                    roleDescription.text.trim(),
+                    access,
+                  ),
+                );
                 if (!navigator.mounted || !messenger.mounted) return;
                 navigator.pop();
                 messenger.showSnackBar(
@@ -400,7 +457,9 @@ class _EmployeePageState extends State<EmployeePage> {
               } on Exception catch (e) {
                 if (!messenger.mounted) return;
                 messenger.showSnackBar(
-                  SnackBar(content: Text('Failed to create role: ${e.toString()}')),
+                  SnackBar(
+                    content: Text('Failed to create role: ${e.toString()}'),
+                  ),
                 );
               }
             },
@@ -419,7 +478,11 @@ class _EmployeePageState extends State<EmployeePage> {
     );
   }
 
-  RolesCompanion _buildRoleCompanion(String name, String description, List<bool> access) {
+  RolesCompanion _buildRoleCompanion(
+    String name,
+    String description,
+    List<bool> access,
+  ) {
     return RolesCompanion.insert(
       name: name,
       description: Value(description.isEmpty ? null : description),
@@ -452,7 +515,10 @@ class _EmployeePageState extends State<EmployeePage> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Delete Employee", style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Delete Employee",
+          style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold),
+        ),
         content: Text("Are you sure you want to remove ${user.username}?"),
         actions: [
           TextButton(
@@ -475,7 +541,9 @@ class _EmployeePageState extends State<EmployeePage> {
               } on Exception catch (e) {
                 if (!messenger.mounted) return;
                 messenger.showSnackBar(
-                  SnackBar(content: Text('Failed to delete employee: ${e.toString()}')),
+                  SnackBar(
+                    content: Text('Failed to delete employee: ${e.toString()}'),
+                  ),
                 );
               }
             },
@@ -489,7 +557,11 @@ class _EmployeePageState extends State<EmployeePage> {
   void _deleteRole(Role role, int assignedUsers) {
     if (assignedUsers > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cannot delete "${role.name}" while $assignedUsers user(s) are assigned to it.')),
+        SnackBar(
+          content: Text(
+            'Cannot delete "${role.name}" while $assignedUsers user(s) are assigned to it.',
+          ),
+        ),
       );
       return;
     }
@@ -505,7 +577,10 @@ class _EmployeePageState extends State<EmployeePage> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Delete Role", style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Delete Role",
+          style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold),
+        ),
         content: Text("Are you sure you want to delete '${role.name}'?"),
         actions: [
           TextButton(
@@ -530,7 +605,11 @@ class _EmployeePageState extends State<EmployeePage> {
                 if (!messenger.mounted) return;
                 navigator.pop();
                 messenger.showSnackBar(
-                  SnackBar(content: Text('Cannot delete "${role.name}": ${e.toString()}')),
+                  SnackBar(
+                    content: Text(
+                      'Cannot delete "${role.name}": ${e.toString()}',
+                    ),
+                  ),
                 );
               }
             },
@@ -580,11 +659,14 @@ class _EmployeePageState extends State<EmployeePage> {
                         color: Colors.black.withOpacity(0.12),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ]
                   : [],
             ),
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),
@@ -612,7 +694,10 @@ class _EmployeePageState extends State<EmployeePage> {
                           style: TextStyle(fontSize: 26, fontFamily: fontAll),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.notifications_outlined, size: 28),
+                          icon: const Icon(
+                            Icons.notifications_outlined,
+                            size: 28,
+                          ),
                           onPressed: () {},
                         ),
                       ],
@@ -641,7 +726,10 @@ class _EmployeePageState extends State<EmployeePage> {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(30),
@@ -651,7 +739,9 @@ class _EmployeePageState extends State<EmployeePage> {
                                 tooltip: "Filter by role",
                                 onSelected: (value) {
                                   setState(() {
-                                    _selectedRoleFilter = value == _allRolesKey ? null : value;
+                                    _selectedRoleFilter = value == _allRolesKey
+                                        ? null
+                                        : value;
                                   });
                                 },
                                 itemBuilder: (context) => [
@@ -674,8 +764,12 @@ class _EmployeePageState extends State<EmployeePage> {
                                       _selectedRoleFilter == null
                                           ? "All Roles"
                                           : _roles
-                                              .firstWhere((r) => r.id == _selectedRoleFilter)
-                                              .name,
+                                                .firstWhere(
+                                                  (r) =>
+                                                      r.id ==
+                                                      _selectedRoleFilter,
+                                                )
+                                                .name,
                                       style: const TextStyle(fontSize: 14),
                                     ),
                                     const SizedBox(width: 4),
@@ -686,17 +780,57 @@ class _EmployeePageState extends State<EmployeePage> {
                             ),
                             const SizedBox(width: 10),
                             PopupMenuButton<EmployeeSort>(
-                              icon: const Icon(Icons.sort, size: 32, color: Colors.black87),
+                              icon: const Icon(
+                                Icons.sort,
+                                size: 32,
+                                color: Colors.black87,
+                              ),
                               onSelected: _applyEmployeeSort,
                               itemBuilder: (context) => const [
-                                PopupMenuItem(value: EmployeeSort(EmployeeSortField.date, SortOrder.desc), child: Text("Date Added (Newest)")),
-                                PopupMenuItem(value: EmployeeSort(EmployeeSortField.date, SortOrder.asc), child: Text("Date Added (Oldest)")),
+                                PopupMenuItem(
+                                  value: EmployeeSort(
+                                    EmployeeSortField.date,
+                                    SortOrder.desc,
+                                  ),
+                                  child: Text("Date Added (Newest)"),
+                                ),
+                                PopupMenuItem(
+                                  value: EmployeeSort(
+                                    EmployeeSortField.date,
+                                    SortOrder.asc,
+                                  ),
+                                  child: Text("Date Added (Oldest)"),
+                                ),
                                 PopupMenuDivider(),
-                                PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
-                                PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
+                                PopupMenuItem(
+                                  value: EmployeeSort(
+                                    EmployeeSortField.name,
+                                    SortOrder.desc,
+                                  ),
+                                  child: Text("Name (A–Z)"),
+                                ),
+                                PopupMenuItem(
+                                  value: EmployeeSort(
+                                    EmployeeSortField.name,
+                                    SortOrder.asc,
+                                  ),
+                                  child: Text("Name (Z–A)"),
+                                ),
                                 PopupMenuDivider(),
-                                PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.desc), child: Text("Email (A–Z)")),
-                                PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.asc), child: Text("Email (Z–A)")),
+                                PopupMenuItem(
+                                  value: EmployeeSort(
+                                    EmployeeSortField.email,
+                                    SortOrder.desc,
+                                  ),
+                                  child: Text("Email (A–Z)"),
+                                ),
+                                PopupMenuItem(
+                                  value: EmployeeSort(
+                                    EmployeeSortField.email,
+                                    SortOrder.asc,
+                                  ),
+                                  child: Text("Email (Z–A)"),
+                                ),
                               ],
                             ),
                           ],
@@ -733,8 +867,8 @@ class _EmployeePageState extends State<EmployeePage> {
                     child: _isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : selectedTab == 0
-                            ? (_filteredUsers.isEmpty
-                                ? _selectedRoleFilter == null
+                        ? (_filteredUsers.isEmpty
+                              ? _selectedRoleFilter == null
                                     ? emptyTables(
                                         message: "No employees found",
                                         onAddPressed: _createEmployee,
@@ -742,104 +876,162 @@ class _EmployeePageState extends State<EmployeePage> {
                                         buttonText: null,
                                       )
                                     : emptyTables(
-                                        message: "No employees with selected role",
+                                        message:
+                                            "No employees with selected role",
                                         onAddPressed: _createEmployee,
                                         buttonType: EmptyButtonType.icon,
                                         buttonText: null,
                                       )
-                                : buildUniversalTable(
-                                    headers: ["Name", "Email", "Phone", "Role", ""],
-                                    rows: _filteredUsers.map((user) {
-                                      return [
-                                        user.username,
-                                        user.email,
-                                        user.phone ?? '-',
-                                        SizedBox(
-                                          child: _roles.isEmpty
-                                              ? const Text('No roles', style: TextStyle(color: Colors.grey))
-                                              : DropdownButton<int>(
-                                                  isDense: true,
-                                                  isExpanded: true,
-                                                  value: user.roleId,
-                                                  items: _roles
-                                                      .map((role) => DropdownMenuItem<int>(
+                              : buildUniversalTable(
+                                  headers: [
+                                    "Name",
+                                    "Email",
+                                    "Phone",
+                                    "Role",
+                                    "",
+                                  ],
+                                  rows: _filteredUsers.map((user) {
+                                    return [
+                                      user.username,
+                                      user.email,
+                                      user.phone ?? '-',
+                                      SizedBox(
+                                        child: _roles.isEmpty
+                                            ? const Text(
+                                                'No roles',
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                ),
+                                              )
+                                            : DropdownButton<int>(
+                                                isDense: true,
+                                                isExpanded: true,
+                                                value: user.roleId,
+                                                items: _roles
+                                                    .map(
+                                                      (role) =>
+                                                          DropdownMenuItem<int>(
                                                             value: role.id,
                                                             child: Text(
                                                               role.name,
-                                                              overflow: TextOverflow.ellipsis,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
                                                             ),
-                                                          ))
-                                                      .toList(),
-                                                  onChanged: (int? newRoleId) async {
-                                                    if (newRoleId == null) return;
-                                                    await _assignRole(user, newRoleId);
-                                                  },
-                                                ),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.red),
-                                          onPressed: () => _deleteEmployee(user),
-                                        )
-                                      ];
-                                    }).toList(),
-                                  ))
-                            : (_roles.isEmpty
-                                ? emptyTables(
-                                    message: "No roles found",
-                                    onAddPressed: _createRoleDialog,
-                                    buttonType: EmptyButtonType.icon,
-                                    buttonText: null)
-                                : buildUniversalTable(
-                                    headers: ["Role Name", "Access", "Employees", ""],
-                                    rows: _roles.map((role) {
-                                      final accessWidgets = <Widget>[];
-                                      final accessFlags = _flagsFromRole(role);
-                                      for (int j = 0; j < accessTitles.length; j++) {
-                                        if (accessFlags[j]) {
-                                          accessWidgets.add(
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
-                                              decoration: BoxDecoration(
-                                                color: Colors.red.shade100,
-                                                borderRadius: BorderRadius.circular(6),
+                                                          ),
+                                                    )
+                                                    .toList(),
+                                                onChanged:
+                                                    (int? newRoleId) async {
+                                                      if (newRoleId == null)
+                                                        return;
+                                                      await _assignRole(
+                                                        user,
+                                                        newRoleId,
+                                                      );
+                                                    },
                                               ),
-                                              child: Text(accessTitles[j], style: const TextStyle(fontSize: 12)),
-                                            ),
-                                          );
-                                        }
-                                      }
-
-                                      final userCount = _users.where((user) => user.roleId == role.id).length;
-
-                                      return [
-                                        role.name,
-                                        ConstrainedBox(
-                                          constraints: const BoxConstraints(maxWidth: 200),
-                                          child: Wrap(children: accessWidgets),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.red,
                                         ),
-                                        userCount.toString(),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.red),
-                                          onPressed: () => _deleteRole(role, userCount),
-                                        )
-                                      ];
-                                    }).toList(),
-                                  )),
+                                        onPressed: () => _deleteEmployee(user),
+                                      ),
+                                    ];
+                                  }).toList(),
+                                ))
+                        : (_roles.isEmpty
+                              ? emptyTables(
+                                  message: "No roles found",
+                                  onAddPressed: _createRoleDialog,
+                                  buttonType: EmptyButtonType.icon,
+                                  buttonText: null,
+                                )
+                              : buildUniversalTable(
+                                  headers: [
+                                    "Role Name",
+                                    "Access",
+                                    "Employees",
+                                    "",
+                                  ],
+                                  rows: _roles.map((role) {
+                                    final accessWidgets = <Widget>[];
+                                    final accessFlags = _flagsFromRole(role);
+                                    for (
+                                      int j = 0;
+                                      j < accessTitles.length;
+                                      j++
+                                    ) {
+                                      if (accessFlags[j]) {
+                                        accessWidgets.add(
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 3,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.shade100,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              accessTitles[j],
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+
+                                    final userCount = _users
+                                        .where((user) => user.roleId == role.id)
+                                        .length;
+
+                                    return [
+                                      role.name,
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 200,
+                                        ),
+                                        child: Wrap(children: accessWidgets),
+                                      ),
+                                      userCount.toString(),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.red,
+                                        ),
+                                        onPressed: () =>
+                                            _deleteRole(role, userCount),
+                                      ),
+                                    ];
+                                  }).toList(),
+                                )),
                   ),
                 ),
               ],
             ),
           ),
         ),
-        floatingActionButton: (!_isLoading &&
+        floatingActionButton:
+            (!_isLoading &&
                 ((selectedTab == 0 && _filteredUsers.isNotEmpty) ||
                     (selectedTab == 1 && _roles.isNotEmpty)))
             ? Container(
                 margin: const EdgeInsets.only(bottom: 20),
                 child: FloatingActionButton(
                   backgroundColor: Colors.red[700],
-                  onPressed: selectedTab == 0 ? _createEmployee : _createRoleDialog,
+                  onPressed: selectedTab == 0
+                      ? _createEmployee
+                      : _createRoleDialog,
                   child: const Icon(Icons.add, color: Colors.white),
                 ),
               )
@@ -857,7 +1049,10 @@ class _EmployeePageState extends State<EmployeePage> {
           children: [
             Row(
               children: [
-                const Text("Employee", style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+                const Text(
+                  "Employee",
+                  style: TextStyle(fontSize: 30, fontFamily: fontAll),
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Container(
@@ -878,7 +1073,10 @@ class _EmployeePageState extends State<EmployeePage> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(30),
@@ -888,7 +1086,9 @@ class _EmployeePageState extends State<EmployeePage> {
                         tooltip: "Filter by role",
                         onSelected: (value) {
                           setState(() {
-                            _selectedRoleFilter = value == _allRolesKey ? null : value;
+                            _selectedRoleFilter = value == _allRolesKey
+                                ? null
+                                : value;
                           });
                         },
                         itemBuilder: (context) => [
@@ -911,8 +1111,10 @@ class _EmployeePageState extends State<EmployeePage> {
                               _selectedRoleFilter == null
                                   ? "All Roles"
                                   : _roles
-                                      .firstWhere((r) => r.id == _selectedRoleFilter)
-                                      .name,
+                                        .firstWhere(
+                                          (r) => r.id == _selectedRoleFilter,
+                                        )
+                                        .name,
                               style: const TextStyle(fontSize: 14),
                             ),
                             const SizedBox(width: 4),
@@ -923,11 +1125,27 @@ class _EmployeePageState extends State<EmployeePage> {
                     ),
                     const SizedBox(width: 10),
                     PopupMenuButton<EmployeeSort>(
-                      icon: const Icon(Icons.sort, size: 32, color: Colors.black87),
+                      icon: const Icon(
+                        Icons.sort,
+                        size: 32,
+                        color: Colors.black87,
+                      ),
                       onSelected: _applyEmployeeSort,
                       itemBuilder: (context) => const [
-                        PopupMenuItem(value: EmployeeSort(EmployeeSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
-                        PopupMenuItem(value: EmployeeSort(EmployeeSortField.email, SortOrder.desc), child: Text("Email (A–Z)")),
+                        PopupMenuItem(
+                          value: EmployeeSort(
+                            EmployeeSortField.name,
+                            SortOrder.desc,
+                          ),
+                          child: Text("Name (A–Z)"),
+                        ),
+                        PopupMenuItem(
+                          value: EmployeeSort(
+                            EmployeeSortField.email,
+                            SortOrder.desc,
+                          ),
+                          child: Text("Email (A–Z)"),
+                        ),
                       ],
                     ),
                   ],
@@ -968,94 +1186,148 @@ class _EmployeePageState extends State<EmployeePage> {
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : selectedTab == 0
-                              ? (_filteredUsers.isEmpty
-                                  ? emptyTables(
-                                      message: "No employees found",
-                                      onAddPressed: _createEmployee,
-                                      buttonType: EmptyButtonType.icon,
-                                      buttonText: null,
-                                    )
-                                  : buildUniversalTable(
-                                      headers: ["Name", "Email", "Phone", "Role", ""],
-                                      rows: _filteredUsers.map((user) {
-                                        return [
-                                          user.username,
-                                          user.email,
-                                          user.phone ?? '-',
-                                          SizedBox(
-                                            child: _roles.isEmpty
-                                                ? const Text('No roles')
-                                                : DropdownButton<int>(
-                                                    isDense: true,
-                                                    isExpanded: true,
-                                                    value: user.roleId,
-                                                    items: _roles
-                                                        .map((role) => DropdownMenuItem<int>(
+                          ? (_filteredUsers.isEmpty
+                                ? emptyTables(
+                                    message: "No employees found",
+                                    onAddPressed: _createEmployee,
+                                    buttonType: EmptyButtonType.icon,
+                                    buttonText: null,
+                                  )
+                                : buildUniversalTable(
+                                    headers: [
+                                      "Name",
+                                      "Email",
+                                      "Phone",
+                                      "Role",
+                                      "",
+                                    ],
+                                    rows: _filteredUsers.map((user) {
+                                      return [
+                                        user.username,
+                                        user.email,
+                                        user.phone ?? '-',
+                                        SizedBox(
+                                          child: _roles.isEmpty
+                                              ? const Text('No roles')
+                                              : DropdownButton<int>(
+                                                  isDense: true,
+                                                  isExpanded: true,
+                                                  value: user.roleId,
+                                                  items: _roles
+                                                      .map(
+                                                        (role) =>
+                                                            DropdownMenuItem<
+                                                              int
+                                                            >(
                                                               value: role.id,
-                                                              child: Text(role.name,
-                                                                  overflow: TextOverflow.ellipsis),
-                                                            ))
-                                                        .toList(),
-                                                    onChanged: (int? newRoleId) async {
-                                                      if (newRoleId == null) return;
-                                                      await _assignRole(user, newRoleId);
-                                                    },
-                                                  ),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete, color: Colors.red),
-                                            onPressed: () => _deleteEmployee(user),
-                                          )
-                                        ];
-                                      }).toList(),
-                                    ))
-                              : (_roles.isEmpty
-                                  ? emptyTables(
-                                      message: "No roles found",
-                                      onAddPressed: _createRoleDialog,
-                                      buttonType: EmptyButtonType.icon,
-                                      buttonText: null)
-                                  : buildUniversalTable(
-                                      headers: ["Role Name", "Access", "Employees", ""],
-                                      rows: _roles.map((role) {
-                                        final accessWidgets = <Widget>[];
-                                        final accessFlags = _flagsFromRole(role);
-                                        for (int j = 0; j < accessTitles.length; j++) {
-                                          if (accessFlags[j]) {
-                                            accessWidgets.add(
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                    horizontal: 8, vertical: 4),
-                                                margin: const EdgeInsets.symmetric(
-                                                    horizontal: 3, vertical: 6),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red.shade100,
-                                                  borderRadius: BorderRadius.circular(6),
+                                                              child: Text(
+                                                                role.name,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                            ),
+                                                      )
+                                                      .toList(),
+                                                  onChanged:
+                                                      (int? newRoleId) async {
+                                                        if (newRoleId == null)
+                                                          return;
+                                                        await _assignRole(
+                                                          user,
+                                                          newRoleId,
+                                                        );
+                                                      },
                                                 ),
-                                                child: Text(accessTitles[j],
-                                                    style: const TextStyle(fontSize: 12)),
-                                              ),
-                                            );
-                                          }
-                                        }
-
-                                        final userCount =
-                                            _users.where((user) => user.roleId == role.id).length;
-
-                                        return [
-                                          role.name,
-                                          ConstrainedBox(
-                                            constraints: const BoxConstraints(maxWidth: 200),
-                                            child: Wrap(children: accessWidgets),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
                                           ),
-                                          userCount.toString(),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete, color: Colors.red),
-                                            onPressed: () => _deleteRole(role, userCount),
+                                          onPressed: () =>
+                                              _deleteEmployee(user),
+                                        ),
+                                      ];
+                                    }).toList(),
+                                  ))
+                          : (_roles.isEmpty
+                                ? emptyTables(
+                                    message: "No roles found",
+                                    onAddPressed: _createRoleDialog,
+                                    buttonType: EmptyButtonType.icon,
+                                    buttonText: null,
+                                  )
+                                : buildUniversalTable(
+                                    headers: [
+                                      "Role Name",
+                                      "Access",
+                                      "Employees",
+                                      "",
+                                    ],
+                                    rows: _roles.map((role) {
+                                      final accessWidgets = <Widget>[];
+                                      final accessFlags = _flagsFromRole(role);
+                                      for (
+                                        int j = 0;
+                                        j < accessTitles.length;
+                                        j++
+                                      ) {
+                                        if (accessFlags[j]) {
+                                          accessWidgets.add(
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 3,
+                                                    vertical: 6,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.red.shade100,
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                accessTitles[j],
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+
+                                      final userCount = _users
+                                          .where(
+                                            (user) => user.roleId == role.id,
                                           )
-                                        ];
-                                      }).toList(),
-                                    )),
+                                          .length;
+
+                                      return [
+                                        role.name,
+                                        ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 200,
+                                          ),
+                                          child: Wrap(children: accessWidgets),
+                                        ),
+                                        userCount.toString(),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () =>
+                                              _deleteRole(role, userCount),
+                                        ),
+                                      ];
+                                    }).toList(),
+                                  )),
                     ),
                   ),
                 ],
@@ -1064,14 +1336,17 @@ class _EmployeePageState extends State<EmployeePage> {
           ],
         ),
       ),
-      floatingActionButton: (!_isLoading &&
+      floatingActionButton:
+          (!_isLoading &&
               ((selectedTab == 0 && _filteredUsers.isNotEmpty) ||
                   (selectedTab == 1 && _roles.isNotEmpty)))
           ? Container(
               margin: const EdgeInsets.only(bottom: 20),
               child: FloatingActionButton(
                 backgroundColor: Colors.red[700],
-                onPressed: selectedTab == 0 ? _createEmployee : _createRoleDialog,
+                onPressed: selectedTab == 0
+                    ? _createEmployee
+                    : _createRoleDialog,
                 child: const Icon(Icons.add, color: Colors.white),
               ),
             )

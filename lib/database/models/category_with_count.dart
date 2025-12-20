@@ -16,4 +16,3 @@ class CategoryWithCount {
     required this.itemCount,
   });
 }
-

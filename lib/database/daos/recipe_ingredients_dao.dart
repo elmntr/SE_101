@@ -8,15 +8,16 @@ import '../tables/ingredients.dart';
 part 'recipe_ingredients_dao.g.dart';
 
 /// RecipeIngredientsDao - Manage recipe compositions (what ingredients make up each item)
-/// 
+///
 /// Business Logic:
 /// - Links Items (final products) to Ingredients (raw materials)
 /// - Tracks quantity of each ingredient needed per item
 /// - Used to calculate ingredient requirements when producing items
 /// - Used to check if enough ingredients are available
 @DriftAccessor(tables: [RecipeIngredients, Items, Ingredients])
-class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIngredientsDaoMixin {
-  RecipeIngredientsDao(AppDatabase db) : super(db);
+class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase>
+    with _$RecipeIngredientsDaoMixin {
+  RecipeIngredientsDao(super.db);
 
   static const int defaultPageSize = 50;
 
@@ -34,21 +35,21 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
     try {
       final query = select(recipeIngredients)
         ..where((t) => t.isDeleted.equals(false));
-      
+
       if (itemId != null) {
         query.where((t) => t.itemId.equals(itemId));
       }
-      
+
       if (ingredientId != null) {
         query.where((t) => t.ingredientId.equals(ingredientId));
       }
-      
+
       query.orderBy([(t) => OrderingTerm(expression: t.id)]);
-      
+
       if (limit != null) {
         query.limit(limit, offset: offset);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching recipe ingredients: $e');
@@ -60,11 +61,9 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   Future<List<RecipeIngredient>> getIngredientsForItem(int itemId) async {
     try {
       return await (select(recipeIngredients)
-        ..where((t) => 
-          t.itemId.equals(itemId) & 
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.id)]))
-        .get();
+            ..where((t) => t.itemId.equals(itemId) & t.isDeleted.equals(false))
+            ..orderBy([(t) => OrderingTerm(expression: t.id)]))
+          .get();
     } catch (e) {
       print('❌ Error fetching ingredients for item: $e');
       return [];
@@ -75,11 +74,9 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   Stream<List<RecipeIngredient>> watchIngredientsForItem(int itemId) {
     try {
       return (select(recipeIngredients)
-        ..where((t) => 
-          t.itemId.equals(itemId) & 
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.id)]))
-        .watch();
+            ..where((t) => t.itemId.equals(itemId) & t.isDeleted.equals(false))
+            ..orderBy([(t) => OrderingTerm(expression: t.id)]))
+          .watch();
     } catch (e) {
       print('❌ Error watching ingredients for item: $e');
       return Stream.value([]);
@@ -87,14 +84,18 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   }
 
   /// ✅ Get items that use a specific ingredient
-  Future<List<RecipeIngredient>> getItemsUsingIngredient(int ingredientId) async {
+  Future<List<RecipeIngredient>> getItemsUsingIngredient(
+    int ingredientId,
+  ) async {
     try {
       return await (select(recipeIngredients)
-        ..where((t) => 
-          t.ingredientId.equals(ingredientId) & 
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.id)]))
-        .get();
+            ..where(
+              (t) =>
+                  t.ingredientId.equals(ingredientId) &
+                  t.isDeleted.equals(false),
+            )
+            ..orderBy([(t) => OrderingTerm(expression: t.id)]))
+          .get();
     } catch (e) {
       print('❌ Error fetching items using ingredient: $e');
       return [];
@@ -129,7 +130,9 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   }
 
   /// ✅ Batch insert recipe ingredients (for creating complete recipes)
-  Future<void> insertRecipeIngredients(List<RecipeIngredientsCompanion> recipeIngredientsList) async {
+  Future<void> insertRecipeIngredients(
+    List<RecipeIngredientsCompanion> recipeIngredientsList,
+  ) async {
     try {
       await db.batch((batch) {
         batch.insertAll(recipeIngredients, recipeIngredientsList);
@@ -157,8 +160,9 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   /// ✅ Get recipe ingredient by ID
   Future<RecipeIngredient?> getRecipeIngredientById(int id) async {
     try {
-      return await (select(recipeIngredients)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+      return await (select(
+        recipeIngredients,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching recipe ingredient by ID: $e');
       return null;
@@ -168,12 +172,16 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   /// ✅ Soft delete recipe ingredient
   Future<bool> softDeleteRecipeIngredient(int id) async {
     try {
-      final result = await (update(recipeIngredients)..where((t) => t.id.equals(id)))
-        .write(RecipeIngredientsCompanion(
-          isDeleted: Value(true),
-          isSynced: Value(false),
-          lastUpdated: Value(DateTime.now()),
-        ));
+      final result =
+          await (update(
+            recipeIngredients,
+          )..where((t) => t.id.equals(id))).write(
+            RecipeIngredientsCompanion(
+              isDeleted: Value(true),
+              isSynced: Value(false),
+              lastUpdated: Value(DateTime.now()),
+            ),
+          );
       return result > 0;
     } catch (e) {
       print('❌ Error soft deleting recipe ingredient: $e');
@@ -184,13 +192,16 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   /// ✅ Delete all recipe ingredients for an item
   Future<int> deleteAllForItem(int itemId) async {
     try {
-      final result = await (update(recipeIngredients)
-        ..where((t) => t.itemId.equals(itemId)))
-        .write(RecipeIngredientsCompanion(
-          isDeleted: Value(true),
-          isSynced: Value(false),
-          lastUpdated: Value(DateTime.now()),
-        ));
+      final result =
+          await (update(
+            recipeIngredients,
+          )..where((t) => t.itemId.equals(itemId))).write(
+            RecipeIngredientsCompanion(
+              isDeleted: Value(true),
+              isSynced: Value(false),
+              lastUpdated: Value(DateTime.now()),
+            ),
+          );
       return result;
     } catch (e) {
       print('❌ Error deleting recipe ingredients for item: $e');
@@ -204,17 +215,17 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
 
   /// ✅ Calculate total ingredient requirements for producing X items
   Future<Map<int, double>> calculateIngredientRequirements(
-    int itemId, 
+    int itemId,
     int quantityToProduce,
   ) async {
     try {
       final recipeIngredientsList = await getIngredientsForItem(itemId);
-      
+
       final requirements = <int, double>{};
       for (final ri in recipeIngredientsList) {
         requirements[ri.ingredientId] = ri.quantityNeeded * quantityToProduce;
       }
-      
+
       return requirements;
     } catch (e) {
       print('❌ Error calculating ingredient requirements: $e');
@@ -225,19 +236,26 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   /// ✅ Check if enough ingredients are available to produce X items
   Future<bool> canProduceItems(int itemId, int quantityToProduce) async {
     try {
-      final requirements = await calculateIngredientRequirements(itemId, quantityToProduce);
-      
+      final requirements = await calculateIngredientRequirements(
+        itemId,
+        quantityToProduce,
+      );
+
       for (final entry in requirements.entries) {
         final ingredientId = entry.key;
         final requiredQuantity = entry.value;
-        
-        final ingredient = await db.ingredientsDao.getIngredientById(ingredientId);
+
+        final ingredient = await db.ingredientsDao.getIngredientById(
+          ingredientId,
+        );
         if (ingredient == null || ingredient.stock < requiredQuantity) {
-          print('⚠️ Insufficient ingredient stock: ID $ingredientId (need $requiredQuantity, have ${ingredient?.stock ?? 0})');
+          print(
+            '⚠️ Insufficient ingredient stock: ID $ingredientId (need $requiredQuantity, have ${ingredient?.stock ?? 0})',
+          );
           return false;
         }
       }
-      
+
       return true;
     } catch (e) {
       print('❌ Error checking ingredient availability: $e');
@@ -246,22 +264,31 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   }
 
   /// ✅ Deduct ingredients when producing items
-  Future<bool> deductIngredientsForProduction(int itemId, int quantityProduced) async {
+  Future<bool> deductIngredientsForProduction(
+    int itemId,
+    int quantityProduced,
+  ) async {
     try {
-      final requirements = await calculateIngredientRequirements(itemId, quantityProduced);
-      
+      final requirements = await calculateIngredientRequirements(
+        itemId,
+        quantityProduced,
+      );
+
       // First check if all ingredients are available
       if (!await canProduceItems(itemId, quantityProduced)) {
         return false;
       }
-      
+
       // Deduct ingredients in a transaction
       return await db.transaction(() async {
         for (final entry in requirements.entries) {
           final ingredientId = entry.key;
           final quantity = entry.value.toInt(); // Convert to int for stock
-          
-          final success = await db.ingredientsDao.deductStock(ingredientId, quantity);
+
+          final success = await db.ingredientsDao.deductStock(
+            ingredientId,
+            quantity,
+          );
           if (!success) {
             throw Exception('Failed to deduct ingredient $ingredientId');
           }
@@ -287,10 +314,10 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
       return await db.transaction(() async {
         // Delete old recipe
         await deleteAllForItem(itemId);
-        
+
         // Insert new recipe
         await insertRecipeIngredients(newRecipe);
-        
+
         return true;
       });
     } catch (e) {
@@ -303,19 +330,21 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   Future<String> getRecipeSummary(int itemId) async {
     try {
       final recipeIngredientsList = await getIngredientsForItem(itemId);
-      
+
       if (recipeIngredientsList.isEmpty) {
         return 'No recipe defined';
       }
-      
+
       final lines = <String>[];
       for (final ri in recipeIngredientsList) {
-        final ingredient = await db.ingredientsDao.getIngredientById(ri.ingredientId);
+        final ingredient = await db.ingredientsDao.getIngredientById(
+          ri.ingredientId,
+        );
         if (ingredient != null) {
           lines.add('${ri.quantityNeeded} ${ri.unit} ${ingredient.name}');
         }
       }
-      
+
       return lines.join('\n');
     } catch (e) {
       print('❌ Error getting recipe summary: $e');
@@ -334,9 +363,9 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   }) async {
     try {
       return await (select(recipeIngredients)
-        ..where((t) => t.isSynced.equals(false))
-        ..limit(limit, offset: offset))
-        .get();
+            ..where((t) => t.isSynced.equals(false))
+            ..limit(limit, offset: offset))
+          .get();
     } catch (e) {
       print('❌ Error fetching unsynced recipe ingredients: $e');
       return [];
@@ -349,7 +378,7 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
       final query = selectOnly(recipeIngredients)
         ..addColumns([recipeIngredients.id.count()])
         ..where(recipeIngredients.isSynced.equals(false));
-      
+
       final result = await query.getSingle();
       return result.read(recipeIngredients.id.count()) ?? 0;
     } catch (e) {
@@ -359,7 +388,10 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   }
 
   /// ✅ Mark recipe ingredients as synced (batch)
-  Future<void> markAsSynced(List<int> recipeIngredientIds, {Map<int, String>? cloudIds}) async {
+  Future<void> markAsSynced(
+    List<int> recipeIngredientIds, {
+    Map<int, String>? cloudIds,
+  }) async {
     try {
       await db.batch((batch) {
         for (final id in recipeIngredientIds) {
@@ -380,7 +412,9 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   }
 
   /// ✅ Batch upsert from cloud
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudRecipeIngredients) async {
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudRecipeIngredients,
+  ) async {
     try {
       await db.transaction(() async {
         for (final cloudRI in cloudRecipeIngredients) {
@@ -442,8 +476,9 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase> with _$RecipeIn
   /// ✅ Get recipe ingredient by cloud ID
   Future<RecipeIngredient?> getRecipeIngredientByCloudId(String cloudId) async {
     try {
-      return await (select(recipeIngredients)..where((t) => t.cloudId.equals(cloudId)))
-        .getSingleOrNull();
+      return await (select(
+        recipeIngredients,
+      )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching recipe ingredient by cloud ID: $e');
       return null;

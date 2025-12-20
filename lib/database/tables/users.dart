@@ -4,19 +4,19 @@ import 'roles.dart';
 import 'organizations.dart';
 
 /// Users table - Represents all users in the system
-/// 
+///
 /// User Types by Organization:
 /// 1. Commissary Users:
 ///    - Manage ingredients
 ///    - Create items/recipes
 ///    - Review franchisee replenishment requests
-/// 
+///
 /// 2. Franchisee Users (Owners/Managers):
 ///    - Request items from commissary
 ///    - Set prices for items
 ///    - Review employee stock change requests
 ///    - View reports
-/// 
+///
 /// 3. Franchisee Employees:
 ///    - Record sold/spoiled items
 ///    - Submit stock change requests
@@ -36,7 +36,7 @@ class Users extends Table {
 
   /// Optional phone number
   TextColumn get phone => text().nullable().withLength(max: 50)();
-  
+
   /// Which organization this user belongs to
   /// - Commissary users → commissary organization
   /// - Franchisee owner/manager → franchisee organization
@@ -45,7 +45,7 @@ class Users extends Table {
 
   /// Role defines permissions (from Roles table)
   IntColumn get roleId => integer().references(Roles, #id)();
-  
+
   /// Full name of user
   TextColumn get fullName => text().nullable().withLength(max: 200)();
 
@@ -54,7 +54,8 @@ class Users extends Table {
 
   /// Track when user was created/modified
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-  DateTimeColumn get lastUpdated => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastUpdated =>
+      dateTime().withDefault(currentDateAndTime)();
 
   /// Sync fields for cloud synchronization
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();

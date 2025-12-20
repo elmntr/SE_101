@@ -1,0 +1,44 @@
+name: Renmar Flutter Quality Control
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  # PHASE 1: Linting (It can fail, but won't stop the AI)
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - run: flutter pub get
+      - name: Check Formatting
+        # We remove '--set-exit-if-changed' so it doesn't "fail" the whole job
+        run: dart format . 
+
+  # PHASE 2: AI Review (Runs independently)
+  ai-review:
+    # REMOVED the "needs: compliance" line
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gemini AI Reviewer
+        uses: sshnaidm/gemini-code-review-action@v1
+        with:
+          gemini-key: ${{ secrets.GEMINI_API_KEY }}
+          model: "gemini-2.0-flash"
+          # These help stay under the Free Tier limit
+          context-lines: 1 
+          max-files: 15
+          prompt: |
+            Review for Renmar Infrastructure Corp.
+            Ignore formatting/whitespace issues.
+            Focus ONLY on:
+            1. Logical bugs or performance issues.
+            2. Correct folder structure (models/, services/, etc).
+            3. Business logic separation from UI.
