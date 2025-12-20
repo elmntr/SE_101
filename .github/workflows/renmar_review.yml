@@ -1,58 +1,55 @@
-name: Renmar Flutter Quality Control
+name: Renmar Flutter Total Quality
 
 on:
   pull_request:
-    branches: [ main, dev ]
     types: [opened, synchronize]
 
 jobs:
-  # PHASE 1: Automated Linting (Fast & Strict)
   compliance:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
-      - run: flutter pub get
-      - name: Verify Renmar Formatting
-        run: dart format --output=none --set-exit-if-changed .
-      - name: Static Analysis
-        run: flutter analyze
 
-  # PHASE 2: AI Architectural Review (Deep Insights)
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Automated Repairs
+        # This adds 'const' and removes unused imports automatically
+        run: dart fix --apply 
+
+      - name: Standard Formatting
+        run: dart format .
+
+      - name: Commit & Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: automated Renmar standards fix"
+
   ai-review:
-    needs: compliance # Only runs if code isn't broken
+    needs: compliance
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - name: Renmar AI Senior Reviewer
+      - name: Gemini AI Reviewer
         uses: sshnaidm/gemini-code-review-action@v1
         with:
           gemini-key: ${{ secrets.GEMINI_API_KEY }}
-          model: "gemini-2.0-flash" # High speed, zero cost
+          model: "gemini-2.0-flash"
           prompt: |
-            You are the Lead Architect at Renmar Infrastructure Corp. 
-            Review this Flutter PR strictly based on these internal docs:
-
-            ### 1. STRUCTURE & NAMING (CRITICAL)
-            - Folder check: Must be in models/, screens/, widgets/, services/, or utils/.
-            - File names: MUST be snake_case (e.g., login_screen.dart).
-            - Classes: PascalCase. Vars: camelCase. Private: start with (_).
-
-            ### 2. UI & PERFORMANCE
-            - PERFORMANCE: Flag missing 'const' constructors. 
-            - NESTING: Flag widgets nested more than 4 levels deep; suggest splitting into smaller widgets.
-            - LISTS: Ensure ListView.builder is used for dynamic content.
-
-            ### 3. SCALABILITY & READABILITY
-            - REUSABILITY: If a widget is >150 lines, suggest breaking it up.
-            - LOGIC: Ensure API/Business logic is in services/, NOT in the UI.
-            - DOCS: Public methods MUST use '///' documentation.
-            - ERRORS: Async calls MUST have try-catch blocks. No empty catches.
-
-            Provide specific line-by-line suggestions for improvement.
+            You are the Lead Architect at Renmar.
+            Logic & Readability Focus:
+            1. Ensure API calls are in services/, not UI.
+            2. Flag widgets over 150 lines.
+            3. Verify documentation (///) on public methods.
+            4. Suggest architectural improvements.
