@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  # PHASE 1: Linting (It can fail, but won't stop the AI)
+  # PHASE 1: Formatting Check
   compliance:
     runs-on: ubuntu-latest
     steps:
@@ -15,12 +15,14 @@ jobs:
           channel: 'stable'
       - run: flutter pub get
       - name: Check Formatting
-        # We remove '--set-exit-if-changed' so it doesn't "fail" the whole job
-        run: dart format . 
+        # THIS LINE is the secret. It keeps the workflow running 
+        # even if your indentation is wrong.
+        continue-on-error: true 
+        run: dart format --set-exit-if-changed . 
 
-  # PHASE 2: AI Review (Runs independently)
+  # PHASE 2: AI Logic Review
   ai-review:
-    # REMOVED the "needs: compliance" line
+    needs: compliance
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,9 +34,7 @@ jobs:
         with:
           gemini-key: ${{ secrets.GEMINI_API_KEY }}
           model: "gemini-2.0-flash"
-          # These help stay under the Free Tier limit
-          context-lines: 1 
-          max-files: 15
+          context-lines: 40
           prompt: |
             Review for Renmar Infrastructure Corp.
             Ignore formatting/whitespace issues.
