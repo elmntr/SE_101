@@ -9,7 +9,7 @@ import '../tables/users.dart';
 part 'stock_change_requests_dao.g.dart';
 
 /// StockChangeRequestsDao - Manage employee stock change requests requiring franchisee approval
-/// 
+///
 /// Business Flow:
 /// 1. Employee creates change (status: draft)
 /// 2. Employee reviews and submits (status: pending)
@@ -17,9 +17,9 @@ part 'stock_change_requests_dao.g.dart';
 /// 4. If approved: Item stock is updated
 /// 5. If rejected: Reverted to draft for employee to review
 @DriftAccessor(tables: [StockChangeRequests, Items, Organizations, Users])
-class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase> 
+class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     with _$StockChangeRequestsDaoMixin {
-  StockChangeRequestsDao(AppDatabase db) : super(db);
+  StockChangeRequestsDao(super.db);
 
   static const int defaultPageSize = 50;
 
@@ -41,43 +41,49 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       final query = select(stockChangeRequests)
         ..where((t) => t.isDeleted.equals(false));
-      
+
       if (status != null) {
         query.where((t) => t.status.equals(status));
       }
-      
+
       if (changeType != null) {
         query.where((t) => t.changeType.equals(changeType));
       }
-      
+
       if (franchiseeId != null) {
         query.where((t) => t.franchiseeId.equals(franchiseeId));
       }
-      
+
       if (itemId != null) {
         query.where((t) => t.itemId.equals(itemId));
       }
-      
+
       if (requestedBy != null) {
         query.where((t) => t.requestedBy.equals(requestedBy));
       }
-      
+
       // Sorting
       query.orderBy([
         (t) {
           switch (sortOrder) {
             case ChangeSortOrder.newestFirst:
-              return OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc);
+              return OrderingTerm(
+                expression: t.requestedAt,
+                mode: OrderingMode.desc,
+              );
             case ChangeSortOrder.oldestFirst:
-              return OrderingTerm(expression: t.requestedAt, mode: OrderingMode.asc);
+              return OrderingTerm(
+                expression: t.requestedAt,
+                mode: OrderingMode.asc,
+              );
           }
-        }
+        },
       ]);
-      
+
       if (limit != null) {
         query.limit(limit, offset: offset);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching stock change requests: $e');
@@ -96,23 +102,23 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       final query = selectOnly(stockChangeRequests)
         ..addColumns([stockChangeRequests.id.count()])
         ..where(stockChangeRequests.isDeleted.equals(false));
-      
+
       if (status != null) {
         query.where(stockChangeRequests.status.equals(status));
       }
-      
+
       if (changeType != null) {
         query.where(stockChangeRequests.changeType.equals(changeType));
       }
-      
+
       if (franchiseeId != null) {
         query.where(stockChangeRequests.franchiseeId.equals(franchiseeId));
       }
-      
+
       if (requestedBy != null) {
         query.where(stockChangeRequests.requestedBy.equals(requestedBy));
       }
-      
+
       final result = await query.getSingle();
       return result.read(stockChangeRequests.id.count()) ?? 0;
     } catch (e) {
@@ -132,23 +138,26 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       final query = select(stockChangeRequests)
         ..where((t) => t.isDeleted.equals(false));
-      
+
       if (status != null) {
         query.where((t) => t.status.equals(status));
       }
-      
+
       if (franchiseeId != null) {
         query.where((t) => t.franchiseeId.equals(franchiseeId));
       }
-      
+
       if (requestedBy != null) {
         query.where((t) => t.requestedBy.equals(requestedBy));
       }
-      
+
       query
-        ..orderBy([(t) => OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc)])
+        ..orderBy([
+          (t) =>
+              OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc),
+        ])
         ..limit(limit, offset: offset);
-      
+
       return query.watch();
     } catch (e) {
       print('❌ Error watching stock change requests: $e');
@@ -174,9 +183,11 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       // Validate changeType
       const validTypes = ['sold', 'spoiled', 'adjustment', 'return'];
       if (!validTypes.contains(changeType)) {
-        throw ArgumentError('Invalid change type. Must be one of: ${validTypes.join(", ")}');
+        throw ArgumentError(
+          'Invalid change type. Must be one of: ${validTypes.join(", ")}',
+        );
       }
-      
+
       return await into(stockChangeRequests).insert(
         StockChangeRequestsCompanion.insert(
           franchiseeId: franchiseeId,
@@ -191,12 +202,12 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
     } catch (e) {
-      print('❌ Error creating change request: $e');
+      print('Error creating change request: $e');
       rethrow;
     }
   }
 
-  /// ✅ Update draft change request (employee editing)
+  /// Update draft change request (employee editing)
   Future<bool> updateDraftChangeRequest({
     required int requestId,
     int? quantity,
@@ -206,35 +217,29 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       // Only allow editing drafts
       final request = await getChangeRequestById(requestId);
       if (request == null || request.status != 'draft') {
-        print('⚠️ Can only edit draft requests');
+        print('Can only edit draft requests');
         return false;
       }
-      
-      final updates = StockChangeRequestsCompanion(
+
+      final companion = StockChangeRequestsCompanion(
+        quantity: quantity != null ? Value(quantity) : const Value.absent(),
+        reason: reason != null ? Value(reason) : const Value.absent(),
         lastUpdated: Value(DateTime.now()),
-        isSynced: Value(false),
+        isSynced: const Value(false),
       );
-      
-      if (quantity != null) {
-        updates.copyWith(quantity: Value(quantity));
-      }
-      
-      if (reason != null) {
-        updates.copyWith(reason: Value(reason));
-      }
-      
-      final result = await (update(stockChangeRequests)
-        ..where((t) => t.id.equals(requestId)))
-        .write(updates);
-      
+
+      final result = await (update(
+        stockChangeRequests,
+      )..where((t) => t.id.equals(requestId))).write(companion);
+
       return result > 0;
     } catch (e) {
-      print('❌ Error updating draft change request: $e');
+      print('Error updating draft change request: $e');
       return false;
     }
   }
 
-  /// ✅ Submit change request (employee submits for review)
+  /// Submit change request (employee submits for review)
   Future<bool> submitChangeRequest(int requestId) async {
     try {
       // Only allow submitting drafts
@@ -243,16 +248,19 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         print('⚠️ Can only submit draft requests');
         return false;
       }
-      
-      final result = await (update(stockChangeRequests)
-        ..where((t) => t.id.equals(requestId)))
-        .write(StockChangeRequestsCompanion(
-          status: Value('pending'),
-          submittedAt: Value(DateTime.now()),
-          lastUpdated: Value(DateTime.now()),
-          isSynced: Value(false),
-        ));
-      
+
+      final result =
+          await (update(
+            stockChangeRequests,
+          )..where((t) => t.id.equals(requestId))).write(
+            StockChangeRequestsCompanion(
+              status: Value('pending'),
+              submittedAt: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now()),
+              isSynced: Value(false),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error submitting change request: $e');
@@ -264,12 +272,19 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   Future<List<StockChangeRequest>> getEmployeeDrafts(int employeeId) async {
     try {
       return await (select(stockChangeRequests)
-        ..where((t) => 
-          t.requestedBy.equals(employeeId) &
-          t.status.equals('draft') &
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc)]))
-        .get();
+            ..where(
+              (t) =>
+                  t.requestedBy.equals(employeeId) &
+                  t.status.equals('draft') &
+                  t.isDeleted.equals(false),
+            )
+            ..orderBy([
+              (t) => OrderingTerm(
+                expression: t.requestedAt,
+                mode: OrderingMode.desc,
+              ),
+            ]))
+          .get();
     } catch (e) {
       print('❌ Error fetching employee drafts: $e');
       return [];
@@ -277,15 +292,24 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Get employee's pending requests
-  Future<List<StockChangeRequest>> getEmployeePendingRequests(int employeeId) async {
+  Future<List<StockChangeRequest>> getEmployeePendingRequests(
+    int employeeId,
+  ) async {
     try {
       return await (select(stockChangeRequests)
-        ..where((t) => 
-          t.requestedBy.equals(employeeId) &
-          t.status.equals('pending') &
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.submittedAt ?? t.requestedAt, mode: OrderingMode.desc)]))
-        .get();
+            ..where(
+              (t) =>
+                  t.requestedBy.equals(employeeId) &
+                  t.status.equals('pending') &
+                  t.isDeleted.equals(false),
+            )
+            ..orderBy([
+              (t) => OrderingTerm(
+                expression: t.submittedAt ?? t.requestedAt,
+                mode: OrderingMode.desc,
+              ),
+            ]))
+          .get();
     } catch (e) {
       print('❌ Error fetching employee pending requests: $e');
       return [];
@@ -297,15 +321,21 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   // ============================================================================
 
   /// ✅ Get pending requests for franchisee to review
-  Future<List<StockChangeRequest>> getPendingRequestsForFranchisee(int franchiseeId) async {
+  Future<List<StockChangeRequest>> getPendingRequestsForFranchisee(
+    int franchiseeId,
+  ) async {
     try {
       return await (select(stockChangeRequests)
-        ..where((t) => 
-          t.franchiseeId.equals(franchiseeId) &
-          t.status.equals('pending') &
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.submittedAt ?? t.requestedAt)]))
-        .get();
+            ..where(
+              (t) =>
+                  t.franchiseeId.equals(franchiseeId) &
+                  t.status.equals('pending') &
+                  t.isDeleted.equals(false),
+            )
+            ..orderBy([
+              (t) => OrderingTerm(expression: t.submittedAt ?? t.requestedAt),
+            ]))
+          .get();
     } catch (e) {
       print('❌ Error fetching pending requests for franchisee: $e');
       return [];
@@ -324,21 +354,23 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         print('⚠️ Can only approve pending requests');
         return false;
       }
-      
+
       // Apply changes in a transaction
       return await db.transaction(() async {
         // 1. Update request status
-        await (update(stockChangeRequests)
-          ..where((t) => t.id.equals(requestId)))
-          .write(StockChangeRequestsCompanion(
+        await (update(
+          stockChangeRequests,
+        )..where((t) => t.id.equals(requestId))).write(
+          StockChangeRequestsCompanion(
             status: Value('approved'),
             reviewedBy: Value(reviewedBy),
             reviewedAt: Value(DateTime.now()),
             reviewNotes: Value(reviewNotes),
             lastUpdated: Value(DateTime.now()),
             isSynced: Value(false),
-          ));
-        
+          ),
+        );
+
         // 2. Apply stock changes based on change type
         switch (request.changeType) {
           case 'sold':
@@ -351,7 +383,9 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             // For adjustments, directly update stock
             final item = await db.itemsDao.getItemById(request.itemId);
             if (item != null) {
-              final newStock = item.stock + request.quantity; // Can be negative for deductions
+              final newStock =
+                  item.stock +
+                  request.quantity; // Can be negative for deductions
               await db.itemsDao.updateStock(request.itemId, newStock);
             }
             break;
@@ -374,7 +408,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             );
             break;
         }
-        
+
         return true;
       });
     } catch (e) {
@@ -395,19 +429,22 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         print('⚠️ Can only reject pending requests');
         return false;
       }
-      
+
       // Revert to draft so employee can review and resubmit
-      final result = await (update(stockChangeRequests)
-        ..where((t) => t.id.equals(requestId)))
-        .write(StockChangeRequestsCompanion(
-          status: Value('rejected'),
-          reviewedBy: Value(reviewedBy),
-          reviewedAt: Value(DateTime.now()),
-          reviewNotes: Value(reason),
-          lastUpdated: Value(DateTime.now()),
-          isSynced: Value(false),
-        ));
-      
+      final result =
+          await (update(
+            stockChangeRequests,
+          )..where((t) => t.id.equals(requestId))).write(
+            StockChangeRequestsCompanion(
+              status: Value('rejected'),
+              reviewedBy: Value(reviewedBy),
+              reviewedAt: Value(DateTime.now()),
+              reviewNotes: Value(reason),
+              lastUpdated: Value(DateTime.now()),
+              isSynced: Value(false),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error rejecting change request: $e');
@@ -422,9 +459,9 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   /// ✅ Get change request by ID
   Future<StockChangeRequest?> getChangeRequestById(int id) async {
     try {
-      return await (select(stockChangeRequests)
-        ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+      return await (select(
+        stockChangeRequests,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching change request by ID: $e');
       return null;
@@ -438,15 +475,16 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   }) async {
     try {
       final query = select(stockChangeRequests)
-        ..where((t) => 
-          t.itemId.equals(itemId) &
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc)]);
-      
+        ..where((t) => t.itemId.equals(itemId) & t.isDeleted.equals(false))
+        ..orderBy([
+          (t) =>
+              OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc),
+        ]);
+
       if (limit != null) {
         query.limit(limit);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching item change history: $e');
@@ -461,15 +499,18 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   }) async {
     try {
       final query = select(stockChangeRequests)
-        ..where((t) => 
-          t.requestedBy.equals(employeeId) &
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc)]);
-      
+        ..where(
+          (t) => t.requestedBy.equals(employeeId) & t.isDeleted.equals(false),
+        )
+        ..orderBy([
+          (t) =>
+              OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc),
+        ]);
+
       if (limit != null) {
         query.limit(limit);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching employee change history: $e');
@@ -484,12 +525,14 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   /// ✅ Get change request statistics for franchisee
   Future<Map<String, int>> getFranchiseeChangeStats(int franchiseeId) async {
     try {
-      final allRequests = await (select(stockChangeRequests)
-        ..where((t) => 
-          t.franchiseeId.equals(franchiseeId) &
-          t.isDeleted.equals(false)))
-        .get();
-      
+      final allRequests =
+          await (select(stockChangeRequests)..where(
+                (t) =>
+                    t.franchiseeId.equals(franchiseeId) &
+                    t.isDeleted.equals(false),
+              ))
+              .get();
+
       return {
         'total': allRequests.length,
         'draft': allRequests.where((r) => r.status == 'draft').length,
@@ -499,21 +542,30 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       };
     } catch (e) {
       print('❌ Error calculating franchisee change stats: $e');
-      return {'total': 0, 'draft': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
+      return {
+        'total': 0,
+        'draft': 0,
+        'pending': 0,
+        'approved': 0,
+        'rejected': 0,
+      };
     }
   }
 
   /// ✅ Soft delete change request
   Future<bool> softDeleteChangeRequest(int id) async {
     try {
-      final result = await (update(stockChangeRequests)
-        ..where((t) => t.id.equals(id)))
-        .write(StockChangeRequestsCompanion(
-          isDeleted: Value(true),
-          isSynced: Value(false),
-          lastUpdated: Value(DateTime.now()),
-        ));
-      
+      final result =
+          await (update(
+            stockChangeRequests,
+          )..where((t) => t.id.equals(id))).write(
+            StockChangeRequestsCompanion(
+              isDeleted: Value(true),
+              isSynced: Value(false),
+              lastUpdated: Value(DateTime.now()),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error soft deleting change request: $e');
@@ -532,9 +584,9 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   }) async {
     try {
       return await (select(stockChangeRequests)
-        ..where((t) => t.isSynced.equals(false))
-        ..limit(limit, offset: offset))
-        .get();
+            ..where((t) => t.isSynced.equals(false))
+            ..limit(limit, offset: offset))
+          .get();
     } catch (e) {
       print('❌ Error fetching unsynced change requests: $e');
       return [];
@@ -547,7 +599,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       final query = selectOnly(stockChangeRequests)
         ..addColumns([stockChangeRequests.id.count()])
         ..where(stockChangeRequests.isSynced.equals(false));
-      
+
       final result = await query.getSingle();
       return result.read(stockChangeRequests.id.count()) ?? 0;
     } catch (e) {
@@ -557,7 +609,10 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Mark change requests as synced (batch)
-  Future<void> markAsSynced(List<int> requestIds, {Map<int, String>? cloudIds}) async {
+  Future<void> markAsSynced(
+    List<int> requestIds, {
+    Map<int, String>? cloudIds,
+  }) async {
     try {
       await db.batch((batch) {
         for (final id in requestIds) {
@@ -578,7 +633,9 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Batch upsert from cloud
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudRequests) async {
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudRequests,
+  ) async {
     try {
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
@@ -668,9 +725,9 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   /// ✅ Get change request by cloud ID
   Future<StockChangeRequest?> getChangeRequestByCloudId(String cloudId) async {
     try {
-      return await (select(stockChangeRequests)
-        ..where((t) => t.cloudId.equals(cloudId)))
-        .getSingleOrNull();
+      return await (select(
+        stockChangeRequests,
+      )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching change request by cloud ID: $e');
       return null;
@@ -679,7 +736,4 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 }
 
 /// ✅ Sorting options for change requests
-enum ChangeSortOrder {
-  newestFirst,
-  oldestFirst,
-}
+enum ChangeSortOrder { newestFirst, oldestFirst }

@@ -57,9 +57,9 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showSnackBar(String message) {
     // Clear any existing snackbars before showing a new one
     ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _handleLogin() async {
@@ -92,11 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setInt('loggedInUserId', user.id);
 
       // Navigate to home
-      Navigator.pushReplacementNamed(
-        context,
-        '/home',
-        arguments: user,
-      );
+      Navigator.pushReplacementNamed(context, '/home', arguments: user);
     } catch (e) {
       if (!mounted) return;
       _showSnackBar('An error occurred. Please try again.');

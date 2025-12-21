@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
-import 'package:drift/drift.dart' show Value;
 
 import '../../design_constants.dart';
 
@@ -58,7 +57,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     final loaded = await db.itemsDao.getItemsByOrganization(
       widget.user.organizationId,
     );
-    
+
     setState(() {
       items = loaded;
       selectedReasons = List.filled(loaded.length, 'Sale');
@@ -86,8 +85,9 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         if (!RegExp(r'^\d+$').hasMatch(txt)) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Please enter only numbers for quantities.'),
-                backgroundColor: Colors.red),
+              content: Text('Please enter only numbers for quantities.'),
+              backgroundColor: Colors.red,
+            ),
           );
           return;
         }
@@ -97,8 +97,9 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     if (!hasChanges) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('No changes to save.'),
-            backgroundColor: Colors.orange),
+          content: Text('No changes to save.'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
@@ -106,12 +107,12 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     try {
       // ✅ Save each change as a separate stock_change_request in the database
       List<Item> changedItems = [];
-      
+
       for (int i = 0; i < items.length; i++) {
         final item = items[i];
         final soldQty = pendingSold[i];
         final spoilageQty = pendingSpoilage[i];
-        
+
         if (soldQty > 0 || spoilageQty > 0) {
           // Create stock change request for sold items
           if (soldQty > 0) {
@@ -125,7 +126,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
               reason: 'Employee stock change',
             );
           }
-          
+
           // Create stock change request for spoiled items
           if (spoilageQty > 0) {
             await db.stockChangeRequestsDao.createChangeRequest(
@@ -138,26 +139,26 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
               reason: 'Employee stock change',
             );
           }
-          
+
           // Track changed items for the record
-          changedItems.add(item.copyWith(
-            sold: soldQty,
-            spoilage: spoilageQty,
-          ));
+          changedItems.add(item.copyWith(sold: soldQty, spoilage: spoilageQty));
         }
       }
 
       if (changedItems.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('No changes to save.'),
-              backgroundColor: Colors.orange),
+            content: Text('No changes to save.'),
+            backgroundColor: Colors.orange,
+          ),
         );
         return;
       }
 
       // ✅ Submit all draft requests automatically
-      final draftRequests = await db.stockChangeRequestsDao.getEmployeeDrafts(widget.user.id);
+      final draftRequests = await db.stockChangeRequestsDao.getEmployeeDrafts(
+        widget.user.id,
+      );
       for (final request in draftRequests) {
         await db.stockChangeRequestsDao.submitChangeRequest(request.id);
       }
@@ -185,17 +186,16 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text("✅ Changes saved and submitted for review!"),
-              backgroundColor: Colors.green),
+            content: Text("✅ Changes saved and submitted for review!"),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       print('❌ Error saving changes: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('❌ Error: $e'),
-              backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -204,9 +204,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -241,17 +239,23 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-                color: Colors.white, borderRadius: BorderRadius.circular(12)),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Employee Name:',
-                          style: TextStyle(color: Colors.grey)),
-                      Text(widget.user.fullName ?? widget.user.username, 
-                          style: const TextStyle(fontSize: 16)),
+                      const Text(
+                        'Employee Name:',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      Text(
+                        widget.user.fullName ?? widget.user.username,
+                        style: const TextStyle(fontSize: 16),
+                      ),
                     ],
                   ),
                 ),
@@ -260,8 +264,10 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('Role:', style: TextStyle(color: Colors.grey)),
-                      Text(widget.role?.name ?? 'Unknown', 
-                          style: const TextStyle(fontSize: 16)),
+                      Text(
+                        widget.role?.name ?? 'Unknown',
+                        style: const TextStyle(fontSize: 16),
+                      ),
                     ],
                   ),
                 ),
@@ -276,32 +282,51 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             child: const Row(
               children: [
                 Expanded(
-                    flex: 3,
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 16),
-                      child: Text('Item Name',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                    )),
+                  flex: 3,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 16),
+                    child: Text(
+                      'Item Name',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
                 Expanded(
-                    flex: 2,
-                    child: Center(
-                        child: Text('Reason',
-                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                  flex: 2,
+                  child: Center(
+                    child: Text(
+                      'Reason',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
                 Expanded(
-                    flex: 2,
-                    child: Center(
-                        child: Text('Qty',
-                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                  flex: 2,
+                  child: Center(
+                    child: Text(
+                      'Qty',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
                 Expanded(
-                    flex: 2,
-                    child: Center(
-                        child: Text('Current Stock',
-                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                  flex: 2,
+                  child: Center(
+                    child: Text(
+                      'Current Stock',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
                 Expanded(
-                    flex: 2,
-                    child: Center(
-                        child: Text('New Stock',
-                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                  flex: 2,
+                  child: Center(
+                    child: Text(
+                      'New Stock',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -320,19 +345,26 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                     itemBuilder: (context, index) {
                       final item = items[index];
                       final newStock =
-                          item.stock - pendingSold[index] - pendingSpoilage[index];
+                          item.stock -
+                          pendingSold[index] -
+                          pendingSpoilage[index];
 
                       return Container(
                         decoration: const BoxDecoration(
-                            color: Colors.white,
-                            border: Border(bottom: BorderSide(color: Colors.grey))),
+                          color: Colors.white,
+                          border: Border(
+                            bottom: BorderSide(color: Colors.grey),
+                          ),
+                        ),
                         child: Row(
                           children: [
                             Expanded(
                               flex: 3,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 20),
+                                  horizontal: 16,
+                                  vertical: 20,
+                                ),
                                 child: Text(item.name),
                               ),
                             ),
@@ -343,10 +375,12 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                                 value: selectedReasons[index],
                                 underline: const SizedBox(),
                                 items: ['Sale', 'Spoilage']
-                                    .map((r) => DropdownMenuItem(
-                                          value: r,
-                                          child: Center(child: Text(r)),
-                                        ))
+                                    .map(
+                                      (r) => DropdownMenuItem(
+                                        value: r,
+                                        child: Center(child: Text(r)),
+                                      ),
+                                    )
                                     .toList(),
                                 onChanged: (value) {
                                   setState(() {
@@ -361,36 +395,43 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                             Expanded(
                               flex: 2,
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
                                 child: TextField(
                                   controller: qtyControllers[index],
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly
+                                    FilteringTextInputFormatter.digitsOnly,
                                   ],
                                   textAlign: TextAlign.center,
                                   decoration: const InputDecoration(
                                     hintText: '0',
                                     border: OutlineInputBorder(),
-                                    contentPadding:
-                                        EdgeInsets.symmetric(vertical: 12),
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                   ),
                                   onChanged: (val) {
                                     final qty = int.tryParse(val) ?? 0;
-                                    
+
                                     if (qty > item.stock) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                              'Cannot exceed current stock (${item.stock})'),
+                                            'Cannot exceed current stock (${item.stock})',
+                                          ),
                                           backgroundColor: Colors.orange,
                                           duration: const Duration(seconds: 1),
                                         ),
                                       );
-                                      qtyControllers[index].text = item.stock.toString();
+                                      qtyControllers[index].text = item.stock
+                                          .toString();
                                       return;
                                     }
-                                    
+
                                     setState(() {
                                       if (selectedReasons[index] == 'Sale') {
                                         pendingSold[index] = qty;
@@ -405,20 +446,25 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                               ),
                             ),
                             Expanded(
-                                flex: 2,
-                                child: Center(child: Text(item.stock.toString()))),
+                              flex: 2,
+                              child: Center(child: Text(item.stock.toString())),
+                            ),
                             Expanded(
-                                flex: 2,
-                                child: Center(
-                                    child: Text(
+                              flex: 2,
+                              child: Center(
+                                child: Text(
                                   newStock < 0 ? '0' : '$newStock',
                                   style: TextStyle(
-                                    color: newStock < 0 ? Colors.red : Colors.black,
+                                    color: newStock < 0
+                                        ? Colors.red
+                                        : Colors.black,
                                     fontWeight: newStock < 0
                                         ? FontWeight.bold
                                         : FontWeight.normal,
                                   ),
-                                ))),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       );
@@ -437,10 +483,14 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Total Sold: $totalSold',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Text('Total Spoiled: $totalSpoiled',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        'Total Sold: $totalSold',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Total Spoiled: $totalSpoiled',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                 ),
@@ -452,7 +502,8 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                       backgroundColor: const Color(0xFFE30417),
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30)),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                     ),
                     onPressed: _saveChanges,
                     child: const Text(

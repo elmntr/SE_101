@@ -20,11 +20,7 @@ Widget emptyTables({
           /// ✅ ICON BUTTON (Add / Plus)
           if (buttonType == EmptyButtonType.icon)
             IconButton(
-              icon: const Icon(
-                Icons.add_circle,
-                color: colorAll,
-                size: 40,
-              ),
+              icon: const Icon(Icons.add_circle, color: colorAll, size: 40),
               onPressed: onAddPressed,
             ),
 
@@ -33,8 +29,10 @@ Widget emptyTables({
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 25,
+                  vertical: 12,
+                ),
               ),
               onPressed: onAddPressed,
               child: Text(
@@ -47,7 +45,6 @@ Widget emptyTables({
     ),
   );
 }
-
 
 //Universal Table builder
 Widget buildUniversalTable({
@@ -106,7 +103,9 @@ Widget buildUniversalTable({
               dataRowMinHeight: kMinInteractiveDimension,
               dataRowMaxHeight: double.infinity,
 
-              columns: headers.map((h) => DataColumn(label: header(h))).toList(),
+              columns: headers
+                  .map((h) => DataColumn(label: header(h)))
+                  .toList(),
 
               rows: rows.map((rowCells) {
                 return DataRow(
@@ -124,4 +123,3 @@ Widget buildUniversalTable({
 }
 
 /// ✅ Helper to build text cell
-

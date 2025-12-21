@@ -167,32 +167,32 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   }
 
   /// ✅ Get users for a specific organization
-Future<List<User>> getUsersByOrganization(
-  int organizationId, {
-  int? limit,
-  int offset = 0,
-  bool? isActive,
-}) async {
-  try {
-    final query = select(users)
-      ..where((t) => t.organizationId.equals(organizationId));
-    
-    if (isActive != null) {
-      query.where((t) => t.isActive.equals(isActive));
+  Future<List<User>> getUsersByOrganization(
+    int organizationId, {
+    int? limit,
+    int offset = 0,
+    bool? isActive,
+  }) async {
+    try {
+      final query = select(users)
+        ..where((t) => t.organizationId.equals(organizationId));
+      
+      if (isActive != null) {
+        query.where((t) => t.isActive.equals(isActive));
+      }
+      
+      query.orderBy([(t) => OrderingTerm(expression: t.username)]);
+      
+      if (limit != null) {
+        query.limit(limit, offset: offset);
+      }
+      
+      return await query.get();
+    } catch (e) {
+      print('❌ Error fetching users by organization: $e');
+      return [];
     }
-    
-    query.orderBy([(t) => OrderingTerm(expression: t.username)]);
-    
-    if (limit != null) {
-      query.limit(limit, offset: offset);
-    }
-    
-    return await query.get();
-  } catch (e) {
-    print('❌ Error fetching users by organization: $e');
-    return [];
   }
-}
 
   /// ✅ PERMANENT DELETE: Hard-delete user from local and mark for cloud deletion
   Future<bool> deleteUserById(int id) async {
@@ -440,93 +440,91 @@ Future<List<User>> getUsersByOrganization(
     }
   }
 
-  // /// ✅ Batch upsert from cloud
-  /// ✅ FIXED: Batch upsert from cloud with ALL new columns
-/// ✅ Batch upsert from cloud with ALL new columns
-Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudUsers) async {
-  try {
-    await db.transaction(() async {
-      for (final cloudUser in cloudUsers) {
-        await upsertFromCloud(
-          id: cloudUser['local_id'] ?? 0, // ✅ Default to 0
-          email: cloudUser['email'] ?? 'unknown@example.com', // ✅ Default email
-          username: cloudUser['username'] ?? 'Unknown User', // ✅ Default username
-          password: cloudUser['password'] ?? '', // Already hashed from cloud
-          phone: cloudUser['phone'], // ✅ Nullable
-          organizationId: cloudUser['organization_id'] ?? 1, // ✅ Default to 1
-          roleId: cloudUser['role_id'] ?? 1, // ✅ Default to 1
-          fullName: cloudUser['full_name'], // ✅ Nullable
-          isActive: cloudUser['is_active'] ?? true, // ✅ Default to true
-          createdAt: DateTime.tryParse(cloudUser['created_at'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-          lastUpdated: DateTime.tryParse(cloudUser['last_updated'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-          cloudId: cloudUser['cloud_id'] ?? '', // ✅ Default to empty string
+  /// ✅ FIXED: Batch upsert from cloud with safe defaults for nullable values
+  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudUsers) async {
+    try {
+      await db.transaction(() async {
+        for (final cloudUser in cloudUsers) {
+          await upsertFromCloud(
+            id: cloudUser['local_id'] ?? 0, // ✅ Default to 0
+            email: cloudUser['email'] ?? 'unknown@example.com', // ✅ Default email
+            username: cloudUser['username'] ?? 'Unknown User', // ✅ Default username
+            password: cloudUser['password'] ?? '', // Already hashed from cloud
+            phone: cloudUser['phone'], // ✅ Nullable
+            organizationId: cloudUser['organization_id'] ?? 1, // ✅ Default to 1
+            roleId: cloudUser['role_id'] ?? 1, // ✅ Default to 1
+            fullName: cloudUser['full_name'], // ✅ Nullable
+            isActive: cloudUser['is_active'] ?? true, // ✅ Default to true
+            createdAt: DateTime.tryParse(cloudUser['created_at'] ?? '') ?? DateTime.now(), // ✅ Safe parse
+            lastUpdated: DateTime.tryParse(cloudUser['last_updated'] ?? '') ?? DateTime.now(), // ✅ Safe parse
+            cloudId: cloudUser['cloud_id'] ?? '', // ✅ Default to empty string
+          );
+        }
+      });
+    } catch (e) {
+      print('❌ Error batch upserting users from cloud: $e');
+      rethrow;
+    }
+  }
+
+  /// ✅ FIXED: Upsert from cloud with better error handling (check for existing user first)
+  Future<void> upsertFromCloud({
+    required int id,
+    required String email,
+    required String username,
+    required String password,
+    String? phone,
+    required int organizationId,
+    required int roleId,
+    String? fullName,
+    required bool isActive,
+    required DateTime createdAt,
+    required DateTime lastUpdated,
+    required String cloudId,
+  }) async {
+    try {
+      // ✅ First, try to find existing user by email
+      final existingUser = await getUserByEmail(email);
+      
+      if (existingUser != null) {
+        // ✅ Update existing user instead of inserting
+        await (update(users)..where((t) => t.id.equals(existingUser.id)))
+          .write(UsersCompanion(
+            username: Value(username),
+            password: Value(password),
+            phone: Value(phone),
+            organizationId: Value(organizationId),
+            roleId: Value(roleId),
+            fullName: Value(fullName),
+            isActive: Value(isActive),
+            lastUpdated: Value(lastUpdated),
+            isSynced: Value(true),
+            cloudId: Value(cloudId),
+          ));
+      } else {
+        // ✅ Insert new user
+        await into(users).insert(
+          UsersCompanion.insert(
+            email: email,
+            username: username,
+            password: password,
+            phone: Value(phone),
+            organizationId: organizationId,
+            roleId: roleId,
+            fullName: Value(fullName),
+            isActive: Value(isActive),
+            createdAt: Value(createdAt),
+            lastUpdated: Value(lastUpdated),
+            isSynced: Value(true),
+            cloudId: Value(cloudId),
+          ),
         );
       }
-    });
-  } catch (e) {
-    print('❌ Error batch upserting users from cloud: $e');
-    rethrow;
-  }
-}
-
-  /// ✅ Upsert from cloud (password is already hashed)
-Future<void> upsertFromCloud({
-  required int id,
-  required String email,
-  required String username,
-  required String password,
-  String? phone,
-  required int organizationId,
-  required int roleId,
-  String? fullName,
-  required bool isActive,
-  required DateTime createdAt,
-  required DateTime lastUpdated,
-  required String cloudId,
-}) async {
-  try {
-    // ✅ First, try to find existing user by email
-    final existingUser = await getUserByEmail(email);
-    
-    if (existingUser != null) {
-      // ✅ Update existing user instead of inserting
-      await (update(users)..where((t) => t.id.equals(existingUser.id)))
-        .write(UsersCompanion(
-          username: Value(username),
-          password: Value(password),
-          phone: Value(phone),
-          organizationId: Value(organizationId),
-          roleId: Value(roleId),
-          fullName: Value(fullName),
-          isActive: Value(isActive),
-          lastUpdated: Value(lastUpdated),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ));
-    } else {
-      // ✅ Insert new user
-      await into(users).insert(
-        UsersCompanion.insert(
-          email: email,
-          username: username,
-          password: password,
-          phone: Value(phone),
-          organizationId: organizationId,
-          roleId: roleId,
-          fullName: Value(fullName),
-          isActive: Value(isActive),
-          createdAt: Value(createdAt),
-          lastUpdated: Value(lastUpdated),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ),
-      );
+    } catch (e) {
+      print('❌ Error upserting user from cloud: $e');
+      rethrow;
     }
-  } catch (e) {
-    print('❌ Error upserting user from cloud: $e');
-    rethrow;
   }
-}
 
   /// ✅ Get user by cloud ID
   Future<User?> getUserByCloudId(String cloudId) async {

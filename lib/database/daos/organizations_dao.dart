@@ -6,15 +6,16 @@ import '../tables/organizations.dart';
 part 'organizations_dao.g.dart';
 
 /// OrganizationsDao - Manage commissary and franchisee organizations
-/// 
+///
 /// Business Logic:
 /// - One commissary can have many franchisees
 /// - Franchisees must reference a parent commissary
 /// - Commissary organizations have type='commissary', parentCommissaryId=NULL
 /// - Franchisee organizations have type='franchisee', parentCommissaryId=(commissary id)
 @DriftAccessor(tables: [Organizations])
-class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$OrganizationsDaoMixin {
-  OrganizationsDao(AppDatabase db) : super(db);
+class OrganizationsDao extends DatabaseAccessor<AppDatabase>
+    with _$OrganizationsDaoMixin {
+  OrganizationsDao(super.db);
 
   static const int defaultPageSize = 50;
 
@@ -31,21 +32,21 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   }) async {
     try {
       final query = select(organizations);
-      
+
       if (type != null) {
         query.where((t) => t.type.equals(type));
       }
-      
+
       if (isActive != null) {
         query.where((t) => t.isActive.equals(isActive));
       }
-      
+
       query.orderBy([(t) => OrderingTerm(expression: t.name)]);
-      
+
       if (limit != null) {
         query.limit(limit, offset: offset);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching organizations: $e');
@@ -54,22 +55,19 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   }
 
   /// ✅ Count organizations
-  Future<int> getOrganizationCount({
-    String? type,
-    bool? isActive,
-  }) async {
+  Future<int> getOrganizationCount({String? type, bool? isActive}) async {
     try {
       final query = selectOnly(organizations)
         ..addColumns([organizations.id.count()]);
-      
+
       if (type != null) {
         query.where(organizations.type.equals(type));
       }
-      
+
       if (isActive != null) {
         query.where(organizations.isActive.equals(isActive));
       }
-      
+
       final result = await query.getSingle();
       return result.read(organizations.id.count()) ?? 0;
     } catch (e) {
@@ -85,10 +83,10 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   }) {
     try {
       return (select(organizations)
-        ..where((t) => t.isActive.equals(true))
-        ..orderBy([(t) => OrderingTerm(expression: t.name)])
-        ..limit(limit, offset: offset))
-        .watch();
+            ..where((t) => t.isActive.equals(true))
+            ..orderBy([(t) => OrderingTerm(expression: t.name)])
+            ..limit(limit, offset: offset))
+          .watch();
     } catch (e) {
       print('❌ Error watching organizations: $e');
       return Stream.value([]);
@@ -102,20 +100,20 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
       if (organization.type.present) {
         final type = organization.type.value;
         if (type != 'commissary' && type != 'franchisee') {
-          throw ArgumentError('Organization type must be "commissary" or "franchisee"');
+          throw ArgumentError(
+            'Organization type must be "commissary" or "franchisee"',
+          );
         }
-        
+
         // Franchisees must have a parent commissary
         if (type == 'franchisee' && !organization.parentCommissaryId.present) {
           throw ArgumentError('Franchisee must have a parent commissary');
         }
       }
-      
-      return await into(organizations).insert(
-        organization.copyWith(
-          isSynced: Value(false),
-        ),
-      );
+
+      return await into(
+        organizations,
+      ).insert(organization.copyWith(isSynced: Value(false)));
     } catch (e) {
       print('❌ Error inserting organization: $e');
       rethrow;
@@ -123,14 +121,13 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   }
 
   /// ✅ Batch insert organizations
-  Future<void> insertOrganizations(List<OrganizationsCompanion> organizationsList) async {
+  Future<void> insertOrganizations(
+    List<OrganizationsCompanion> organizationsList,
+  ) async {
     try {
       await db.batch((batch) {
         for (final org in organizationsList) {
-          batch.insert(
-            organizations,
-            org.copyWith(isSynced: Value(false)),
-          );
+          batch.insert(organizations, org.copyWith(isSynced: Value(false)));
         }
       });
     } catch (e) {
@@ -156,8 +153,9 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   /// ✅ Get organization by ID
   Future<Organization?> getOrganizationById(int id) async {
     try {
-      return await (select(organizations)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+      return await (select(
+        organizations,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching organization by ID: $e');
       return null;
@@ -168,8 +166,8 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   Future<Organization?> getOrganizationByName(String name) async {
     try {
       return await (select(organizations)
-        ..where((t) => t.name.equals(name) & t.isActive.equals(true)))
-        .getSingleOrNull();
+            ..where((t) => t.name.equals(name) & t.isActive.equals(true)))
+          .getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching organization by name: $e');
       return null;
@@ -182,19 +180,25 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
       // Check if organization has active users or items
       final userCount = await _getActiveUserCount(id);
       final itemCount = await _getActiveItemCount(id);
-      
+
       if (userCount > 0 || itemCount > 0) {
-        print('⚠️ Cannot deactivate organization $id: has $userCount users and $itemCount items');
-        throw Exception('Organization has $userCount active user(s) and $itemCount item(s)');
+        print(
+          '⚠️ Cannot deactivate organization $id: has $userCount users and $itemCount items',
+        );
+        throw Exception(
+          'Organization has $userCount active user(s) and $itemCount item(s)',
+        );
       }
-      
-      final result = await (update(organizations)..where((t) => t.id.equals(id)))
-        .write(OrganizationsCompanion(
-          isActive: Value(false),
-          lastUpdated: Value(DateTime.now()),
-          isSynced: Value(false),
-        ));
-      
+
+      final result =
+          await (update(organizations)..where((t) => t.id.equals(id))).write(
+            OrganizationsCompanion(
+              isActive: Value(false),
+              lastUpdated: Value(DateTime.now()),
+              isSynced: Value(false),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error deactivating organization: $e');
@@ -205,13 +209,15 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   /// ✅ Reactivate organization
   Future<bool> reactivateOrganization(int id) async {
     try {
-      final result = await (update(organizations)..where((t) => t.id.equals(id)))
-        .write(OrganizationsCompanion(
-          isActive: Value(true),
-          lastUpdated: Value(DateTime.now()),
-          isSynced: Value(false),
-        ));
-      
+      final result =
+          await (update(organizations)..where((t) => t.id.equals(id))).write(
+            OrganizationsCompanion(
+              isActive: Value(true),
+              lastUpdated: Value(DateTime.now()),
+              isSynced: Value(false),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error reactivating organization: $e');
@@ -245,10 +251,12 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   Future<Organization?> getMainCommissary() async {
     try {
       return await (select(organizations)
-        ..where((t) => t.type.equals('commissary') & t.isActive.equals(true))
-        ..orderBy([(t) => OrderingTerm(expression: t.createdAt)])
-        ..limit(1))
-        .getSingleOrNull();
+            ..where(
+              (t) => t.type.equals('commissary') & t.isActive.equals(true),
+            )
+            ..orderBy([(t) => OrderingTerm(expression: t.createdAt)])
+            ..limit(1))
+          .getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching main commissary: $e');
       return null;
@@ -268,17 +276,17 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
     try {
       final query = select(organizations)
         ..where((t) => t.type.equals('franchisee') & t.isActive.equals(true));
-      
+
       if (parentCommissaryId != null) {
         query.where((t) => t.parentCommissaryId.equals(parentCommissaryId));
       }
-      
+
       query.orderBy([(t) => OrderingTerm(expression: t.name)]);
-      
+
       if (limit != null) {
         query.limit(limit, offset: offset);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching franchisees: $e');
@@ -287,15 +295,19 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   }
 
   /// ✅ Get franchisees for a specific commissary
-  Future<List<Organization>> getFranchiseesByCommissary(int commissaryId) async {
+  Future<List<Organization>> getFranchiseesByCommissary(
+    int commissaryId,
+  ) async {
     try {
       return await (select(organizations)
-        ..where((t) => 
-          t.type.equals('franchisee') & 
-          t.parentCommissaryId.equals(commissaryId) &
-          t.isActive.equals(true))
-        ..orderBy([(t) => OrderingTerm(expression: t.name)]))
-        .get();
+            ..where(
+              (t) =>
+                  t.type.equals('franchisee') &
+                  t.parentCommissaryId.equals(commissaryId) &
+                  t.isActive.equals(true),
+            )
+            ..orderBy([(t) => OrderingTerm(expression: t.name)]))
+          .get();
     } catch (e) {
       print('❌ Error fetching franchisees by commissary: $e');
       return [];
@@ -309,10 +321,10 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
         ..addColumns([organizations.id.count()])
         ..where(
           organizations.type.equals('franchisee') &
-          organizations.parentCommissaryId.equals(commissaryId) &
-          organizations.isActive.equals(true)
+              organizations.parentCommissaryId.equals(commissaryId) &
+              organizations.isActive.equals(true),
         );
-      
+
       final result = await query.getSingle();
       return result.read(organizations.id.count()) ?? 0;
     } catch (e) {
@@ -332,9 +344,9 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
         ..addColumns([db.users.id.count()])
         ..where(
           db.users.organizationId.equals(organizationId) &
-          db.users.isActive.equals(true)
+              db.users.isActive.equals(true),
         );
-      
+
       final result = await query.getSingle();
       return result.read(db.users.id.count()) ?? 0;
     } catch (e) {
@@ -350,9 +362,9 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
         ..addColumns([db.items.id.count()])
         ..where(
           db.items.organizationId.equals(organizationId) &
-          db.items.isDeleted.equals(false)
+              db.items.isDeleted.equals(false),
         );
-      
+
       final result = await query.getSingle();
       return result.read(db.items.id.count()) ?? 0;
     } catch (e) {
@@ -372,9 +384,9 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   }) async {
     try {
       return await (select(organizations)
-        ..where((t) => t.isSynced.equals(false))
-        ..limit(limit, offset: offset))
-        .get();
+            ..where((t) => t.isSynced.equals(false))
+            ..limit(limit, offset: offset))
+          .get();
     } catch (e) {
       print('❌ Error fetching unsynced organizations: $e');
       return [];
@@ -387,7 +399,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
       final query = selectOnly(organizations)
         ..addColumns([organizations.id.count()])
         ..where(organizations.isSynced.equals(false));
-      
+
       final result = await query.getSingle();
       return result.read(organizations.id.count()) ?? 0;
     } catch (e) {
@@ -397,7 +409,10 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase> with _$Organization
   }
 
   /// ✅ Mark organizations as synced (batch)
-  Future<void> markAsSynced(List<int> organizationIds, {Map<int, String>? cloudIds}) async {
+  Future<void> markAsSynced(
+    List<int> organizationIds, {
+    Map<int, String>? cloudIds,
+  }) async {
     try {
       await db.batch((batch) {
         for (final id in organizationIds) {
@@ -487,8 +502,9 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations)
   /// ✅ Get organization by cloud ID
   Future<Organization?> getOrganizationByCloudId(String cloudId) async {
     try {
-      return await (select(organizations)..where((t) => t.cloudId.equals(cloudId)))
-        .getSingleOrNull();
+      return await (select(
+        organizations,
+      )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching organization by cloud ID: $e');
       return null;

@@ -1,10 +1,8 @@
-import 'package:chickenjoo_inventory/screen/employee/employee_review_changes_page.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
-import 'package:drift/drift.dart' show Value;
 import 'employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 
@@ -12,7 +10,7 @@ class EmployeeItemsPage extends StatefulWidget {
   final User user;
   final Role role;
   const EmployeeItemsPage({super.key, required this.user, required this.role});
-  
+
   @override
   State<EmployeeItemsPage> createState() => _EmployeeItemsPageState();
 }
@@ -31,7 +29,10 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   int selectedTab = 0; // 0 = Items, 1 = Review Changes
 
   ItemSort _currentSort = const ItemSort(ItemSortField.name, SortOrder.asc);
-  ReviewSort _reviewSort = const ReviewSort(ReviewSortField.employee, SortOrder.asc);
+  ReviewSort _reviewSort = const ReviewSort(
+    ReviewSortField.employee,
+    SortOrder.asc,
+  );
 
   @override
   void initState() {
@@ -48,18 +49,18 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       // Load items for the user's organization
       final items = await db.itemsDao.getItemsByOrganization(
         widget.user.organizationId,
       );
-      
+
       // Load pending/draft changes for this employee
       final changes = await db.stockChangeRequestsDao.getAllChangeRequests(
         requestedBy: widget.user.id,
       );
-      
+
       if (mounted) {
         setState(() {
           dbItems = items;
@@ -118,7 +119,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
           pendingChanges.sort((a, b) => b.quantity.compareTo(a.quantity));
           break;
       }
-      
+
       if (sort.order == SortOrder.desc) {
         pendingChanges = pendingChanges.reversed.toList();
       }
@@ -131,7 +132,9 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: const Text('Delete Change Request'),
-        content: const Text('Are you sure you want to delete this change request?'),
+        content: const Text(
+          'Are you sure you want to delete this change request?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -157,9 +160,9 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting request: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error deleting request: $e')));
         }
       }
     }
@@ -194,11 +197,14 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                         color: Colors.black.withOpacity(0.12),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ]
                   : [],
             ),
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),
@@ -260,22 +266,33 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Item: ${item?.name ?? 'Unknown'}',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Item: ${item?.name ?? 'Unknown'}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       Text('Change Type: ${request.changeType}'),
                       Text('Quantity: ${request.quantity}'),
                       Text('Status: ${request.status}'),
                       Text('Original Stock: ${request.originalStock}'),
-                      if (request.reason != null) Text('Reason: ${request.reason}'),
+                      if (request.reason != null)
+                        Text('Reason: ${request.reason}'),
                       const SizedBox(height: 20),
                       if (request.status == 'draft')
                         Row(
                           children: [
                             ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
                               onPressed: () => _deleteChangeRequest(request),
-                              child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                              child: const Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.white),
+                              ),
                             ),
                           ],
                         ),
@@ -304,9 +321,15 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Items', style: TextStyle(fontSize: 26, fontFamily: fontAll)),
+                        const Text(
+                          'Items',
+                          style: TextStyle(fontSize: 26, fontFamily: fontAll),
+                        ),
                         IconButton(
-                          icon: const Icon(Icons.notifications_outlined, size: 28),
+                          icon: const Icon(
+                            Icons.notifications_outlined,
+                            size: 28,
+                          ),
                           onPressed: () {},
                         ),
                       ],
@@ -337,14 +360,50 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                             icon: const Icon(Icons.filter_list, size: 28),
                             onSelected: _applyItemSort,
                             itemBuilder: (context) => const [
-                              PopupMenuItem(value: ItemSort(ItemSortField.date, SortOrder.desc), child: Text("Date Modified (Newest)")),
-                              PopupMenuItem(value: ItemSort(ItemSortField.date, SortOrder.asc), child: Text("Date Modified (Oldest)")),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.date,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Date Modified (Newest)"),
+                              ),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.date,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Date Modified (Oldest)"),
+                              ),
                               PopupMenuDivider(),
-                              PopupMenuItem(value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
-                              PopupMenuItem(value: ItemSort(ItemSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.name,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Name (A–Z)"),
+                              ),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.name,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Name (Z–A)"),
+                              ),
                               PopupMenuDivider(),
-                              PopupMenuItem(value: ItemSort(ItemSortField.stock, SortOrder.desc), child: Text("Stock (Low → High)")),
-                              PopupMenuItem(value: ItemSort(ItemSortField.stock, SortOrder.asc), child: Text("Stock (High → Low)")),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.stock,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Stock (Low → High)"),
+                              ),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.stock,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Stock (High → Low)"),
+                              ),
                             ],
                           ),
                       ],
@@ -379,65 +438,105 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                     child: _isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : selectedTab == 0
-                            ? (dbItems.isEmpty
-                                ? emptyTables(
-                                    message: "No items available",
-                                    onAddPressed: null,
-                                    buttonType: EmptyButtonType.none,
-                                    buttonText: null)
-                                : buildUniversalTable(
-                                    headers: ["Item Name", "Stock", "Sale", "Spoilage"],
-                                    rows: dbItems.map((item) => [
-                                      item.name,
-                                      item.stock.toString(),
-                                      item.sold.toString(),
-                                      item.spoilage.toString(),
-                                    ]).toList(),
-                                  ))
-                            : (pendingChanges.isEmpty
-                                ? emptyTables(
-                                    message: "No pending changes",
-                                    onAddPressed: null,
-                                    buttonType: EmptyButtonType.none,
-                                    buttonText: null)
-                                : FutureBuilder<List<Map<String, dynamic>>>(
-                                    future: _buildChangeRequestRows(),
-                                    builder: (context, snapshot) {
-                                      if (!snapshot.hasData) {
-                                        return const Center(child: CircularProgressIndicator());
-                                      }
-                                      return buildUniversalTable(
-                                        headers: ["Item", "Type", "Qty", "Status", ""],
-                                        rows: snapshot.data!.map((row) => [
-                                          row['itemName'],
-                                          row['changeType'],
-                                          row['quantity'],
-                                          _buildStatusChip(row['status']),
-                                          IconButton(
-                                            icon: const Icon(Icons.visibility),
-                                            onPressed: () => _viewChangeDetail(row['request']),
-                                          ),
-                                        ]).toList(),
+                        ? (dbItems.isEmpty
+                              ? emptyTables(
+                                  message: "No items available",
+                                  onAddPressed: null,
+                                  buttonType: EmptyButtonType.none,
+                                  buttonText: null,
+                                )
+                              : buildUniversalTable(
+                                  headers: [
+                                    "Item Name",
+                                    "Stock",
+                                    "Sale",
+                                    "Spoilage",
+                                  ],
+                                  rows: dbItems
+                                      .map(
+                                        (item) => [
+                                          item.name,
+                                          item.stock.toString(),
+                                          item.sold.toString(),
+                                          item.spoilage.toString(),
+                                        ],
+                                      )
+                                      .toList(),
+                                ))
+                        : (pendingChanges.isEmpty
+                              ? emptyTables(
+                                  message: "No pending changes",
+                                  onAddPressed: null,
+                                  buttonType: EmptyButtonType.none,
+                                  buttonText: null,
+                                )
+                              : FutureBuilder<List<Map<String, dynamic>>>(
+                                  future: _buildChangeRequestRows(),
+                                  builder: (context, snapshot) {
+                                    if (!snapshot.hasData) {
+                                      return const Center(
+                                        child: CircularProgressIndicator(),
                                       );
-                                    },
-                                  )),
+                                    }
+                                    return buildUniversalTable(
+                                      headers: [
+                                        "Item",
+                                        "Type",
+                                        "Qty",
+                                        "Status",
+                                        "",
+                                      ],
+                                      rows: snapshot.data!
+                                          .map(
+                                            (row) => [
+                                              row['itemName'],
+                                              row['changeType'],
+                                              row['quantity'],
+                                              _buildStatusChip(row['status']),
+                                              IconButton(
+                                                icon: const Icon(
+                                                  Icons.visibility,
+                                                ),
+                                                onPressed: () =>
+                                                    _viewChangeDetail(
+                                                      row['request'],
+                                                    ),
+                                              ),
+                                            ],
+                                          )
+                                          .toList(),
+                                    );
+                                  },
+                                )),
                   ),
                 ),
               ],
             ),
           ),
         ),
-        floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty && !_isLoading)
+        floatingActionButton:
+            (selectedTab == 0 && dbItems.isNotEmpty && !_isLoading)
             ? Padding(
                 padding: const EdgeInsets.only(bottom: 20),
                 child: FloatingActionButton.extended(
                   onPressed: _toggleChangeStockMode,
                   backgroundColor: const Color(0xFFE30417),
                   elevation: 8,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  label: const Text('Change Stock',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                  icon: const Icon(Icons.inventory_2_outlined, color: Colors.white),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  label: const Text(
+                    'Change Stock',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.inventory_2_outlined,
+                    color: Colors.white,
+                  ),
                 ),
               )
             : null,
@@ -454,7 +553,10 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
           children: [
             Row(
               children: [
-                const Text("Items", style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+                const Text(
+                  "Items",
+                  style: TextStyle(fontSize: 30, fontFamily: fontAll),
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Container(
@@ -476,8 +578,14 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                     icon: const Icon(Icons.filter_list, size: 28),
                     onSelected: _applyItemSort,
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
-                      PopupMenuItem(value: ItemSort(ItemSortField.stock, SortOrder.desc), child: Text("Stock (Low → High)")),
+                      PopupMenuItem(
+                        value: ItemSort(ItemSortField.name, SortOrder.desc),
+                        child: Text("Name (A–Z)"),
+                      ),
+                      PopupMenuItem(
+                        value: ItemSort(ItemSortField.stock, SortOrder.desc),
+                        child: Text("Stock (Low → High)"),
+                      ),
                     ],
                   ),
                 IconButton(
@@ -516,58 +624,94 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : selectedTab == 0
-                              ? (dbItems.isEmpty
-                                  ? emptyTables(
-                                      message: "No items available",
-                                      onAddPressed: null,
-                                      buttonType: EmptyButtonType.none,
-                                      buttonText: null)
-                                  : buildUniversalTable(
-                                      headers: ["Item Name", "Stock", "Sale", "Spoilage"],
-                                      rows: dbItems.map((item) => [
-                                        item.name,
-                                        item.stock.toString(),
-                                        item.sold.toString(),
-                                        item.spoilage.toString(),
-                                      ]).toList(),
-                                    ))
-                              : (pendingChanges.isEmpty
-                                  ? emptyTables(
-                                      message: "No pending changes",
-                                      onAddPressed: null,
-                                      buttonType: EmptyButtonType.none,
-                                      buttonText: null)
-                                  : FutureBuilder<List<Map<String, dynamic>>>(
-                                      future: _buildChangeRequestRows(),
-                                      builder: (context, snapshot) {
-                                        if (!snapshot.hasData) {
-                                          return const Center(child: CircularProgressIndicator());
-                                        }
-                                        return buildUniversalTable(
-                                          headers: ["Item", "Type", "Quantity", "Status", "Actions"],
-                                          rows: snapshot.data!.map((row) => [
-                                            row['itemName'],
-                                            row['changeType'],
-                                            row['quantity'],
-                                            _buildStatusChip(row['status']),
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                IconButton(
-                                                  icon: const Icon(Icons.visibility),
-                                                  onPressed: () => _viewChangeDetail(row['request']),
-                                                ),
-                                                if (row['status'] == 'draft')
-                                                  IconButton(
-                                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                                    onPressed: () => _deleteChangeRequest(row['request']),
-                                                  ),
-                                              ],
-                                            ),
-                                          ]).toList(),
+                          ? (dbItems.isEmpty
+                                ? emptyTables(
+                                    message: "No items available",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null,
+                                  )
+                                : buildUniversalTable(
+                                    headers: [
+                                      "Item Name",
+                                      "Stock",
+                                      "Sale",
+                                      "Spoilage",
+                                    ],
+                                    rows: dbItems
+                                        .map(
+                                          (item) => [
+                                            item.name,
+                                            item.stock.toString(),
+                                            item.sold.toString(),
+                                            item.spoilage.toString(),
+                                          ],
+                                        )
+                                        .toList(),
+                                  ))
+                          : (pendingChanges.isEmpty
+                                ? emptyTables(
+                                    message: "No pending changes",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null,
+                                  )
+                                : FutureBuilder<List<Map<String, dynamic>>>(
+                                    future: _buildChangeRequestRows(),
+                                    builder: (context, snapshot) {
+                                      if (!snapshot.hasData) {
+                                        return const Center(
+                                          child: CircularProgressIndicator(),
                                         );
-                                      },
-                                    )),
+                                      }
+                                      return buildUniversalTable(
+                                        headers: [
+                                          "Item",
+                                          "Type",
+                                          "Quantity",
+                                          "Status",
+                                          "Actions",
+                                        ],
+                                        rows: snapshot.data!
+                                            .map(
+                                              (row) => [
+                                                row['itemName'],
+                                                row['changeType'],
+                                                row['quantity'],
+                                                _buildStatusChip(row['status']),
+                                                Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    IconButton(
+                                                      icon: const Icon(
+                                                        Icons.visibility,
+                                                      ),
+                                                      onPressed: () =>
+                                                          _viewChangeDetail(
+                                                            row['request'],
+                                                          ),
+                                                    ),
+                                                    if (row['status'] ==
+                                                        'draft')
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.delete,
+                                                          color: Colors.red,
+                                                        ),
+                                                        onPressed: () =>
+                                                            _deleteChangeRequest(
+                                                              row['request'],
+                                                            ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ],
+                                            )
+                                            .toList(),
+                                      );
+                                    },
+                                  )),
                     ),
                   ),
                 ],
@@ -576,17 +720,29 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
           ],
         ),
       ),
-      floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty && !_isLoading)
+      floatingActionButton:
+          (selectedTab == 0 && dbItems.isNotEmpty && !_isLoading)
           ? Padding(
               padding: const EdgeInsets.only(bottom: 20),
               child: FloatingActionButton.extended(
                 onPressed: _toggleChangeStockMode,
                 backgroundColor: const Color(0xFFE30417),
                 elevation: 8,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                label: const Text('Change Stock',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                icon: const Icon(Icons.inventory_2_outlined, color: Colors.white),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                label: const Text(
+                  'Change Stock',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                icon: const Icon(
+                  Icons.inventory_2_outlined,
+                  color: Colors.white,
+                ),
               ),
             )
           : null,
@@ -596,7 +752,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   Future<List<Map<String, dynamic>>> _buildChangeRequestRows() async {
     final rows = <Map<String, dynamic>>[];
-    
+
     for (final request in pendingChanges) {
       final item = await db.itemsDao.getItemById(request.itemId);
       rows.add({
@@ -607,7 +763,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
         'request': request,
       });
     }
-    
+
     return rows;
   }
 
@@ -629,7 +785,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
       default:
         color = Colors.grey;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -639,7 +795,11 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
       ),
       child: Text(
         status.toUpperCase(),
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

@@ -49,12 +49,12 @@ part 'app_database.g.dart';
     Categories,
     Roles,
     Users,
-    
+
     // Inventory tables
     Items,
     Ingredients,
     RecipeIngredients,
-    
+
     // Request tables
     StockReplenishmentRequests,
     StockChangeRequests,
@@ -65,39 +65,47 @@ part 'app_database.g.dart';
     CategoriesDao,
     RolesDao,
     UsersDao,
-    
+
     // Inventory DAOs
     ItemsDao,
     IngredientsDao,
     RecipeIngredientsDao,
-    
+
     // Request DAOs
     StockReplenishmentRequestsDao,
     StockChangeRequestsDao,
-  ]
+  ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  final bool _seedData;
+
+  AppDatabase({bool seedData = true})
+    : _seedData = seedData,
+      super(_openConnection());
+
+  AppDatabase.test(super.executor) : _seedData = false;
 
   @override
-  int get schemaVersion => 1; // ✅ Start fresh at version 1
+  int get schemaVersion => 1; // Start fresh at version 1
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
-        print('🏗️ Creating fresh database...');
-        
+        print(' Creating fresh database...');
+
         // Create all tables
         await m.createAll();
-        
+
         // Create indexes
         await _createAllIndexes();
-        
+
         // Seed initial data
-        await _seedInitialData();
-        
-        print('✅ Database created successfully!');
+        if (_seedData) {
+          await _seedInitialData();
+        }
+
+        print(' Database created successfully!');
       },
       beforeOpen: (details) async {
         // Enable foreign keys
@@ -109,131 +117,131 @@ class AppDatabase extends _$AppDatabase {
   /// ✅ Create all indexes for optimal performance
   Future<void> _createAllIndexes() async {
     print('📑 Creating indexes...');
-    
+
     // Organizations indexes
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_organizations_type ON organizations(type) WHERE is_active = 1'
+      'CREATE INDEX IF NOT EXISTS idx_organizations_type ON organizations(type) WHERE is_active = 1',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_organizations_parent ON organizations(parent_commissary_id)'
+      'CREATE INDEX IF NOT EXISTS idx_organizations_parent ON organizations(parent_commissary_id)',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_organizations_cloud_id ON organizations(cloud_id)'
+      'CREATE INDEX IF NOT EXISTS idx_organizations_cloud_id ON organizations(cloud_id)',
     );
-    
+
     // Categories indexes
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_categories_deleted ON categories(is_deleted)'
+      'CREATE INDEX IF NOT EXISTS idx_categories_deleted ON categories(is_deleted)',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name) WHERE is_deleted = 0',
     );
-    
+
     // Roles indexes
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name)'
+      'CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name)',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_roles_active ON roles(is_active)'
+      'CREATE INDEX IF NOT EXISTS idx_roles_active ON roles(is_active)',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_roles_cloud_id ON roles(cloud_id)'
+      'CREATE INDEX IF NOT EXISTS idx_roles_cloud_id ON roles(cloud_id)',
     );
-    
+
     // Users indexes
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)'
+      'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)'
+      'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_users_organization ON users(organization_id) WHERE is_active = 1'
+      'CREATE INDEX IF NOT EXISTS idx_users_organization ON users(organization_id) WHERE is_active = 1',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_users_role ON users(role_id)'
+      'CREATE INDEX IF NOT EXISTS idx_users_role ON users(role_id)',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_users_cloud_id ON users(cloud_id)'
+      'CREATE INDEX IF NOT EXISTS idx_users_cloud_id ON users(cloud_id)',
     );
-    
+
     // Items indexes
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_category ON items(category_id) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_items_category ON items(category_id) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_organization ON items(organization_id) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_items_organization ON items(organization_id) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_master ON items(master_item_id) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_items_master ON items(master_item_id) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_sync ON items(is_synced) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_items_sync ON items(is_synced) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_cloud_id ON items(cloud_id)'
+      'CREATE INDEX IF NOT EXISTS idx_items_cloud_id ON items(cloud_id)',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_items_updated ON items(last_updated DESC)'
+      'CREATE INDEX IF NOT EXISTS idx_items_updated ON items(last_updated DESC)',
     );
-    
+
     // Ingredients indexes
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_ingredients_commissary ON ingredients(commissary_id) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_ingredients_commissary ON ingredients(commissary_id) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_ingredients_category ON ingredients(category_id) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_ingredients_category ON ingredients(category_id) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_ingredients_cloud_id ON ingredients(cloud_id)'
+      'CREATE INDEX IF NOT EXISTS idx_ingredients_cloud_id ON ingredients(cloud_id)',
     );
-    
+
     // Recipe Ingredients indexes
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_item ON recipe_ingredients(item_id) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_item ON recipe_ingredients(item_id) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_ingredient ON recipe_ingredients(ingredient_id) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_ingredient ON recipe_ingredients(ingredient_id) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_cloud_id ON recipe_ingredients(cloud_id)'
+      'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_cloud_id ON recipe_ingredients(cloud_id)',
     );
-    
+
     // Stock Replenishment Requests indexes
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_replenishment_franchisee ON stock_replenishment_requests(franchisee_id, status) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_replenishment_franchisee ON stock_replenishment_requests(franchisee_id, status) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_replenishment_commissary ON stock_replenishment_requests(commissary_id, status) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_replenishment_commissary ON stock_replenishment_requests(commissary_id, status) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_replenishment_status ON stock_replenishment_requests(status) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_replenishment_status ON stock_replenishment_requests(status) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_replenishment_cloud_id ON stock_replenishment_requests(cloud_id)'
+      'CREATE INDEX IF NOT EXISTS idx_replenishment_cloud_id ON stock_replenishment_requests(cloud_id)',
     );
-    
+
     // Stock Change Requests indexes
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_stock_changes_franchisee ON stock_change_requests(franchisee_id, status) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_stock_changes_franchisee ON stock_change_requests(franchisee_id, status) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_stock_changes_item ON stock_change_requests(item_id, status) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_stock_changes_item ON stock_change_requests(item_id, status) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_stock_changes_requested_by ON stock_change_requests(requested_by) WHERE is_deleted = 0'
+      'CREATE INDEX IF NOT EXISTS idx_stock_changes_requested_by ON stock_change_requests(requested_by) WHERE is_deleted = 0',
     );
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_stock_changes_cloud_id ON stock_change_requests(cloud_id)'
+      'CREATE INDEX IF NOT EXISTS idx_stock_changes_cloud_id ON stock_change_requests(cloud_id)',
     );
-    
+
     print('✅ All indexes created');
   }
 
   /// ✅ Seed initial data (commissary, roles, admin user)
   Future<void> _seedInitialData() async {
     print('🌱 Seeding initial data...');
-    
+
     try {
       // 1. Create Main Commissary organization
       final commissaryId = await organizationsDao.insertOrganization(
@@ -247,7 +255,7 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
       print('✅ Created Main Commissary (ID: $commissaryId)');
-      
+
       // 2. Create default roles
       final adminRoleId = await rolesDao.insertRole(
         RolesCompanion.insert(
@@ -265,7 +273,7 @@ class AppDatabase extends _$AppDatabase {
           isSystemRole: const Value(true),
         ),
       );
-      
+
       await rolesDao.insertRole(
         RolesCompanion.insert(
           name: 'Manager',
@@ -282,7 +290,7 @@ class AppDatabase extends _$AppDatabase {
           isSystemRole: const Value(true),
         ),
       );
-      
+
       await rolesDao.insertRole(
         RolesCompanion.insert(
           name: 'Employee',
@@ -299,7 +307,7 @@ class AppDatabase extends _$AppDatabase {
           isSystemRole: const Value(true),
         ),
       );
-      
+
       await rolesDao.insertRole(
         RolesCompanion.insert(
           name: 'Viewer',
@@ -316,9 +324,9 @@ class AppDatabase extends _$AppDatabase {
           isSystemRole: const Value(true),
         ),
       );
-      
+
       print('✅ Created 4 default roles');
-      
+
       // 3. Create admin user
       await usersDao.insertUser(
         UsersCompanion.insert(
@@ -333,7 +341,7 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
       print('✅ Created admin user (username: admin, password: admin123)');
-      
+
       // 4. Create sample categories
       await categoriesDao.insertCategory(
         name: 'Food',
@@ -348,7 +356,7 @@ class AppDatabase extends _$AppDatabase {
         description: 'Ingredients and supplies',
       );
       print('✅ Created 3 sample categories');
-      
+
       print('✅ Initial data seeded successfully!');
       print('');
       print('═══════════════════════════════════════════');
@@ -358,7 +366,6 @@ class AppDatabase extends _$AppDatabase {
       print('  Username: admin');
       print('  Password: admin123');
       print('═══════════════════════════════════════════');
-      
     } catch (e, stackTrace) {
       print('❌ Error seeding initial data: $e');
       print('Stack trace: $stackTrace');
@@ -427,7 +434,7 @@ Future<void> deleteDatabaseFile() async {
   try {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'app_inventory.db'));
-    
+
     if (await file.exists()) {
       await file.delete();
       print('🗑️ Database file deleted');
