@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' hide isNotNull, isNull;
 import '../database/test_database.dart';
 import 'package:chickenjoo_inventory/database/daos/categories_dao.dart';
 
+
 void main() {
   late AppDatabase db;
   late CategoriesDao categoriesDao;
