@@ -14,4 +14,5 @@ class Categories extends Table {
   
   // Soft delete
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  
 }

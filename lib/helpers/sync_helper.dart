@@ -97,15 +97,15 @@ class SyncHelper {
   }
   
   /// Sync immediately after adding/updating categories
-  static Future<void> syncAfterCategoryChange() async {
-    try {
-      await syncService.syncCategories();
-      print('✅ Category synced to cloud');
-    } catch (e) {
-      print('⚠️ Could not sync category: $e');
-      // Category will sync in the next periodic sync (10 minutes)
-    }
-  }
+  // static Future<void> syncAfterCategoryChange() async {
+  //   try {
+  //     await syncService.syncCategories();
+  //     print('✅ Category synced to cloud');
+  //   } catch (e) {
+  //     print('⚠️ Could not sync category: $e');
+  //     // Category will sync in the next periodic sync (10 minutes)
+  //   }
+  // }
   
   // ==========================================================================
   // BULK SYNC OPERATIONS
@@ -135,14 +135,14 @@ class SyncHelper {
   }
   
   /// Clean up deleted records from local database (after cloud deletion)
-  static Future<void> cleanupDeletedRecords() async {
-    try {
-      await syncService.cleanupLocalDeletedRecords();
-      print('✅ Deleted records cleaned up');
-    } catch (e) {
-      print('⚠️ Could not cleanup deleted records: $e');
-    }
-  }
+  // static Future<void> cleanupDeletedRecords() async {
+  //   try {
+  //     await syncService.cleanupLocalDeletedRecords();
+  //     print('✅ Deleted records cleaned up');
+  //   } catch (e) {
+  //     print('⚠️ Could not cleanup deleted records: $e');
+  //   }
+  // }
   
   // ==========================================================================
   // BATCH OPERATION HELPERS
@@ -174,7 +174,6 @@ class SyncHelper {
     try {
       // Sync in dependency order
       if (syncOrganizations) await syncService.syncOrganizations();
-      if (syncCategories) await syncService.syncCategories();
       if (syncRoles) await syncService.syncRoles();
       if (syncUsers) await syncService.syncUsers();
       if (syncItems) await syncService.syncItems();

@@ -665,6 +665,7 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudItems) async {
   }
 }
 
+
 /// ✅ Sorting options for items
 enum ItemSortOrder {
   nameAsc,
