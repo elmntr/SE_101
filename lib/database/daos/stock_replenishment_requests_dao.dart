@@ -9,16 +9,18 @@ import '../tables/users.dart';
 part 'stock_replenishment_requests_dao.g.dart';
 
 /// StockReplenishmentRequestsDao - Manage franchisee requests to commissary for items
-/// 
+///
 /// Business Flow:
 /// 1. Franchisee creates request (status: pending)
 /// 2. Commissary reviews and approves/rejects
 /// 3. If approved, commissary delivers (status: delivered)
 /// 4. Franchisee receives items and stock is updated
-@DriftAccessor(tables: [StockReplenishmentRequests, Items, Organizations, Users])
-class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase> 
+@DriftAccessor(
+  tables: [StockReplenishmentRequests, Items, Organizations, Users],
+)
+class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
     with _$StockReplenishmentRequestsDaoMixin {
-  StockReplenishmentRequestsDao(AppDatabase db) : super(db);
+  StockReplenishmentRequestsDao(super.db);
 
   static const int defaultPageSize = 50;
 
@@ -38,35 +40,41 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       final query = select(stockReplenishmentRequests)
         ..where((t) => t.isDeleted.equals(false));
-      
+
       if (status != null) {
         query.where((t) => t.status.equals(status));
       }
-      
+
       if (franchiseeId != null) {
         query.where((t) => t.franchiseeId.equals(franchiseeId));
       }
-      
+
       if (commissaryId != null) {
         query.where((t) => t.commissaryId.equals(commissaryId));
       }
-      
+
       // Sorting
       query.orderBy([
         (t) {
           switch (sortOrder) {
             case RequestSortOrder.newestFirst:
-              return OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc);
+              return OrderingTerm(
+                expression: t.requestedAt,
+                mode: OrderingMode.desc,
+              );
             case RequestSortOrder.oldestFirst:
-              return OrderingTerm(expression: t.requestedAt, mode: OrderingMode.asc);
+              return OrderingTerm(
+                expression: t.requestedAt,
+                mode: OrderingMode.asc,
+              );
           }
-        }
+        },
       ]);
-      
+
       if (limit != null) {
         query.limit(limit, offset: offset);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching replenishment requests: $e');
@@ -84,19 +92,23 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
       final query = selectOnly(stockReplenishmentRequests)
         ..addColumns([stockReplenishmentRequests.id.count()])
         ..where(stockReplenishmentRequests.isDeleted.equals(false));
-      
+
       if (status != null) {
         query.where(stockReplenishmentRequests.status.equals(status));
       }
-      
+
       if (franchiseeId != null) {
-        query.where(stockReplenishmentRequests.franchiseeId.equals(franchiseeId));
+        query.where(
+          stockReplenishmentRequests.franchiseeId.equals(franchiseeId),
+        );
       }
-      
+
       if (commissaryId != null) {
-        query.where(stockReplenishmentRequests.commissaryId.equals(commissaryId));
+        query.where(
+          stockReplenishmentRequests.commissaryId.equals(commissaryId),
+        );
       }
-      
+
       final result = await query.getSingle();
       return result.read(stockReplenishmentRequests.id.count()) ?? 0;
     } catch (e) {
@@ -116,23 +128,26 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       final query = select(stockReplenishmentRequests)
         ..where((t) => t.isDeleted.equals(false));
-      
+
       if (status != null) {
         query.where((t) => t.status.equals(status));
       }
-      
+
       if (franchiseeId != null) {
         query.where((t) => t.franchiseeId.equals(franchiseeId));
       }
-      
+
       if (commissaryId != null) {
         query.where((t) => t.commissaryId.equals(commissaryId));
       }
-      
+
       query
-        ..orderBy([(t) => OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc)])
+        ..orderBy([
+          (t) =>
+              OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc),
+        ])
         ..limit(limit, offset: offset);
-      
+
       return query.watch();
     } catch (e) {
       print('❌ Error watching replenishment requests: $e');
@@ -171,9 +186,9 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   /// ✅ Get request by ID
   Future<StockReplenishmentRequest?> getRequestById(int id) async {
     try {
-      return await (select(stockReplenishmentRequests)
-        ..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+      return await (select(
+        stockReplenishmentRequests,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching request by ID: $e');
       return null;
@@ -192,18 +207,21 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
     DateTime? deliveryDate,
   }) async {
     try {
-      final result = await (update(stockReplenishmentRequests)
-        ..where((t) => t.id.equals(requestId)))
-        .write(StockReplenishmentRequestsCompanion(
-          status: Value('approved'),
-          reviewedBy: Value(reviewedBy),
-          reviewedAt: Value(DateTime.now()),
-          commissaryNotes: Value(commissaryNotes),
-          deliveryDate: Value(deliveryDate),
-          lastUpdated: Value(DateTime.now()),
-          isSynced: Value(false),
-        ));
-      
+      final result =
+          await (update(
+            stockReplenishmentRequests,
+          )..where((t) => t.id.equals(requestId))).write(
+            StockReplenishmentRequestsCompanion(
+              status: Value('approved'),
+              reviewedBy: Value(reviewedBy),
+              reviewedAt: Value(DateTime.now()),
+              commissaryNotes: Value(commissaryNotes),
+              deliveryDate: Value(deliveryDate),
+              lastUpdated: Value(DateTime.now()),
+              isSynced: Value(false),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error approving request: $e');
@@ -218,17 +236,20 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
     required String reason,
   }) async {
     try {
-      final result = await (update(stockReplenishmentRequests)
-        ..where((t) => t.id.equals(requestId)))
-        .write(StockReplenishmentRequestsCompanion(
-          status: Value('rejected'),
-          reviewedBy: Value(reviewedBy),
-          reviewedAt: Value(DateTime.now()),
-          commissaryNotes: Value(reason),
-          lastUpdated: Value(DateTime.now()),
-          isSynced: Value(false),
-        ));
-      
+      final result =
+          await (update(
+            stockReplenishmentRequests,
+          )..where((t) => t.id.equals(requestId))).write(
+            StockReplenishmentRequestsCompanion(
+              status: Value('rejected'),
+              reviewedBy: Value(reviewedBy),
+              reviewedAt: Value(DateTime.now()),
+              commissaryNotes: Value(reason),
+              lastUpdated: Value(DateTime.now()),
+              isSynced: Value(false),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error rejecting request: $e');
@@ -239,14 +260,17 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   /// ✅ Mark as delivered (commissary confirms delivery)
   Future<bool> markAsDelivered(int requestId) async {
     try {
-      final result = await (update(stockReplenishmentRequests)
-        ..where((t) => t.id.equals(requestId)))
-        .write(StockReplenishmentRequestsCompanion(
-          status: Value('delivered'),
-          lastUpdated: Value(DateTime.now()),
-          isSynced: Value(false),
-        ));
-      
+      final result =
+          await (update(
+            stockReplenishmentRequests,
+          )..where((t) => t.id.equals(requestId))).write(
+            StockReplenishmentRequestsCompanion(
+              status: Value('delivered'),
+              lastUpdated: Value(DateTime.now()),
+              isSynced: Value(false),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error marking request as delivered: $e');
@@ -259,15 +283,19 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   // ============================================================================
 
   /// ✅ Get pending requests for commissary to review
-  Future<List<StockReplenishmentRequest>> getPendingRequestsForCommissary(int commissaryId) async {
+  Future<List<StockReplenishmentRequest>> getPendingRequestsForCommissary(
+    int commissaryId,
+  ) async {
     try {
       return await (select(stockReplenishmentRequests)
-        ..where((t) => 
-          t.commissaryId.equals(commissaryId) &
-          t.status.equals('pending') &
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.requestedAt)]))
-        .get();
+            ..where(
+              (t) =>
+                  t.commissaryId.equals(commissaryId) &
+                  t.status.equals('pending') &
+                  t.isDeleted.equals(false),
+            )
+            ..orderBy([(t) => OrderingTerm(expression: t.requestedAt)]))
+          .get();
     } catch (e) {
       print('❌ Error fetching pending requests: $e');
       return [];
@@ -275,15 +303,21 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Get approved requests awaiting delivery
-  Future<List<StockReplenishmentRequest>> getApprovedRequestsAwaitingDelivery(int commissaryId) async {
+  Future<List<StockReplenishmentRequest>> getApprovedRequestsAwaitingDelivery(
+    int commissaryId,
+  ) async {
     try {
       return await (select(stockReplenishmentRequests)
-        ..where((t) => 
-          t.commissaryId.equals(commissaryId) &
-          t.status.equals('approved') &
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.reviewedAt ?? t.requestedAt)]))
-        .get();
+            ..where(
+              (t) =>
+                  t.commissaryId.equals(commissaryId) &
+                  t.status.equals('approved') &
+                  t.isDeleted.equals(false),
+            )
+            ..orderBy([
+              (t) => OrderingTerm(expression: t.reviewedAt ?? t.requestedAt),
+            ]))
+          .get();
     } catch (e) {
       print('❌ Error fetching approved requests: $e');
       return [];
@@ -297,15 +331,19 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   }) async {
     try {
       final query = select(stockReplenishmentRequests)
-        ..where((t) => 
-          t.franchiseeId.equals(franchiseeId) &
-          t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc)]);
-      
+        ..where(
+          (t) =>
+              t.franchiseeId.equals(franchiseeId) & t.isDeleted.equals(false),
+        )
+        ..orderBy([
+          (t) =>
+              OrderingTerm(expression: t.requestedAt, mode: OrderingMode.desc),
+        ]);
+
       if (limit != null) {
         query.limit(limit);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching franchisee request history: $e');
@@ -320,12 +358,14 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   /// ✅ Get request statistics for franchisee
   Future<Map<String, int>> getFranchiseeRequestStats(int franchiseeId) async {
     try {
-      final allRequests = await (select(stockReplenishmentRequests)
-        ..where((t) => 
-          t.franchiseeId.equals(franchiseeId) &
-          t.isDeleted.equals(false)))
-        .get();
-      
+      final allRequests =
+          await (select(stockReplenishmentRequests)..where(
+                (t) =>
+                    t.franchiseeId.equals(franchiseeId) &
+                    t.isDeleted.equals(false),
+              ))
+              .get();
+
       return {
         'total': allRequests.length,
         'pending': allRequests.where((r) => r.status == 'pending').length,
@@ -335,21 +375,30 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
       };
     } catch (e) {
       print('❌ Error calculating franchisee request stats: $e');
-      return {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0, 'delivered': 0};
+      return {
+        'total': 0,
+        'pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'delivered': 0,
+      };
     }
   }
 
   /// ✅ Soft delete request
   Future<bool> softDeleteRequest(int id) async {
     try {
-      final result = await (update(stockReplenishmentRequests)
-        ..where((t) => t.id.equals(id)))
-        .write(StockReplenishmentRequestsCompanion(
-          isDeleted: Value(true),
-          isSynced: Value(false),
-          lastUpdated: Value(DateTime.now()),
-        ));
-      
+      final result =
+          await (update(
+            stockReplenishmentRequests,
+          )..where((t) => t.id.equals(id))).write(
+            StockReplenishmentRequestsCompanion(
+              isDeleted: Value(true),
+              isSynced: Value(false),
+              lastUpdated: Value(DateTime.now()),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error soft deleting request: $e');
@@ -368,9 +417,9 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   }) async {
     try {
       return await (select(stockReplenishmentRequests)
-        ..where((t) => t.isSynced.equals(false))
-        ..limit(limit, offset: offset))
-        .get();
+            ..where((t) => t.isSynced.equals(false))
+            ..limit(limit, offset: offset))
+          .get();
     } catch (e) {
       print('❌ Error fetching unsynced requests: $e');
       return [];
@@ -383,7 +432,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
       final query = selectOnly(stockReplenishmentRequests)
         ..addColumns([stockReplenishmentRequests.id.count()])
         ..where(stockReplenishmentRequests.isSynced.equals(false));
-      
+
       final result = await query.getSingle();
       return result.read(stockReplenishmentRequests.id.count()) ?? 0;
     } catch (e) {
@@ -393,7 +442,10 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Mark requests as synced (batch)
-  Future<void> markAsSynced(List<int> requestIds, {Map<int, String>? cloudIds}) async {
+  Future<void> markAsSynced(
+    List<int> requestIds, {
+    Map<int, String>? cloudIds,
+  }) async {
     try {
       await db.batch((batch) {
         for (final id in requestIds) {
@@ -414,7 +466,9 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Batch upsert from cloud
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudRequests) async {
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudRequests,
+  ) async {
     try {
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
@@ -428,8 +482,8 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             requestedBy: cloudReq['requested_by'],
             requestedAt: DateTime.parse(cloudReq['requested_at']),
             reviewedBy: cloudReq['reviewed_by'],
-            reviewedAt: cloudReq['reviewed_at'] != null 
-                ? DateTime.parse(cloudReq['reviewed_at']) 
+            reviewedAt: cloudReq['reviewed_at'] != null
+                ? DateTime.parse(cloudReq['reviewed_at'])
                 : null,
             deliveryDate: cloudReq['delivery_date'] != null
                 ? DateTime.parse(cloudReq['delivery_date'])
@@ -501,9 +555,9 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   /// ✅ Get request by cloud ID
   Future<StockReplenishmentRequest?> getRequestByCloudId(String cloudId) async {
     try {
-      return await (select(stockReplenishmentRequests)
-        ..where((t) => t.cloudId.equals(cloudId)))
-        .getSingleOrNull();
+      return await (select(
+        stockReplenishmentRequests,
+      )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching request by cloud ID: $e');
       return null;
@@ -512,7 +566,4 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
 }
 
 /// ✅ Sorting options for requests
-enum RequestSortOrder {
-  newestFirst,
-  oldestFirst,
-}
+enum RequestSortOrder { newestFirst, oldestFirst }

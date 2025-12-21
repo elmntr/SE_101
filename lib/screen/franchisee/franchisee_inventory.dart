@@ -36,19 +36,19 @@ class _InventoryPageState extends State<InventoryPage> {
   // ✅ FIXED: Load current user's organization and items
   Future<void> _loadData() async {
     setState(() => isLoading = true);
-    
+
     try {
       // Get current user (TODO: Replace with actual session management)
       final currentUser = await db.usersDao.getUserById(1);
-      
+
       if (currentUser != null) {
         currentOrganizationId = currentUser.organizationId;
-        
+
         // Load items for this organization
         final loadedItems = await db.itemsDao.getItemsByOrganization(
           currentOrganizationId!,
         );
-        
+
         if (mounted) {
           setState(() {
             items = loadedItems;
@@ -124,12 +124,14 @@ class _InventoryPageState extends State<InventoryPage> {
                         color: Colors.black.withOpacity(0.12),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ]
                   : [],
             ),
-            child: Text(label,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),
@@ -203,32 +205,49 @@ class _InventoryPageState extends State<InventoryPage> {
                           ),
                           PopupMenuDivider(),
                           PopupMenuItem(
-                              value: ItemSort(ItemSortField.name, SortOrder.asc),
-                              child: Text("Name (A–Z)")),
+                            value: ItemSort(ItemSortField.name, SortOrder.asc),
+                            child: Text("Name (A–Z)"),
+                          ),
                           PopupMenuItem(
-                              value: ItemSort(ItemSortField.name, SortOrder.desc),
-                              child: Text("Name (Z–A)")),
+                            value: ItemSort(ItemSortField.name, SortOrder.desc),
+                            child: Text("Name (Z–A)"),
+                          ),
                           PopupMenuDivider(),
                           PopupMenuItem(
-                              value: ItemSort(ItemSortField.stock, SortOrder.asc),
-                              child: Text("Stock (Low → High)")),
+                            value: ItemSort(ItemSortField.stock, SortOrder.asc),
+                            child: Text("Stock (Low → High)"),
+                          ),
                           PopupMenuItem(
-                              value: ItemSort(ItemSortField.stock, SortOrder.desc),
-                              child: Text("Stock (High → Low)")),
+                            value: ItemSort(
+                              ItemSortField.stock,
+                              SortOrder.desc,
+                            ),
+                            child: Text("Stock (High → Low)"),
+                          ),
                           PopupMenuDivider(),
                           PopupMenuItem(
-                              value: ItemSort(ItemSortField.sale, SortOrder.asc),
-                              child: Text("Sale (Low → High)")),
+                            value: ItemSort(ItemSortField.sale, SortOrder.asc),
+                            child: Text("Sale (Low → High)"),
+                          ),
                           PopupMenuItem(
-                              value: ItemSort(ItemSortField.sale, SortOrder.desc),
-                              child: Text("Sale (High → Low)")),
+                            value: ItemSort(ItemSortField.sale, SortOrder.desc),
+                            child: Text("Sale (High → Low)"),
+                          ),
                           PopupMenuDivider(),
                           PopupMenuItem(
-                              value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
-                              child: Text("Spoilage (Low → High)")),
+                            value: ItemSort(
+                              ItemSortField.spoilage,
+                              SortOrder.asc,
+                            ),
+                            child: Text("Spoilage (Low → High)"),
+                          ),
                           PopupMenuItem(
-                              value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
-                              child: Text("Spoilage (High → Low)")),
+                            value: ItemSort(
+                              ItemSortField.spoilage,
+                              SortOrder.desc,
+                            ),
+                            child: Text("Spoilage (High → Low)"),
+                          ),
                         ],
                       ),
                   ],
@@ -266,50 +285,70 @@ class _InventoryPageState extends State<InventoryPage> {
                     child: isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : selectedTab == 0
-                            ? (items.isEmpty
-                                ? emptyTables(
-                                    message: "You can manage your items here.",
-                                    onAddPressed: null,
-                                    buttonType: EmptyButtonType.none,
-                                    buttonText: null)
-                                : buildUniversalTable(
-                                    headers: ["Item Name", "Stock", "Sale", "Spoilage"],
-                                    rows: items
-                                        .map((item) => [
-                                              item.name,
-                                              item.stock.toString(),
-                                              item.sold.toString(),
-                                              item.spoilage.toString(),
-                                            ])
-                                        .toList(),
-                                  ))
-                            : selectedTab == 1
-                                ? (InventoryPage.pendingChanges.isEmpty
-                                    ? emptyTables(
-                                        message: "You can view employee stock changes here.",
-                                        onAddPressed: null,
-                                        buttonType: EmptyButtonType.none,
-                                        buttonText: null)
-                                    : buildUniversalTable(
-                                        headers: ["Employee", "Role", "Changes", "Status"],
-                                        rows: List.generate(
-                                            InventoryPage.pendingChanges.length, (i) {
-                                          final record = InventoryPage.pendingChanges[i];
-                                          return [
-                                            record.employeeName,
-                                            record.role,
-                                            record.totalChanges.toString(),
-                                            record.status,
-                                          ];
-                                        }),
-                                      ))
-                                : emptyTables(
-                                    message: "You can request stock replenishment here.",
-                                    onAddPressed: () {
-                                      print("✅ Request Stock pressed");
+                        ? (items.isEmpty
+                              ? emptyTables(
+                                  message: "You can manage your items here.",
+                                  onAddPressed: null,
+                                  buttonType: EmptyButtonType.none,
+                                  buttonText: null,
+                                )
+                              : buildUniversalTable(
+                                  headers: [
+                                    "Item Name",
+                                    "Stock",
+                                    "Sale",
+                                    "Spoilage",
+                                  ],
+                                  rows: items
+                                      .map(
+                                        (item) => [
+                                          item.name,
+                                          item.stock.toString(),
+                                          item.sold.toString(),
+                                          item.spoilage.toString(),
+                                        ],
+                                      )
+                                      .toList(),
+                                ))
+                        : selectedTab == 1
+                        ? (InventoryPage.pendingChanges.isEmpty
+                              ? emptyTables(
+                                  message:
+                                      "You can view employee stock changes here.",
+                                  onAddPressed: null,
+                                  buttonType: EmptyButtonType.none,
+                                  buttonText: null,
+                                )
+                              : buildUniversalTable(
+                                  headers: [
+                                    "Employee",
+                                    "Role",
+                                    "Changes",
+                                    "Status",
+                                  ],
+                                  rows: List.generate(
+                                    InventoryPage.pendingChanges.length,
+                                    (i) {
+                                      final record =
+                                          InventoryPage.pendingChanges[i];
+                                      return [
+                                        record.employeeName,
+                                        record.role,
+                                        record.totalChanges.toString(),
+                                        record.status,
+                                      ];
                                     },
-                                    buttonType: EmptyButtonType.elevated,
-                                    buttonText: "Request Stock"),
+                                  ),
+                                ))
+                        : emptyTables(
+                            message:
+                                "You can request stock replenishment here.",
+                            onAddPressed: () {
+                              print("✅ Request Stock pressed");
+                            },
+                            buttonType: EmptyButtonType.elevated,
+                            buttonText: "Request Stock",
+                          ),
                   ),
                 ),
               ],
@@ -329,8 +368,10 @@ class _InventoryPageState extends State<InventoryPage> {
             // Header
             Row(
               children: [
-                const Text("Inventory",
-                    style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+                const Text(
+                  "Inventory",
+                  style: TextStyle(fontSize: 30, fontFamily: fontAll),
+                ),
                 const SizedBox(width: 16),
 
                 // Search Bar
@@ -365,32 +406,40 @@ class _InventoryPageState extends State<InventoryPage> {
                       ),
                       PopupMenuDivider(),
                       PopupMenuItem(
-                          value: ItemSort(ItemSortField.name, SortOrder.asc),
-                          child: Text("Name (A–Z)")),
+                        value: ItemSort(ItemSortField.name, SortOrder.asc),
+                        child: Text("Name (A–Z)"),
+                      ),
                       PopupMenuItem(
-                          value: ItemSort(ItemSortField.name, SortOrder.desc),
-                          child: Text("Name (Z–A)")),
+                        value: ItemSort(ItemSortField.name, SortOrder.desc),
+                        child: Text("Name (Z–A)"),
+                      ),
                       PopupMenuDivider(),
                       PopupMenuItem(
-                          value: ItemSort(ItemSortField.stock, SortOrder.asc),
-                          child: Text("Stock (Low → High)")),
+                        value: ItemSort(ItemSortField.stock, SortOrder.asc),
+                        child: Text("Stock (Low → High)"),
+                      ),
                       PopupMenuItem(
-                          value: ItemSort(ItemSortField.stock, SortOrder.desc),
-                          child: Text("Stock (High → Low)")),
+                        value: ItemSort(ItemSortField.stock, SortOrder.desc),
+                        child: Text("Stock (High → Low)"),
+                      ),
                       PopupMenuDivider(),
                       PopupMenuItem(
-                          value: ItemSort(ItemSortField.sale, SortOrder.asc),
-                          child: Text("Sale (Low → High)")),
+                        value: ItemSort(ItemSortField.sale, SortOrder.asc),
+                        child: Text("Sale (Low → High)"),
+                      ),
                       PopupMenuItem(
-                          value: ItemSort(ItemSortField.sale, SortOrder.desc),
-                          child: Text("Sale (High → Low)")),
+                        value: ItemSort(ItemSortField.sale, SortOrder.desc),
+                        child: Text("Sale (High → Low)"),
+                      ),
                       PopupMenuDivider(),
                       PopupMenuItem(
-                          value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
-                          child: Text("Spoilage (Low → High)")),
+                        value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
+                        child: Text("Spoilage (Low → High)"),
+                      ),
                       PopupMenuItem(
-                          value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
-                          child: Text("Spoilage (High → Low)")),
+                        value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
+                        child: Text("Spoilage (High → Low)"),
+                      ),
                     ],
                   ),
 
@@ -435,59 +484,70 @@ class _InventoryPageState extends State<InventoryPage> {
                       child: isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : selectedTab == 0
-                              ? (items.isEmpty
-                                  ? emptyTables(
-                                      message: "You can manage your items here.",
-                                      onAddPressed: null,
-                                      buttonType: EmptyButtonType.none,
-                                      buttonText: null)
-                                  : buildUniversalTable(
-                                      headers: ["Item Name", "Stock", "Sale", "Spoilage"],
-                                      rows: items
-                                          .map((item) => [
-                                                item.name,
-                                                item.stock.toString(),
-                                                item.sold.toString(),
-                                                item.spoilage.toString(),
-                                              ])
-                                          .toList(),
-                                    ))
-                              : selectedTab == 1
-                                  ? (InventoryPage.pendingChanges.isEmpty
-                                      ? emptyTables(
-                                          message:
-                                              "You can view employee stock changes here.",
-                                          onAddPressed: null,
-                                          buttonType: EmptyButtonType.none,
-                                          buttonText: null)
-                                      : buildUniversalTable(
-                                          headers: [
-                                            "Employee",
-                                            "Role",
-                                            "Changes",
-                                            "Status"
+                          ? (items.isEmpty
+                                ? emptyTables(
+                                    message: "You can manage your items here.",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null,
+                                  )
+                                : buildUniversalTable(
+                                    headers: [
+                                      "Item Name",
+                                      "Stock",
+                                      "Sale",
+                                      "Spoilage",
+                                    ],
+                                    rows: items
+                                        .map(
+                                          (item) => [
+                                            item.name,
+                                            item.stock.toString(),
+                                            item.sold.toString(),
+                                            item.spoilage.toString(),
                                           ],
-                                          rows: List.generate(
-                                              InventoryPage.pendingChanges.length,
-                                              (i) {
-                                            final record =
-                                                InventoryPage.pendingChanges[i];
-                                            return [
-                                              record.employeeName,
-                                              record.role,
-                                              record.totalChanges.toString(),
-                                              record.status,
-                                            ];
-                                          }),
-                                        ))
-                                  : emptyTables(
-                                      message:
-                                          "You can request stock replenishment here.",
-                                      onAddPressed: () {
-                                        print("✅ Request Stock pressed");
+                                        )
+                                        .toList(),
+                                  ))
+                          : selectedTab == 1
+                          ? (InventoryPage.pendingChanges.isEmpty
+                                ? emptyTables(
+                                    message:
+                                        "You can view employee stock changes here.",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null,
+                                  )
+                                : buildUniversalTable(
+                                    headers: [
+                                      "Employee",
+                                      "Role",
+                                      "Changes",
+                                      "Status",
+                                    ],
+                                    rows: List.generate(
+                                      InventoryPage.pendingChanges.length,
+                                      (i) {
+                                        final record =
+                                            InventoryPage.pendingChanges[i];
+                                        return [
+                                          record.employeeName,
+                                          record.role,
+                                          record.totalChanges.toString(),
+                                          record.status,
+                                        ];
                                       },
-                                      buttonType: EmptyButtonType.elevated,
-                                      buttonText: "Request Stock"),
+                                    ),
+                                  ))
+                          : emptyTables(
+                              message:
+                                  "You can request stock replenishment here.",
+                              onAddPressed: () {
+                                print("✅ Request Stock pressed");
+                              },
+                              buttonType: EmptyButtonType.elevated,
+                              buttonText: "Request Stock",
+                            ),
                     ),
                   ),
                 ],

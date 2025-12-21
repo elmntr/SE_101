@@ -7,7 +7,7 @@ class SyncHelper {
   // ==========================================================================
   // IMMEDIATE TABLE-SPECIFIC SYNCS
   // ==========================================================================
-  
+
   /// Sync immediately after adding/updating organizations
   static Future<void> syncAfterOrganizationChange() async {
     try {
@@ -18,7 +18,7 @@ class SyncHelper {
       // Organization will sync in the next periodic sync (10 minutes)
     }
   }
-  
+
   /// Sync immediately after adding/updating items
   static Future<void> syncAfterItemChange() async {
     try {
@@ -29,7 +29,7 @@ class SyncHelper {
       // Item will sync in the next periodic sync (10 minutes)
     }
   }
-  
+
   /// Sync immediately after adding/updating ingredients
   static Future<void> syncAfterIngredientChange() async {
     try {
@@ -40,7 +40,7 @@ class SyncHelper {
       // Ingredient will sync in the next periodic sync (10 minutes)
     }
   }
-  
+
   /// Sync immediately after adding/updating recipe ingredients
   static Future<void> syncAfterRecipeChange() async {
     try {
@@ -51,7 +51,7 @@ class SyncHelper {
       // Recipe will sync in the next periodic sync (10 minutes)
     }
   }
-  
+
   /// Sync immediately after creating/updating stock replenishment request
   static Future<void> syncAfterReplenishmentRequest() async {
     try {
@@ -62,7 +62,7 @@ class SyncHelper {
       // Request will sync in the next periodic sync (10 minutes)
     }
   }
-  
+
   /// Sync immediately after creating/updating stock change request
   static Future<void> syncAfterStockChange() async {
     try {
@@ -73,7 +73,7 @@ class SyncHelper {
       // Request will sync in the next periodic sync (10 minutes)
     }
   }
-  
+
   /// Sync immediately after adding/updating users
   static Future<void> syncAfterUserChange() async {
     try {
@@ -84,7 +84,7 @@ class SyncHelper {
       // User will sync in the next periodic sync (10 minutes)
     }
   }
-  
+
   /// Sync immediately after adding/updating roles
   static Future<void> syncAfterRoleChange() async {
     try {
@@ -95,7 +95,7 @@ class SyncHelper {
       // Role will sync in the next periodic sync (10 minutes)
     }
   }
-  
+
   /// Sync immediately after adding/updating categories
   // static Future<void> syncAfterCategoryChange() async {
   //   try {
@@ -110,7 +110,7 @@ class SyncHelper {
   // ==========================================================================
   // BULK SYNC OPERATIONS
   // ==========================================================================
-  
+
   /// Sync all tables (full sync)
   static Future<void> syncAll() async {
     try {
@@ -120,20 +120,17 @@ class SyncHelper {
       print('⚠️ Could not sync: $e');
     }
   }
-  
+
   /// Get current sync status for all tables
   static Future<Map<String, dynamic>> getSyncStatus() async {
     try {
       return await syncService.getSyncStatus();
     } catch (e) {
       print('⚠️ Could not get sync status: $e');
-      return {
-        'error': e.toString(),
-        'is_syncing': false,
-      };
+      return {'error': e.toString(), 'is_syncing': false};
     }
   }
-  
+
   /// Clean up deleted records from local database (after cloud deletion)
   // static Future<void> cleanupDeletedRecords() async {
   //   try {
@@ -147,17 +144,17 @@ class SyncHelper {
   // ==========================================================================
   // BATCH OPERATION HELPERS
   // ==========================================================================
-  
+
   /// Sync after batch item operations (e.g., bulk import)
   static Future<void> syncAfterBatchItemChanges() async {
     await syncAfterItemChange();
   }
-  
+
   /// Sync after batch user operations (e.g., employee import)
   static Future<void> syncAfterBatchUserChanges() async {
     await syncAfterUserChange();
   }
-  
+
   /// Sync multiple related tables in dependency order
   /// Useful when you've made changes to multiple related entities
   static Future<void> syncRelatedTables({
@@ -179,42 +176,45 @@ class SyncHelper {
       if (syncItems) await syncService.syncItems();
       if (syncIngredients) await syncService.syncIngredients();
       if (syncRecipes) await syncService.syncRecipeIngredients();
-      if (syncReplenishmentRequests) await syncService.syncStockReplenishmentRequests();
+      if (syncReplenishmentRequests)
+        await syncService.syncStockReplenishmentRequests();
       if (syncStockChangeRequests) await syncService.syncStockChangeRequests();
-      
+
       print('✅ Related tables synced to cloud');
     } catch (e) {
       print('⚠️ Could not sync related tables: $e');
     }
   }
-  
+
   // ==========================================================================
   // UTILITY METHODS
   // ==========================================================================
-  
+
   /// Check if sync is currently in progress
   static Future<bool> isSyncing() async {
     final status = await getSyncStatus();
     return status['is_syncing'] == true;
   }
-  
+
   /// Get total unsynced records count across all tables
   static Future<int> getTotalUnsyncedCount() async {
     final status = await getSyncStatus();
     return status['total_unsynced'] ?? 0;
   }
-  
+
   /// Get unsynced count for a specific table
   static Future<int> getUnsyncedCount(String table) async {
     final status = await getSyncStatus();
     final key = 'unsynced_$table';
     return status[key] ?? 0;
   }
-  
+
   /// Wait for current sync to complete (with timeout)
-  static Future<void> waitForSyncComplete({Duration timeout = const Duration(seconds: 30)}) async {
+  static Future<void> waitForSyncComplete({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     final startTime = DateTime.now();
-    
+
     while (await isSyncing()) {
       if (DateTime.now().difference(startTime) > timeout) {
         print('⚠️ Sync wait timeout after ${timeout.inSeconds} seconds');

@@ -1042,12 +1042,17 @@ class SupabaseSyncService {
       final unsyncedItemCount = await db.itemsDao.getUnsyncedItemCount();
       final unsyncedUserCount = await db.usersDao.getUnsyncedUserCount();
       final unsyncedRoleCount = await db.rolesDao.getUnsyncedRoleCount();
-      final unsyncedOrgCount = await db.organizationsDao.getUnsyncedOrganizationCount();
-      final unsyncedIngredientCount = await db.ingredientsDao.getUnsyncedIngredientCount();
-      final unsyncedRecipeCount = await db.recipeIngredientsDao.getUnsyncedRecipeIngredientCount();
-      final unsyncedReplenishmentCount = await db.stockReplenishmentRequestsDao.getUnsyncedRequestCount();
-      final unsyncedChangeCount = await db.stockChangeRequestsDao.getUnsyncedChangeRequestCount();
-      
+      final unsyncedOrgCount = await db.organizationsDao
+          .getUnsyncedOrganizationCount();
+      final unsyncedIngredientCount = await db.ingredientsDao
+          .getUnsyncedIngredientCount();
+      final unsyncedRecipeCount = await db.recipeIngredientsDao
+          .getUnsyncedRecipeIngredientCount();
+      final unsyncedReplenishmentCount = await db.stockReplenishmentRequestsDao
+          .getUnsyncedRequestCount();
+      final unsyncedChangeCount = await db.stockChangeRequestsDao
+          .getUnsyncedChangeRequestCount();
+
       return {
         'unsynced_items': unsyncedItemCount,
         'unsynced_users': unsyncedUserCount,
@@ -1057,9 +1062,15 @@ class SupabaseSyncService {
         'unsynced_recipes': unsyncedRecipeCount,
         'unsynced_replenishment_requests': unsyncedReplenishmentCount,
         'unsynced_change_requests': unsyncedChangeCount,
-        'total_unsynced': unsyncedItemCount + unsyncedUserCount + unsyncedRoleCount + 
-                         unsyncedOrgCount + unsyncedIngredientCount + unsyncedRecipeCount +
-                         unsyncedReplenishmentCount + unsyncedChangeCount,
+        'total_unsynced':
+            unsyncedItemCount +
+            unsyncedUserCount +
+            unsyncedRoleCount +
+            unsyncedOrgCount +
+            unsyncedIngredientCount +
+            unsyncedRecipeCount +
+            unsyncedReplenishmentCount +
+            unsyncedChangeCount,
         'is_syncing': _isSyncing,
         'is_online': _isOnline,
         'last_sync': _lastSuccessfulSync?.toIso8601String() ?? 'Never',

@@ -3,12 +3,15 @@ import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart'; // your Drift DB
 import 'package:chickenjoo_inventory/app_globals.dart';
 
-
 class EmployeeAccountPage extends StatefulWidget {
   final User user; // pass the signed-in user
   final Role role; // pass the user's role
 
-  const EmployeeAccountPage({super.key, required this.user, required this.role});
+  const EmployeeAccountPage({
+    super.key,
+    required this.user,
+    required this.role,
+  });
 
   @override
   State<EmployeeAccountPage> createState() => _EmployeeAccountPageState();
@@ -66,10 +69,7 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
               children: [
                 const Text(
                   "Account",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontFamily: fontAll,
-                  ),
+                  style: TextStyle(fontSize: 26, fontFamily: fontAll),
                 ),
                 const SizedBox(height: 18),
                 _infoField("Name", nameController),
@@ -82,10 +82,7 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
                 const SizedBox(height: 22),
                 const Text(
                   "Role Access",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: fontAll,
-                  ),
+                  style: TextStyle(fontSize: 18, fontFamily: fontAll),
                 ),
                 const SizedBox(height: 10),
                 Container(
@@ -102,10 +99,7 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
                           (e) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             child: Row(
-                              children: [
-                                const SizedBox(width: 8),
-                                Text(e),
-                              ],
+                              children: [const SizedBox(width: 8), Text(e)],
                             ),
                           ),
                         )
@@ -132,11 +126,14 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Account",
-                        style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: fontAll)),
+                    const Text(
+                      "Account",
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: fontAll,
+                      ),
+                    ),
                     const SizedBox(height: 30),
                     _infoField("Name:", nameController),
                     const SizedBox(height: 20),
@@ -146,11 +143,14 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
                     const SizedBox(height: 20),
                     _infoField("Role:", roleController),
                     const SizedBox(height: 30),
-                    const Text("Role Access:",
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: fontAll)),
+                    const Text(
+                      "Role Access:",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: fontAll,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Container(
                       constraints: const BoxConstraints(

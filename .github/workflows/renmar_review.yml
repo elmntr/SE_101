@@ -1,0 +1,44 @@
+name: Renmar Flutter Quality Control
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  # PHASE 1: Formatting Check
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - run: flutter pub get
+      - name: Check Formatting
+        # THIS LINE is the secret. It keeps the workflow running 
+        # even if your indentation is wrong.
+        continue-on-error: true 
+        run: dart format --set-exit-if-changed . 
+
+  # PHASE 2: AI Logic Review
+  ai-review:
+    needs: compliance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gemini AI Reviewer
+        uses: sshnaidm/gemini-code-review-action@v1
+        with:
+          gemini-key: ${{ secrets.GEMINI_API_KEY }}
+          model: "gemini-2.0-flash"
+          context-lines: 40
+          prompt: |
+            Review for Renmar Infrastructure Corp.
+            Ignore formatting/whitespace issues.
+            Focus ONLY on:
+            1. Logical bugs or performance issues.
+            2. Correct folder structure (models/, services/, etc).
+            3. Business logic separation from UI.
