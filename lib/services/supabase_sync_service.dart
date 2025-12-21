@@ -5,17 +5,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
-import 'package:flutter/foundation.dart'; // ✅ For kDebugMode
+import 'package:flutter/foundation.dart';
 
-/// ✅ Optimized Supabase Sync Service
+/// ✅ Optimized Supabase Sync Service with UUID Caching
 /// 
-/// Key Improvements:
+/// Key Features:
+/// - UUID cache for faster foreign key resolution
+/// - Local integer IDs ↔ Cloud UUIDs mapping
 /// - Better error handling with exponential backoff
 /// - Optimized batch operations
-/// - Reduced redundant queries
 /// - Connection state management
 /// - Progress tracking
-/// - Conflict resolution
+/// - Automatic cleanup of deleted records
 class SupabaseSyncService {
   final AppDatabase db;
   final SupabaseClient supabase;
@@ -24,9 +25,18 @@ class SupabaseSyncService {
   bool _isOnline = true;
   DateTime? _lastSuccessfulSync;
   
+  // ✅ UUID cache for faster lookups
+  final Map<String, Map<int, String>> _cloudIdCache = {
+    'organizations': {},
+    'roles': {},
+    'users': {},
+    'items': {},
+    'ingredients': {},
+  };
+  
   // ✅ Configuration
   static const Duration syncInterval = Duration(minutes: 10);
-  static const int batchSize = 100; // Increased from 50
+  static const int batchSize = 100;
   static const int maxRetries = 3;
   static const Duration initialRetryDelay = Duration(seconds: 2);
   static const Duration connectionTimeout = Duration(seconds: 30);
@@ -57,6 +67,9 @@ class SupabaseSyncService {
       _isOnline = await _checkConnectivity();
       onConnectivityChanged?.call(_isOnline);
       
+      // Build UUID cache from local database
+      await _buildCloudIdCache();
+      
       // Start periodic sync
       startPeriodicSync();
       
@@ -72,7 +85,7 @@ class SupabaseSyncService {
             print('📡 Network restored, triggering sync...');
             syncAll();
           } else {
-            print('📵 Network lost');
+            print('🔵 Network lost');
             onSyncStatusChanged?.call('Offline');
           }
         }
@@ -88,6 +101,87 @@ class SupabaseSyncService {
       print('❌ Failed to initialize sync service: $e');
       onSyncError?.call('Initialization failed: $e');
     }
+  }
+
+  /// ✅ Build UUID cache from local database
+  Future<void> _buildCloudIdCache() async {
+    print('🔧 Building cloud ID cache...');
+    
+    try {
+      // Cache organizations
+      final orgs = await db.organizationsDao.getAllOrganizations();
+      for (final org in orgs) {
+        if (org.cloudId != null) {
+          _cloudIdCache['organizations']![org.id] = org.cloudId!;
+        }
+      }
+      
+      // Cache roles
+      final roles = await db.rolesDao.getAllRoles();
+      for (final role in roles) {
+        if (role.cloudId != null) {
+          _cloudIdCache['roles']![role.id] = role.cloudId!;
+        }
+      }
+      
+      // Cache users
+      final users = await db.usersDao.getAllUsers();
+      for (final user in users) {
+        if (user.cloudId != null) {
+          _cloudIdCache['users']![user.id] = user.cloudId!;
+        }
+      }
+      
+      // Cache items
+      final items = await db.itemsDao.getAllItems();
+      for (final item in items) {
+        if (item.cloudId != null) {
+          _cloudIdCache['items']![item.id] = item.cloudId!;
+        }
+      }
+      
+      // Cache ingredients
+      final ingredients = await db.ingredientsDao.getAllIngredients();
+      for (final ingredient in ingredients) {
+        if (ingredient.cloudId != null) {
+          _cloudIdCache['ingredients']![ingredient.id] = ingredient.cloudId!;
+        }
+      }
+      
+      print('✅ Cache built: ${_cloudIdCache.values.fold(0, (sum, map) => sum + map.length)} entries');
+    } catch (e) {
+      print('⚠️ Error building cache: $e');
+    }
+  }
+
+  /// ✅ Get cloud UUID for local ID (with cache)
+  String? _getCloudId(String table, int? localId) {
+    if (localId == null) return null;
+    return _cloudIdCache[table]?[localId];
+  }
+
+  /// ✅ Update cache with new UUID
+  void _updateCache(String table, int localId, String cloudId) {
+    _cloudIdCache[table]![localId] = cloudId;
+  }
+
+  /// ✅ Find local ID from cloud UUID (reverse lookup)
+  int? _findLocalIdByCloudId(String table, dynamic cloudId) {
+    if (cloudId == null) return null;
+    if (cloudId is int) return cloudId; // Already a local ID
+    
+    final cloudIdStr = cloudId.toString();
+    final cache = _cloudIdCache[table];
+    if (cache == null) return null;
+    
+    // Search cache for matching UUID
+    for (final entry in cache.entries) {
+      if (entry.value == cloudIdStr) {
+        return entry.key;
+      }
+    }
+    
+    return null; // UUID not found in cache
   }
 
   /// ✅ Check connectivity with timeout
@@ -121,7 +215,7 @@ class SupabaseSyncService {
     }
 
     if (!_isOnline) {
-      print('📵 Offline, sync skipped');
+      print('🔵 Offline, sync skipped');
       onSyncStatusChanged?.call('Offline');
       return;
     }
@@ -151,6 +245,9 @@ class SupabaseSyncService {
         
         print('✅ Sync completed successfully in ${duration.inSeconds}s');
         onSyncStatusChanged?.call('Synced');
+        
+        // ✅ Rebuild cache after successful sync
+        await _buildCloudIdCache();
         
         // ✅ Cleanup old deleted records after successful sync
         await _cleanupDeletedRecords();
@@ -199,7 +296,7 @@ class SupabaseSyncService {
   }
 
   // ==========================================================================
-  // ORGANIZATIONS SYNC
+  // ORGANIZATIONS SYNC (with UUID resolution)
   // ==========================================================================
 
   Future<void> syncOrganizations() async {
@@ -237,13 +334,17 @@ class SupabaseSyncService {
         if (org.isActive) {
           final cloudId = org.cloudId ?? _uuid.v4();
           cloudIdMap[org.id] = cloudId;
+          _updateCache('organizations', org.id, cloudId);
+
+          // ✅ Resolve parent commissary UUID
+          final parentCloudId = _getCloudId('organizations', org.parentCommissaryId);
 
           batchData.add({
             'cloud_id': cloudId,
             'local_id': org.id,
             'name': org.name,
             'type': org.type,
-            'parent_commissary_id': org.parentCommissaryId,
+            'parent_commissary_id': parentCloudId, // ✅ UUID instead of integer
             'contact_person': org.contactPerson,
             'phone': org.phone,
             'email': org.email,
@@ -258,24 +359,24 @@ class SupabaseSyncService {
 
       // ✅ Batch delete
       if (deleteIds.isNotEmpty) {
-        await supabase
-            .from('organizations')
-            .delete()
-            .inFilter('cloud_id', deleteIds);
+        await supabase.from('organizations').delete().inFilter('cloud_id', deleteIds);
         totalDeleted += deleteIds.length;
       }
 
       // ✅ Batch upsert
       if (batchData.isNotEmpty) {
-        await supabase
-            .from('organizations')
-            .upsert(batchData, onConflict: 'cloud_id');
+        await supabase.from('organizations').upsert(batchData, onConflict: 'cloud_id');
         totalPushed += batchData.length;
       }
 
-      // Mark as synced
+      // Mark as synced and update cache
       if (syncedIds.isNotEmpty) {
         await db.organizationsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+        
+        // ✅ Update cache after marking as synced
+        for (final entry in cloudIdMap.entries) {
+          _updateCache('organizations', entry.key, entry.value);
+        }
       }
 
       offset += batchSize;
@@ -297,8 +398,24 @@ class SupabaseSyncService {
           .limit(1000);
 
       if (cloudOrgs.isNotEmpty) {
-        await db.organizationsDao.upsertBatchFromCloud(cloudOrgs);
-        print('   ↓ Pulled ${cloudOrgs.length} organizations');
+        // ✅ Resolve UUIDs back to local IDs
+        final resolvedOrgs = <Map<String, dynamic>>[];
+        
+        for (final cloudOrg in cloudOrgs) {
+          // Resolve parent commissary UUID to local ID
+          int? parentId;
+          if (cloudOrg['parent_commissary_id'] != null) {
+            parentId = _findLocalIdByCloudId('organizations', cloudOrg['parent_commissary_id']);
+          }
+          
+          resolvedOrgs.add({
+            ...cloudOrg,
+            'parent_commissary_id': parentId,
+          });
+        }
+        
+        await db.organizationsDao.upsertBatchFromCloud(resolvedOrgs);
+        print('   ↓ Pulled ${resolvedOrgs.length} organizations');
       }
     } catch (e) {
       print('   ⚠️ Failed to pull organizations: $e');
@@ -343,6 +460,7 @@ class SupabaseSyncService {
         if (role.isActive) {
           final cloudId = role.cloudId ?? _uuid.v4();
           cloudIdMap[role.id] = cloudId;
+          _updateCache('roles', role.id, cloudId);
 
           batchData.add({
             'cloud_id': cloudId,
@@ -409,7 +527,7 @@ class SupabaseSyncService {
   }
 
   // ==========================================================================
-  // USERS SYNC
+  // USERS SYNC (with UUID foreign keys)
   // ==========================================================================
 
   Future<void> syncUsers() async {
@@ -445,6 +563,17 @@ class SupabaseSyncService {
         if (user.isActive) {
           final cloudId = user.cloudId ?? _uuid.v4();
           cloudIdMap[user.id] = cloudId;
+          _updateCache('users', user.id, cloudId);
+
+          // ✅ Resolve foreign key UUIDs
+          final orgCloudId = _getCloudId('organizations', user.organizationId);
+          final roleCloudId = _getCloudId('roles', user.roleId);
+
+          // Skip if foreign keys not yet synced
+          if (orgCloudId == null || roleCloudId == null) {
+            print('   ⚠️ Skipping user ${user.id}: missing foreign key UUIDs');
+            continue;
+          }
 
           batchData.add({
             'cloud_id': cloudId,
@@ -453,8 +582,8 @@ class SupabaseSyncService {
             'username': user.username,
             'password': user.password, // Already hashed
             'phone': user.phone,
-            'organization_id': user.organizationId,
-            'role_id': user.roleId,
+            'organization_id': orgCloudId, // ✅ UUID
+            'role_id': roleCloudId, // ✅ UUID
             'full_name': user.fullName,
             'is_active': user.isActive,
             'created_at': user.createdAt.toIso8601String(),
@@ -497,8 +626,30 @@ class SupabaseSyncService {
           .limit(1000);
 
       if (cloudUsers.isNotEmpty) {
-        await db.usersDao.upsertBatchFromCloud(cloudUsers);
-        print('   ↓ Pulled ${cloudUsers.length} users');
+        // ✅ Resolve UUIDs back to local IDs
+        final resolvedUsers = <Map<String, dynamic>>[];
+        
+        for (final cloudUser in cloudUsers) {
+          // Find local IDs from cloud UUIDs
+          final orgId = _findLocalIdByCloudId('organizations', cloudUser['organization_id']);
+          final roleId = _findLocalIdByCloudId('roles', cloudUser['role_id']);
+          
+          if (orgId == null || roleId == null) {
+            print('   ⚠️ Skipping cloud user ${cloudUser['cloud_id']}: missing local foreign keys');
+            continue;
+          }
+          
+          resolvedUsers.add({
+            ...cloudUser,
+            'organization_id': orgId,
+            'role_id': roleId,
+          });
+        }
+        
+        if (resolvedUsers.isNotEmpty) {
+          await db.usersDao.upsertBatchFromCloud(resolvedUsers);
+          print('   ↓ Pulled ${resolvedUsers.length} users');
+        }
       }
     } catch (e) {
       print('   ⚠️ Failed to pull users: $e');
@@ -506,7 +657,7 @@ class SupabaseSyncService {
   }
 
   // ==========================================================================
-  // ITEMS SYNC
+  // ITEMS SYNC (with UUID foreign keys)
   // ==========================================================================
 
   Future<void> syncItems() async {
@@ -542,13 +693,23 @@ class SupabaseSyncService {
         if (!item.isDeleted) {
           final cloudId = item.cloudId ?? _uuid.v4();
           cloudIdMap[item.id] = cloudId;
+          _updateCache('items', item.id, cloudId);
+
+          // ✅ Resolve foreign key UUIDs
+          final orgCloudId = _getCloudId('organizations', item.organizationId);
+          final masterItemCloudId = _getCloudId('items', item.masterItemId);
+
+          if (orgCloudId == null) {
+            print('   ⚠️ Skipping item ${item.id}: missing organization UUID');
+            continue;
+          }
 
           batchData.add({
             'cloud_id': cloudId,
             'local_id': item.id,
             'name': item.name,
-            'organization_id': item.organizationId,
-            'master_item_id': item.masterItemId,
+            'organization_id': orgCloudId, // ✅ UUID
+            'master_item_id': masterItemCloudId, // ✅ UUID or null
             'stock': item.stock,
             'sold': item.sold,
             'spoilage': item.spoilage,
@@ -598,13 +759,34 @@ class SupabaseSyncService {
           .limit(1000);
 
       if (cloudItems.isNotEmpty) {
-        // Process in batches to avoid memory issues
-        for (int i = 0; i < cloudItems.length; i += batchSize) {
-          final end = (i + batchSize < cloudItems.length) ? i + batchSize : cloudItems.length;
-          final batch = cloudItems.sublist(i, end);
-          await db.itemsDao.upsertBatchFromCloud(batch);
+        // ✅ Resolve UUIDs back to local IDs
+        final resolvedItems = <Map<String, dynamic>>[];
+        
+        for (final cloudItem in cloudItems) {
+          final orgId = _findLocalIdByCloudId('organizations', cloudItem['organization_id']);
+          final masterItemId = _findLocalIdByCloudId('items', cloudItem['master_item_id']);
+          
+          if (orgId == null) {
+            print('   ⚠️ Skipping cloud item ${cloudItem['cloud_id']}: missing local organization');
+            continue;
+          }
+          
+          resolvedItems.add({
+            ...cloudItem,
+            'organization_id': orgId,
+            'master_item_id': masterItemId,
+          });
         }
-        print('   ↓ Pulled ${cloudItems.length} items');
+        
+        if (resolvedItems.isNotEmpty) {
+          // Process in batches to avoid memory issues
+          for (int i = 0; i < resolvedItems.length; i += batchSize) {
+            final end = (i + batchSize < resolvedItems.length) ? i + batchSize : resolvedItems.length;
+            final batch = resolvedItems.sublist(i, end);
+            await db.itemsDao.upsertBatchFromCloud(batch);
+          }
+          print('   ↓ Pulled ${resolvedItems.length} items');
+        }
       }
     } catch (e) {
       print('   ⚠️ Failed to pull items: $e');
@@ -612,7 +794,7 @@ class SupabaseSyncService {
   }
 
   // ==========================================================================
-  // INGREDIENTS SYNC
+  // INGREDIENTS SYNC (with UUID foreign keys)
   // ==========================================================================
 
   Future<void> syncIngredients() async {
@@ -648,12 +830,21 @@ class SupabaseSyncService {
         if (!ingredient.isDeleted) {
           final cloudId = ingredient.cloudId ?? _uuid.v4();
           cloudIdMap[ingredient.id] = cloudId;
+          _updateCache('ingredients', ingredient.id, cloudId);
+
+          // ✅ Resolve commissary UUID
+          final commissaryCloudId = _getCloudId('organizations', ingredient.commissaryId);
+
+          if (commissaryCloudId == null) {
+            print('   ⚠️ Skipping ingredient ${ingredient.id}: missing commissary UUID');
+            continue;
+          }
 
           batchData.add({
             'cloud_id': cloudId,
             'local_id': ingredient.id,
             'name': ingredient.name,
-            'commissary_id': ingredient.commissaryId,
+            'commissary_id': commissaryCloudId, // ✅ UUID
             'stock': ingredient.stock,
             'spoilage': ingredient.spoilage,
             'unit': ingredient.unit,
@@ -700,8 +891,27 @@ class SupabaseSyncService {
           .limit(1000);
 
       if (cloudIngredients.isNotEmpty) {
-        await db.ingredientsDao.upsertBatchFromCloud(cloudIngredients);
-        print('   ↓ Pulled ${cloudIngredients.length} ingredients');
+        // ✅ Resolve UUIDs back to local IDs
+        final resolvedIngredients = <Map<String, dynamic>>[];
+        
+        for (final cloudIngredient in cloudIngredients) {
+          final commissaryId = _findLocalIdByCloudId('organizations', cloudIngredient['commissary_id']);
+          
+          if (commissaryId == null) {
+            print('   ⚠️ Skipping cloud ingredient ${cloudIngredient['cloud_id']}: missing local commissary');
+            continue;
+          }
+          
+          resolvedIngredients.add({
+            ...cloudIngredient,
+            'commissary_id': commissaryId,
+          });
+        }
+        
+        if (resolvedIngredients.isNotEmpty) {
+          await db.ingredientsDao.upsertBatchFromCloud(resolvedIngredients);
+          print('   ↓ Pulled ${resolvedIngredients.length} ingredients');
+        }
       }
     } catch (e) {
       print('   ⚠️ Failed to pull ingredients: $e');
@@ -709,7 +919,7 @@ class SupabaseSyncService {
   }
 
   // ==========================================================================
-  // RECIPE INGREDIENTS SYNC
+  // RECIPE INGREDIENTS SYNC (with UUID foreign keys)
   // ==========================================================================
 
   Future<void> syncRecipeIngredients() async {
@@ -746,11 +956,20 @@ class SupabaseSyncService {
           final cloudId = recipe.cloudId ?? _uuid.v4();
           cloudIdMap[recipe.id] = cloudId;
 
+          // ✅ Resolve item and ingredient UUIDs
+          final itemCloudId = _getCloudId('items', recipe.itemId);
+          final ingredientCloudId = _getCloudId('ingredients', recipe.ingredientId);
+
+          if (itemCloudId == null || ingredientCloudId == null) {
+            print('   ⚠️ Skipping recipe ${recipe.id}: missing foreign key UUIDs');
+            continue;
+          }
+
           batchData.add({
             'cloud_id': cloudId,
             'local_id': recipe.id,
-            'item_id': recipe.itemId,
-            'ingredient_id': recipe.ingredientId,
+            'item_id': itemCloudId, // ✅ UUID
+            'ingredient_id': ingredientCloudId, // ✅ UUID
             'quantity_needed': recipe.quantityNeeded,
             'unit': recipe.unit,
             'notes': recipe.notes,
@@ -795,8 +1014,29 @@ class SupabaseSyncService {
           .limit(1000);
 
       if (cloudRecipes.isNotEmpty) {
-        await db.recipeIngredientsDao.upsertBatchFromCloud(cloudRecipes);
-        print('   ↓ Pulled ${cloudRecipes.length} recipe ingredients');
+        // ✅ Resolve UUIDs back to local IDs
+        final resolvedRecipes = <Map<String, dynamic>>[];
+        
+        for (final cloudRecipe in cloudRecipes) {
+          final itemId = _findLocalIdByCloudId('items', cloudRecipe['item_id']);
+          final ingredientId = _findLocalIdByCloudId('ingredients', cloudRecipe['ingredient_id']);
+          
+          if (itemId == null || ingredientId == null) {
+            print('   ⚠️ Skipping cloud recipe ${cloudRecipe['cloud_id']}: missing local foreign keys');
+            continue;
+          }
+          
+          resolvedRecipes.add({
+            ...cloudRecipe,
+            'item_id': itemId,
+            'ingredient_id': ingredientId,
+          });
+        }
+        
+        if (resolvedRecipes.isNotEmpty) {
+          await db.recipeIngredientsDao.upsertBatchFromCloud(resolvedRecipes);
+          print('   ↓ Pulled ${resolvedRecipes.length} recipe ingredients');
+        }
       }
     } catch (e) {
       print('   ⚠️ Failed to pull recipe ingredients: $e');
@@ -804,7 +1044,7 @@ class SupabaseSyncService {
   }
 
   // ==========================================================================
-  // STOCK REPLENISHMENT REQUESTS SYNC
+  // STOCK REPLENISHMENT REQUESTS SYNC (with UUID foreign keys)
   // ==========================================================================
 
   Future<void> syncStockReplenishmentRequests() async {
@@ -841,17 +1081,30 @@ class SupabaseSyncService {
           final cloudId = request.cloudId ?? _uuid.v4();
           cloudIdMap[request.id] = cloudId;
 
+          // ✅ Resolve all foreign key UUIDs
+          final franchiseeCloudId = _getCloudId('organizations', request.franchiseeId);
+          final commissaryCloudId = _getCloudId('organizations', request.commissaryId);
+          final itemCloudId = _getCloudId('items', request.itemId);
+          final requestedByCloudId = _getCloudId('users', request.requestedBy);
+          final reviewedByCloudId = _getCloudId('users', request.reviewedBy);
+
+          if (franchiseeCloudId == null || commissaryCloudId == null || 
+              itemCloudId == null || requestedByCloudId == null) {
+            print('   ⚠️ Skipping replenishment request ${request.id}: missing foreign key UUIDs');
+            continue;
+          }
+
           batchData.add({
             'cloud_id': cloudId,
             'local_id': request.id,
-            'franchisee_id': request.franchiseeId,
-            'commissary_id': request.commissaryId,
-            'item_id': request.itemId,
+            'franchisee_id': franchiseeCloudId, // ✅ UUID
+            'commissary_id': commissaryCloudId, // ✅ UUID
+            'item_id': itemCloudId, // ✅ UUID
             'quantity_requested': request.quantityRequested,
             'status': request.status,
-            'requested_by': request.requestedBy,
+            'requested_by': requestedByCloudId, // ✅ UUID
             'requested_at': request.requestedAt.toIso8601String(),
-            'reviewed_by': request.reviewedBy,
+            'reviewed_by': reviewedByCloudId, // ✅ UUID or null
             'reviewed_at': request.reviewedAt?.toIso8601String(),
             'delivery_date': request.deliveryDate?.toIso8601String(),
             'franchisee_notes': request.franchiseeNotes,
@@ -897,8 +1150,35 @@ class SupabaseSyncService {
           .limit(1000);
 
       if (cloudRequests.isNotEmpty) {
-        await db.stockReplenishmentRequestsDao.upsertBatchFromCloud(cloudRequests);
-        print('   ↓ Pulled ${cloudRequests.length} replenishment requests');
+        // ✅ Resolve UUIDs back to local IDs
+        final resolvedRequests = <Map<String, dynamic>>[];
+        
+        for (final cloudRequest in cloudRequests) {
+          final franchiseeId = _findLocalIdByCloudId('organizations', cloudRequest['franchisee_id']);
+          final commissaryId = _findLocalIdByCloudId('organizations', cloudRequest['commissary_id']);
+          final itemId = _findLocalIdByCloudId('items', cloudRequest['item_id']);
+          final requestedById = _findLocalIdByCloudId('users', cloudRequest['requested_by']);
+          final reviewedById = _findLocalIdByCloudId('users', cloudRequest['reviewed_by']);
+          
+          if (franchiseeId == null || commissaryId == null || itemId == null || requestedById == null) {
+            print('   ⚠️ Skipping cloud replenishment request ${cloudRequest['cloud_id']}: missing local foreign keys');
+            continue;
+          }
+          
+          resolvedRequests.add({
+            ...cloudRequest,
+            'franchisee_id': franchiseeId,
+            'commissary_id': commissaryId,
+            'item_id': itemId,
+            'requested_by': requestedById,
+            'reviewed_by': reviewedById,
+          });
+        }
+        
+        if (resolvedRequests.isNotEmpty) {
+          await db.stockReplenishmentRequestsDao.upsertBatchFromCloud(resolvedRequests);
+          print('   ↓ Pulled ${resolvedRequests.length} replenishment requests');
+        }
       }
     } catch (e) {
       print('   ⚠️ Failed to pull replenishment requests: $e');
@@ -906,7 +1186,7 @@ class SupabaseSyncService {
   }
 
   // ==========================================================================
-  // STOCK CHANGE REQUESTS SYNC
+  // STOCK CHANGE REQUESTS SYNC (with UUID foreign keys)
   // ==========================================================================
 
   Future<void> syncStockChangeRequests() async {
@@ -943,18 +1223,29 @@ class SupabaseSyncService {
           final cloudId = request.cloudId ?? _uuid.v4();
           cloudIdMap[request.id] = cloudId;
 
+          // ✅ Resolve all foreign key UUIDs
+          final franchiseeCloudId = _getCloudId('organizations', request.franchiseeId);
+          final itemCloudId = _getCloudId('items', request.itemId);
+          final requestedByCloudId = _getCloudId('users', request.requestedBy);
+          final reviewedByCloudId = _getCloudId('users', request.reviewedBy);
+
+          if (franchiseeCloudId == null || itemCloudId == null || requestedByCloudId == null) {
+            print('   ⚠️ Skipping change request ${request.id}: missing foreign key UUIDs');
+            continue;
+          }
+
           batchData.add({
             'cloud_id': cloudId,
             'local_id': request.id,
-            'franchisee_id': request.franchiseeId,
-            'item_id': request.itemId,
+            'franchisee_id': franchiseeCloudId, // ✅ UUID
+            'item_id': itemCloudId, // ✅ UUID
             'change_type': request.changeType,
             'quantity': request.quantity,
             'status': request.status,
-            'requested_by': request.requestedBy,
+            'requested_by': requestedByCloudId, // ✅ UUID
             'requested_at': request.requestedAt.toIso8601String(),
             'submitted_at': request.submittedAt?.toIso8601String(),
-            'reviewed_by': request.reviewedBy,
+            'reviewed_by': reviewedByCloudId, // ✅ UUID or null
             'reviewed_at': request.reviewedAt?.toIso8601String(),
             'reason': request.reason,
             'review_notes': request.reviewNotes,
@@ -1000,8 +1291,33 @@ class SupabaseSyncService {
           .limit(1000);
 
       if (cloudRequests.isNotEmpty) {
-        await db.stockChangeRequestsDao.upsertBatchFromCloud(cloudRequests);
-        print('   ↓ Pulled ${cloudRequests.length} change requests');
+        // ✅ Resolve UUIDs back to local IDs
+        final resolvedRequests = <Map<String, dynamic>>[];
+        
+        for (final cloudRequest in cloudRequests) {
+          final franchiseeId = _findLocalIdByCloudId('organizations', cloudRequest['franchisee_id']);
+          final itemId = _findLocalIdByCloudId('items', cloudRequest['item_id']);
+          final requestedById = _findLocalIdByCloudId('users', cloudRequest['requested_by']);
+          final reviewedById = _findLocalIdByCloudId('users', cloudRequest['reviewed_by']);
+          
+          if (franchiseeId == null || itemId == null || requestedById == null) {
+            print('   ⚠️ Skipping cloud change request ${cloudRequest['cloud_id']}: missing local foreign keys');
+            continue;
+          }
+          
+          resolvedRequests.add({
+            ...cloudRequest,
+            'franchisee_id': franchiseeId,
+            'item_id': itemId,
+            'requested_by': requestedById,
+            'reviewed_by': reviewedById,
+          });
+        }
+        
+        if (resolvedRequests.isNotEmpty) {
+          await db.stockChangeRequestsDao.upsertBatchFromCloud(resolvedRequests);
+          print('   ↓ Pulled ${resolvedRequests.length} change requests');
+        }
       }
     } catch (e) {
       print('   ⚠️ Failed to pull change requests: $e');
@@ -1063,6 +1379,7 @@ class SupabaseSyncService {
         'is_syncing': _isSyncing,
         'is_online': _isOnline,
         'last_sync': _lastSuccessfulSync?.toIso8601String() ?? 'Never',
+        'cache_size': _cloudIdCache.values.fold(0, (sum, map) => sum + map.length),
       };
     } catch (e) {
       print('❌ Error getting sync status: $e');
