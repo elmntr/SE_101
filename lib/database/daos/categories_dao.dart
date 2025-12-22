@@ -350,15 +350,16 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
       ).get();
 
       return results.map((row) {
-        return Category(
-          id: row.read<int>('id'),
-          name: row.read<String>('name'),
-          description: row.readNullable<String>('description'),
-          createdAt: row.read<DateTime>('created_at'),
-          lastUpdated: row.read<DateTime>('last_updated'),
-          isDeleted: row.read<bool>('is_deleted'),
-        );
-      }).toList();
+  return Category(
+    id: row.read<int>('id'),
+    name: row.read<String>('name'),
+    description: row.readNullable<String>('description'),
+    createdAt: row.read<DateTime>('created_at'),
+    lastUpdated: row.read<DateTime>('last_updated'),
+    isDeleted: row.read<bool>('is_deleted'),
+     // ✅ Add this
+  );
+}).toList();
     } catch (e) {
       print('❌ Error fetching empty categories: $e');
       return [];

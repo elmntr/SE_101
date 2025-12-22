@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// ✅ ADD THESE IMPORTS
 import '../services/connectivity_service.dart';
 import '../connection_status_indicator.dart';
 import 'utils/sync_status.dart';
@@ -33,10 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isSideBarOpen = false;
   bool showLabels = false;
   late AppDatabase _db;
-
+  
+  // ✅ ADD THESE STATE VARIABLES (NO DUPLICATES)
   SyncStatus _syncStatus = SyncStatus.synced;
   DateTime? _lastSyncTime;
-
   late ConnectivityService _connectivityService;
   bool _isOnline = true;
 
@@ -48,6 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _db = database;
     _loadRoleAndMenu();
+    
+    // ✅ ADD CONNECTIVITY SERVICE INITIALIZATION
     _connectivityService = ConnectivityService();
     _connectivityService.connectionStream.listen((status) {
       setState(() {
@@ -57,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // ✅ ADD DISPOSE METHOD
   @override
   void dispose() {
     _connectivityService.dispose();
@@ -112,9 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (shouldLogout == true && mounted) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(
-        'loggedInUserId',
-      ); // or prefs.clear() if you want to clear everything
+      await prefs.remove('loggedInUserId');
 
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     }
@@ -131,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
           centerTitle: true,
           iconTheme: const IconThemeData(color: Colors.white),
           actions: [
-            // ✅ PROFILE MENU WITH LOGOUT
+            // ✅ ADD CONNECTION STATUS INDICATOR
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ConnectionStatusIndicator(
@@ -139,7 +141,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 syncStatus: _syncStatus,
               ),
             ),
-
+            
+            // ✅ PROFILE MENU WITH LOGOUT
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: PopupMenuButton<String>(
@@ -289,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          // ✅ PROFILE MENU WITH LOGOUT
+          // ✅ ADD CONNECTION STATUS INDICATOR
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ConnectionStatusIndicator(
@@ -297,7 +300,8 @@ class _HomeScreenState extends State<HomeScreen> {
               syncStatus: _syncStatus,
             ),
           ),
-
+          
+          // ✅ PROFILE MENU WITH LOGOUT
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: PopupMenuButton<String>(
@@ -444,6 +448,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ✅ FIXED: Single _loadRoleAndMenu implementation with selectedIndex initialization
   Future<void> _loadRoleAndMenu() async {
     if (!mounted) return;
 
@@ -459,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() {
       menuItems = menu;
-      selectedIndex = 0;
+      selectedIndex = 0; // ✅ ADD THIS LINE
       currentPage = menu.isNotEmpty
           ? menu.first["page"] as Widget
           : const SizedBox.shrink();
