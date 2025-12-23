@@ -2,7 +2,7 @@ name: Renmar Flutter Quality Control
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened]
 
 jobs:
   # PHASE 1: Formatting Check
@@ -33,7 +33,7 @@ jobs:
         uses: sshnaidm/gemini-code-review-action@v1
         with:
           gemini-key: ${{ secrets.GEMINI_API_KEY }}
-          model: "gemini-2.0-flash"
+          model: "gemini-1.5-flash"
           context-lines: 40
           prompt: |
             Review for Renmar Infrastructure Corp.
