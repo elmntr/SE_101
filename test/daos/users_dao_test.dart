@@ -55,7 +55,9 @@ void main() {
     expect(user, isNotNull);
     expect(user!.username, 'testuser');
     expect(user.password, isNot('password123'));
-    expect(user.password.length, 64); // SHA-256 hash length
+    // PBKDF2 format: 32-char salt + '$' + 64-char hash = 97 characters
+    expect(user.password.length, 97);
+    expect(user.password.contains('\$'), isTrue); // Contains salt$hash separator
   });
 
   test('2. Get all users returns inserted users', () async {
