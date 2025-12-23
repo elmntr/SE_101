@@ -33,7 +33,7 @@ jobs:
         uses: sshnaidm/gemini-code-review-action@v1
         with:
           gemini-key: ${{ secrets.GEMINI_API_KEY }}
-          model: "gemini-1.5-flash"
+          model: "gemini-1.5-flash-latest"
           context-lines: 40
           prompt: |
             Review for Renmar Infrastructure Corp.
