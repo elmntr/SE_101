@@ -338,30 +338,32 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
   Future<User?> authenticate(String email, String password) async {
     try {
-      // Hash the input password to compare
-      final hashedPassword = hashPassword(password);
-
-      return await (select(users)..where(
-            (u) =>
-                u.email.equals(email) &
-                u.password.equals(hashedPassword) &
-                u.isActive.equals(true),
-          ))
-          .getSingleOrNull();
+      // First find user by email
+      final user = await (select(users)
+        ..where((u) => u.email.equals(email) & u.isActive.equals(true)))
+        .getSingleOrNull();
+      
+      if (user == null) return null;
+      
+      // Verify password using the stored hash (with per-user salt)
+      if (verifyPassword(password, user.password)) {
+        return user;
+      }
+      return null;
     } catch (e) {
       print('❌ Authentication failed: $e');
       return null;
     }
   }
 
-  /// ✅ Verify password for user
-  Future<bool> verifyPassword(int userId, String password) async {
+  /// ✅ Verify password for user by ID
+  Future<bool> verifyUserPassword(int userId, String password) async {
     try {
       final user = await getUserById(userId);
       if (user == null) return false;
-
-      final hashedPassword = hashPassword(password);
-      return user.password == hashedPassword;
+      
+      // Use verifyPassword from app_database.dart (handles salt extraction)
+      return verifyPassword(password, user.password);
     } catch (e) {
       print('❌ Password verification failed: $e');
       return false;
@@ -555,8 +557,9 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     int hashedCount = 0;
 
     for (final user in allUsers) {
-      // Check if password is already hashed (hashed passwords are 64 chars for SHA-256)
-      if (user.password.length != 64) {
+      // Check if password is already in new format (contains '$' separator)
+      // New format: "salt$hash" (32 + 1 + 64 = 97 chars)
+      if (!user.password.contains('\$')) {
         final hashed = hashPassword(user.password);
         await (update(users)..where((t) => t.id.equals(user.id))).write(
           UsersCompanion(

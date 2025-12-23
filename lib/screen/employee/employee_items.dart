@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 
 class EmployeeItemsPage extends StatefulWidget {
-  final User user;
-  final Role role;
-  const EmployeeItemsPage({super.key, required this.user, required this.role});
+  final UserData userData;
+  const EmployeeItemsPage({super.key, required this.userData});
 
   @override
   State<EmployeeItemsPage> createState() => _EmployeeItemsPageState();
@@ -57,12 +57,12 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     try {
       // Load items for the user's organization
       final items = await db.itemsDao.getItemsByOrganization(
-        widget.user.organizationId,
+        widget.userData.organizationId,
       );
 
       // Load pending/draft changes for this employee
       final changes = await db.stockChangeRequestsDao.getAllChangeRequests(
-        requestedBy: widget.user.id,
+        requestedBy: widget.userData.id,
       );
 
       if (mounted) {
@@ -220,8 +220,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     // Change Stock Mode
     if (_isInChangeStockMode) {
       return EmployeeChangeStockPage(
-        user: widget.user,
-        role: widget.role,
+        userData: widget.userData,
         onBack: () async {
           _toggleChangeStockMode();
           await _loadData();

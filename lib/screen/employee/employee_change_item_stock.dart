@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 
 import '../../design_constants.dart';
 
 class EmployeeChangeStockPage extends StatefulWidget {
-  final User user;
-  final Role? role;
+  final UserData userData;
   final VoidCallback onBack;
   final ValueChanged<ChangeRecord>? onRecordSaved;
   final User user;
@@ -17,8 +17,7 @@ class EmployeeChangeStockPage extends StatefulWidget {
 
   const EmployeeChangeStockPage({
     super.key,
-    required this.user,
-    required this.role,
+    required this.userData,
     required this.onBack,
     this.onRecordSaved,
     required this.user,
@@ -58,7 +57,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
 
   Future<void> _loadItems() async {
     final loaded = await db.itemsDao.getItemsByOrganization(
-      widget.user.organizationId,
+      widget.userData.organizationId,
     );
 
     setState(() {
@@ -120,11 +119,11 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
           // Create stock change request for sold items
           if (soldQty > 0) {
             await db.stockChangeRequestsDao.createChangeRequest(
-              franchiseeId: widget.user.organizationId,
+              franchiseeId: widget.userData.organizationId,
               itemId: item.id,
               changeType: 'sold',
               quantity: soldQty,
-              requestedBy: widget.user.id,
+              requestedBy: widget.userData.id,
               originalStock: item.stock,
               reason: 'Employee stock change',
             );
@@ -133,11 +132,11 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
           // Create stock change request for spoiled items
           if (spoilageQty > 0) {
             await db.stockChangeRequestsDao.createChangeRequest(
-              franchiseeId: widget.user.organizationId,
+              franchiseeId: widget.userData.organizationId,
               itemId: item.id,
               changeType: 'spoiled',
               quantity: spoilageQty,
-              requestedBy: widget.user.id,
+              requestedBy: widget.userData.id,
               originalStock: item.stock,
               reason: 'Employee stock change',
             );
@@ -160,7 +159,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
 
       // ✅ Submit all draft requests automatically
       final draftRequests = await db.stockChangeRequestsDao.getEmployeeDrafts(
-        widget.user.id,
+        widget.userData.id,
       );
       for (final request in draftRequests) {
         await db.stockChangeRequestsDao.submitChangeRequest(request.id);
@@ -168,8 +167,8 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
 
       // Create in-memory record for UI callback (if needed)
       final record = ChangeRecord(
-        employeeName: widget.user.fullName ?? widget.user.username,
-        role: widget.role?.name ?? 'Unknown',
+        employeeName: widget.userData.fullName ?? widget.userData.username,
+        role: widget.userData.roleName,
         items: changedItems,
       );
 
@@ -256,7 +255,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                         style: TextStyle(color: Colors.grey),
                       ),
                       Text(
-                        widget.user.fullName ?? widget.user.username,
+                        widget.userData.fullName ?? widget.userData.username,
                         style: const TextStyle(fontSize: 16),
                       ),
                     ],
@@ -268,7 +267,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                     children: [
                       const Text('Role:', style: TextStyle(color: Colors.grey)),
                       Text(
-                        widget.role?.name ?? 'Unknown',
+                        widget.userData.roleName,
                         style: const TextStyle(fontSize: 16),
                       ),
                     ],

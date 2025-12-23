@@ -10,6 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'config/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/supabase_sync_service.dart';
+import 'services/supabase_auth_service.dart';
 import 'app_globals.dart'; // ✅ Import AppGlobals
 import 'app.dart';
 import 'package:path_provider/path_provider.dart';
@@ -44,6 +45,7 @@ void main() async {
   // SUPABASE INITIALIZATION
   // -------------------------------------------------------------
   print('☁️ Initializing Supabase...');
+  SupabaseConfig.printConfigStatus(); // Debug: Show config status
   bool supabaseInitialized = false;
 
   try {
@@ -94,7 +96,16 @@ void main() async {
   // -------------------------------------------------------------
   // APP GLOBALS INITIALIZATION
   // -------------------------------------------------------------
-  AppGlobals.instance.initialize(database: db, syncService: sync);
+  final authService = SupabaseAuthService(
+    supabase: Supabase.instance.client,
+    database: db,
+  );
+  
+  AppGlobals.instance.initialize(
+    database: db,
+    syncService: sync,
+    authService: authService,
+  );
   print('✅ AppGlobals initialized');
 
   // Non-blocking sync service start

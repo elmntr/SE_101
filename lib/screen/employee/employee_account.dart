@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart'; // your Drift DB
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 
 class EmployeeAccountPage extends StatefulWidget {
-  final User user; // pass the signed-in user
-  final Role role; // pass the user's role
+  final UserData userData;
 
   const EmployeeAccountPage({
     super.key,
-    required this.user,
-    required this.role,
+    required this.userData,
   });
 
   @override
@@ -32,26 +31,26 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
     super.initState();
     db = database;
 
-    // Initialize controllers with DB values
-    nameController = TextEditingController(text: widget.user.username);
-    emailController = TextEditingController(text: widget.user.email);
-    phoneController = TextEditingController(text: widget.user.phone ?? "");
-    roleController = TextEditingController(text: widget.role.name);
+    // Initialize controllers with UserData values
+    nameController = TextEditingController(text: widget.userData.username);
+    emailController = TextEditingController(text: widget.userData.email);
+    phoneController = TextEditingController(text: widget.userData.phone ?? "");
+    roleController = TextEditingController(text: widget.userData.roleName);
 
     // Map role access flags to human-readable strings
-    roleAccessToShow = _getRoleAccessList(widget.role);
+    roleAccessToShow = _getRoleAccessList(widget.userData.permissions);
   }
 
-  List<String> _getRoleAccessList(Role role) {
+  List<String> _getRoleAccessList(RolePermissions permissions) {
     final List<String> access = [];
-    if (role.canViewInventory) access.add("View Inventory");
-    if (role.canAddInventory) access.add("Add Inventory");
-    if (role.canEditInventory) access.add("Edit Inventory");
-    if (role.canDeleteInventory) access.add("Delete Inventory");
-    if (role.canManageEmployees) access.add("Manage Employees");
-    if (role.canManageRoles) access.add("Manage Roles");
-    if (role.canViewReports) access.add("View Reports");
-    if (role.canAccessSettings) access.add("Settings");
+    if (permissions.canViewInventory) access.add("View Inventory");
+    if (permissions.canAddInventory) access.add("Add Inventory");
+    if (permissions.canEditInventory) access.add("Edit Inventory");
+    if (permissions.canDeleteInventory) access.add("Delete Inventory");
+    if (permissions.canManageEmployees) access.add("Manage Employees");
+    if (permissions.canManageRoles) access.add("Manage Roles");
+    if (permissions.canViewReports) access.add("View Reports");
+    if (permissions.canAccessSettings) access.add("Settings");
     return access;
   }
 
