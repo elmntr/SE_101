@@ -133,6 +133,22 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
+  /// ✅ Update user password
+  Future<bool> updateUserPassword(int userId, String hashedPassword) async {
+    try {
+      final result = await (update(users)..where((t) => t.id.equals(userId)))
+        .write(UsersCompanion(
+          password: Value(hashedPassword),
+          lastUpdated: Value(DateTime.now()),
+          isSynced: Value(false),
+        ));
+      return result > 0;
+    } catch (e) {
+      print('❌ Error updating password: $e');
+      return false;
+    }
+  }
+
   /// ✅ Get a single user by ID
   Future<User?> getUserById(int id) async {
     try {
