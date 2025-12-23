@@ -110,6 +110,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (shouldLogout == true && mounted) {
+      // Sign out from Supabase Auth
+      await AppGlobals.instance.authService.signOut();
+      
+      // Clear local session
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(
         'loggedInUserId',

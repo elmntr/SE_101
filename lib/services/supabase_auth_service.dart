@@ -405,6 +405,182 @@ class SupabaseAuthService {
     }
   }
 
+  /// Create an employee account (for branch managers/admins)
+  /// This creates BOTH:
+  /// 1. A Supabase Auth user (so they can login)
+  /// 2. A local database user record (for offline access and RLS)
+  Future<AuthResult> createEmployee({
+    required String email,
+    required String username,
+    required String password,
+    required int organizationId,
+    required int roleId,
+    String? fullName,
+    String? phone,
+  }) async {
+    try {
+      // 1. Check if email already exists locally
+      final existingUser = await _db.usersDao.getUserByEmail(email);
+      if (existingUser != null) {
+        return AuthResult.failure('Email already registered');
+      }
+
+      // 2. Get organization cloud_id for the user record
+      final org = await _db.organizationsDao.getOrganizationById(organizationId);
+      if (org == null) {
+        return AuthResult.failure('Organization not found');
+      }
+
+      // 3. Save current session before creating new user
+      // signUp might sign in as the new user if email confirmation is disabled
+      final currentSession = _supabase.auth.currentSession;
+      final currentUserData = _currentUser;
+
+      // 4. Create Supabase Auth user
+      // Note: If email confirmation is enabled in Supabase, user won't be able to login
+      // until they confirm. Disable email confirmation in Supabase Dashboard:
+      // Authentication → Providers → Email → Confirm email = OFF
+      if (kDebugMode) {
+        print('📝 Creating Supabase Auth user...');
+        print('   Email: $email');
+        print('   Password length: ${password.length}');
+        print('   Password: $password'); // Remove this after debugging!
+      }
+      
+      final authResponse = await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'username': username,
+          'full_name': fullName ?? username,
+          'organization_id': org.cloudId,
+        },
+      );
+
+      if (authResponse.user == null) {
+        return AuthResult.failure('Failed to create auth account');
+      }
+
+      // Check if email confirmation is required (user exists but session is null)
+      if (authResponse.session == null && authResponse.user != null) {
+        if (kDebugMode) {
+          print('⚠️ Email confirmation may be required for: $email');
+          print('   Disable email confirmation in Supabase Dashboard if needed');
+        }
+      }
+
+      final authUserId = authResponse.user!.id;
+      
+      if (kDebugMode) {
+        print('✅ Created Supabase Auth user: $authUserId');
+        print('   Email confirmed: ${authResponse.user!.emailConfirmedAt != null}');
+      }
+
+      // 5. Restore original admin session BEFORE inserting to users table
+      // The admin has permission to insert, the new user might not
+      if (currentSession != null && _supabase.auth.currentUser?.id != currentSession.user.id) {
+        try {
+          await _supabase.auth.setSession(currentSession.refreshToken!);
+          _currentUser = currentUserData;
+          _authStateController?.add(_currentUser);
+          if (kDebugMode) {
+            print('✅ Restored admin session');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ Could not restore session: $e');
+          }
+        }
+      }
+
+      // 6. Get role cloud_id
+      final role = await _db.rolesDao.getRoleById(roleId);
+      if (role == null) {
+        return AuthResult.failure('Role not found');
+      }
+
+      // 7. Insert user record directly into Supabase users table
+      // This is needed immediately so the user can login right away
+      // Uses admin session which has INSERT permission
+      final hashedPassword = _hashPassword(password);
+      final now = DateTime.now().toUtc().toIso8601String();
+      
+      try {
+        if (kDebugMode) {
+          print('📤 Inserting user into Supabase users table...');
+          print('   Auth user ID (cloud_id): $authUserId');
+          print('   Organization cloud ID: ${org.cloudId}');
+          print('   Role cloud ID: ${role.cloudId}');
+          print('   Current session user: ${_supabase.auth.currentUser?.id}');
+        }
+        
+        // Use cloud_id as unique identifier (matches sync service format)
+        // Auth user ID is stored in cloud_id to link auth user to data record
+        // Also set auth_user_id for RLS policy to allow user to read their own record
+        await _supabase.from('users').insert({
+          'cloud_id': authUserId, // Use auth user ID as cloud_id (unique identifier)
+          'auth_user_id': authUserId, // For RLS policy - allows user to read own record
+          'email': email,
+          'username': username,
+          'password': hashedPassword,
+          'organization_id': org.cloudId,
+          'role_id': role.cloudId,
+          'full_name': fullName,
+          'phone': phone,
+          'is_active': true,
+          'created_at': now,
+          'last_updated': now,
+        });
+        
+        if (kDebugMode) {
+          print('✅ Inserted user into Supabase users table');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Failed to insert into Supabase users table: $e');
+        }
+        // Don't continue silently - return failure so user knows
+        return AuthResult.failure('Failed to create user record: $e');
+      }
+
+      // 8. Create local user record with hashed password for offline login
+      final localUserId = await _db.usersDao.insertUser(
+        UsersCompanion.insert(
+          email: email,
+          username: username,
+          password: hashedPassword, // Already hashed above
+          organizationId: organizationId,
+          roleId: roleId,
+          fullName: Value(fullName),
+          phone: Value(phone),
+          isActive: const Value(true),
+          isSynced: const Value(true), // Already synced to cloud
+          // Store Supabase Auth user ID as cloudId
+          // This links the local user to the auth user
+          cloudId: Value(authUserId),
+        ),
+      );
+
+      if (kDebugMode) {
+        print('✅ Created local user: $localUserId');
+      }
+
+      return AuthResult.success(
+        message: 'Employee account created successfully',
+      );
+    } on AuthException catch (e) {
+      if (kDebugMode) {
+        print('❌ Auth error creating employee: ${e.message}');
+      }
+      return AuthResult.failure(e.message);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error creating employee: $e');
+      }
+      return AuthResult.failure('Failed to create employee: $e');
+    }
+  }
+
   /// Sign out
   Future<void> signOut() async {
     try {
@@ -520,12 +696,22 @@ class SupabaseAuthService {
   }
 
   /// Verify a password against a stored hash
-  /// Handles format: "salt$hash"
+  /// ONLY accepts secure format: "salt$hash" (PBKDF2)
+  /// Users with legacy password formats must login online first to update their password hash
   bool _verifyPassword(String password, String storedHash) {
-    final parts = storedHash.split('\$');
-    if (parts.length != 2) {
+    // Handle empty stored hash
+    if (storedHash.isEmpty) {
       if (kDebugMode) {
-        print('⚠️ Invalid hash format (expected salt\$hash)');
+        print('⚠️ Empty password hash stored');
+      }
+      return false;
+    }
+
+    // ONLY accept new format: "salt$hash" (32-char salt + $ + 64-char hash)
+    final parts = storedHash.split('\$');
+    if (parts.length != 2 || parts[0].length != 32 || parts[1].length != 64) {
+      if (kDebugMode) {
+        print('⚠️ Password not in secure format. User must login online first.');
       }
       return false;
     }
@@ -541,6 +727,46 @@ class SupabaseAuthService {
       result |= storedHash.codeUnitAt(i) ^ expectedFullHash.codeUnitAt(i);
     }
     return result == 0;
+  }
+
+  /// Update local password hash for offline login support
+  /// Called after successful online login to ensure secure password format
+  Future<void> _updateLocalPasswordForOffline(String email, String password, String branchCloudId) async {
+    try {
+      // Find the local user
+      final user = await _db.usersDao.getUserByEmailAndOrganizationCloudId(email, branchCloudId);
+      if (user == null) {
+        if (kDebugMode) {
+          print('⚠️ Cannot update local password - user not found locally');
+        }
+        return;
+      }
+
+      // Check if password is already in secure format
+      final parts = user.password.split('\$');
+      if (parts.length == 2 && parts[0].length == 32 && parts[1].length == 64) {
+        // Already in secure format, verify it matches
+        if (_verifyPassword(password, user.password)) {
+          if (kDebugMode) {
+            print('✅ Local password already in secure format');
+          }
+          return;
+        }
+      }
+
+      // Hash password in secure format and update local database
+      final secureHash = _hashPassword(password);
+      await _db.usersDao.updatePasswordHash(user.id, secureHash);
+      
+      if (kDebugMode) {
+        print('✅ Updated local password to secure format for offline login');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ Failed to update local password for offline: $e');
+      }
+      // Don't fail the login if this fails - it's not critical
+    }
   }
 
   /// Check if current session is valid
@@ -601,9 +827,26 @@ class SupabaseAuthService {
   /// Simple branch data for selection dropdown
   static const String branchTypeFranchisee = 'franchisee';
 
-  /// Fetch available branches (franchisees) from Supabase
-  /// Returns a list of organization records that are franchisees
-  Future<List<Map<String, dynamic>>> fetchAvailableBranches() async {
+  /// Fetch available branches (franchisees)
+  /// Tries online first, falls back to local database if offline
+  /// Returns a record with branches list and isOffline flag
+  Future<({List<Map<String, dynamic>> branches, bool isOffline})> fetchAvailableBranches() async {
+    // Try online first
+    final onlineBranches = await _fetchBranchesOnline();
+    if (onlineBranches.isNotEmpty) {
+      return (branches: onlineBranches, isOffline: false);
+    }
+
+    // If online failed or empty, try local database
+    if (kDebugMode) {
+      print('📴 Falling back to local branch list...');
+    }
+    final offlineBranches = await _fetchBranchesOffline();
+    return (branches: offlineBranches, isOffline: true);
+  }
+
+  /// Fetch branches from Supabase (online)
+  Future<List<Map<String, dynamic>>> _fetchBranchesOnline() async {
     try {
       if (kDebugMode) {
         print('📥 Fetching available branches from Supabase...');
@@ -617,31 +860,113 @@ class SupabaseAuthService {
           .order('name');
 
       if (kDebugMode) {
-        print('   Found ${response.length} branches');
+        print('   Found ${response.length} branches online');
       }
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error fetching branches: $e');
+        print('❌ Error fetching branches online: $e');
+      }
+      return [];
+    }
+  }
+
+  /// Fetch branches from local database (offline)
+  Future<List<Map<String, dynamic>>> _fetchBranchesOffline() async {
+    try {
+      if (kDebugMode) {
+        print('📴 Fetching branches from local database...');
+      }
+
+      // Get franchisee organizations from local database
+      final organizations = await _db.organizationsDao.getOrganizationsByType(
+        branchTypeFranchisee,
+        isActive: true,
+      );
+
+      if (kDebugMode) {
+        print('   Found ${organizations.length} branches locally');
+      }
+
+      // Convert to the same format as online response
+      return organizations.map((org) => {
+        'cloud_id': org.cloudId,
+        'name': org.name,
+        'address': org.address,
+        'phone': org.phone,
+        'email': org.email,
+        'type': org.type,
+        'is_active': org.isActive,
+      }).toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching branches offline: $e');
       }
       return [];
     }
   }
 
   /// Sign in with email/password for a specific branch
-  /// Validates that the user belongs to the selected branch
+  /// Tries online authentication first, falls back to offline if no internet
   Future<AuthResult> signInToBranch({
     required String email,
     required String password,
     required String branchCloudId,
   }) async {
-    try {
-      if (kDebugMode) {
-        print('🔑 Signing in to branch: $branchCloudId');
-        print('   Email: $email');
-      }
+    if (kDebugMode) {
+      print('🔑 Signing in to branch: $branchCloudId');
+      print('   Email: $email');
+    }
 
+    // Try online authentication first
+    final onlineResult = await _onlineSignInToBranch(
+      email: email,
+      password: password,
+      branchCloudId: branchCloudId,
+    );
+
+    if (onlineResult.success) {
+      return onlineResult;
+    }
+
+    // Check if the error was due to network issues (not invalid credentials)
+    final errorMessage = onlineResult.message?.toLowerCase() ?? '';
+    final isNetworkError = errorMessage.contains('socket') ||
+        errorMessage.contains('network') ||
+        errorMessage.contains('connection') ||
+        errorMessage.contains('timeout') ||
+        errorMessage.contains('host') ||
+        errorMessage.contains('failed host lookup') ||
+        errorMessage.contains('no internet');
+
+    if (!isNetworkError) {
+      // It's a real auth error (invalid credentials, etc.), don't try offline
+      if (kDebugMode) {
+        print('❌ Online auth failed (not a network error): ${onlineResult.message}');
+      }
+      return onlineResult;
+    }
+
+    // Network error - try offline login
+    if (kDebugMode) {
+      print('📴 Network error detected, trying offline login...');
+    }
+
+    return _offlineSignInToBranch(
+      email: email,
+      password: password,
+      branchCloudId: branchCloudId,
+    );
+  }
+
+  /// Online sign-in using Supabase Auth
+  Future<AuthResult> _onlineSignInToBranch({
+    required String email,
+    required String password,
+    required String branchCloudId,
+  }) async {
+    try {
       // 1. Try Supabase Auth first
       final authResponse = await _supabase.auth.signInWithPassword(
         email: email,
@@ -724,6 +1049,10 @@ class SupabaseAuthService {
 
       _authStateController?.add(_currentUser);
 
+      // 4. Update local password hash for offline login support
+      // This ensures the user can login offline next time with secure hash
+      await _updateLocalPasswordForOffline(email, password, branchCloudId);
+
       return AuthResult.success(
         user: authResponse.user,
         localUser: _currentUser,
@@ -733,9 +1062,120 @@ class SupabaseAuthService {
       return AuthResult.failure(e.message);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Sign in to branch error: $e');
+        print('❌ Online sign in error: $e');
       }
       return AuthResult.failure('Sign in failed: $e');
+    }
+  }
+
+  /// Offline sign-in using local database
+  /// Used when there's no internet connection
+  Future<AuthResult> _offlineSignInToBranch({
+    required String email,
+    required String password,
+    required String branchCloudId,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print('📴 Attempting offline login...');
+        print('   Email: $email');
+        print('   Branch: $branchCloudId');
+      }
+
+      // 1. Find user in local database by email and organization cloud ID
+      final user = await _db.usersDao.getUserByEmailAndOrganizationCloudId(email, branchCloudId);
+
+      if (user == null) {
+        if (kDebugMode) {
+          print('❌ User not found in local database');
+        }
+        return AuthResult.failure('User not found. Please connect to internet and login once first.');
+      }
+
+      if (!user.isActive) {
+        if (kDebugMode) {
+          print('❌ User account is inactive');
+        }
+        return AuthResult.failure('Account is inactive');
+      }
+
+      // 2. Check if password is in secure format (salt$hash)
+      final passwordParts = user.password.split('\$');
+      if (passwordParts.length != 2 || passwordParts[0].length != 32 || passwordParts[1].length != 64) {
+        if (kDebugMode) {
+          print('⚠️ Password not in secure format - user must login online first');
+        }
+        return AuthResult.failure('Please connect to internet for first login to enable offline access.');
+      }
+
+      // 3. Verify password against stored hash
+      if (!_verifyPassword(password, user.password)) {
+        if (kDebugMode) {
+          print('❌ Invalid password');
+        }
+        return AuthResult.failure('Invalid credentials');
+      }
+
+      if (kDebugMode) {
+        print('✅ Offline password verification successful');
+      }
+
+      // 3. Load organization and role info from local database
+      final org = await _db.organizationsDao.getOrganizationById(user.organizationId);
+      final role = await _db.rolesDao.getRoleById(user.roleId);
+
+      if (org == null || role == null) {
+        if (kDebugMode) {
+          print('❌ Could not load organization or role');
+        }
+        return AuthResult.failure('User data incomplete. Please sync when online.');
+      }
+
+      // 4. Build UserData from local database
+      _currentUser = UserData(
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        phone: user.phone,
+        organizationId: user.organizationId,
+        organizationCloudId: org.cloudId,
+        organizationType: org.type,
+        organizationName: org.name,
+        roleId: user.roleId,
+        roleName: role.name,
+        permissions: RolePermissions(
+          canViewInventory: role.canViewInventory,
+          canAddInventory: role.canAddInventory,
+          canEditInventory: role.canEditInventory,
+          canDeleteInventory: role.canDeleteInventory,
+          canViewReports: role.canViewReports,
+          canExportData: role.canExportData,
+          canAccessSettings: role.canAccessSettings,
+          canManageEmployees: role.canManageEmployees,
+          canManageRoles: role.canManageRoles,
+        ),
+        cloudId: user.cloudId,
+        authUserId: user.cloudId, // Use cloudId as authUserId for offline
+      );
+
+      _authStateController?.add(_currentUser);
+
+      if (kDebugMode) {
+        print('✅ Offline login successful: ${user.username}');
+        print('   Organization: ${org.name}');
+        print('   Role: ${role.name}');
+      }
+
+      return AuthResult.success(
+        localUser: _currentUser,
+        message: 'Signed in offline to ${org.name}',
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Offline sign in error: $e');
+      }
+      return AuthResult.failure('Offline sign in failed: $e');
     }
   }
 

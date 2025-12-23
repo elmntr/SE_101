@@ -184,6 +184,35 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
+  /// ✅ Get user by email and organization (for offline login)
+  Future<User?> getUserByEmailAndOrganization(String email, int organizationId) async {
+    try {
+      return await (select(users)
+        ..where((t) => t.email.equals(email) & t.organizationId.equals(organizationId) & t.isActive.equals(true)))
+        .getSingleOrNull();
+    } catch (e) {
+      print('❌ Error fetching user by email and organization: $e');
+      return null;
+    }
+  }
+
+  /// ✅ Get user by email and organization cloud ID (for offline login with cloud ID)
+  Future<User?> getUserByEmailAndOrganizationCloudId(String email, String organizationCloudId) async {
+    try {
+      // First get the organization by cloud ID
+      final org = await (select(db.organizations)
+        ..where((t) => t.cloudId.equals(organizationCloudId)))
+        .getSingleOrNull();
+      
+      if (org == null) return null;
+      
+      return await getUserByEmailAndOrganization(email, org.id);
+    } catch (e) {
+      print('❌ Error fetching user by email and org cloud ID: $e');
+      return null;
+    }
+  }
+
   /// ✅ Get users for a specific organization
   Future<List<User>> getUsersByOrganization(
     int organizationId, {
@@ -387,6 +416,24 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       return result > 0;
     } catch (e) {
       print('❌ Error updating password: $e');
+      return false;
+    }
+  }
+
+  /// ✅ Update user password hash directly (for offline login support)
+  /// Used when we already have the hashed password
+  Future<bool> updatePasswordHash(int userId, String hashedPassword) async {
+    try {
+      final result = await (update(users)..where((t) => t.id.equals(userId)))
+        .write(UsersCompanion(
+          password: Value(hashedPassword),
+          lastUpdated: Value(DateTime.now()),
+          // Don't mark as unsynced - this is just local cache for offline
+        ));
+      
+      return result > 0;
+    } catch (e) {
+      print('❌ Error updating password hash: $e');
       return false;
     }
   }

@@ -449,17 +449,18 @@ class SupabaseSyncService {
   // ============================================================================
   // ORGANIZATIONS SYNC (Star topology aware)
   // ============================================================================
+  // NOTE: Only commissary can INSERT organizations
+  // Franchisees should ONLY pull organizations, never push
 
   Future<void> syncOrganizations() async {
-    try {
-      print('ðŸ¢ Syncing organizations...');
+    // Only commissary users can push organizations
+    // Franchisees cannot create organizations per RLS policy
+    if (_currentOrganizationType == 'commissary') {
       await _pushOrganizations();
-      await _pullOrganizations();
-      print('   âœ… Organizations sync complete');
-    } catch (e) {
-      print('   âŒ Organizations sync failed: $e');
-      rethrow;
+    } else {
+      print('   ℹ️ Skipping organization push (franchisee mode - read-only)');
     }
+    await _pullOrganizations();
   }
 
   Future<void> _pushOrganizations() async {
@@ -493,7 +494,7 @@ class SupabaseSyncService {
 
         batchData.add({
           'cloud_id': cloudId,
-          'local_id': org.id,
+          // NOTE: Don't send local_id - it causes conflicts across devices
           'name': org.name,
           'type': org.type,
           'parent_commissary_id': parentCloudId,
@@ -570,17 +571,18 @@ class SupabaseSyncService {
   // ============================================================================
   // ROLES SYNC
   // ============================================================================
+  // NOTE: Only commissary can INSERT/UPDATE/DELETE roles
+  // Franchisees should ONLY pull roles, never push
 
-  Future<void> syncIngredients() async {
-    try {
-      print('ðŸ¥• Syncing ingredients...');
-      await _pushIngredients();
-      await _pullIngredients();
-      print('   âœ… Ingredients sync complete');
-    } catch (e) {
-      print('   âŒ Ingredients sync failed: $e');
-      rethrow;
+  Future<void> syncRoles() async {
+    // Only commissary users can push roles
+    // Franchisees cannot create/modify roles per RLS policy
+    if (_currentOrganizationType == 'commissary') {
+      await _pushRoles();
+    } else {
+      print('   ℹ️ Skipping roles push (franchisee mode - read-only)');
     }
+    await _pullRoles();
   }
 
   Future<void> _pushIngredients() async {
@@ -609,7 +611,7 @@ class SupabaseSyncService {
 
         batchData.add({
           'cloud_id': cloudId,
-          'local_id': role.id,
+          // NOTE: Don't send local_id - it causes conflicts across devices
           'name': role.name,
           'description': role.description,
           'can_view_inventory': role.canViewInventory,
@@ -714,7 +716,7 @@ class SupabaseSyncService {
 
         batchData.add({
           'cloud_id': cloudId,
-          'local_id': user.id,
+          // NOTE: Don't send local_id - it causes conflicts across devices
           'email': user.email,
           'username': user.username,
           'password': user.password,
@@ -833,7 +835,7 @@ class SupabaseSyncService {
 
         batchData.add({
           'cloud_id': cloudId,
-          'local_id': item.id,
+          // NOTE: Don't send local_id - it causes conflicts across devices
           'name': item.name,
           'organization_id': orgCloudId,
           'master_item_id': masterItemCloudId,
@@ -962,7 +964,7 @@ class SupabaseSyncService {
 
         batchData.add({
           'cloud_id': cloudId,
-          'local_id': ingredient.id,
+          // NOTE: Don't send local_id - it causes conflicts across devices
           'name': ingredient.name,
           'commissary_id': commissaryCloudId,
           'stock': ingredient.stock,
@@ -1076,7 +1078,7 @@ class SupabaseSyncService {
 
         batchData.add({
           'cloud_id': cloudId,
-          'local_id': recipe.id,
+          // NOTE: Don't send local_id - it causes conflicts across devices
           'item_id': itemCloudId,
           'ingredient_id': ingredientCloudId,
           'quantity_needed': recipe.quantityNeeded,
@@ -1205,7 +1207,7 @@ class SupabaseSyncService {
 
         batchData.add({
           'cloud_id': cloudId,
-          'local_id': request.id,
+          // NOTE: Don't send local_id - it causes conflicts across devices
           'franchisee_id': franchiseeCloudId,
           'commissary_id': commissaryCloudId,
           'item_id': itemCloudId,
@@ -1362,7 +1364,7 @@ class SupabaseSyncService {
 
         batchData.add({
           'cloud_id': cloudId,
-          'local_id': request.id,
+          // NOTE: Don't send local_id - it causes conflicts across devices
           'franchisee_id': franchiseeCloudId,
           'item_id': itemCloudId,
           'change_type': request.changeType,

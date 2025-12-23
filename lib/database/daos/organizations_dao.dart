@@ -174,6 +174,28 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
+  /// ✅ Get organizations by type (for branch list dropdown)
+  Future<List<Organization>> getOrganizationsByType(
+    String type, {
+    bool? isActive,
+  }) async {
+    try {
+      final query = select(organizations)
+        ..where((t) => t.type.equals(type));
+      
+      if (isActive != null) {
+        query.where((t) => t.isActive.equals(isActive));
+      }
+      
+      query.orderBy([(t) => OrderingTerm(expression: t.name)]);
+      
+      return await query.get();
+    } catch (e) {
+      print('❌ Error fetching organizations by type: $e');
+      return [];
+    }
+  }
+
   /// ✅ Soft delete organization (deactivate)
   Future<bool> deactivateOrganization(int id) async {
     try {
