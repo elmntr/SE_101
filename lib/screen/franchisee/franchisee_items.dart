@@ -20,6 +20,7 @@ class _ItemsPageState extends State<ItemsPage> {
 
   List<Item> dbItems = [];
   List<Map<String, dynamic>> categories = [];
+  
   Map<int, String> categoryMap = {}; // Store category names by ID
 
   int categoryCount = 0;
