@@ -21,7 +21,7 @@ class _ItemsPageState extends State<ItemsPage> {
   Map<int, String> categoryMap = {}; // Store category names by ID
 
   int categoryCount = 0;
-  int selectedTab = 0;
+  int selectedTab = 0; // 0 = Items, 1 = Categories
 
   ItemSort _currentSort = ItemSort(ItemSortField.name, SortOrder.desc);
   CategorySort _currentCategorySort = CategorySort(CategorySortField.name, SortOrder.desc);
@@ -50,12 +50,17 @@ class _ItemsPageState extends State<ItemsPage> {
 
   // ✅ SHOW ITEM DETAILS DIALOG
   void _showItemDetails(Item item) {
+    // ✅ Get category name from categoryMap using item.categoryId
+    final categoryName = item.categoryId != null 
+        ? (categoryMap[item.categoryId] ?? "Uncategorized")
+        : "Uncategorized";
     // TODO: Replace hardcoded values with actual item getters once database schema is updated
-    final categoryName = "Food"; // TODO: Use item.category or categoryMap[item.categoryId]
     final price = 100; // TODO: Use item.price once added to database
     final status = "Healthy"; // TODO: Use item.status once added to database
     final sku = "ABC-123"; // TODO: Use item.sku once added to database
-    final dateOrdered = "12/20/2035"; // TODO: Use item.dateOrdered once added to database
+    // ✅ Format lastUpdated as date
+    final dateOrdered = "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
+
 
     showDialog(
       context: context,
@@ -134,7 +139,7 @@ class _ItemsPageState extends State<ItemsPage> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                categoryName, // TODO: Replace with item.category or categoryMap[item.categoryId]
+                                categoryName, // Up
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ),
@@ -272,7 +277,7 @@ class _ItemsPageState extends State<ItemsPage> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                dateOrdered, // TODO: Replace with item.dateOrdered
+                                dateOrdered, // Up
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ),
