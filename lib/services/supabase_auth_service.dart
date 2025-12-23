@@ -1,6 +1,7 @@
 // lib/services/supabase_auth_service.dart
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
@@ -365,7 +366,7 @@ class SupabaseAuthService {
       }
 
       // Verify password hash
-      if (user.password != _hashPassword(password)) {
+      if (!_verifyPassword(password, user.password)) {
         return AuthResult.failure('Invalid credentials');
       }
 
@@ -469,11 +470,77 @@ class SupabaseAuthService {
     }
   }
 
-  /// Hash password using SHA-256
+  /// Generate a cryptographically secure random salt
+  String _generateSalt([int length = 16]) {
+    final random = Random.secure();
+    final bytes = List<int>.generate(length, (_) => random.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// Hash password using PBKDF2 with per-user random salt
+  /// Returns format: "salt$hash" where salt is 32-char hex, hash is 64-char hex
   String _hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
+    final salt = _generateSalt();
+    return _hashPasswordWithSalt(password, salt);
+  }
+
+  /// Hash password with a specific salt (used for verification)
+  String _hashPasswordWithSalt(String password, String salt) {
+    const int iterations = 100000; // Work factor
+    const int keyLength = 32; // 32 bytes = 256-bit derived key
+
+    final hmac = Hmac(sha256, utf8.encode(password));
+    final saltBytes = utf8.encode(salt);
+
+    // PBKDF2 block 1
+    List<int> int32ToBytes(int i) {
+      return <int>[
+        (i >> 24) & 0xff,
+        (i >> 16) & 0xff,
+        (i >> 8) & 0xff,
+        i & 0xff,
+      ];
+    }
+
+    final blockIndexBytes = int32ToBytes(1);
+    var u = hmac.convert([...saltBytes, ...blockIndexBytes]).bytes;
+    final List<int> derivedBlock = List<int>.from(u);
+
+    for (int i = 1; i < iterations; i++) {
+      u = hmac.convert(u).bytes;
+      for (int j = 0; j < derivedBlock.length; j++) {
+        derivedBlock[j] ^= u[j];
+      }
+    }
+
+    final dk = derivedBlock.sublist(0, keyLength);
+    final hashHex = dk.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+
+    return '$salt\$$hashHex'; // Format: salt$hash
+  }
+
+  /// Verify a password against a stored hash
+  /// Handles format: "salt$hash"
+  bool _verifyPassword(String password, String storedHash) {
+    final parts = storedHash.split('\$');
+    if (parts.length != 2) {
+      if (kDebugMode) {
+        print('⚠️ Invalid hash format (expected salt\$hash)');
+      }
+      return false;
+    }
+
+    final salt = parts[0];
+    final expectedFullHash = _hashPasswordWithSalt(password, salt);
+
+    // Constant-time comparison to prevent timing attacks
+    if (storedHash.length != expectedFullHash.length) return false;
+    
+    int result = 0;
+    for (int i = 0; i < storedHash.length; i++) {
+      result |= storedHash.codeUnitAt(i) ^ expectedFullHash.codeUnitAt(i);
+    }
+    return result == 0;
   }
 
   /// Check if current session is valid
@@ -524,6 +591,151 @@ class SupabaseAuthService {
       if (kDebugMode) {
         print('⚠️ Failed to refresh session: $e');
       }
+    }
+  }
+
+  // ============================================================================
+  // BRANCH SELECTION (for Branch/Franchisee App)
+  // ============================================================================
+
+  /// Simple branch data for selection dropdown
+  static const String branchTypeFranchisee = 'franchisee';
+
+  /// Fetch available branches (franchisees) from Supabase
+  /// Returns a list of organization records that are franchisees
+  Future<List<Map<String, dynamic>>> fetchAvailableBranches() async {
+    try {
+      if (kDebugMode) {
+        print('📥 Fetching available branches from Supabase...');
+      }
+
+      final response = await _supabase
+          .from('organizations')
+          .select('cloud_id, name, address, phone, email, type, is_active')
+          .eq('type', branchTypeFranchisee)
+          .eq('is_active', true)
+          .order('name');
+
+      if (kDebugMode) {
+        print('   Found ${response.length} branches');
+      }
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching branches: $e');
+      }
+      return [];
+    }
+  }
+
+  /// Sign in with email/password for a specific branch
+  /// Validates that the user belongs to the selected branch
+  Future<AuthResult> signInToBranch({
+    required String email,
+    required String password,
+    required String branchCloudId,
+  }) async {
+    try {
+      if (kDebugMode) {
+        print('🔑 Signing in to branch: $branchCloudId');
+        print('   Email: $email');
+      }
+
+      // 1. Try Supabase Auth first
+      final authResponse = await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      if (authResponse.user == null) {
+        if (kDebugMode) {
+          print('❌ Auth failed: No user returned');
+        }
+        return AuthResult.failure('Invalid credentials');
+      }
+
+      if (kDebugMode) {
+        print('✅ Auth successful: ${authResponse.user!.id}');
+        print('   Auth email: ${authResponse.user!.email}');
+      }
+
+      // 2. Fetch user record from Supabase with organization check
+      if (kDebugMode) {
+        print('📥 Fetching user record...');
+        print('   Query: email=$email, organization_id=$branchCloudId, is_active=true');
+      }
+
+      final userRecords = await _supabase
+          .from('users')
+          .select('*, organizations!inner(*), roles!inner(*)')
+          .eq('email', email)
+          .eq('organization_id', branchCloudId)
+          .eq('is_active', true)
+          .limit(1);
+
+      if (kDebugMode) {
+        print('   Result: ${userRecords.length} records found');
+        if (userRecords.isNotEmpty) {
+          print('   User: ${userRecords.first}');
+        }
+      }
+
+      if (userRecords.isEmpty) {
+        // Sign out since user doesn't belong to this branch
+        await _supabase.auth.signOut();
+        if (kDebugMode) {
+          print('❌ No user record found for this email in branch $branchCloudId');
+        }
+        return AuthResult.failure('You do not have access to this branch');
+      }
+
+      final userRecord = userRecords.first;
+      final orgRecord = userRecord['organizations'] as Map<String, dynamic>;
+      final roleRecord = userRecord['roles'] as Map<String, dynamic>;
+
+      // 3. Build UserData from Supabase response
+      _currentUser = UserData(
+        id: userRecord['local_id'] ?? 0,
+        username: userRecord['username'] ?? email.split('@').first,
+        email: email,
+        fullName: userRecord['full_name'],
+        phone: userRecord['phone'],
+        organizationId: orgRecord['local_id'] ?? 0,
+        organizationCloudId: branchCloudId,
+        organizationType: orgRecord['type'] ?? 'franchisee',
+        organizationName: orgRecord['name'] ?? 'Unknown Branch',
+        roleId: roleRecord['local_id'] ?? 0,
+        roleName: roleRecord['name'] ?? 'Employee',
+        permissions: RolePermissions(
+          canViewInventory: roleRecord['can_view_inventory'] ?? false,
+          canAddInventory: roleRecord['can_add_inventory'] ?? false,
+          canEditInventory: roleRecord['can_edit_inventory'] ?? false,
+          canDeleteInventory: roleRecord['can_delete_inventory'] ?? false,
+          canViewReports: roleRecord['can_view_reports'] ?? false,
+          canExportData: roleRecord['can_export_data'] ?? false,
+          canAccessSettings: roleRecord['can_access_settings'] ?? false,
+          canManageEmployees: roleRecord['can_manage_employees'] ?? false,
+          canManageRoles: roleRecord['can_manage_roles'] ?? false,
+        ),
+        cloudId: userRecord['cloud_id'],
+        authUserId: authResponse.user!.id,
+      );
+
+      _authStateController?.add(_currentUser);
+
+      return AuthResult.success(
+        user: authResponse.user,
+        localUser: _currentUser,
+        message: 'Signed in to ${_currentUser!.organizationName}',
+      );
+    } on AuthException catch (e) {
+      return AuthResult.failure(e.message);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Sign in to branch error: $e');
+      }
+      return AuthResult.failure('Sign in failed: $e');
     }
   }
 

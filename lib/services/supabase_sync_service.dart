@@ -10,7 +10,7 @@ import 'package:flutter/foundation.dart';
 /// ============================================================================
 /// OPTIMIZED SUPABASE SYNC SERVICE WITH STAR TOPOLOGY SUPPORT
 /// ============================================================================
-/// 
+///
 /// Key Features:
 /// - UUID cache for faster foreign key resolution
 /// - Local integer IDs ↔ Cloud UUIDs mapping
@@ -20,16 +20,18 @@ import 'package:flutter/foundation.dart';
 /// - Connection pooling and request coalescing
 /// - Progress tracking with granular updates
 /// - Selective sync based on organization context
+/// - RLS-aware: Requires authenticated user for sync operations
 /// ============================================================================
 class SupabaseSyncService {
   final AppDatabase db;
   final SupabaseClient supabase;
+
   Timer? _syncTimer;
   bool _isSyncing = false;
   bool _isOnline = true;
   DateTime? _lastSuccessfulSync;
   StreamSubscription? _connectivitySubscription;
-  
+
   // ✅ UUID cache for O(1) lookups
   final Map<String, Map<int, String>> _localToCloudCache = {
     'organizations': {},
@@ -41,7 +43,7 @@ class SupabaseSyncService {
     'stock_replenishment_requests': {},
     'stock_change_requests': {},
   };
-  
+
   // ✅ Reverse cache for cloud to local lookups
   final Map<String, Map<String, int>> _cloudToLocalCache = {
     'organizations': {},
@@ -53,7 +55,7 @@ class SupabaseSyncService {
     'stock_replenishment_requests': {},
     'stock_change_requests': {},
   };
-  
+
   // ✅ Configuration - Optimized values
   static const Duration syncInterval = Duration(minutes: 5);
   static const int batchSize = 50; // Reduced for faster response
@@ -61,23 +63,39 @@ class SupabaseSyncService {
   static const Duration initialRetryDelay = Duration(seconds: 1);
   static const Duration connectionTimeout = Duration(seconds: 15);
   static const Duration requestTimeout = Duration(seconds: 30);
-  
+
   // ✅ Organization context for star topology
   int? _currentOrganizationId;
   String? _currentOrganizationCloudId;
   String? _currentOrganizationType; // 'commissary' or 'franchisee'
   int? _parentCommissaryId;
   String? _parentCommissaryCloudId;
-  
+
   // Callbacks for UI updates
   Function(bool isOnline)? onConnectivityChanged;
   Function(String status)? onSyncStatusChanged;
   Function(String error)? onSyncError;
   Function(double progress, String tableName)? onSyncProgress;
   Function()? onSyncComplete;
-  
+
   final Uuid _uuid = const Uuid();
-  
+
+  /// Get the client to use for sync operations
+  /// Uses the main supabase client which respects RLS policies
+  /// Sync operations require an authenticated user session
+  SupabaseClient get _syncClient {
+    // Check if user is authenticated
+    if (supabase.auth.currentUser == null) {
+      if (kDebugMode) {
+        print('⚠️ Sync client: No authenticated user - some operations may fail');
+      }
+    }
+    return supabase;
+  }
+
+  /// Check if sync is allowed (user must be authenticated)
+  bool get canSync => supabase.auth.currentUser != null;
+
   SupabaseSyncService({
     required this.db,
     required this.supabase,
@@ -99,37 +117,41 @@ class SupabaseSyncService {
     int? parentCommissaryId,
   }) async {
     print('🚀 Initializing optimized sync service...');
-    
+
     try {
       // Set organization context for star topology
       _currentOrganizationId = organizationId;
       _currentOrganizationType = organizationType;
       _parentCommissaryId = parentCommissaryId;
-      
+
       // Check initial connectivity
       _isOnline = await _checkConnectivity();
       onConnectivityChanged?.call(_isOnline);
-      
+
       // Build UUID caches from local database
       await _buildCaches();
-      
+
       // Load organization cloud IDs
       await _loadOrganizationCloudIds();
-      
+
       // Start periodic sync
       startPeriodicSync();
-      
+
       // Listen to connectivity changes
       _connectivitySubscription?.cancel();
-      _connectivitySubscription = Connectivity().onConnectivityChanged.listen(_handleConnectivityChange);
-      
+      _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+        _handleConnectivityChange,
+      );
+
       // Initial sync if online
       if (_isOnline) {
         // Delay initial sync slightly to let UI settle
         Future.delayed(const Duration(seconds: 2), () => syncAll());
       }
-      
-      print('✅ Sync service initialized (${_currentOrganizationType ?? 'unknown'} mode)');
+
+      print(
+        '✅ Sync service initialized (${_currentOrganizationType ?? 'unknown'} mode)',
+      );
     } catch (e, stackTrace) {
       print('❌ Failed to initialize sync service: $e');
       if (kDebugMode) print(stackTrace);
@@ -141,10 +163,10 @@ class SupabaseSyncService {
   void _handleConnectivityChange(ConnectivityResult result) {
     final wasOnline = _isOnline;
     _isOnline = result != ConnectivityResult.none;
-    
+
     if (wasOnline != _isOnline) {
       onConnectivityChanged?.call(_isOnline);
-      
+
       if (_isOnline) {
         print('📡 Network restored, triggering sync...');
         syncAll();
@@ -158,10 +180,16 @@ class SupabaseSyncService {
   /// Load organization cloud IDs for context
   Future<void> _loadOrganizationCloudIds() async {
     if (_currentOrganizationId != null) {
-      _currentOrganizationCloudId = _getCloudId('organizations', _currentOrganizationId);
+      _currentOrganizationCloudId = _getCloudId(
+        'organizations',
+        _currentOrganizationId,
+      );
     }
     if (_parentCommissaryId != null) {
-      _parentCommissaryCloudId = _getCloudId('organizations', _parentCommissaryId);
+      _parentCommissaryCloudId = _getCloudId(
+        'organizations',
+        _parentCommissaryId,
+      );
     }
   }
 
@@ -173,26 +201,55 @@ class SupabaseSyncService {
   Future<void> _buildCaches() async {
     print('🔧 Building UUID caches...');
     final stopwatch = Stopwatch()..start();
-    
+
     try {
       await Future.wait([
-        _cacheTable('organizations', () => db.organizationsDao.getAllOrganizations(), 
-            (org) => org.cloudId, (org) => org.id),
-        _cacheTable('roles', () => db.rolesDao.getAllRoles(), 
-            (role) => role.cloudId, (role) => role.id),
-        _cacheTable('users', () => db.usersDao.getAllUsers(), 
-            (user) => user.cloudId, (user) => user.id),
-        _cacheTable('items', () => db.itemsDao.getAllItems(), 
-            (item) => item.cloudId, (item) => item.id),
-        _cacheTable('ingredients', () => db.ingredientsDao.getAllIngredients(), 
-            (ing) => ing.cloudId, (ing) => ing.id),
-        _cacheTable('recipe_ingredients', () => db.recipeIngredientsDao.getAllRecipeIngredients(), 
-            (ri) => ri.cloudId, (ri) => ri.id),
+        _cacheTable(
+          'organizations',
+          () => db.organizationsDao.getAllOrganizations(),
+          (org) => org.cloudId,
+          (org) => org.id,
+        ),
+        _cacheTable(
+          'roles',
+          () => db.rolesDao.getAllRoles(),
+          (role) => role.cloudId,
+          (role) => role.id,
+        ),
+        _cacheTable(
+          'users',
+          () => db.usersDao.getAllUsers(),
+          (user) => user.cloudId,
+          (user) => user.id,
+        ),
+        _cacheTable(
+          'items',
+          () => db.itemsDao.getAllItems(),
+          (item) => item.cloudId,
+          (item) => item.id,
+        ),
+        _cacheTable(
+          'ingredients',
+          () => db.ingredientsDao.getAllIngredients(),
+          (ing) => ing.cloudId,
+          (ing) => ing.id,
+        ),
+        _cacheTable(
+          'recipe_ingredients',
+          () => db.recipeIngredientsDao.getAllRecipeIngredients(),
+          (ri) => ri.cloudId,
+          (ri) => ri.id,
+        ),
       ]);
-      
+
       stopwatch.stop();
-      final totalEntries = _localToCloudCache.values.fold(0, (sum, map) => sum + map.length);
-      print('✅ Caches built: $totalEntries entries in ${stopwatch.elapsedMilliseconds}ms');
+      final totalEntries = _localToCloudCache.values.fold(
+        0,
+        (sum, map) => sum + map.length,
+      );
+      print(
+        '✅ Caches built: $totalEntries entries in ${stopwatch.elapsedMilliseconds}ms',
+      );
     } catch (e) {
       print('⚠️ Error building caches: $e');
     }
@@ -208,7 +265,7 @@ class SupabaseSyncService {
     final items = await getAll();
     _localToCloudCache[tableName]!.clear();
     _cloudToLocalCache[tableName]!.clear();
-    
+
     for (final item in items) {
       final cloudId = getCloudId(item);
       final localId = getLocalId(item);
@@ -249,8 +306,9 @@ class SupabaseSyncService {
 
   Future<bool> _checkConnectivity() async {
     try {
-      final result = await Connectivity().checkConnectivity()
-          .timeout(const Duration(seconds: 5));
+      final result = await Connectivity().checkConnectivity().timeout(
+        const Duration(seconds: 5),
+      );
       return result != ConnectivityResult.none;
     } catch (e) {
       print('⚠️ Connectivity check failed: $e');
@@ -287,59 +345,67 @@ class SupabaseSyncService {
       return;
     }
 
+    // Check if user is authenticated (required for RLS-protected operations)
+    if (!canSync) {
+      print('🔒 Not authenticated, sync skipped (login required)');
+      onSyncStatusChanged?.call('Not authenticated');
+      return;
+    }
+
     _isSyncing = true;
-    
+
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         onSyncStatusChanged?.call('Syncing...');
-        
+
         print('🔄 Starting sync (attempt $attempt/$maxRetries)...');
-        print('   Mode: ${_currentOrganizationType ?? 'full'} | Org: $_currentOrganizationId');
+        print(
+          '   Mode: ${_currentOrganizationType ?? 'full'} | Org: $_currentOrganizationId',
+        );
         final startTime = DateTime.now();
-        
+
         // ✅ Sync in dependency order to avoid FK conflicts
         final syncSteps = _getSyncSteps();
-        
+
         for (int i = 0; i < syncSteps.length; i++) {
           final step = syncSteps[i];
           await _syncTableWithRetry(step.name, step.sync);
           onSyncProgress?.call((i + 1) / syncSteps.length, step.name);
         }
-        
+
         _lastSuccessfulSync = DateTime.now();
         final duration = _lastSuccessfulSync!.difference(startTime);
-        
+
         print('✅ Sync completed in ${duration.inSeconds}s');
         onSyncStatusChanged?.call('Synced');
         onSyncComplete?.call();
-        
+
         // Rebuild caches after successful sync
         await _buildCaches();
-        
+
         // Cleanup old deleted records
         await _cleanupDeletedRecords();
-        
+
         _isSyncing = false;
         return;
-        
       } catch (e, stackTrace) {
         print('❌ Sync attempt $attempt failed: $e');
         if (kDebugMode) print(stackTrace);
-        
+
         if (attempt == maxRetries) {
           onSyncError?.call('Sync failed after $maxRetries attempts: $e');
           onSyncStatusChanged?.call('Sync failed');
           _isSyncing = false;
           return;
         }
-        
+
         // Exponential backoff with jitter
         final delay = _calculateBackoff(attempt);
         print('⏳ Retrying in ${delay.inSeconds}s...');
         await Future.delayed(delay);
       }
     }
-    
+
     _isSyncing = false;
   }
 
@@ -365,7 +431,10 @@ class SupabaseSyncService {
   }
 
   /// Sync table with isolated error handling
-  Future<void> _syncTableWithRetry(String tableName, Future<void> Function() syncFunction) async {
+  Future<void> _syncTableWithRetry(
+    String tableName,
+    Future<void> Function() syncFunction,
+  ) async {
     try {
       print('📊 Syncing $tableName...');
       await syncFunction().timeout(requestTimeout);
@@ -404,12 +473,15 @@ class SupabaseSyncService {
 
       for (final org in unsynced) {
         if (!org.isActive) continue;
-        
+
         final cloudId = org.cloudId ?? _uuid.v4();
         cloudIdMap[org.id] = cloudId;
         _updateCache('organizations', org.id, cloudId);
 
-        final parentCloudId = _getCloudId('organizations', org.parentCommissaryId);
+        final parentCloudId = _getCloudId(
+          'organizations',
+          org.parentCommissaryId,
+        );
 
         batchData.add({
           'cloud_id': cloudId,
@@ -429,7 +501,9 @@ class SupabaseSyncService {
       }
 
       if (batchData.isNotEmpty) {
-        await supabase.from('organizations').upsert(batchData, onConflict: 'cloud_id');
+        await _syncClient
+            .from('organizations')
+            .upsert(batchData, onConflict: 'cloud_id');
         totalPushed += batchData.length;
       }
 
@@ -445,8 +519,9 @@ class SupabaseSyncService {
 
   Future<void> _pullOrganizations() async {
     try {
-      final lastSync = _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
-      
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
       // RLS will filter based on user's organization automatically
       final cloudOrgs = await supabase
           .from('organizations')
@@ -457,22 +532,22 @@ class SupabaseSyncService {
 
       if (cloudOrgs.isNotEmpty) {
         final resolvedOrgs = <Map<String, dynamic>>[];
-        
+
         for (final cloudOrg in cloudOrgs) {
           int? parentId;
           if (cloudOrg['parent_commissary_id'] != null) {
-            parentId = _getLocalId('organizations', cloudOrg['parent_commissary_id']);
+            parentId = _getLocalId(
+              'organizations',
+              cloudOrg['parent_commissary_id'],
+            );
           }
-          
-          resolvedOrgs.add({
-            ...cloudOrg,
-            'parent_commissary_id': parentId,
-          });
+
+          resolvedOrgs.add({...cloudOrg, 'parent_commissary_id': parentId});
         }
-        
+
         await db.organizationsDao.upsertBatchFromCloud(resolvedOrgs);
         print('   ↓ Pulled ${resolvedOrgs.length} organizations');
-        
+
         // Update caches
         for (final org in resolvedOrgs) {
           if (org['cloud_id'] != null && org['local_id'] != null) {
@@ -540,7 +615,9 @@ class SupabaseSyncService {
       }
 
       if (batchData.isNotEmpty) {
-        await supabase.from('roles').upsert(batchData, onConflict: 'cloud_id');
+        await _syncClient
+            .from('roles')
+            .upsert(batchData, onConflict: 'cloud_id');
         totalPushed += batchData.length;
       }
 
@@ -556,8 +633,9 @@ class SupabaseSyncService {
 
   Future<void> _pullRoles() async {
     try {
-      final lastSync = _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
-      
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
       final cloudRoles = await supabase
           .from('roles')
           .select()
@@ -568,7 +646,7 @@ class SupabaseSyncService {
       if (cloudRoles.isNotEmpty) {
         await db.rolesDao.upsertBatchFromCloud(cloudRoles);
         print('   ↓ Pulled ${cloudRoles.length} roles');
-        
+
         for (final role in cloudRoles) {
           if (role['cloud_id'] != null && role['local_id'] != null) {
             _updateCache('roles', role['local_id'], role['cloud_id']);
@@ -639,7 +717,9 @@ class SupabaseSyncService {
       }
 
       if (batchData.isNotEmpty) {
-        await supabase.from('users').upsert(batchData, onConflict: 'cloud_id');
+        await _syncClient
+            .from('users')
+            .upsert(batchData, onConflict: 'cloud_id');
         totalPushed += batchData.length;
       }
 
@@ -656,8 +736,9 @@ class SupabaseSyncService {
 
   Future<void> _pullUsers() async {
     try {
-      final lastSync = _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
-      
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
       // RLS filters users based on organization
       final cloudUsers = await supabase
           .from('users')
@@ -668,20 +749,23 @@ class SupabaseSyncService {
 
       if (cloudUsers.isNotEmpty) {
         final resolvedUsers = <Map<String, dynamic>>[];
-        
+
         for (final cloudUser in cloudUsers) {
-          final orgId = _getLocalId('organizations', cloudUser['organization_id']);
+          final orgId = _getLocalId(
+            'organizations',
+            cloudUser['organization_id'],
+          );
           final roleId = _getLocalId('roles', cloudUser['role_id']);
-          
+
           if (orgId == null || roleId == null) continue;
-          
+
           resolvedUsers.add({
             ...cloudUser,
             'organization_id': orgId,
             'role_id': roleId,
           });
         }
-        
+
         if (resolvedUsers.isNotEmpty) {
           await db.usersDao.upsertBatchFromCloud(resolvedUsers);
           print('   ↓ Pulled ${resolvedUsers.length} users');
@@ -755,7 +839,9 @@ class SupabaseSyncService {
       }
 
       if (batchData.isNotEmpty) {
-        await supabase.from('items').upsert(batchData, onConflict: 'cloud_id');
+        await _syncClient
+            .from('items')
+            .upsert(batchData, onConflict: 'cloud_id');
         totalPushed += batchData.length;
       }
 
@@ -772,8 +858,9 @@ class SupabaseSyncService {
 
   Future<void> _pullItems() async {
     try {
-      final lastSync = _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
-      
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
       // RLS handles filtering - commissary sees all, franchisee sees own + master items
       final cloudItems = await supabase
           .from('items')
@@ -784,20 +871,26 @@ class SupabaseSyncService {
 
       if (cloudItems.isNotEmpty) {
         final resolvedItems = <Map<String, dynamic>>[];
-        
+
         for (final cloudItem in cloudItems) {
-          final orgId = _getLocalId('organizations', cloudItem['organization_id']);
-          final masterItemId = _getLocalId('items', cloudItem['master_item_id']);
-          
+          final orgId = _getLocalId(
+            'organizations',
+            cloudItem['organization_id'],
+          );
+          final masterItemId = _getLocalId(
+            'items',
+            cloudItem['master_item_id'],
+          );
+
           if (orgId == null) continue;
-          
+
           resolvedItems.add({
             ...cloudItem,
             'organization_id': orgId,
             'master_item_id': masterItemId,
           });
         }
-        
+
         if (resolvedItems.isNotEmpty) {
           // Process in batches
           for (int i = 0; i < resolvedItems.length; i += batchSize) {
@@ -842,7 +935,10 @@ class SupabaseSyncService {
         if (ingredient.isDeleted) continue;
 
         final cloudId = ingredient.cloudId ?? _uuid.v4();
-        final commissaryCloudId = _getCloudId('organizations', ingredient.commissaryId);
+        final commissaryCloudId = _getCloudId(
+          'organizations',
+          ingredient.commissaryId,
+        );
 
         if (commissaryCloudId == null) continue;
 
@@ -867,7 +963,9 @@ class SupabaseSyncService {
       }
 
       if (batchData.isNotEmpty) {
-        await supabase.from('ingredients').upsert(batchData, onConflict: 'cloud_id');
+        await _syncClient
+            .from('ingredients')
+            .upsert(batchData, onConflict: 'cloud_id');
         totalPushed += batchData.length;
       }
 
@@ -883,8 +981,9 @@ class SupabaseSyncService {
 
   Future<void> _pullIngredients() async {
     try {
-      final lastSync = _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
-      
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
       final cloudIngredients = await supabase
           .from('ingredients')
           .select()
@@ -894,18 +993,21 @@ class SupabaseSyncService {
 
       if (cloudIngredients.isNotEmpty) {
         final resolvedIngredients = <Map<String, dynamic>>[];
-        
+
         for (final cloudIngredient in cloudIngredients) {
-          final commissaryId = _getLocalId('organizations', cloudIngredient['commissary_id']);
-          
+          final commissaryId = _getLocalId(
+            'organizations',
+            cloudIngredient['commissary_id'],
+          );
+
           if (commissaryId == null) continue;
-          
+
           resolvedIngredients.add({
             ...cloudIngredient,
             'commissary_id': commissaryId,
           });
         }
-        
+
         if (resolvedIngredients.isNotEmpty) {
           await db.ingredientsDao.upsertBatchFromCloud(resolvedIngredients);
           print('   ↓ Pulled ${resolvedIngredients.length} ingredients');
@@ -930,10 +1032,8 @@ class SupabaseSyncService {
     int offset = 0;
 
     while (true) {
-      final unsynced = await db.recipeIngredientsDao.getUnsyncedRecipeIngredients(
-        limit: batchSize,
-        offset: offset,
-      );
+      final unsynced = await db.recipeIngredientsDao
+          .getUnsyncedRecipeIngredients(limit: batchSize, offset: offset);
 
       if (unsynced.isEmpty) break;
 
@@ -946,7 +1046,10 @@ class SupabaseSyncService {
 
         final cloudId = recipe.cloudId ?? _uuid.v4();
         final itemCloudId = _getCloudId('items', recipe.itemId);
-        final ingredientCloudId = _getCloudId('ingredients', recipe.ingredientId);
+        final ingredientCloudId = _getCloudId(
+          'ingredients',
+          recipe.ingredientId,
+        );
 
         if (itemCloudId == null || ingredientCloudId == null) continue;
 
@@ -969,12 +1072,17 @@ class SupabaseSyncService {
       }
 
       if (batchData.isNotEmpty) {
-        await supabase.from('recipe_ingredients').upsert(batchData, onConflict: 'cloud_id');
+        await _syncClient
+            .from('recipe_ingredients')
+            .upsert(batchData, onConflict: 'cloud_id');
         totalPushed += batchData.length;
       }
 
       if (syncedIds.isNotEmpty) {
-        await db.recipeIngredientsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+        await db.recipeIngredientsDao.markAsSynced(
+          syncedIds,
+          cloudIds: cloudIdMap,
+        );
       }
 
       offset += batchSize;
@@ -985,8 +1093,9 @@ class SupabaseSyncService {
 
   Future<void> _pullRecipeIngredients() async {
     try {
-      final lastSync = _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
-      
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
       final cloudRecipes = await supabase
           .from('recipe_ingredients')
           .select()
@@ -996,20 +1105,23 @@ class SupabaseSyncService {
 
       if (cloudRecipes.isNotEmpty) {
         final resolvedRecipes = <Map<String, dynamic>>[];
-        
+
         for (final cloudRecipe in cloudRecipes) {
           final itemId = _getLocalId('items', cloudRecipe['item_id']);
-          final ingredientId = _getLocalId('ingredients', cloudRecipe['ingredient_id']);
-          
+          final ingredientId = _getLocalId(
+            'ingredients',
+            cloudRecipe['ingredient_id'],
+          );
+
           if (itemId == null || ingredientId == null) continue;
-          
+
           resolvedRecipes.add({
             ...cloudRecipe,
             'item_id': itemId,
             'ingredient_id': ingredientId,
           });
         }
-        
+
         if (resolvedRecipes.isNotEmpty) {
           await db.recipeIngredientsDao.upsertBatchFromCloud(resolvedRecipes);
           print('   ↓ Pulled ${resolvedRecipes.length} recipe ingredients');
@@ -1034,10 +1146,8 @@ class SupabaseSyncService {
     int offset = 0;
 
     while (true) {
-      final unsynced = await db.stockReplenishmentRequestsDao.getUnsyncedRequests(
-        limit: batchSize,
-        offset: offset,
-      );
+      final unsynced = await db.stockReplenishmentRequestsDao
+          .getUnsyncedRequests(limit: batchSize, offset: offset);
 
       if (unsynced.isEmpty) break;
 
@@ -1049,14 +1159,23 @@ class SupabaseSyncService {
         if (request.isDeleted) continue;
 
         final cloudId = request.cloudId ?? _uuid.v4();
-        final franchiseeCloudId = _getCloudId('organizations', request.franchiseeId);
-        final commissaryCloudId = _getCloudId('organizations', request.commissaryId);
+        final franchiseeCloudId = _getCloudId(
+          'organizations',
+          request.franchiseeId,
+        );
+        final commissaryCloudId = _getCloudId(
+          'organizations',
+          request.commissaryId,
+        );
         final itemCloudId = _getCloudId('items', request.itemId);
         final requestedByCloudId = _getCloudId('users', request.requestedBy);
         final reviewedByCloudId = _getCloudId('users', request.reviewedBy);
 
-        if (franchiseeCloudId == null || commissaryCloudId == null || 
-            itemCloudId == null || requestedByCloudId == null) continue;
+        if (franchiseeCloudId == null ||
+            commissaryCloudId == null ||
+            itemCloudId == null ||
+            requestedByCloudId == null)
+          continue;
 
         cloudIdMap[request.id] = cloudId;
 
@@ -1083,24 +1202,31 @@ class SupabaseSyncService {
       }
 
       if (batchData.isNotEmpty) {
-        await supabase.from('stock_replenishment_requests').upsert(batchData, onConflict: 'cloud_id');
+        await _syncClient
+            .from('stock_replenishment_requests')
+            .upsert(batchData, onConflict: 'cloud_id');
         totalPushed += batchData.length;
       }
 
       if (syncedIds.isNotEmpty) {
-        await db.stockReplenishmentRequestsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+        await db.stockReplenishmentRequestsDao.markAsSynced(
+          syncedIds,
+          cloudIds: cloudIdMap,
+        );
       }
 
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed replenishment requests');
+    if (totalPushed > 0)
+      print('   ↑ Pushed $totalPushed replenishment requests');
   }
 
   Future<void> _pullReplenishmentRequests() async {
     try {
-      final lastSync = _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
-      
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
       // RLS filters: Commissary sees requests to them, Franchisee sees own requests
       final cloudRequests = await supabase
           .from('stock_replenishment_requests')
@@ -1111,17 +1237,32 @@ class SupabaseSyncService {
 
       if (cloudRequests.isNotEmpty) {
         final resolvedRequests = <Map<String, dynamic>>[];
-        
+
         for (final cloudRequest in cloudRequests) {
-          final franchiseeId = _getLocalId('organizations', cloudRequest['franchisee_id']);
-          final commissaryId = _getLocalId('organizations', cloudRequest['commissary_id']);
+          final franchiseeId = _getLocalId(
+            'organizations',
+            cloudRequest['franchisee_id'],
+          );
+          final commissaryId = _getLocalId(
+            'organizations',
+            cloudRequest['commissary_id'],
+          );
           final itemId = _getLocalId('items', cloudRequest['item_id']);
-          final requestedById = _getLocalId('users', cloudRequest['requested_by']);
-          final reviewedById = _getLocalId('users', cloudRequest['reviewed_by']);
-          
-          if (franchiseeId == null || commissaryId == null || 
-              itemId == null || requestedById == null) continue;
-          
+          final requestedById = _getLocalId(
+            'users',
+            cloudRequest['requested_by'],
+          );
+          final reviewedById = _getLocalId(
+            'users',
+            cloudRequest['reviewed_by'],
+          );
+
+          if (franchiseeId == null ||
+              commissaryId == null ||
+              itemId == null ||
+              requestedById == null)
+            continue;
+
           resolvedRequests.add({
             ...cloudRequest,
             'franchisee_id': franchiseeId,
@@ -1131,10 +1272,14 @@ class SupabaseSyncService {
             'reviewed_by': reviewedById,
           });
         }
-        
+
         if (resolvedRequests.isNotEmpty) {
-          await db.stockReplenishmentRequestsDao.upsertBatchFromCloud(resolvedRequests);
-          print('   ↓ Pulled ${resolvedRequests.length} replenishment requests');
+          await db.stockReplenishmentRequestsDao.upsertBatchFromCloud(
+            resolvedRequests,
+          );
+          print(
+            '   ↓ Pulled ${resolvedRequests.length} replenishment requests',
+          );
         }
       }
     } catch (e) {
@@ -1156,10 +1301,8 @@ class SupabaseSyncService {
     int offset = 0;
 
     while (true) {
-      final unsynced = await db.stockChangeRequestsDao.getUnsyncedChangeRequests(
-        limit: batchSize,
-        offset: offset,
-      );
+      final unsynced = await db.stockChangeRequestsDao
+          .getUnsyncedChangeRequests(limit: batchSize, offset: offset);
 
       if (unsynced.isEmpty) break;
 
@@ -1171,12 +1314,18 @@ class SupabaseSyncService {
         if (request.isDeleted) continue;
 
         final cloudId = request.cloudId ?? _uuid.v4();
-        final franchiseeCloudId = _getCloudId('organizations', request.franchiseeId);
+        final franchiseeCloudId = _getCloudId(
+          'organizations',
+          request.franchiseeId,
+        );
         final itemCloudId = _getCloudId('items', request.itemId);
         final requestedByCloudId = _getCloudId('users', request.requestedBy);
         final reviewedByCloudId = _getCloudId('users', request.reviewedBy);
 
-        if (franchiseeCloudId == null || itemCloudId == null || requestedByCloudId == null) continue;
+        if (franchiseeCloudId == null ||
+            itemCloudId == null ||
+            requestedByCloudId == null)
+          continue;
 
         cloudIdMap[request.id] = cloudId;
 
@@ -1204,12 +1353,17 @@ class SupabaseSyncService {
       }
 
       if (batchData.isNotEmpty) {
-        await supabase.from('stock_change_requests').upsert(batchData, onConflict: 'cloud_id');
+        await _syncClient
+            .from('stock_change_requests')
+            .upsert(batchData, onConflict: 'cloud_id');
         totalPushed += batchData.length;
       }
 
       if (syncedIds.isNotEmpty) {
-        await db.stockChangeRequestsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+        await db.stockChangeRequestsDao.markAsSynced(
+          syncedIds,
+          cloudIds: cloudIdMap,
+        );
       }
 
       offset += batchSize;
@@ -1220,8 +1374,9 @@ class SupabaseSyncService {
 
   Future<void> _pullChangeRequests() async {
     try {
-      final lastSync = _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
-      
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
       final cloudRequests = await supabase
           .from('stock_change_requests')
           .select()
@@ -1231,15 +1386,25 @@ class SupabaseSyncService {
 
       if (cloudRequests.isNotEmpty) {
         final resolvedRequests = <Map<String, dynamic>>[];
-        
+
         for (final cloudRequest in cloudRequests) {
-          final franchiseeId = _getLocalId('organizations', cloudRequest['franchisee_id']);
+          final franchiseeId = _getLocalId(
+            'organizations',
+            cloudRequest['franchisee_id'],
+          );
           final itemId = _getLocalId('items', cloudRequest['item_id']);
-          final requestedById = _getLocalId('users', cloudRequest['requested_by']);
-          final reviewedById = _getLocalId('users', cloudRequest['reviewed_by']);
-          
-          if (franchiseeId == null || itemId == null || requestedById == null) continue;
-          
+          final requestedById = _getLocalId(
+            'users',
+            cloudRequest['requested_by'],
+          );
+          final reviewedById = _getLocalId(
+            'users',
+            cloudRequest['reviewed_by'],
+          );
+
+          if (franchiseeId == null || itemId == null || requestedById == null)
+            continue;
+
           resolvedRequests.add({
             ...cloudRequest,
             'franchisee_id': franchiseeId,
@@ -1248,9 +1413,11 @@ class SupabaseSyncService {
             'reviewed_by': reviewedById,
           });
         }
-        
+
         if (resolvedRequests.isNotEmpty) {
-          await db.stockChangeRequestsDao.upsertBatchFromCloud(resolvedRequests);
+          await db.stockChangeRequestsDao.upsertBatchFromCloud(
+            resolvedRequests,
+          );
           print('   ↓ Pulled ${resolvedRequests.length} change requests');
         }
       }
@@ -1267,16 +1434,16 @@ class SupabaseSyncService {
   Future<void> _cleanupDeletedRecords() async {
     try {
       print('🧹 Cleaning up deleted records...');
-      
+
       final results = await Future.wait([
         db.itemsDao.cleanupDeletedItems(),
         db.usersDao.cleanupDeletedUsers(),
         db.rolesDao.cleanupDeletedRoles(),
         db.categoriesDao.cleanupDeletedCategories(),
       ]);
-      
+
       final totalCleaned = results.fold(0, (sum, count) => sum + count);
-      
+
       if (totalCleaned > 0) {
         print('✅ Cleaned up $totalCleaned deleted records');
       }
@@ -1304,7 +1471,7 @@ class SupabaseSyncService {
         db.stockReplenishmentRequestsDao.getUnsyncedRequestCount(),
         db.stockChangeRequestsDao.getUnsyncedChangeRequestCount(),
       ]);
-      
+
       return {
         'unsynced_items': counts[0],
         'unsynced_users': counts[1],
@@ -1318,7 +1485,10 @@ class SupabaseSyncService {
         'is_syncing': _isSyncing,
         'is_online': _isOnline,
         'last_sync': _lastSuccessfulSync?.toIso8601String() ?? 'Never',
-        'cache_size': _localToCloudCache.values.fold(0, (sum, map) => sum + map.length),
+        'cache_size': _localToCloudCache.values.fold(
+          0,
+          (sum, map) => sum + map.length,
+        ),
         'organization_type': _currentOrganizationType,
         'organization_id': _currentOrganizationId,
       };
@@ -1341,7 +1511,7 @@ class SupabaseSyncService {
     _currentOrganizationType = organizationType;
     _parentCommissaryId = parentCommissaryId;
     _loadOrganizationCloudIds();
-    
+
     print('📍 Sync context updated: $organizationType org #$organizationId');
   }
 
@@ -1359,6 +1529,6 @@ class SupabaseSyncService {
 class _SyncStep {
   final String name;
   final Future<void> Function() sync;
-  
+
   _SyncStep(this.name, this.sync);
 }
