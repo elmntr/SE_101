@@ -24,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Map<String, dynamic>? _selectedBranch;
   bool _isLoadingBranches = true;
   String? _branchLoadError;
+  bool _isOfflineMode = false; // Track if branches loaded from cache
 
   late final SupabaseAuthService _authService;
 
@@ -43,16 +44,20 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _isLoadingBranches = true;
       _branchLoadError = null;
+      _isOfflineMode = false;
     });
 
     try {
-      final branches = await _authService.fetchAvailableBranches();
+      final result = await _authService.fetchAvailableBranches();
       if (mounted) {
         setState(() {
-          _branches = branches;
+          _branches = result.branches;
+          _isOfflineMode = result.isOffline;
           _isLoadingBranches = false;
-          if (branches.isEmpty) {
-            _branchLoadError = 'No branches available';
+          if (result.branches.isEmpty) {
+            _branchLoadError = result.isOffline 
+                ? 'No branches cached. Please connect to internet for first login.'
+                : 'No branches available';
           }
         });
       }
@@ -238,52 +243,83 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return SizedBox(
       width: width,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: DropdownButtonFormField<String>(
-            value: _selectedBranch?['cloud_id'] as String?,
-            decoration: const InputDecoration(
-              labelText: 'Select Branch',
-              border: InputBorder.none,
-              prefixIcon: Icon(Icons.store),
-            ),
-            hint: const Text('Choose your branch'),
-            isExpanded: true,
-            items: _branches.map((branch) {
-              return DropdownMenuItem<String>(
-                value: branch['cloud_id'] as String,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      branch['name'] as String? ?? 'Unknown',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+      child: Column(
+        children: [
+          // Offline mode indicator
+          if (_isOfflineMode)
+            Container(
+              width: width,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade300),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.wifi_off, size: 16, color: Colors.orange.shade800),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Offline Mode - Using cached data',
+                    style: TextStyle(
+                      color: Colors.orange.shade800,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
-                    if (branch['address'] != null)
-                      Text(
-                        branch['address'] as String,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: DropdownButtonFormField<String>(
+                value: _selectedBranch?['cloud_id'] as String?,
+                decoration: const InputDecoration(
+                  labelText: 'Select Branch',
+                  border: InputBorder.none,
+                  prefixIcon: Icon(Icons.store),
                 ),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedBranch = _branches.firstWhere(
-                  (b) => b['cloud_id'] == value,
-                  orElse: () => {},
-                );
-              });
-            },
+                hint: const Text('Choose your branch'),
+                isExpanded: true,
+                items: _branches.map((branch) {
+                  return DropdownMenuItem<String>(
+                    value: branch['cloud_id'] as String,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          branch['name'] as String? ?? 'Unknown',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        if (branch['address'] != null)
+                          Text(
+                            branch['address'] as String,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedBranch = _branches.firstWhere(
+                      (b) => b['cloud_id'] == value,
+                      orElse: () => {},
+                    );
+                  });
+                },
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

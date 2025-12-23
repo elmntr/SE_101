@@ -80,7 +80,8 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   final bool _seedData;
 
-  AppDatabase({bool seedData = true})
+  /// Set seedData to false - data will come from cloud sync
+  AppDatabase({bool seedData = false})
     : _seedData = seedData,
       super(_openConnection());
 
