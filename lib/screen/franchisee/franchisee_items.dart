@@ -50,6 +50,10 @@ class _ItemsPageState extends State<ItemsPage> {
 
   // ✅ SHOW ITEM DETAILS DIALOG
   void _showItemDetails(Item item) {
+    final TextEditingController priceController = TextEditingController(text: "100");
+    final TextEditingController soldController = TextEditingController(text: item.sold.toString());
+    final TextEditingController spoilageController = TextEditingController(text: item.spoilage.toString());
+    int? selectedCategoryId = item.categoryId;
     // ✅ Get category name from categoryMap using item.categoryId
     final categoryName = item.categoryId != null 
         ? (categoryMap[item.categoryId] ?? "Uncategorized")
@@ -99,8 +103,13 @@ class _ItemsPageState extends State<ItemsPage> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          Text(
-                            "₱ $price", // TODO: Replace with item.price
+                          TextField(
+                            controller: priceController, // TODO: Replace with item.price
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -130,18 +139,31 @@ class _ItemsPageState extends State<ItemsPage> {
                             const SizedBox(height: 4),
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.grey[300]!),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                categoryName, // Up
-                                style: const TextStyle(fontSize: 14),
-                              ),
+                              child: DropdownButtonFormField<int>(
+                                value: selectedCategoryId,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 4),
+                                ),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text("Uncategorized")
+                                  ),
+                                  ...categoryMap.entries.map((entry) => DropdownMenuItem<int>(
+                                    value: entry.key,
+                                    child: Text(entry.value),
+                                  )),
+                                ],
+                                onChanged: (value) {
+                                  selectedCategoryId = value;
+                                },
+                              )
                             ),
                           ],
                         ),
@@ -238,8 +260,13 @@ class _ItemsPageState extends State<ItemsPage> {
                                 border: Border.all(color: Colors.grey[300]!),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                item.sold.toString(), // ✅ Using actual item.sold
+                              child: TextField(
+                                controller: soldController, // ✅ Using actual item.sold
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ),
@@ -307,8 +334,13 @@ class _ItemsPageState extends State<ItemsPage> {
                                 border: Border.all(color: Colors.grey[300]!),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                item.spoilage.toString(), // ✅ Using actual item.spoilage
+                              child: TextField(
+                                controller: spoilageController, // ✅ Using actual item.spoilage
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ),
