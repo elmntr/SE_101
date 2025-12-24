@@ -816,16 +816,38 @@ class _ItemsPageState extends State<ItemsPage> {
                                       cursor: SystemMouseCursors.click,
                                       child: Text(
                                         item.name.toString(),
-                                        style: const TextStyle(
-                                          color: Colors.blue,
-                                          decoration: TextDecoration.underline,
-                                        ),
                                       ),
                                     ),
                                   ),
-                                  item.stock.toString(),
-                                  item.sold.toString(),
-                                  item.spoilage.toString(),
+                                  GestureDetector(
+                                    onTap: () => _showItemDetails(item),
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Text(
+                                        item.stock.toString(),
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => _showItemDetails(item),
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Text(
+                                        item.sold.toString(),
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => _showItemDetails(item),
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Text(
+                                        item.spoilage.toString(),
+                                      ),
+                                    ),
+                                  ),
+                                  
+                                  
                                   IconButton(
                                     icon: const Icon(Icons.delete, color: Colors.red),
                                     onPressed: () async {
@@ -1027,16 +1049,39 @@ class _ItemsPageState extends State<ItemsPage> {
                                         cursor: SystemMouseCursors.click,
                                         child: Text(
                                           item.name.toString(),
-                                          style: const TextStyle(
-                                            color: Colors.blue,
-                                            decoration: TextDecoration.underline,
-                                          ),
                                         ),
                                       ),
                                     ),
-                                    item.stock.toString(),
-                                    item.sold.toString(),
-                                    item.spoilage.toString(),
+                                    GestureDetector(
+                                      onTap: () => _showItemDetails(item),
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: Text(
+                                          item.stock.toString(),
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => _showItemDetails(item),
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: Text(
+                                          item.sold.toString(),
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => _showItemDetails(item),
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: Text(
+                                          item.spoilage.toString(),
+                                        ),
+                                      ),
+                                    ),
+                                    
+                                    
+                                    
                                     IconButton(
                                       icon: const Icon(Icons.delete, color: Colors.red),
                                       onPressed: () async {
