@@ -5,6 +5,7 @@ import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -33,17 +34,17 @@ class _InventoryPageState extends State<InventoryPage> {
     _loadData();
   }
 
+  static const String _orgIdKey = 'current_organization_id';
+
   // ✅ FIXED: Load current user's organization and items
   Future<void> _loadData() async {
     setState(() => isLoading = true);
 
     try {
-      // Get current user (TODO: Replace with actual session management)
-      final currentUser = await db.usersDao.getUserById(1);
+      // Get current organization from auth service or local storage
+      await _loadCurrentOrganization();
 
-      if (currentUser != null) {
-        currentOrganizationId = currentUser.organizationId;
-
+      if (currentOrganizationId != null) {
         // Load items for this organization
         final loadedItems = await db.itemsDao.getItemsByOrganization(
           currentOrganizationId!,
@@ -56,7 +57,7 @@ class _InventoryPageState extends State<InventoryPage> {
           });
         }
       } else {
-        // Fallback to all items if no user found
+        // Fallback to all items if no organization found
         final loadedItems = await db.itemsDao.getAllItems();
         if (mounted) {
           setState(() {
@@ -70,6 +71,20 @@ class _InventoryPageState extends State<InventoryPage> {
       if (mounted) {
         setState(() => isLoading = false);
       }
+    }
+  }
+
+  Future<void> _loadCurrentOrganization() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Try to get from current logged-in user session via auth service
+    final currentUser = AppGlobals.instance.authService.currentUser;
+    if (currentUser != null) {
+      await prefs.setInt(_orgIdKey, currentUser.organizationId);
+      currentOrganizationId = currentUser.organizationId;
+    } else {
+      // Fallback: Load from local storage (for offline mode)
+      currentOrganizationId = prefs.getInt(_orgIdKey);
     }
   }
 

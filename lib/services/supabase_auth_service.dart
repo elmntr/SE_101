@@ -846,29 +846,124 @@ class SupabaseAuthService {
   }
 
   /// Fetch branches from Supabase (online)
+  /// Signs out first to use anonymous role which has access to all franchisees
   Future<List<Map<String, dynamic>>> _fetchBranchesOnline() async {
     try {
       if (kDebugMode) {
         print('📥 Fetching available branches from Supabase...');
       }
 
-      final response = await _supabase
+      // If there's an existing session, sign out first to use anon role
+      // The anon policy allows reading all active franchisee branches
+      final hasSession = _supabase.auth.currentSession != null;
+      if (hasSession) {
+        if (kDebugMode) {
+          print('   ℹ️ Existing session found, using direct query...');
+        }
+      }
+
+      // Query organizations - anon role can see all active franchisees
+      // If authenticated, RLS may restrict results, so we catch and retry
+      var response = await _supabase
           .from('organizations')
           .select('cloud_id, name, address, phone, email, type, is_active')
           .eq('type', branchTypeFranchisee)
           .eq('is_active', true)
           .order('name');
 
+      // If we got limited results due to RLS and there's a session, 
+      // try signing out temporarily to get full list
+      if (response.isEmpty && hasSession) {
+        if (kDebugMode) {
+          print('   ⚠️ No branches returned (RLS restricted?), trying anonymous...');
+        }
+        
+        // Store session to restore later
+        final currentSession = _supabase.auth.currentSession;
+        
+        // Sign out to use anon role
+        await _supabase.auth.signOut();
+        
+        // Try again with anon role
+        response = await _supabase
+            .from('organizations')
+            .select('cloud_id, name, address, phone, email, type, is_active')
+            .eq('type', branchTypeFranchisee)
+            .eq('is_active', true)
+            .order('name');
+        
+        // Restore session if we had one
+        if (currentSession?.refreshToken != null) {
+          try {
+            await _supabase.auth.setSession(currentSession!.refreshToken!);
+          } catch (e) {
+            if (kDebugMode) {
+              print('   ⚠️ Could not restore session: $e');
+            }
+          }
+        }
+      }
+
       if (kDebugMode) {
         print('   Found ${response.length} branches online');
       }
 
-      return List<Map<String, dynamic>>.from(response);
+      final branches = List<Map<String, dynamic>>.from(response);
+
+      // Cache branches locally for offline access
+      if (branches.isNotEmpty) {
+        await _cacheBranchesLocally(branches);
+      }
+
+      return branches;
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching branches online: $e');
       }
       return [];
+    }
+  }
+
+  /// Cache fetched branches to local database for offline access
+  Future<void> _cacheBranchesLocally(List<Map<String, dynamic>> branches) async {
+    try {
+      if (kDebugMode) {
+        print('💾 Caching ${branches.length} branches locally...');
+      }
+
+      for (final branch in branches) {
+        final cloudId = branch['cloud_id'] as String?;
+        if (cloudId == null) continue;
+
+        // Check if organization already exists locally
+        final existing = await _db.organizationsDao.getOrganizationByCloudId(cloudId);
+
+        if (existing == null) {
+          // Insert new organization
+          await _db.organizationsDao.upsertFromCloud(
+            id: 0, // Let database assign ID
+            name: branch['name'] as String? ?? 'Unknown',
+            type: branch['type'] as String? ?? branchTypeFranchisee,
+            parentCommissaryId: null,
+            phone: branch['phone'] as String?,
+            email: branch['email'] as String?,
+            address: branch['address'] as String?,
+            isActive: branch['is_active'] as bool? ?? true,
+            createdAt: DateTime.now(),
+            lastUpdated: DateTime.now(),
+            cloudId: cloudId,
+          );
+        }
+      }
+
+      if (kDebugMode) {
+        print('   ✅ Branches cached successfully');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ Failed to cache branches locally: $e');
+      }
+      // Don't throw - caching failure shouldn't block login
     }
   }
 

@@ -1,0 +1,454 @@
+{
+  "elements": {
+    "ingredients": {
+      "id": {
+        "library_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+        "name": "ingredients"
+      },
+      "declaration": {
+        "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+        "offset": 617,
+        "name": "Ingredients"
+      },
+      "references": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/categories.dart",
+          "name": "categories"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/organizations.dart",
+          "name": "organizations"
+        }
+      ],
+      "type": "table",
+      "columns": [
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": false,
+          "nameInSql": "id",
+          "nameInDart": "id",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 681,
+            "name": "id"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Primary key",
+          "constraints": [
+            {
+              "type": "primary",
+              "is_auto_increment": true
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "name",
+          "nameInDart": "name",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 807,
+            "name": "name"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Ingredient name (e.g., \"Chicken Breast\", \"Garlic\", \"Soy Sauce\")",
+          "constraints": [
+            {
+              "type": "limit_text_length",
+              "min_length": 1,
+              "max_length": 200
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": true,
+          "nameInSql": "category_id",
+          "nameInDart": "categoryId",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 957,
+            "name": "categoryId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Optional category for organization (e.g., \"Poultry\", \"Vegetables\", \"Spices\")",
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:chickenjoo_inventory/database/tables/categories.dart",
+                  "name": "categories"
+                },
+                "name": "id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": false,
+          "nameInSql": "commissary_id",
+          "nameInDart": "commissaryId",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 1159,
+            "name": "commissaryId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Which commissary owns this ingredient\n/// Only commissary-type organizations can create ingredients",
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:chickenjoo_inventory/database/tables/organizations.dart",
+                  "name": "organizations"
+                },
+                "name": "id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": false,
+          "nameInSql": "stock",
+          "nameInDart": "stock",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 1283,
+            "name": "stock"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(0)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Current stock quantity (in base unit)",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": false,
+          "nameInSql": "spoilage",
+          "nameInDart": "spoilage",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 1415,
+            "name": "spoilage"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(0)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Spoiled quantity (deducted from stock when recorded)",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "unit",
+          "nameInDart": "unit",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 1560,
+            "name": "unit"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "('pieces')"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Unit of measurement (e.g., \"kg\", \"pieces\", \"liters\", \"grams\")",
+          "constraints": [
+            {
+              "type": "limit_text_length",
+              "min_length": 1,
+              "max_length": 50
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": true,
+          "nameInSql": "minimum_stock",
+          "nameInDart": "minimumStock",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 1751,
+            "name": "minimumStock"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Minimum stock threshold for alerts (e.g., alert when stock < 10)",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": true,
+          "nameInSql": "description",
+          "nameInDart": "description",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 1848,
+            "name": "description"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Optional description or notes",
+          "constraints": [
+            {
+              "type": "limit_text_length",
+              "min_length": null,
+              "max_length": 500
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "dateTime"
+          },
+          "nullable": false,
+          "nameInSql": "created_at",
+          "nameInDart": "createdAt",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 1979,
+            "name": "createdAt"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": {
+            "elements": [
+              "() => ",
+              {
+                "lexeme": "DateTime",
+                "import_uri": "dart:core"
+              },
+              ".now()"
+            ]
+          },
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Track when ingredient was created/modified",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "dateTime"
+          },
+          "nullable": false,
+          "nameInSql": "last_updated",
+          "nameInDart": "lastUpdated",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 2071,
+            "name": "lastUpdated"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": {
+            "elements": [
+              "() => ",
+              {
+                "lexeme": "DateTime",
+                "import_uri": "dart:core"
+              },
+              ".now()"
+            ]
+          },
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "bool"
+          },
+          "nullable": false,
+          "nameInSql": "is_deleted",
+          "nameInDart": "isDeleted",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 2182,
+            "name": "isDeleted"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(false)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Soft delete",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "bool"
+          },
+          "nullable": false,
+          "nameInSql": "is_synced",
+          "nameInDart": "isSynced",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 2308,
+            "name": "isSynced"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(false)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Sync fields for cloud synchronization",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": true,
+          "nameInSql": "cloud_id",
+          "nameInDart": "cloudId",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+            "offset": 2386,
+            "name": "cloudId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        }
+      ],
+      "existing_data_class": null,
+      "table_constraints": [],
+      "custom_parent_class": null,
+      "interfaces_for_row_class": [],
+      "fixed_entity_info_name": null,
+      "base_dart_name": "Ingredients",
+      "row_class_name": "Ingredient",
+      "companion_class_name": null,
+      "without_rowid": false,
+      "strict": false,
+      "write_default_constraints": true,
+      "custom_constraints": [],
+      "attached_indices": []
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:chickenjoo_inventory/database/tables/categories.dart",
+    "package:chickenjoo_inventory/database/tables/organizations.dart"
+  ]
+}

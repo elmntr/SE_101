@@ -1,0 +1,1 @@
+{"valid_import":true,"imports":[{"uri":"package:chickenjoo_inventory/database/app_database.dart","transitive":false},{"uri":"package:chickenjoo_inventory/services/supabase_sync_service.dart","transitive":false},{"uri":"package:chickenjoo_inventory/services/supabase_auth_service.dart","transitive":false}],"elements":[]}

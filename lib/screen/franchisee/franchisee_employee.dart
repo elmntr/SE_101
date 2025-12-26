@@ -6,6 +6,7 @@ import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:drift/drift.dart' show Value;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EmployeePage extends StatefulWidget {
   const EmployeePage({super.key});
@@ -77,41 +78,72 @@ class _EmployeePageState extends State<EmployeePage> {
   void initState() {
     super.initState();
     db = database;
-    _loadCurrentOrganization();
+    _initializeData();
+  }
 
-    _usersSub = db.usersDao.watchAllUsers().listen((users) {
-      setState(() {
-        // Filter users by current organization
-        if (_currentOrganizationId != null) {
-          _users = users
-              .where((u) => u.organizationId == _currentOrganizationId)
-              .toList();
-        } else {
-          _users = users;
+  /// Initialize data with proper organization filtering
+  Future<void> _initializeData() async {
+    await _loadCurrentOrganization();
+    _setupSubscriptions();
+  }
+
+  /// Setup database subscriptions after organization is loaded
+  void _setupSubscriptions() {
+    // Use organization-filtered stream if we have org ID, otherwise fallback
+    if (_currentOrganizationId != null) {
+      _usersSub = db.usersDao.watchUsersByOrganization(_currentOrganizationId!).listen((users) {
+        if (mounted) {
+          setState(() {
+            _users = users;
+            _isLoading = false;
+          });
         }
-        _isLoading = false;
       });
-    });
+    } else {
+      // Fallback to all users (should not happen in normal operation)
+      _usersSub = db.usersDao.watchAllUsers().listen((users) {
+        if (mounted) {
+          setState(() {
+            _users = users;
+            _isLoading = false;
+          });
+        }
+      });
+    }
 
     _rolesSub = db.rolesDao.watchAllRoles().listen((roles) {
-      setState(() {
-        _roles = roles;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _roles = roles;
+          _isLoading = false;
+        });
+      }
     });
   }
 
+  static const String _orgIdKey = 'current_organization_id';
+
   Future<void> _loadCurrentOrganization() async {
-    try {
-      // TODO: Get from current logged-in user session
-      final currentUser = await db.usersDao.getUserById(1);
-      if (currentUser != null) {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Try to get from current logged-in user session via auth service
+    final currentUser = AppGlobals.instance.authService.currentUser;
+    if (currentUser != null) {
+      // Save to local storage for offline access
+      await prefs.setInt(_orgIdKey, currentUser.organizationId);
+      setState(() {
+        _currentOrganizationId = currentUser.organizationId;
+      });
+    } else {
+      // Fallback: Load from local storage (for offline mode)
+      final storedOrgId = prefs.getInt(_orgIdKey);
+      if (storedOrgId != null) {
         setState(() {
-          _currentOrganizationId = currentUser.organizationId;
+          _currentOrganizationId = storedOrgId;
         });
+      } else {
+        print('Warning: No logged-in user found and no stored organization');
       }
-    } catch (e) {
-      print('Error loading organization: $e');
     }
   }
 

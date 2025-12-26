@@ -1,0 +1,10 @@
+{
+  "elements": {},
+  "imports": [
+    "package:chickenjoo_inventory/screen/employee/item_change_record.dart",
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart",
+    "package:chickenjoo_inventory/design_constants.dart",
+    "package:flutter/material.dart",
+    "package:chickenjoo_inventory/app_globals.dart"
+  ]
+}
