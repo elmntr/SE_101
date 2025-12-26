@@ -1,6 +1,8 @@
 // lib/main.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:window_size/window_size.dart';
 
 import 'package:chickenjoo_inventory/database/seeders/admin_seeder.dart';
@@ -157,5 +159,14 @@ Future<void> _updateSyncStatus() async {
     }
   } catch (e) {
     print('Error updating sync status: $e');
+  }
+}
+
+Future<void> deleteOldDatabase() async {
+  final dbFolder = await getApplicationDocumentsDirectory();
+  final file = File(p.join(dbFolder.path, 'app_inventory.db'));
+  if (await file.exists()) {
+    await file.delete();
+    print('✅ Old database deleted');
   }
 }
