@@ -1,0 +1,11 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter/material.dart",
+    "package:chickenjoo_inventory/design_constants.dart",
+    "package:chickenjoo_inventory/app_globals.dart",
+    "package:chickenjoo_inventory/services/supabase_auth_service.dart",
+    "package:chickenjoo_inventory/screen/login/widgets/login_form.dart",
+    "package:chickenjoo_inventory/screen/login/widgets/login_header.dart"
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "elements": {
+    "UsersDao": {
+      "id": {
+        "library_uri": "package:chickenjoo_inventory/database/daos/users_dao.dart",
+        "name": "UsersDao"
+      },
+      "declaration": {
+        "source_uri": "package:chickenjoo_inventory/database/daos/users_dao.dart",
+        "offset": 341,
+        "name": "UsersDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/users.dart",
+          "name": "users"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/roles.dart",
+          "name": "roles"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/organizations.dart",
+          "name": "organizations"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/users.dart",
+          "name": "users"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/roles.dart",
+          "name": "roles"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/organizations.dart",
+          "name": "organizations"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "UsersDao",
+            "import_uri": "package:chickenjoo_inventory/database/daos/users_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:chickenjoo_inventory/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/database/tables/users.dart",
+    "package:chickenjoo_inventory/database/tables/roles.dart",
+    "package:chickenjoo_inventory/database/models/user_with_role.dart",
+    "package:chickenjoo_inventory/database/tables/organizations.dart"
+  ]
+}

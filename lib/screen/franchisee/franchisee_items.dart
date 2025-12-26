@@ -4,6 +4,7 @@ import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ItemsPage extends StatefulWidget {
   const ItemsPage({super.key});
@@ -17,9 +18,12 @@ class _ItemsPageState extends State<ItemsPage> {
 
   List<Item> dbItems = [];
   List<Category> dbCategories = [];
+  int? _currentOrganizationId;
 
   int selectedTab = 0; // 0 = Items, 1 = Categories
   bool _isLoading = true;
+
+  static const String _orgIdKey = 'current_organization_id';
 
   ItemSort _currentSort = ItemSort(ItemSortField.name, SortOrder.desc);
   CategorySort _currentCategorySort = CategorySort(
@@ -38,7 +42,16 @@ class _ItemsPageState extends State<ItemsPage> {
     setState(() => _isLoading = true);
 
     try {
-      final items = await db.itemsDao.getAllItems();
+      // Get current organization from auth service or local storage
+      await _loadCurrentOrganization();
+
+      List<Item> items;
+      if (_currentOrganizationId != null) {
+        items = await db.itemsDao.getItemsByOrganization(_currentOrganizationId!);
+      } else {
+        items = await db.itemsDao.getAllItems();
+      }
+      
       final categories = await db.categoriesDao.getAllCategories();
 
       if (mounted) {
@@ -53,6 +66,20 @@ class _ItemsPageState extends State<ItemsPage> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _loadCurrentOrganization() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Try to get from current logged-in user session via auth service
+    final currentUser = AppGlobals.instance.authService.currentUser;
+    if (currentUser != null) {
+      await prefs.setInt(_orgIdKey, currentUser.organizationId);
+      _currentOrganizationId = currentUser.organizationId;
+    } else {
+      // Fallback: Load from local storage (for offline mode)
+      _currentOrganizationId = prefs.getInt(_orgIdKey);
     }
   }
 

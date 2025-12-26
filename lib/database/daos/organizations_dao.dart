@@ -483,6 +483,7 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations)
 }
 
   /// ✅ Upsert from cloud (individual)
+  /// If id > 0, updates existing record. If id == 0, checks by cloudId first.
   Future<void> upsertFromCloud({
     required int id,
     required String name,
@@ -498,23 +499,50 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations)
     required String cloudId,
   }) async {
     try {
-      await into(organizations).insertOnConflictUpdate(
-        OrganizationsCompanion.insert(
-          id: Value(id),
-          name: name,
-          type: type,
+      // If id is 0, try to find existing by cloudId first
+      int? existingId;
+      if (id == 0 && cloudId.isNotEmpty) {
+        final existing = await getOrganizationByCloudId(cloudId);
+        existingId = existing?.id;
+      } else if (id > 0) {
+        existingId = id;
+      }
+
+      if (existingId != null && existingId > 0) {
+        // Update existing record
+        await (update(organizations)..where((t) => t.id.equals(existingId!)))
+            .write(OrganizationsCompanion(
+          name: Value(name),
+          type: Value(type),
           parentCommissaryId: Value(parentCommissaryId),
           contactPerson: Value(contactPerson),
           phone: Value(phone),
           email: Value(email),
           address: Value(address),
           isActive: Value(isActive),
-          createdAt: Value(createdAt),
           lastUpdated: Value(lastUpdated),
           isSynced: Value(true),
           cloudId: Value(cloudId),
-        ),
-      );
+        ));
+      } else {
+        // Insert new record (let database assign ID)
+        await into(organizations).insert(
+          OrganizationsCompanion.insert(
+            name: name,
+            type: type,
+            parentCommissaryId: Value(parentCommissaryId),
+            contactPerson: Value(contactPerson),
+            phone: Value(phone),
+            email: Value(email),
+            address: Value(address),
+            isActive: Value(isActive),
+            createdAt: Value(createdAt),
+            lastUpdated: Value(lastUpdated),
+            isSynced: Value(true),
+            cloudId: Value(cloudId),
+          ),
+        );
+      }
     } catch (e) {
       print('❌ Error upserting organization from cloud: $e');
       rethrow;
