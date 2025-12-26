@@ -1,0 +1,70 @@
+{
+  "elements": {
+    "RecipeIngredientsDao": {
+      "id": {
+        "library_uri": "package:chickenjoo_inventory/database/daos/recipe_ingredients_dao.dart",
+        "name": "RecipeIngredientsDao"
+      },
+      "declaration": {
+        "source_uri": "package:chickenjoo_inventory/database/daos/recipe_ingredients_dao.dart",
+        "offset": 717,
+        "name": "RecipeIngredientsDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/recipe_ingredients.dart",
+          "name": "recipe_ingredients"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+          "name": "items"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+          "name": "ingredients"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/recipe_ingredients.dart",
+          "name": "recipe_ingredients"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+          "name": "items"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/ingredients.dart",
+          "name": "ingredients"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "RecipeIngredientsDao",
+            "import_uri": "package:chickenjoo_inventory/database/daos/recipe_ingredients_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:chickenjoo_inventory/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/database/tables/recipe_ingredients.dart",
+    "package:chickenjoo_inventory/database/tables/items.dart",
+    "package:chickenjoo_inventory/database/tables/ingredients.dart"
+  ]
+}

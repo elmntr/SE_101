@@ -1,0 +1,20 @@
+{
+  "elements": {},
+  "imports": [
+    "package:chickenjoo_inventory/design_constants.dart",
+    "package:chickenjoo_inventory/screen/employee/employee_items.dart",
+    "package:flutter/material.dart",
+    "package:shared_preferences/shared_preferences.dart",
+    "package:chickenjoo_inventory/services/connectivity_service.dart",
+    "package:chickenjoo_inventory/connection_status_indicator.dart",
+    "package:chickenjoo_inventory/utils/sync_status.dart",
+    "package:chickenjoo_inventory/services/supabase_auth_service.dart",
+    "package:chickenjoo_inventory/app_globals.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_reports.dart",
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart",
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_items.dart",
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_employee.dart",
+    "package:chickenjoo_inventory/screen/employee/employee_account.dart"
+  ]
+}

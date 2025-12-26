@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
-//import "../../../database/database_provider.dart";
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
-import 'package:drift/drift.dart' show Value;
 import 'package:chickenjoo_inventory/app_globals.dart';
-import 'package:chickenjoo_inventory/helpers/sync_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ItemsPage extends StatefulWidget {
-  const ItemsPage({Key? key}) : super(key: key);
+  const ItemsPage({super.key});
 
   @override
   State<ItemsPage> createState() => _ItemsPageState();
@@ -23,8 +21,8 @@ class _ItemsPageState extends State<ItemsPage> {
   
   Map<int, String> categoryMap = {}; // Store category names by ID
 
-  int categoryCount = 0;
   int selectedTab = 0; // 0 = Items, 1 = Categories
+  bool _isLoading = true;
 
   ItemSort _currentSort = ItemSort(ItemSortField.name, SortOrder.desc);
   CategorySort _currentCategorySort = CategorySort(CategorySortField.name, SortOrder.desc);
@@ -37,11 +35,49 @@ class _ItemsPageState extends State<ItemsPage> {
     _loadCategories();
   }
 
-  Future<void> _loadItems() async {
-    final items = await db.itemsDao.getAllItems();
-    setState(() {
-      dbItems = items;
-    });
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Get current organization from auth service or local storage
+      await _loadCurrentOrganization();
+
+      List<Item> items;
+      if (_currentOrganizationId != null) {
+        items = await db.itemsDao.getItemsByOrganization(_currentOrganizationId!);
+      } else {
+        items = await db.itemsDao.getAllItems();
+      }
+      
+      final categories = await db.categoriesDao.getAllCategories();
+
+      if (mounted) {
+        setState(() {
+          dbItems = items;
+          dbCategories = categories;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadCurrentOrganization() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Try to get from current logged-in user session via auth service
+    final currentUser = AppGlobals.instance.authService.currentUser;
+    if (currentUser != null) {
+      await prefs.setInt(_orgIdKey, currentUser.organizationId);
+      _currentOrganizationId = currentUser.organizationId;
+    } else {
+      // Fallback: Load from local storage (for offline mode)
+      _currentOrganizationId = prefs.getInt(_orgIdKey);
+    }
   }
 
   Future<void> _loadCategories() async {
@@ -392,70 +428,154 @@ class _ItemsPageState extends State<ItemsPage> {
     );
   }
 
-  // ✅ ADD ITEM POPUP (connected to DB)
+  // Create Item Dialog
   void _createItem() {
     final TextEditingController name = TextEditingController();
     final TextEditingController stock = TextEditingController();
+    final TextEditingController price = TextEditingController();
+    int? selectedCategoryId;
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        insetPadding: const EdgeInsets.all(20),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Add Item",
-                    style: TextStyle(
-                      fontFamily: fontAll,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          insetPadding: const EdgeInsets.all(20),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Add Item",
+                      style: TextStyle(
+                        fontFamily: fontAll,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    decoration: const InputDecoration(labelText: "Item Name"),
-                    controller: name,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    decoration: const InputDecoration(labelText: "Initial Stock"),
-                    keyboardType: TextInputType.number,
-                    controller: stock,
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text("Cancel"),
+                    const SizedBox(height: 20),
+                    TextField(
+                      decoration: const InputDecoration(labelText: "Item Name"),
+                      controller: name,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: "Initial Stock",
                       ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                        onPressed: () async {
-                          if (name.text.isEmpty || stock.text.isEmpty) return;
-
-                          await db.itemsDao.insertItem(
-                            name: name.text,
-                            stock: int.tryParse(stock.text) ?? 0,
-                          );
-
-                          Navigator.pop(context);
-                          _loadItems();
-                        },
-                        child: const Text("Save", style: TextStyle(color: Colors.white)),
+                      keyboardType: TextInputType.number,
+                      controller: stock,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: "Price (Optional)",
                       ),
-                    ],
-                  ),
-                ],
+                      keyboardType: TextInputType.number,
+                      controller: price,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      decoration: const InputDecoration(
+                        labelText: "Category (Optional)",
+                      ),
+                      initialValue: selectedCategoryId,
+                      items: [
+                        const DropdownMenuItem<int>(
+                          value: null,
+                          child: Text('No Category'),
+                        ),
+                        ...dbCategories.map(
+                          (cat) => DropdownMenuItem<int>(
+                            value: cat.id,
+                            child: Text(cat.name),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedCategoryId = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("Cancel"),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                          ),
+                          onPressed: () async {
+                            final dialogContext = context;
+                            final messenger = ScaffoldMessenger.of(
+                              dialogContext,
+                            );
+                            final navigator = Navigator.of(dialogContext);
+
+                            if (name.text.isEmpty) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Item name is required'),
+                                ),
+                              );
+                              return;
+                            }
+
+                            try {
+                              // Get user's organization ID
+                              final currentUser = await db.usersDao.getUserById(
+                                1,
+                              ); // TODO: Get from session
+                              final organizationId =
+                                  currentUser?.organizationId ?? 1;
+
+                              await db.itemsDao.insertItem(
+                                name: name.text,
+                                organizationId: organizationId,
+                                stock: int.tryParse(stock.text) ?? 0,
+                                categoryId: selectedCategoryId,
+                                price: price.text.isNotEmpty
+                                    ? double.tryParse(price.text)
+                                    : null,
+                              );
+
+                              if (!navigator.mounted || !messenger.mounted)
+                                return;
+                              navigator.pop();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Item added successfully'),
+                                ),
+                              );
+                              _loadData();
+                            } catch (e) {
+                              if (!messenger.mounted) return;
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('Error adding item: $e'),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text(
+                            "Save",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -464,9 +584,10 @@ class _ItemsPageState extends State<ItemsPage> {
     );
   }
 
-  // Add Category Popup
+  // Create Category Dialog
   void _createCategory() {
-    final TextEditingController category = TextEditingController();
+    final TextEditingController categoryName = TextEditingController();
+    final TextEditingController description = TextEditingController();
 
     showDialog(
       context: context,
@@ -491,8 +612,18 @@ class _ItemsPageState extends State<ItemsPage> {
                   ),
                   const SizedBox(height: 20),
                   TextField(
-                    decoration: const InputDecoration(labelText: "Category"),
-                    controller: category,
+                    decoration: const InputDecoration(
+                      labelText: "Category Name",
+                    ),
+                    controller: categoryName,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: "Description (Optional)",
+                    ),
+                    controller: description,
+                    maxLines: 3,
                   ),
                   const SizedBox(height: 24),
                   Row(
@@ -504,16 +635,53 @@ class _ItemsPageState extends State<ItemsPage> {
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                        onPressed: () {
-                          if (category.text.isEmpty) return;
-                          _saveCategory({
-                            "category": category.text,
-                            "itemNumber": categoryCount,
-                          });
-                          Navigator.pop(context);
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        onPressed: () async {
+                          final dialogContext = context;
+                          final messenger = ScaffoldMessenger.of(dialogContext);
+                          final navigator = Navigator.of(dialogContext);
+
+                          if (categoryName.text.isEmpty) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Category name is required'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          try {
+                            await db.categoriesDao.insertCategory(
+                              name: categoryName.text,
+                              description: description.text.isEmpty
+                                  ? null
+                                  : description.text,
+                            );
+
+                            if (!navigator.mounted || !messenger.mounted)
+                              return;
+                            navigator.pop();
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Category added successfully'),
+                              ),
+                            );
+                            _loadData();
+                          } catch (e) {
+                            if (!messenger.mounted) return;
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Error adding category: $e'),
+                              ),
+                            );
+                          }
                         },
-                        child: const Text("Save", style: TextStyle(color: Colors.white)),
+                        child: const Text(
+                          "Save",
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                   ),
@@ -524,12 +692,6 @@ class _ItemsPageState extends State<ItemsPage> {
         ),
       ),
     );
-  }
-
-  void _saveCategory(Map<String, dynamic> newItem) {
-    setState(() {
-      categories.add(newItem);
-    });
   }
 
   void _applyItemSort(ItemSort sort) {
@@ -566,16 +728,13 @@ class _ItemsPageState extends State<ItemsPage> {
 
       switch (sort.field) {
         case CategorySortField.date:
-          categories.sort((a, b) =>
-              a["modifiedAt"].compareTo(b["modifiedAt"]));
+          dbCategories.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
           break;
         case CategorySortField.name:
-          categories.sort((a, b) =>
-              a["category"].toString().compareTo(b["category"].toString()));
+          dbCategories.sort((a, b) => a.name.compareTo(b.name));
           break;
         case CategorySortField.items:
-          categories.sort((a, b) =>
-              a["itemNumber"].compareTo(b["itemNumber"]));
+          // Will be handled by category with counts
           break;
       }
 
@@ -585,35 +744,86 @@ class _ItemsPageState extends State<ItemsPage> {
     });
   }
 
-  void _deleteCategory(int index) {
-    showDialog(
+  Future<void> _deleteItem(Item item) async {
+    final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Delete Category",
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text("Are you sure you want to delete this category?"),
+        title: const Text("Delete Item"),
+        content: Text("Are you sure you want to delete '${item.name}'?"),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text("Cancel"),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              setState(() {
-                categories.removeAt(index);
-              });
-              Navigator.pop(context);
-            },
+            onPressed: () => Navigator.pop(context, true),
             child: const Text("Delete", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
+
+    if (shouldDelete == true) {
+      try {
+        await db.itemsDao.deleteItem(item.id);
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('${item.name} deleted')));
+          _loadData();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error deleting item: $e')));
+        }
+      }
+    }
   }
 
-  // Tab Builder
+  Future<void> _deleteCategory(Category category) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text("Delete Category"),
+        content: Text("Are you sure you want to delete '${category.name}'?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete == true) {
+      try {
+        await db.categoriesDao.deleteCategory(category.id);
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('${category.name} deleted')));
+          _loadData();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+        }
+      }
+    }
+  }
+
   Widget _buildTab(String label, int index) {
     bool active = selectedTab == index;
     return Expanded(
@@ -636,19 +846,20 @@ class _ItemsPageState extends State<ItemsPage> {
                         color: Colors.black.withOpacity(0.12),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ]
                   : [],
             ),
-            child: Text(label,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),
     );
   }
 
-  // MAIN BUILD
   @override
   Widget build(BuildContext context) {
     if (AppLayout.isDesktop(context) == false) {
@@ -904,11 +1115,12 @@ class _ItemsPageState extends State<ItemsPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Header
             Row(
               children: [
-                const Text("Items",
-                    style: TextStyle(fontSize: 30, fontFamily: fontAll)),
+                const Text(
+                  "Items",
+                  style: TextStyle(fontSize: 30, fontFamily: fontAll),
+                ),
                 const SizedBox(width: 16),
                 // Search Bar
                 Expanded(
@@ -1000,14 +1212,10 @@ class _ItemsPageState extends State<ItemsPage> {
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
-
-            // Tabs + Content
             Expanded(
               child: Column(
                 children: [
-                  // Raised Tabs
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.grey[300],
@@ -1020,8 +1228,6 @@ class _ItemsPageState extends State<ItemsPage> {
                       ],
                     ),
                   ),
-
-                  // White content box
                   Expanded(
                     child: Container(
                       width: double.infinity,
@@ -1033,7 +1239,9 @@ class _ItemsPageState extends State<ItemsPage> {
                           bottomRight: Radius.circular(12),
                         ),
                       ),
-                      child: selectedTab == 0
+                      child: _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : selectedTab == 0
                           ? (dbItems.isEmpty
                               ? emptyTables(
                                   message: "You can manage your items here.",
@@ -1132,5 +1340,22 @@ class _ItemsPageState extends State<ItemsPage> {
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _buildCategoryRows() async {
+    final rows = <Map<String, dynamic>>[];
+
+    for (final category in dbCategories) {
+      final itemCount = await db.categoriesDao.getItemCountInCategory(
+        category.id,
+      );
+      rows.add({
+        'name': category.name,
+        'itemCount': itemCount,
+        'category': category,
+      });
+    }
+
+    return rows;
   }
 }

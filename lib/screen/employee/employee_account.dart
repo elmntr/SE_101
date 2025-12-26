@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart'; // your Drift DB
 import 'package:chickenjoo_inventory/app_globals.dart';
-
+import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 
 class EmployeeAccountPage extends StatefulWidget {
-  final User user; // pass the signed-in user
-  final Role role; // pass the user's role
+  final UserData userData;
 
-  const EmployeeAccountPage({super.key, required this.user, required this.role});
+  const EmployeeAccountPage({
+    super.key,
+    required this.userData,
+  });
 
   @override
   State<EmployeeAccountPage> createState() => _EmployeeAccountPageState();
@@ -29,26 +31,26 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
     super.initState();
     db = database;
 
-    // Initialize controllers with DB values
-    nameController = TextEditingController(text: widget.user.username);
-    emailController = TextEditingController(text: widget.user.email);
-    phoneController = TextEditingController(text: widget.user.phone ?? "");
-    roleController = TextEditingController(text: widget.role.name);
+    // Initialize controllers with UserData values
+    nameController = TextEditingController(text: widget.userData.username);
+    emailController = TextEditingController(text: widget.userData.email);
+    phoneController = TextEditingController(text: widget.userData.phone ?? "");
+    roleController = TextEditingController(text: widget.userData.roleName);
 
     // Map role access flags to human-readable strings
-    roleAccessToShow = _getRoleAccessList(widget.role);
+    roleAccessToShow = _getRoleAccessList(widget.userData.permissions);
   }
 
-  List<String> _getRoleAccessList(Role role) {
+  List<String> _getRoleAccessList(RolePermissions permissions) {
     final List<String> access = [];
-    if (role.canViewInventory) access.add("View Inventory");
-    if (role.canAddInventory) access.add("Add Inventory");
-    if (role.canEditInventory) access.add("Edit Inventory");
-    if (role.canDeleteInventory) access.add("Delete Inventory");
-    if (role.canManageEmployees) access.add("Manage Employees");
-    if (role.canManageRoles) access.add("Manage Roles");
-    if (role.canViewReports) access.add("View Reports");
-    if (role.canAccessSettings) access.add("Settings");
+    if (permissions.canViewInventory) access.add("View Inventory");
+    if (permissions.canAddInventory) access.add("Add Inventory");
+    if (permissions.canEditInventory) access.add("Edit Inventory");
+    if (permissions.canDeleteInventory) access.add("Delete Inventory");
+    if (permissions.canManageEmployees) access.add("Manage Employees");
+    if (permissions.canManageRoles) access.add("Manage Roles");
+    if (permissions.canViewReports) access.add("View Reports");
+    if (permissions.canAccessSettings) access.add("Settings");
     return access;
   }
 
@@ -66,10 +68,7 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
               children: [
                 const Text(
                   "Account",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontFamily: fontAll,
-                  ),
+                  style: TextStyle(fontSize: 26, fontFamily: fontAll),
                 ),
                 const SizedBox(height: 18),
                 _infoField("Name", nameController),
@@ -82,10 +81,7 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
                 const SizedBox(height: 22),
                 const Text(
                   "Role Access",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: fontAll,
-                  ),
+                  style: TextStyle(fontSize: 18, fontFamily: fontAll),
                 ),
                 const SizedBox(height: 10),
                 Container(
@@ -102,10 +98,7 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
                           (e) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             child: Row(
-                              children: [
-                                const SizedBox(width: 8),
-                                Text(e),
-                              ],
+                              children: [const SizedBox(width: 8), Text(e)],
                             ),
                           ),
                         )
@@ -132,11 +125,14 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Account",
-                        style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: fontAll)),
+                    const Text(
+                      "Account",
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: fontAll,
+                      ),
+                    ),
                     const SizedBox(height: 30),
                     _infoField("Name:", nameController),
                     const SizedBox(height: 20),
@@ -146,11 +142,14 @@ class _EmployeeAccountPageState extends State<EmployeeAccountPage> {
                     const SizedBox(height: 20),
                     _infoField("Role:", roleController),
                     const SizedBox(height: 30),
-                    const Text("Role Access:",
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: fontAll)),
+                    const Text(
+                      "Role Access:",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: fontAll,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Container(
                       constraints: const BoxConstraints(

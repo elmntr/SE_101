@@ -1,35 +1,30 @@
-import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
-import 'package:chickenjoo_inventory/screen/employee/employee_review_changes_page.dart';
-import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import '../../../database/app_database.dart'; // ✅ your Drift DB
+import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
-
-import 'package:drift/drift.dart' show Value;
+import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 
 class EmployeeItemsPage extends StatefulWidget {
-  final User user;
-  final Role role;
-  const EmployeeItemsPage({super.key, required this.user, required this.role});
+  final UserData userData;
+  const EmployeeItemsPage({super.key, required this.userData});
+
   @override
   State<EmployeeItemsPage> createState() => _EmployeeItemsPageState();
 }
 
 class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
-
   bool _isInChangeStockMode = false;
   bool _isViewingChangeDetail = false;
-  ChangeRecord? _selectedChangeRecord;
+  StockChangeRequest? _selectedChangeRequest;
 
   late AppDatabase db;
 
   List<Item> dbItems = [];
-  List<Map<String, dynamic>> categories = [];
-  List<ChangeRecord> reviewChanges = [];
+  List<StockChangeRequest> pendingChanges = [];
+  bool _isLoading = true;
 
   Map<int, String> categoryMap = {}; // Store category names by ID
 
@@ -38,15 +33,16 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   int selectedTab = 0; // 0 = Items, 1 = Categories
 
   ItemSort _currentSort = const ItemSort(ItemSortField.name, SortOrder.asc);
-  ReviewSort _reviewSort = const ReviewSort(ReviewSortField.employee, SortOrder.asc);
-
-
+  ReviewSort _reviewSort = const ReviewSort(
+    ReviewSortField.employee,
+    SortOrder.asc,
+  );
 
   @override
   void initState() {
     super.initState();
     db = database;
-    _loadItems();
+    _loadData();
   }
 
   void _toggleChangeStockMode() {
@@ -55,66 +51,34 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     });
   }
 
-  Future<void> _loadItems() async {
-    final items = await db.itemsDao.getAllItems();
-    setState(() {
-      dbItems = items;
-    });
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Load items for the user's organization
+      final items = await db.itemsDao.getItemsByOrganization(
+        widget.userData.organizationId,
+      );
+
+      // Load pending/draft changes for this employee
+      final changes = await db.stockChangeRequestsDao.getAllChangeRequests(
+        requestedBy: widget.userData.id,
+      );
+
+      if (mounted) {
+        setState(() {
+          dbItems = items;
+          pendingChanges = changes;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
-
-  void _applyItemSort(ItemSort sort) {
-  setState(() {
-    _currentSort = sort;
-
-    switch (sort.field) {
-      case ItemSortField.date:
-        dbItems.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
-        break;
-
-      case ItemSortField.name:
-        dbItems.sort((a, b) => a.name.compareTo(b.name));
-        break;
-
-      case ItemSortField.stock:
-        dbItems.sort((a, b) => a.stock.compareTo(b.stock));
-        break;
-
-      case ItemSortField.sale:
-        dbItems.sort((a, b) => a.sold.compareTo(b.sold));
-        break;
-
-      case ItemSortField.spoilage:
-        dbItems.sort((a, b) => b.spoilage.compareTo(a.spoilage));
-        break;
-    }
-
-    if (sort.order == SortOrder.desc) {
-      dbItems = dbItems.reversed.toList();
-    }
-
-  });
-}
-
-void _applyReviewSort(ReviewSort sort) {
-  setState(() {
-    _reviewSort = sort;
-
-    switch (sort.field) {
-      case ReviewSortField.employee:
-        reviewChanges.sort((a, b) => a.employeeName.compareTo(b.employeeName));
-        break;
-      case ReviewSortField.role:
-        reviewChanges.sort((a, b) => a.role.compareTo(b.role));
-        break;
-
-      case ReviewSortField.changes:
-        reviewChanges.sort((a, b) => b.totalChanges.compareTo(a.totalChanges));
-        break;
-    }
-    
-    if (sort.order == SortOrder.desc) {
-      reviewChanges = reviewChanges.reversed.toList();
-    }
 
   });
 }
@@ -460,76 +424,77 @@ void _applyReviewSort(ReviewSort sort) {
     );
   }
 
-  // ✅ ADD ITEM POPUP (connected to DB)
-  void _createItem() {
-    final TextEditingController name = TextEditingController();
-    final TextEditingController stock = TextEditingController();
+  void _applyReviewSort(ReviewSort sort) {
+    setState(() {
+      _reviewSort = sort;
 
-    showDialog(
+      switch (sort.field) {
+        case ReviewSortField.employee:
+          // All changes are from same employee, so no sort needed
+          break;
+        case ReviewSortField.role:
+          // All changes are from same role, so no sort needed
+          break;
+        case ReviewSortField.changes:
+          pendingChanges.sort((a, b) => b.quantity.compareTo(a.quantity));
+          break;
+      }
+
+      if (sort.order == SortOrder.desc) {
+        pendingChanges = pendingChanges.reversed.toList();
+      }
+    });
+  }
+
+  Future<void> _deleteChangeRequest(StockChangeRequest request) async {
+    final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Add Item",
-            style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                decoration: const InputDecoration(labelText: "Item Name"),
-                controller: name),
-            TextField(
-                decoration: const InputDecoration(labelText: "Initial Stock"),
-                keyboardType: TextInputType.number,
-                controller: stock),
-          ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('Delete Change Request'),
+        content: const Text(
+          'Are you sure you want to delete this change request?',
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              if (name.text.isEmpty || stock.text.isEmpty) return;
-
-              await db.itemsDao.insertItem(
-                name: name.text,
-                stock: int.tryParse(stock.text) ?? 0,
-              );
-
-              Navigator.pop(context);
-              _loadItems(); // ✅ refresh UI
-            },
-            child: const Text("Save", style: TextStyle(color: Colors.white)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
+
+    if (shouldDelete == true) {
+      try {
+        await db.stockChangeRequestsDao.softDeleteChangeRequest(request.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Change request deleted')),
+          );
+          _loadData();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error deleting request: $e')));
+        }
+      }
+    }
   }
 
-  // Empty Tab Widget
-  Widget _emptyTables(String message, int tab) {
-    selectedTab = tab;
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(message, style: const TextStyle(color: Colors.black54)),
-          const SizedBox(height: 15),
-          if (tab == 0)
-          IconButton(
-            icon: const Icon(Icons.add_circle, color: Colors.red, size: 55),
-            onPressed: () {
-              _createItem(); 
-            },
-          ),
-        ],
-      ),
-    );
+  void _viewChangeDetail(StockChangeRequest request) {
+    setState(() {
+      _isViewingChangeDetail = true;
+      _selectedChangeRequest = request;
+    });
   }
 
-  // Tab Builder
   Widget _buildTab(String label, int index) {
     bool active = selectedTab == index;
     return Expanded(
@@ -552,201 +517,104 @@ void _applyReviewSort(ReviewSort sort) {
                         color: Colors.black.withOpacity(0.12),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
-                      )
+                      ),
                     ]
                   : [],
             ),
-            child: Text(label,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),
     );
   }
 
-  // MAIN BUILD
   @override
-  @override
-Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
+    // Change Stock Mode
+    if (_isInChangeStockMode) {
+      return EmployeeChangeStockPage(
+        userData: widget.userData,
+        onBack: () async {
+          _toggleChangeStockMode();
+          await _loadData();
+        },
+        onRecordSaved: (_) async {
+          await _loadData();
+          setState(() {
+            selectedTab = 1; // Switch to Review Changes tab
+          });
+        },
+      );
+    }
 
-  // ✅ CHANGE STOCK MODE
-  if (_isInChangeStockMode) {
-    return EmployeeChangeStockPage(
-      user: widget.user,            // ✅ ADDED
-      role: widget.role, 
+    // View Change Detail
+    if (_isViewingChangeDetail && _selectedChangeRequest != null) {
+      return Scaffold(
+        backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+        appBar: AppBar(
+          backgroundColor: Colors.red.shade400,
+          title: const Text('Change Request Details'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              setState(() {
+                _isViewingChangeDetail = false;
+                _selectedChangeRequest = null;
+              });
+            },
+          ),
+        ),
+        body: FutureBuilder<Item?>(
+          future: db.itemsDao.getItemById(_selectedChangeRequest!.itemId),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-      onBack: () async {
-        _toggleChangeStockMode();
-        await _loadItems();
-      },
-      onRecordSaved: (record) {
-        setState(() {
-          reviewChanges.add(record);
-          selectedTab = 1;
-        });
-      },
-    );
-  }
+            final item = snapshot.data;
+            final request = _selectedChangeRequest!;
 
-  // ✅ VIEW CHANGE DETAIL
-  if (_isViewingChangeDetail && _selectedChangeRecord != null) {
-    return ReviewChangeDetailPage(
-      
-      record: _selectedChangeRecord!,
-      onBack: () {
-        setState(() {
-          _isViewingChangeDetail = false;
-          _selectedChangeRecord = null;
-        });
-      },
-      onDelete: (rec) {
-        setState(() {
-          reviewChanges.remove(rec);
-          _isViewingChangeDetail = false;
-          _selectedChangeRecord = null;
-          selectedTab = 1;
-        });
-      },
-      onApprove: (rec) {
-        setState(() {
-          final idx = reviewChanges.indexOf(rec);
-          if (idx != -1) reviewChanges[idx].status = 'Updated';
-          try {
-            InventoryPage.pendingChanges.add(rec);
-          } catch (_) {}
-          _isViewingChangeDetail = false;
-          _selectedChangeRecord = null;
-          selectedTab = 1;
-        });
-      },
-    );
-  }
-
-  // ✅ PHONE UI
-    if (AppLayout.isDesktop(context) == false) {
-    return Scaffold(
-      backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-
-              /// ✅ HEADER
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "Items",
-                        style: TextStyle(fontSize: 26, fontFamily: fontAll),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined, size: 28),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  Row(
-                    children: [
-                      /// ✅ SEARCH BAR
-                      Expanded(
-                        child: Container(
-                          height: 42,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          child: const TextField(
-                            decoration: InputDecoration(
-                              hintText: "Search...",
-                              icon: Icon(Icons.search),
-                              border: InputBorder.none,
-                            ),
-                          ),
+                      Text(
+                        'Item: ${item?.name ?? 'Unknown'}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-
-                      const SizedBox(width: 8),
-
-                      /// ✅ ITEM SORT FILTER (MOBILE)
-                      if (selectedTab == 0)
-                        PopupMenuButton<ItemSort>(
-                          icon: const Icon(Icons.filter_list, size: 28),
-                          onSelected: _applyItemSort,
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(
-                              value: ItemSort(ItemSortField.date, SortOrder.desc),
-                              child: Text("Date Modified (Newest)"),
+                      const SizedBox(height: 16),
+                      Text('Change Type: ${request.changeType}'),
+                      Text('Quantity: ${request.quantity}'),
+                      Text('Status: ${request.status}'),
+                      Text('Original Stock: ${request.originalStock}'),
+                      if (request.reason != null)
+                        Text('Reason: ${request.reason}'),
+                      const SizedBox(height: 20),
+                      if (request.status == 'draft')
+                        Row(
+                          children: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () => _deleteChangeRequest(request),
+                              child: const Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.white),
+                              ),
                             ),
-                            PopupMenuItem(
-                              value: ItemSort(ItemSortField.date, SortOrder.asc),
-                              child: Text("Date Modified (Oldest)"),
-                            ),
-                            PopupMenuDivider(),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
-                            PopupMenuDivider(),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.stock, SortOrder.desc),
-                                child: Text("Stock (Low → High)")),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.stock, SortOrder.asc),
-                                child: Text("Stock (High → Low)")),
-                            PopupMenuDivider(),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.sale, SortOrder.desc),
-                                child: Text("Sale (Low → High)")),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.sale, SortOrder.asc),
-                                child: Text("Sale (High → Low)")),
-                            PopupMenuDivider(),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
-                                child: Text("Spoilage (Low → High)")),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
-                                child: Text("Spoilage (High → Low)")),
                           ],
-                        )
-                        else (
-                          PopupMenuButton<ReviewSort>(
-                            icon: const Icon(Icons.filter_list, size: 28),
-                            onSelected: _applyReviewSort,
-                            itemBuilder: (context) => const [
-
-                              PopupMenuItem(value: ReviewSort(ReviewSortField.employee, SortOrder.desc), child: Text("Employee (A–Z)")),
-                              PopupMenuItem(value: ReviewSort(ReviewSortField.employee, SortOrder.asc), child: Text("Employee (Z–A)")),
-
-                              PopupMenuDivider(),
-
-                              
-                              PopupMenuItem(value: ReviewSort(ReviewSortField.role, SortOrder.desc), child: Text("Role (A–Z)")),
-                              PopupMenuItem(value: ReviewSort(ReviewSortField.role, SortOrder.asc), child: Text("Role (Z–A)")),
-
-                              PopupMenuDivider(),
-
-                              PopupMenuItem(
-                                value: ReviewSort(ReviewSortField.changes, SortOrder.desc),
-                                child: Text("Change (Low → High)"),
-                              ),
-                              PopupMenuItem(
-                                value: ReviewSort(ReviewSortField.changes, SortOrder.asc),
-                                child: Text("Change (High → Low)"),
-                              ),
-                            ],
-                          )
-                          ),
-                      
+                        ),
                     ],
                   ),
                 ],
@@ -874,177 +742,134 @@ Widget build(BuildContext context) {
                               ))
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
-      ),
-      floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty)
-        ? Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: FloatingActionButton.extended(
-              onPressed: _toggleChangeStockMode,
-              backgroundColor: const Color(0xFFE30417),
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              label: const Text(
-                'Change Stock',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              icon: const Icon(
-                Icons.inventory_2_outlined,
-                color: Colors.white,
-              ),
-            ),
-          )
-        : null,
+      );
+    }
 
-    floatingActionButtonLocation:
-        FloatingActionButtonLocation.centerFloat,
-    );
-  }
-
-  // =========================
-  // ✅ DESKTOP UI
-  // =========================
-  return Scaffold(
-    backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
-    body: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-
-          /// ✅ HEADER
-          Row(
-            children: [
-              const Text("Items",
-                  style: TextStyle(fontSize: 30, fontFamily: fontAll)),
-              const SizedBox(width: 16),
-
-              /// ✅ SEARCH BAR
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: const TextField(
-                    decoration: InputDecoration(
-                      hintText: "Search...",
-                      prefixIcon: Icon(Icons.search),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-              ),
-
-              /// ✅ ITEM SORT FILTER (DESKTOP)
-              if (selectedTab == 0)
-                        PopupMenuButton<ItemSort>(
-                          icon: const Icon(Icons.filter_list, size: 28),
-                          onSelected: _applyItemSort,
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(
-                              value: ItemSort(ItemSortField.date, SortOrder.desc),
-                              child: Text("Date Modified (Newest)"),
-                            ),
-                            PopupMenuItem(
-                              value: ItemSort(ItemSortField.date, SortOrder.asc),
-                              child: Text("Date Modified (Oldest)"),
-                            ),
-                            PopupMenuDivider(),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
-                            PopupMenuDivider(),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.stock, SortOrder.desc),
-                                child: Text("Stock (Low → High)")),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.stock, SortOrder.asc),
-                                child: Text("Stock (High → Low)")),
-                            PopupMenuDivider(),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.sale, SortOrder.desc),
-                                child: Text("Sale (Low → High)")),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.sale, SortOrder.asc),
-                                child: Text("Sale (High → Low)")),
-                            PopupMenuDivider(),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
-                                child: Text("Spoilage (Low → High)")),
-                            PopupMenuItem(
-                                value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
-                                child: Text("Spoilage (High → Low)")),
-                          ],
-                        )
-                        else (
-                          PopupMenuButton<ReviewSort>(
-                            icon: const Icon(Icons.filter_list, size: 28),
-                            onSelected: _applyReviewSort,
-                            itemBuilder: (context) => const [
-
-                              PopupMenuItem(value: ReviewSort(ReviewSortField.employee, SortOrder.desc), child: Text("Employee (A–Z)")),
-                              PopupMenuItem(value: ReviewSort(ReviewSortField.employee, SortOrder.asc), child: Text("Employee (Z–A)")),
-
-                              PopupMenuDivider(),
-
-                              
-                              PopupMenuItem(value: ReviewSort(ReviewSortField.role, SortOrder.desc), child: Text("Role (A–Z)")),
-                              PopupMenuItem(value: ReviewSort(ReviewSortField.role, SortOrder.asc), child: Text("Role (Z–A)")),
-
-                              PopupMenuDivider(),
-
-                              PopupMenuItem(
-                                value: ReviewSort(ReviewSortField.changes, SortOrder.desc),
-                                child: Text("Change (Low → High)"),
-                              ),
-                              PopupMenuItem(
-                                value: ReviewSort(ReviewSortField.changes, SortOrder.asc),
-                                child: Text("Change (High → Low)"),
-                              ),
-                            ],
-                          )
-                    ),
-
-              IconButton(
-                icon:
-                    const Icon(Icons.notifications_outlined, size: 35),
-                onPressed: () {},
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          /// ✅ TABS
-          Expanded(
+    // Mobile UI
+    if (AppLayout.isDesktop(context) == false) {
+      return Scaffold(
+        backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
             child: Column(
               children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Items',
+                          style: TextStyle(fontSize: 26, fontFamily: fontAll),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.notifications_outlined,
+                            size: 28,
+                          ),
+                          onPressed: () {},
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 42,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            child: const TextField(
+                              decoration: InputDecoration(
+                                hintText: "Search...",
+                                icon: Icon(Icons.search),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (selectedTab == 0)
+                          PopupMenuButton<ItemSort>(
+                            icon: const Icon(Icons.filter_list, size: 28),
+                            onSelected: _applyItemSort,
+                            itemBuilder: (context) => const [
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.date,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Date Modified (Newest)"),
+                              ),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.date,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Date Modified (Oldest)"),
+                              ),
+                              PopupMenuDivider(),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.name,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Name (A–Z)"),
+                              ),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.name,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Name (Z–A)"),
+                              ),
+                              PopupMenuDivider(),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.stock,
+                                  SortOrder.desc,
+                                ),
+                                child: Text("Stock (Low → High)"),
+                              ),
+                              PopupMenuItem(
+                                value: ItemSort(
+                                  ItemSortField.stock,
+                                  SortOrder.asc,
+                                ),
+                                child: Text("Stock (High → Low)"),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 Container(
+                  height: 42,
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      _buildTab("Item List", 0),
-                      _buildTab("Categories", 1),
+                      _buildTab("Items", 0),
+                      _buildTab("Review Changes", 1),
                     ],
                   ),
                 ),
-
                 Expanded(
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(12),
                     decoration: const BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.only(
@@ -1052,7 +877,9 @@ Widget build(BuildContext context) {
                         bottomRight: Radius.circular(12),
                       ),
                     ),
-                    child: selectedTab == 0
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : selectedTab == 0
                         ? (dbItems.isEmpty
                           ? emptyTables(
                               message: "You can manage your items here.",
@@ -1108,77 +935,300 @@ Widget build(BuildContext context) {
                                     await db.itemsDao.deleteItem(item.id);
                                     _loadItems();
                                   },
-                                ),
-                              ]).toList(),
-                            ))
-                        : (reviewChanges.isEmpty
-                            ? emptyTables(
-                                    message: "You can view employee stock changes here.",
-                                    onAddPressed: null,
-                                    buttonType: EmptyButtonType.none,
-                                    buttonText: null)
-                                : buildUniversalTable(
-                                  headers: ["Employee", "Role", "Changes", "Status", ""],
-                                  rows: List.generate(reviewChanges.length, (i) {
-                                    final record = reviewChanges[i];
-                                    return [
-                                      record.employeeName.toString(),
-                                      record.role.toString(),
-                                      record.totalChanges.toString(),
-                                      record.status,
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: Center(
-                                          child: ElevatedButton(
-                                            child: const Text("View"),
-                                            onPressed: () {
-                                              setState(() {
-                                                _isViewingChangeDetail = true;
-                                                _selectedChangeRecord = record;
-                                              });
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ];
-                                  }),
-                              ))
+                                )),
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    ),
-floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty)
-        ? Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: FloatingActionButton.extended(
-              onPressed: _toggleChangeStockMode,
-              backgroundColor: const Color(0xFFE30417),
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+        ),
+        floatingActionButton:
+            (selectedTab == 0 && dbItems.isNotEmpty && !_isLoading)
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: FloatingActionButton.extended(
+                  onPressed: _toggleChangeStockMode,
+                  backgroundColor: const Color(0xFFE30417),
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  label: const Text(
+                    'Change Stock',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.inventory_2_outlined,
+                    color: Colors.white,
+                  ),
+                ),
+              )
+            : null,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      );
+    }
+
+    // Desktop UI (similar structure)
+    return Scaffold(
+      backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Text(
+                  "Items",
+                  style: TextStyle(fontSize: 30, fontFamily: fontAll),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: const TextField(
+                      decoration: InputDecoration(
+                        hintText: "Search...",
+                        prefixIcon: Icon(Icons.search),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ),
+                if (selectedTab == 0)
+                  PopupMenuButton<ItemSort>(
+                    icon: const Icon(Icons.filter_list, size: 28),
+                    onSelected: _applyItemSort,
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: ItemSort(ItemSortField.name, SortOrder.desc),
+                        child: Text("Name (A–Z)"),
+                      ),
+                      PopupMenuItem(
+                        value: ItemSort(ItemSortField.stock, SortOrder.desc),
+                        child: Text("Stock (Low → High)"),
+                      ),
+                    ],
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined, size: 35),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildTab("Item List", 0),
+                        _buildTab("Review Changes", 1),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(12),
+                          bottomRight: Radius.circular(12),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : selectedTab == 0
+                          ? (dbItems.isEmpty
+                                ? emptyTables(
+                                    message: "No items available",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null,
+                                  )
+                                : buildUniversalTable(
+                                    headers: [
+                                      "Item Name",
+                                      "Stock",
+                                      "Sale",
+                                      "Spoilage",
+                                    ],
+                                    rows: dbItems
+                                        .map(
+                                          (item) => [
+                                            item.name,
+                                            item.stock.toString(),
+                                            item.sold.toString(),
+                                            item.spoilage.toString(),
+                                          ],
+                                        )
+                                        .toList(),
+                                  ))
+                          : (pendingChanges.isEmpty
+                                ? emptyTables(
+                                    message: "No pending changes",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null,
+                                  )
+                                : FutureBuilder<List<Map<String, dynamic>>>(
+                                    future: _buildChangeRequestRows(),
+                                    builder: (context, snapshot) {
+                                      if (!snapshot.hasData) {
+                                        return const Center(
+                                          child: CircularProgressIndicator(),
+                                        );
+                                      }
+                                      return buildUniversalTable(
+                                        headers: [
+                                          "Item",
+                                          "Type",
+                                          "Quantity",
+                                          "Status",
+                                          "Actions",
+                                        ],
+                                        rows: snapshot.data!
+                                            .map(
+                                              (row) => [
+                                                row['itemName'],
+                                                row['changeType'],
+                                                row['quantity'],
+                                                _buildStatusChip(row['status']),
+                                                Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    IconButton(
+                                                      icon: const Icon(
+                                                        Icons.visibility,
+                                                      ),
+                                                      onPressed: () =>
+                                                          _viewChangeDetail(
+                                                            row['request'],
+                                                          ),
+                                                    ),
+                                                    if (row['status'] ==
+                                                        'draft')
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.delete,
+                                                          color: Colors.red,
+                                                        ),
+                                                        onPressed: () =>
+                                                            _deleteChangeRequest(
+                                                              row['request'],
+                                                            ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ],
+                                            )
+                                            .toList(),
+                                      );
+                                    },
+                                  )),
+                    ),
+                  ),
+                ],
               ),
-              label: const Text(
-                'Change Stock',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton:
+          (selectedTab == 0 && dbItems.isNotEmpty && !_isLoading)
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: FloatingActionButton.extended(
+                onPressed: _toggleChangeStockMode,
+                backgroundColor: const Color(0xFFE30417),
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                label: const Text(
+                  'Change Stock',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                icon: const Icon(
+                  Icons.inventory_2_outlined,
                   color: Colors.white,
                 ),
               ),
-              icon: const Icon(
-                Icons.inventory_2_outlined,
-                color: Colors.white,
-              ),
-            ),
-          )
-        : null,
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
 
-    floatingActionButtonLocation:
-        FloatingActionButtonLocation.centerFloat,
-  );
-}
+  Future<List<Map<String, dynamic>>> _buildChangeRequestRows() async {
+    final rows = <Map<String, dynamic>>[];
+
+    for (final request in pendingChanges) {
+      final item = await db.itemsDao.getItemById(request.itemId);
+      rows.add({
+        'itemName': item?.name ?? 'Unknown',
+        'changeType': request.changeType,
+        'quantity': request.quantity.toString(),
+        'status': request.status,
+        'request': request,
+      });
+    }
+
+    return rows;
+  }
+
+  Widget _buildStatusChip(String status) {
+    Color color;
+    switch (status) {
+      case 'draft':
+        color = Colors.grey;
+        break;
+      case 'pending':
+        color = Colors.orange;
+        break;
+      case 'approved':
+        color = Colors.green;
+        break;
+      case 'rejected':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
 }

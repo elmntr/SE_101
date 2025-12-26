@@ -3,17 +3,19 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_size/window_size.dart';
 
-import 'package:chickenjoo_inventory/database/seeders/admin_seeder.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
-import 'package:chickenjoo_inventory/database/database_connection.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'config/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/supabase_sync_service.dart';
+import 'services/supabase_auth_service.dart';
 import 'app_globals.dart'; // ✅ Import AppGlobals
 import 'app.dart';
+import 'package:path_provider/path_provider.dart';
+
+import 'package:path/path.dart' as p;
 
 // Sync status notifier for UI updates
 final syncStatusNotifier = ValueNotifier<Map<String, dynamic>>({
@@ -26,13 +28,18 @@ final syncStatusNotifier = ValueNotifier<Map<String, dynamic>>({
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-
   // Desktop window size setup
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     setWindowTitle('Chicken Joo Inventory');
     setWindowMinSize(const Size(1280, 720));
     setWindowMaxSize(const Size(1920, 1080));
   }
+
+  // -------------------------------------------------------------
+  // CLEAN DATABASE FOR FRESH START (one-time)
+  // Comment out after first run if you want to keep local data
+  // -------------------------------------------------------------
+  //await deleteOldDatabase();
 
   // -------------------------------------------------------------
   // DATABASE INITIALIZATION
@@ -44,7 +51,7 @@ void main() async {
   // SUPABASE INITIALIZATION
   // -------------------------------------------------------------
   print('☁️ Initializing Supabase...');
-  bool supabaseInitialized = false;
+  SupabaseConfig.printConfigStatus(); // Debug: Show config status
 
   try {
     await Supabase.initialize(
@@ -52,7 +59,6 @@ void main() async {
       anonKey: SupabaseConfig.anonKey,
     );
     print('✅ Supabase initialized');
-    supabaseInitialized = true;
   } catch (e) {
     print('⚠️ Supabase initialization failed: $e');
     print('📱 App will work in offline-only mode');
@@ -85,7 +91,8 @@ void main() async {
       print('❌ Sync error: $error');
       syncStatusNotifier.value = {
         ...syncStatusNotifier.value,
-        'status': 'Error: ${error.length > 30 ? error.substring(0, 30) : error}...',
+        'status':
+            'Error: ${error.length > 30 ? error.substring(0, 30) : error}...',
       };
     },
   );
@@ -93,48 +100,38 @@ void main() async {
   // -------------------------------------------------------------
   // APP GLOBALS INITIALIZATION
   // -------------------------------------------------------------
+  final authService = SupabaseAuthService(
+    supabase: Supabase.instance.client,
+    database: db,
+  );
+  
   AppGlobals.instance.initialize(
     database: db,
     syncService: sync,
+    authService: authService,
   );
   print('✅ AppGlobals initialized');
 
   // Non-blocking sync service start
-  sync.initialize().then((_) {
-    print('✅ Sync service initialized');
-    _updateSyncStatus();
-  }).catchError((e) {
-    print('⚠️ Sync service initialization failed: $e');
-    print('📱 App will continue in offline mode');
-  });
+  sync
+      .initialize()
+      .then((_) {
+        print('✅ Sync service initialized');
+        _updateSyncStatus();
+      })
+      .catchError((e) {
+        print('⚠️ Sync service initialization failed: $e');
+        print('📱 App will continue in offline mode');
+      });
 
   // Start periodic sync updates
   _startSyncStatusUpdates();
-
-  // -------------------------------------------------------------
-  // DEBUG: PRINT EXISTING USERS
-  // -------------------------------------------------------------
-  // final users = await db.usersDao.getAllUsers();
-  // for (var u in users) {
-  //   print('${u.email} / ${u.password} / ${u.isActive}');
-  // }
- 
-
-
-  // -------------------------------------------------------------
-  // ADMIN SEEDER (RUN LAST)
-  // -------------------------------------------------------------
-  await AdminSeeder.seed(db);
-  final testHash = hashPassword('admin123');
-  print(testHash);
-  //print("Computed hash = ${hashPassword("admin123")}");
 
   // -------------------------------------------------------------
   // RUN APPLICATION
   // -------------------------------------------------------------
   runApp(const MyApp());
 }
-
 
 /// Update sync status periodically
 void _startSyncStatusUpdates() {
@@ -150,12 +147,18 @@ Future<void> _updateSyncStatus() async {
     // ✅ Check if initialized before accessing
     if (AppGlobals.instance.isInitialized) {
       final status = await syncService.getSyncStatus();
-      syncStatusNotifier.value = {
-        ...syncStatusNotifier.value,
-        ...status,
-      };
+      syncStatusNotifier.value = {...syncStatusNotifier.value, ...status};
     }
   } catch (e) {
     print('Error updating sync status: $e');
+  }
+}
+
+Future<void> deleteOldDatabase() async {
+  final dbFolder = await getApplicationDocumentsDirectory();
+  final file = File(p.join(dbFolder.path, 'app_inventory.db'));
+  if (await file.exists()) {
+    await file.delete();
+    print('✅ Old database deleted');
   }
 }
