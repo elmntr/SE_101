@@ -1,0 +1,11 @@
+{
+  "elements": {},
+  "imports": [
+    "package:crypto/crypto.dart",
+    "package:drift/drift.dart",
+    "package:flutter/foundation.dart",
+    "package:supabase_flutter/supabase_flutter.dart",
+    "package:supabase_flutter/supabase_flutter.dart",
+    "package:chickenjoo_inventory/database/app_database.dart"
+  ]
+}

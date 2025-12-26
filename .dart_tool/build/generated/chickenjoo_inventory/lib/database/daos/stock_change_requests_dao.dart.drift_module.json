@@ -1,0 +1,79 @@
+{
+  "elements": {
+    "StockChangeRequestsDao": {
+      "id": {
+        "library_uri": "package:chickenjoo_inventory/database/daos/stock_change_requests_dao.dart",
+        "name": "StockChangeRequestsDao"
+      },
+      "declaration": {
+        "source_uri": "package:chickenjoo_inventory/database/daos/stock_change_requests_dao.dart",
+        "offset": 780,
+        "name": "StockChangeRequestsDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/stock_change_requests.dart",
+          "name": "stock_change_requests"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+          "name": "items"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/organizations.dart",
+          "name": "organizations"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/users.dart",
+          "name": "users"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/stock_change_requests.dart",
+          "name": "stock_change_requests"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+          "name": "items"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/organizations.dart",
+          "name": "organizations"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/users.dart",
+          "name": "users"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "StockChangeRequestsDao",
+            "import_uri": "package:chickenjoo_inventory/database/daos/stock_change_requests_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:chickenjoo_inventory/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/database/tables/stock_change_requests.dart",
+    "package:chickenjoo_inventory/database/tables/items.dart",
+    "package:chickenjoo_inventory/database/tables/organizations.dart",
+    "package:chickenjoo_inventory/database/tables/users.dart"
+  ]
+}

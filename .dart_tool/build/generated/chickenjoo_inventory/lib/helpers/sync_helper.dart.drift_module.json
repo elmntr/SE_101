@@ -1,0 +1,6 @@
+{
+  "elements": {},
+  "imports": [
+    "package:chickenjoo_inventory/app_globals.dart"
+  ]
+}

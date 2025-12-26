@@ -74,6 +74,20 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
+  /// ✅ Watch users by organization (for branch isolation)
+  Stream<List<User>> watchUsersByOrganization(int organizationId) {
+    try {
+      return (select(users)
+        ..where((t) => t.organizationId.equals(organizationId))
+        ..where((t) => t.isActive.equals(true))
+        ..orderBy([(t) => OrderingTerm(expression: t.username)]))
+        .watch();
+    } catch (e) {
+      print('❌ Error watching users by organization: $e');
+      return Stream.value([]);
+    }
+  }
+
   /// ✅ FIXED: Insert user with password hashing
   Future<int> insertUser(UsersCompanion user) async {
     try {
