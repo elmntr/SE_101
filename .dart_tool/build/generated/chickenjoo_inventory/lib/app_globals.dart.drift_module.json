@@ -1,0 +1,8 @@
+{
+  "elements": {},
+  "imports": [
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/services/supabase_sync_service.dart",
+    "package:chickenjoo_inventory/services/supabase_auth_service.dart"
+  ]
+}

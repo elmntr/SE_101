@@ -1,272 +1,164 @@
+// lib/main.dart
 import 'dart:io';
-
-
 import 'package:flutter/material.dart';
 import 'package:window_size/window_size.dart';
-import 'package:chickenjoo_inventory/design_constants.dart';
-import 'package:chickenjoo_inventory/database/seeders/admin_seeder.dart';
-import 'package:chickenjoo_inventory/database/database_provider.dart';
-import 'package:chickenjoo_inventory/database/database_connection.dart';
-import 'package:chickenjoo_inventory/database/app_database.dart';
-import 'package:drift/drift.dart' as drift; // <- needed for Value<>
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
-import 'home.dart';
-void main()async {
-  WidgetsFlutterBinding.ensureInitialized();
 
+import 'package:chickenjoo_inventory/database/app_database.dart';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'config/supabase_config.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'services/supabase_sync_service.dart';
+import 'services/supabase_auth_service.dart';
+import 'app_globals.dart'; // ✅ Import AppGlobals
+import 'app.dart';
+import 'package:path_provider/path_provider.dart';
+
+import 'package:path/path.dart' as p;
+
+// Sync status notifier for UI updates
+final syncStatusNotifier = ValueNotifier<Map<String, dynamic>>({
+  'is_syncing': false,
+  'total_unsynced': 0,
+  'status': 'Initializing...',
+  'is_online': true,
+});
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  // Desktop window size setup
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     setWindowTitle('Chicken Joo Inventory');
     setWindowMinSize(const Size(1280, 720));
-    setWindowMaxSize(const Size(1920, 1080)); 
-
+    setWindowMaxSize(const Size(1920, 1080));
   }
+
+  // -------------------------------------------------------------
+  // CLEAN DATABASE FOR FRESH START (one-time)
+  // Comment out after first run if you want to keep local data
+  // -------------------------------------------------------------
   //await deleteOldDatabase();
-  //await DatabaseConnection.deleteDatabase();
-  await AdminSeeder.seed(AppDatabase()); // Important for Testing admin@commissary.com ; admin123
+
+  // -------------------------------------------------------------
+  // DATABASE INITIALIZATION
+  // -------------------------------------------------------------
+  print('🗄️ Initializing database...');
+  final db = AppDatabase();
+
+  // -------------------------------------------------------------
+  // SUPABASE INITIALIZATION
+  // -------------------------------------------------------------
+  print('☁️ Initializing Supabase...');
+  SupabaseConfig.printConfigStatus(); // Debug: Show config status
+
+  try {
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      anonKey: SupabaseConfig.anonKey,
+    );
+    print('✅ Supabase initialized');
+  } catch (e) {
+    print('⚠️ Supabase initialization failed: $e');
+    print('📱 App will work in offline-only mode');
+  }
+
+  // -------------------------------------------------------------
+  // SYNC SERVICE INITIALIZATION
+  // -------------------------------------------------------------
+  print('🔄 Initializing sync service...');
+
+  final sync = SupabaseSyncService(
+    db: db,
+    supabase: Supabase.instance.client,
+    onConnectivityChanged: (isOnline) {
+      print('📡 Connectivity: ${isOnline ? "Online ✅" : "Offline 📵"}');
+      syncStatusNotifier.value = {
+        ...syncStatusNotifier.value,
+        'is_online': isOnline,
+        'status': isOnline ? 'Online' : 'Offline',
+      };
+    },
+    onSyncStatusChanged: (status) {
+      print('🔄 Sync status: $status');
+      syncStatusNotifier.value = {
+        ...syncStatusNotifier.value,
+        'status': status,
+      };
+    },
+    onSyncError: (error) {
+      print('❌ Sync error: $error');
+      syncStatusNotifier.value = {
+        ...syncStatusNotifier.value,
+        'status':
+            'Error: ${error.length > 30 ? error.substring(0, 30) : error}...',
+      };
+    },
+  );
+
+  // -------------------------------------------------------------
+  // APP GLOBALS INITIALIZATION
+  // -------------------------------------------------------------
+  final authService = SupabaseAuthService(
+    supabase: Supabase.instance.client,
+    database: db,
+  );
   
+  AppGlobals.instance.initialize(
+    database: db,
+    syncService: sync,
+    authService: authService,
+  );
+  print('✅ AppGlobals initialized');
+
+  // Non-blocking sync service start
+  sync
+      .initialize()
+      .then((_) {
+        print('✅ Sync service initialized');
+        _updateSyncStatus();
+      })
+      .catchError((e) {
+        print('⚠️ Sync service initialization failed: $e');
+        print('📱 App will continue in offline mode');
+      });
+
+  // Start periodic sync updates
+  _startSyncStatusUpdates();
+
+  // -------------------------------------------------------------
+  // RUN APPLICATION
+  // -------------------------------------------------------------
   runApp(const MyApp());
 }
 
+/// Update sync status periodically
+void _startSyncStatusUpdates() {
+  Future.delayed(const Duration(seconds: 30), () async {
+    await _updateSyncStatus();
+    _startSyncStatusUpdates(); // Recursive call for continuous updates
+  });
+}
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Chicken Joo Inventory',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
-        useMaterial3: true,
-      ),
-      home:  LoginScreen(),
-      debugShowCheckedModeBanner: false,
-    );
+/// Update the sync status notifier
+Future<void> _updateSyncStatus() async {
+  try {
+    // ✅ Check if initialized before accessing
+    if (AppGlobals.instance.isInitialized) {
+      final status = await syncService.getSyncStatus();
+      syncStatusNotifier.value = {...syncStatusNotifier.value, ...status};
+    }
+  } catch (e) {
+    print('Error updating sync status: $e');
   }
 }
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
-
-  @override
-  State<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
-  bool _isSubmitting = false;
-
-  // Use the new AppDatabase instance
-  late final AppDatabase _db;
-
-  @override
-  void initState() {
-    super.initState();
-    _db = DatabaseProvider.database;
-
-    // Seed default accounts using the new DAO method
-    Future.microtask(() async {
-      await _db.usersDao.getAllUsers();
-    });
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleLogin() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter both email and password.')),
-      );
-      return;
-    }
-
-    setState(() => _isSubmitting = true);
-
-    // Authenticate user using the new UsersDao function
-    final user = await _db.usersDao.authenticate(email, password);
-
-    if (!mounted) return;
-
-    setState(() => _isSubmitting = false);
-
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid email or password.')),
-      );
-      return;
-    }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HomeScreen(
-          signedInUser: user,
-        ),
-      ),
-    );
-  }
-  
-
-  @override
-  Widget build(BuildContext context) {
-    final fieldPadding = AppLayout.fieldPadding(context);
-    final loginButtonWidth = AppLayout.loginButtonWidth(context);
-
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(color: Color(0xFFEF4848)),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: fieldPadding),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 300,
-                    child: Image.asset(
-                      imageAll,
-                      height: 80,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Inventory System',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: fontAll,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(
-                        fontFamily: fontAll,
-                        fontSize: 18,
-                        color: Colors.black,
-                      ),
-                      decoration: const InputDecoration(
-                        hintText: 'Email Address',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 25,
-                          vertical: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _passwordController,
-                      obscureText: !_isPasswordVisible,
-                      style: const TextStyle(
-                        fontFamily: fontAll,
-                        fontSize: 18,
-                        color: Colors.black,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Password',
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 25,
-                          vertical: 18,
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: loginButtonWidth,
-                    child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD62828),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 10,
-                      ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'LOGIN',
-                              style: TextStyle(
-                                fontFamily: fontAll,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+Future<void> deleteOldDatabase() async {
+  final dbFolder = await getApplicationDocumentsDirectory();
+  final file = File(p.join(dbFolder.path, 'app_inventory.db'));
+  if (await file.exists()) {
+    await file.delete();
+    print('✅ Old database deleted');
   }
 }

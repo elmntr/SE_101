@@ -1,0 +1,54 @@
+{
+  "elements": {
+    "CategoriesDao": {
+      "id": {
+        "library_uri": "package:chickenjoo_inventory/database/daos/categories_dao.dart",
+        "name": "CategoriesDao"
+      },
+      "declaration": {
+        "source_uri": "package:chickenjoo_inventory/database/daos/categories_dao.dart",
+        "offset": 318,
+        "name": "CategoriesDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/categories.dart",
+          "name": "categories"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/categories.dart",
+          "name": "categories"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "CategoriesDao",
+            "import_uri": "package:chickenjoo_inventory/database/daos/categories_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:chickenjoo_inventory/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/database/tables/categories.dart",
+    "package:chickenjoo_inventory/database/models/category_with_count.dart",
+    "package:chickenjoo_inventory/database/models/category_statistics.dart"
+  ]
+}

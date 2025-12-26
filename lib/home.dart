@@ -1,8 +1,15 @@
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/screen/employee/employee_items.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:chickenjoo_inventory/database/database_provider.dart';
+// Connectivity and sync imports
+import '../services/connectivity_service.dart';
+import '../connection_status_indicator.dart';
+import 'utils/sync_status.dart';
+import 'services/supabase_auth_service.dart';
+
+import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'screen/franchisee/franchisee_reports.dart';
 import 'screen/franchisee/franchisee_inventory.dart';
@@ -13,7 +20,7 @@ import 'screen/employee/employee_account.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.signedInUser});
 
-  final User signedInUser;
+  final UserData signedInUser;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -25,6 +32,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isSideBarOpen = false;
   bool showLabels = false;
   late AppDatabase _db;
+  
+  // ✅ ADD THESE STATE VARIABLES (NO DUPLICATES)
+  SyncStatus _syncStatus = SyncStatus.synced;
+  DateTime? _lastSyncTime;
+  late ConnectivityService _connectivityService;
+  bool _isOnline = true;
 
   List<Map<String, dynamic>> menuItems = [];
   bool _isLoadingRole = true;
@@ -32,8 +45,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _db = DatabaseProvider.database;
+    _db = database;
     _loadRoleAndMenu();
+    
+    // ✅ ADD CONNECTIVITY SERVICE INITIALIZATION
+    _connectivityService = ConnectivityService();
+    _connectivityService.connectionStream.listen((status) {
+      setState(() {
+        _isOnline = status;
+        _syncStatus = SyncStatus.synced;
+      });
+    });
+  }
+
+  // ✅ ADD DISPOSE METHOD
+  @override
+  void dispose() {
+    _connectivityService.dispose();
+    super.dispose();
   }
 
   void toggleSidebar() {
@@ -58,8 +87,46 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Handles user logout with confirmation dialog
+  Future<void> _handleLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('Logout', style: TextStyle(fontFamily: fontAll)),
+        content: const Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(fontFamily: fontAll),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true && mounted) {
+      // Sign out from Supabase Auth
+      await AppGlobals.instance.authService.signOut();
+      
+      // Clear local session
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('loggedInUserId');
+
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // MOBILE UI
     if (AppLayout.isDesktop(context) == false) {
       return Scaffold(
         appBar: AppBar(
@@ -67,10 +134,65 @@ class _HomeScreenState extends State<HomeScreen> {
           elevation: 3,
           centerTitle: true,
           iconTheme: const IconThemeData(color: Colors.white),
-          actions: const [
+          actions: [
+            // ✅ ADD CONNECTION STATUS INDICATOR
             Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: Icon(Icons.account_circle, color: Colors.white, size: 28),
+              padding: const EdgeInsets.only(right: 8),
+              child: ConnectionStatusIndicator(
+                isOnline: _isOnline,
+                syncStatus: _syncStatus,
+              ),
+            ),
+            
+            // ✅ PROFILE MENU WITH LOGOUT
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: PopupMenuButton<String>(
+                icon: const Icon(
+                  Icons.account_circle,
+                  color: Colors.white,
+                  size: 28,
+                ),
+                onSelected: (value) {
+                  if (value == 'logout') {
+                    _handleLogout();
+                  } else if (value == 'profile') {
+                    // Navigate to profile page
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'profile',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person, size: 20),
+                        const SizedBox(width: 12),
+                        Text(
+                          widget.signedInUser.username,
+                          style: const TextStyle(fontFamily: fontAll),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, size: 20, color: Colors.red),
+                        SizedBox(width: 12),
+                        Text(
+                          'Logout',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontFamily: fontAll,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -80,9 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: EdgeInsets.zero,
             children: [
               DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Colors.red.shade400,
-                ),
+                decoration: BoxDecoration(color: Colors.red.shade400),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -100,26 +220,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+              // Menu items
               ...List.generate(menuItems.length, (index) {
                 final bool isActive = selectedIndex == index;
 
                 return ListTile(
                   leading: Icon(
                     menuItems[index]["icon"],
-                    color: isActive ? Colors.red : Colors.black, // ✅ ICON RED
+                    color: isActive ? Colors.red : Colors.black,
                   ),
                   title: Text(
                     menuItems[index]["label"],
                     style: TextStyle(
-                      color: isActive ? Colors.red : Colors.black, // ✅ TEXT RED
+                      color: isActive ? Colors.red : Colors.black,
                       fontFamily: fontAll,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: isActive
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
-
-                  // ✅ LIGHT RED BACKGROUND LIKE DESKTOP FEEL
                   tileColor: isActive ? Colors.red.withOpacity(0.08) : null,
-
                   selected: isActive,
                   onTap: () {
                     Navigator.pop(context);
@@ -127,12 +247,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 );
               }),
-
+              // ✅ LOGOUT BUTTON IN DRAWER
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.red, fontFamily: fontAll),
+                ),
+                onTap: () {
+                  Navigator.pop(context); // Close drawer
+                  _handleLogout();
+                },
+              ),
             ],
           ),
         ),
       );
     }
+
+    // DESKTOP UI
     return Scaffold(
       backgroundColor: Colors.grey.shade200,
       appBar: AppBar(
@@ -159,10 +293,76 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        actions: const [
+        actions: [
+          // ✅ ADD CONNECTION STATUS INDICATOR
           Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(Icons.account_circle, color: Colors.white, size: 28),
+            padding: const EdgeInsets.only(right: 8),
+            child: ConnectionStatusIndicator(
+              isOnline: _isOnline,
+              syncStatus: _syncStatus,
+            ),
+          ),
+          
+          // ✅ PROFILE MENU WITH LOGOUT
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: PopupMenuButton<String>(
+              icon: const Icon(
+                Icons.account_circle,
+                color: Colors.white,
+                size: 28,
+              ),
+              onSelected: (value) {
+                if (value == 'logout') {
+                  _handleLogout();
+                } else if (value == 'profile') {
+                  // Navigate to profile page
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        widget.signedInUser.username,
+                        style: const TextStyle(fontFamily: fontAll),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  enabled: false,
+                  child: Text(
+                    widget.signedInUser.email,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontFamily: fontAll,
+                    ),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout, size: 20, color: Colors.red),
+                      SizedBox(width: 12),
+                      Text(
+                        'Logout',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontFamily: fontAll,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -215,8 +415,9 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: () => switchPage(index),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-        decoration:
-            active ? BoxDecoration(color: Colors.white.withOpacity(0.25)) : null,
+        decoration: active
+            ? BoxDecoration(color: Colors.white.withOpacity(0.25))
+            : null,
         child: Row(
           children: [
             Icon(
@@ -249,57 +450,106 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ✅ FIXED: Build menu using UserData permissions directly
   Future<void> _loadRoleAndMenu() async {
-  // Get the user's roleId
-  final roleId = widget.signedInUser.roleId;
+    if (!mounted) return;
 
-  // Use RolesDao to fetch the Role object by ID
-  final role = await _db.rolesDao.getRoleById(roleId); // <-- implement getRoleById in RolesDao
-  if (!mounted) return;
+    // Build menu using permissions from UserData (already loaded from Supabase)
+    final menu = _buildMenuFromUserData(widget.signedInUser);
 
-  final menu = _buildMenu(role);
+    // Update UI
+    if (!mounted) return;
+    setState(() {
+      menuItems = menu;
+      selectedIndex = 0;
+      currentPage = menu.isNotEmpty
+          ? menu.first["page"] as Widget
+          : const SizedBox.shrink();
+      _isLoadingRole = false;
+    });
+  }
 
-  setState(() {
-    menuItems = menu;
-    currentPage = menu.first["page"] as Widget;
-    _isLoadingRole = false;
-  });
-}
-
-  List<Map<String, dynamic>> _buildMenu(Role? role) {
+  /// Build menu items from UserData permissions
+  List<Map<String, dynamic>> _buildMenuFromUserData(UserData userData) {
+    final permissions = userData.permissions;
     final List<Map<String, dynamic>> items = [];
-    final bool isAdmin = role?.name == 'admin';
-    final bool isEmployee = role?.name == 'employee';
 
-    if (isAdmin || (role?.canViewReports ?? false)) {
-      items.add({"icon": Icons.bar_chart, "label": "Reports", "page": const ReportsPage()});
-    }
-    if (isAdmin || (role?.canViewInventory ?? false)) {
-      items.add({"icon": Icons.shopping_cart, "label": "Items", "page": const ItemsPage()});
-    }
-    if (isAdmin ||
-        (role?.canAddInventory ?? false) ||
-        (role?.canEditInventory ?? false) ||
-        (role?.canDeleteInventory ?? false)) {
-      items.add({"icon": Icons.inventory_2, "label": "Inventory", "page": const InventoryPage()});
-    }
-    if (isAdmin || (role?.canManageEmployees ?? false) || (role?.canManageRoles ?? false)) {
-      items.add({"icon": Icons.person_2, "label": "Employee", "page": const EmployeePage()});
-    }
+    // Check if user has full access (all permissions)
+    final hasFullAccess = permissions.canViewReports &&
+        permissions.canViewInventory &&
+        permissions.canAddInventory &&
+        permissions.canEditInventory &&
+        permissions.canDeleteInventory &&
+        permissions.canManageEmployees &&
+        permissions.canManageRoles &&
+        permissions.canAccessSettings &&
+        permissions.canExportData;
 
-    if (isEmployee) {
-      items.add({"icon": Icons.shopping_cart, "label": "Items", "page": const EmployeeItemsPage()});
-      items.add({"icon": Icons.account_circle, "label": "Account", "page": const EmployeeAccountPage()});
+    void addItemIf(bool condition, IconData icon, String label, Widget page) {
+      if (condition) {
+        items.add({"icon": icon, "label": label, "page": page});
+      }
     }
 
-    return items.isEmpty
-        ? [
-            {
-              "icon": Icons.person,
-              "label": "Account",
-              "page": const EmployeeAccountPage(),
-            }
-          ]
-        : items;
+    // Reports
+    addItemIf(
+      permissions.canViewReports || hasFullAccess,
+      Icons.bar_chart,
+      "Reports",
+      const ReportsPage(),
+    );
+
+    // Items / Inventory
+    if (permissions.canViewInventory || hasFullAccess) {
+      final isRestrictedEmployee = !(permissions.canAddInventory ||
+          permissions.canEditInventory ||
+          permissions.canDeleteInventory);
+      
+      // For restricted employees, show read-only items page
+      if (isRestrictedEmployee && !hasFullAccess) {
+        addItemIf(
+          true,
+          Icons.shopping_cart,
+          "Items",
+          EmployeeItemsPage(userData: userData),
+        );
+      } else {
+        addItemIf(
+          true,
+          Icons.shopping_cart,
+          "Items",
+          const ItemsPage(),
+        );
+      }
+    }
+
+    // Inventory management page
+    addItemIf(
+      permissions.canAddInventory ||
+          permissions.canEditInventory ||
+          permissions.canDeleteInventory ||
+          hasFullAccess,
+      Icons.inventory_2,
+      "Inventory",
+      const InventoryPage(),
+    );
+
+    // Employee management page
+    addItemIf(
+      permissions.canManageEmployees || permissions.canManageRoles || hasFullAccess,
+      Icons.person_2,
+      "Employee",
+      const EmployeePage(),
+    );
+
+    // Account page for all users
+    addItemIf(
+      true,
+      Icons.account_circle,
+      "Account",
+      EmployeeAccountPage(userData: userData),
+    );
+
+    return items;
   }
 }

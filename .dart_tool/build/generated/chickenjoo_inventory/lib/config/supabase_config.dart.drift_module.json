@@ -1,0 +1,6 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_dotenv/flutter_dotenv.dart"
+  ]
+}
