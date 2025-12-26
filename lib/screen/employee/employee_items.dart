@@ -26,7 +26,11 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   List<StockChangeRequest> pendingChanges = [];
   bool _isLoading = true;
 
-  int selectedTab = 0; // 0 = Items, 1 = Review Changes
+  Map<int, String> categoryMap = {}; // Store category names by ID
+
+
+  int categoryCount = 0;
+  int selectedTab = 0; // 0 = Items, 1 = Categories
 
   ItemSort _currentSort = const ItemSort(ItemSortField.name, SortOrder.asc);
   ReviewSort _reviewSort = const ReviewSort(
@@ -76,32 +80,348 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     }
   }
 
-  void _applyItemSort(ItemSort sort) {
-    setState(() {
-      _currentSort = sort;
+  });
+}
 
-      switch (sort.field) {
-        case ItemSortField.date:
-          dbItems.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
-          break;
-        case ItemSortField.name:
-          dbItems.sort((a, b) => a.name.compareTo(b.name));
-          break;
-        case ItemSortField.stock:
-          dbItems.sort((a, b) => a.stock.compareTo(b.stock));
-          break;
-        case ItemSortField.sale:
-          dbItems.sort((a, b) => a.sold.compareTo(b.sold));
-          break;
-        case ItemSortField.spoilage:
-          dbItems.sort((a, b) => b.spoilage.compareTo(a.spoilage));
-          break;
-      }
+// ✅ SHOW ITEM DETAILS DIALOG
+  void _showItemDetails(Item item) {
+    final TextEditingController priceController = TextEditingController(text: "100");
+    final TextEditingController soldController = TextEditingController(text: item.sold.toString());
+    final TextEditingController spoilageController = TextEditingController(text: item.spoilage.toString());
+    int? selectedCategoryId = item.categoryId;
+    // ✅ Get category name from categoryMap using item.categoryId
+    final categoryName = item.categoryId != null 
+        ? (categoryMap[item.categoryId] ?? "Uncategorized")
+        : "Uncategorized";
+    // TODO: Replace hardcoded values with actual item getters once database schema is updated
+    final price = 100; // TODO: Use item.price once added to database
+    final status = "Healthy"; // TODO: Use item.status once added to database
+    final sku = "ABC-123"; // TODO: Use item.sku once added to database
+    // ✅ Format lastUpdated as date
+    final dateOrdered = "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
 
-      if (sort.order == SortOrder.desc) {
-        dbItems = dbItems.reversed.toList();
-      }
-    });
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with item name and price
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          style: const TextStyle(
+                            fontFamily: fontAll,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          const Text(
+                            "Price: ",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          TextField(
+                            controller: priceController, // TODO: Replace with item.price
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 24),
+
+                  // Row 1: Category and Status
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Category:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: DropdownButtonFormField<int>(
+                                value: selectedCategoryId,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 4),
+                                ),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text("Uncategorized")
+                                  ),
+                                  ...categoryMap.entries.map((entry) => DropdownMenuItem<int>(
+                                    value: entry.key,
+                                    child: Text(entry.value),
+                                  )),
+                                ],
+                                onChanged: (value) {
+                                  selectedCategoryId = value;
+                                },
+                              )
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Status:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                status, // TODO: Replace with item.status
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Row 2: SKU and Amount Sold
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "SKU:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                sku, // TODO: Replace with item.sku
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Amount Sold:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: TextField(
+                                controller: soldController, // ✅ Using actual item.sold
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Row 3: Date Ordered and Amount Spoiled
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Date Ordered:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                dateOrdered, // Up
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Amount Spoiled:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: TextField(
+                                controller: spoilageController, // ✅ Using actual item.spoilage
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Action Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          "CANCEL",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[300],
+                          foregroundColor: Colors.black,
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          // TODO: Add edit functionality
+                        },
+                        child: const Text("SAVE ITEM DETAILS"),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _applyReviewSort(ReviewSort sort) {
@@ -297,6 +617,129 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                         ),
                     ],
                   ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              /// ✅ TABS
+              Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildTab("Items", 0),
+                    _buildTab("Categories", 1),
+                  ],
+                ),
+              ),
+
+              /// ✅ CONTENT
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: selectedTab == 0
+                      ? (dbItems.isEmpty
+                        ? emptyTables(
+                            message: "You can manage your items here.",
+                            onAddPressed: _createItem,
+                            buttonType: EmptyButtonType.icon,
+                            buttonText: null)
+                        : buildUniversalTable(
+                            headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
+                            rows: dbItems.map((item) => [
+                              GestureDetector(
+                                onTap: () => _showItemDetails(item),
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Text(
+                                    item.name.toString(),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => _showItemDetails(item),
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Text(
+                                    item.stock.toString(),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => _showItemDetails(item),
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Text(
+                                    item.sold.toString(),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => _showItemDetails(item),
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Text(
+                                    item.spoilage.toString(),
+                                  ),
+                                ),
+                              ),
+                              
+                              
+                              
+                              
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () async {
+                                  await db.itemsDao.deleteItem(item.id);
+                                  _loadItems();
+                                },
+                              ),
+                            ]).toList(),
+                          ))
+                      : (reviewChanges.isEmpty
+                            ? emptyTables(
+                                message: "You can view employee stock changes here.",
+                                onAddPressed: null,
+                                buttonType: EmptyButtonType.none,
+                                buttonText: null)
+                            : buildUniversalTable(
+                                headers: ["Employee", "Role", "Changes", "Status", ""],
+                                rows: List.generate(reviewChanges.length, (i) {
+                                  final record = reviewChanges[i];
+                                  return [
+                                    record.employeeName.toString(),
+                                    record.role.toString(),
+                                    record.totalChanges.toString(),
+                                    record.status,
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: Center(
+                                        child: ElevatedButton(
+                                          child: const Text("View"),
+                                          onPressed: () {
+                                            setState(() {
+                                              _isViewingChangeDetail = true;
+                                              _selectedChangeRecord = record;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ];
+                                }),
+                              ))
                 ),
               ),
             );
@@ -438,73 +881,59 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                         ? const Center(child: CircularProgressIndicator())
                         : selectedTab == 0
                         ? (dbItems.isEmpty
-                              ? emptyTables(
-                                  message: "No items available",
-                                  onAddPressed: null,
-                                  buttonType: EmptyButtonType.none,
-                                  buttonText: null,
-                                )
-                              : buildUniversalTable(
-                                  headers: [
-                                    "Item Name",
-                                    "Stock",
-                                    "Sale",
-                                    "Spoilage",
-                                  ],
-                                  rows: dbItems
-                                      .map(
-                                        (item) => [
-                                          item.name,
-                                          item.stock.toString(),
-                                          item.sold.toString(),
-                                          item.spoilage.toString(),
-                                        ],
-                                      )
-                                      .toList(),
-                                ))
-                        : (pendingChanges.isEmpty
-                              ? emptyTables(
-                                  message: "No pending changes",
-                                  onAddPressed: null,
-                                  buttonType: EmptyButtonType.none,
-                                  buttonText: null,
-                                )
-                              : FutureBuilder<List<Map<String, dynamic>>>(
-                                  future: _buildChangeRequestRows(),
-                                  builder: (context, snapshot) {
-                                    if (!snapshot.hasData) {
-                                      return const Center(
-                                        child: CircularProgressIndicator(),
-                                      );
-                                    }
-                                    return buildUniversalTable(
-                                      headers: [
-                                        "Item",
-                                        "Type",
-                                        "Qty",
-                                        "Status",
-                                        "",
-                                      ],
-                                      rows: snapshot.data!
-                                          .map(
-                                            (row) => [
-                                              row['itemName'],
-                                              row['changeType'],
-                                              row['quantity'],
-                                              _buildStatusChip(row['status']),
-                                              IconButton(
-                                                icon: const Icon(
-                                                  Icons.visibility,
-                                                ),
-                                                onPressed: () =>
-                                                    _viewChangeDetail(
-                                                      row['request'],
-                                                    ),
-                                              ),
-                                            ],
-                                          )
-                                          .toList(),
-                                    );
+                          ? emptyTables(
+                              message: "You can manage your items here.",
+                              onAddPressed: _createItem,
+                              buttonType: EmptyButtonType.icon,
+                              buttonText: null)
+                          : buildUniversalTable(
+                              headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
+                              rows: dbItems.map((item) => [
+                                GestureDetector(
+                                  onTap: () => _showItemDetails(item),
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: Text(
+                                      item.name.toString(),
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _showItemDetails(item),
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: Text(
+                                      item.stock.toString(),
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _showItemDetails(item),
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: Text(
+                                      item.sold.toString(),
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _showItemDetails(item),
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: Text(
+                                      item.spoilage.toString(),
+                                    ),
+                                  ),
+                                ),
+                                
+                                
+                                
+                                
+                                IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () async {
+                                    await db.itemsDao.deleteItem(item.id);
+                                    _loadItems();
                                   },
                                 )),
                   ),

@@ -17,25 +17,22 @@ class _ItemsPageState extends State<ItemsPage> {
   late AppDatabase db;
 
   List<Item> dbItems = [];
-  List<Category> dbCategories = [];
-  int? _currentOrganizationId;
+  List<Map<String, dynamic>> categories = [];
+  
+  Map<int, String> categoryMap = {}; // Store category names by ID
 
   int selectedTab = 0; // 0 = Items, 1 = Categories
   bool _isLoading = true;
 
-  static const String _orgIdKey = 'current_organization_id';
-
   ItemSort _currentSort = ItemSort(ItemSortField.name, SortOrder.desc);
-  CategorySort _currentCategorySort = CategorySort(
-    CategorySortField.name,
-    SortOrder.desc,
-  );
+  CategorySort _currentCategorySort = CategorySort(CategorySortField.name, SortOrder.desc);
 
   @override
   void initState() {
     super.initState();
     db = database;
-    _loadData();
+    _loadItems();
+    _loadCategories();
   }
 
   Future<void> _loadData() async {
@@ -81,6 +78,354 @@ class _ItemsPageState extends State<ItemsPage> {
       // Fallback: Load from local storage (for offline mode)
       _currentOrganizationId = prefs.getInt(_orgIdKey);
     }
+  }
+
+  Future<void> _loadCategories() async {
+    final cats = await db.categoriesDao.getAllCategories();
+    setState(() {
+      categoryMap = {for (var cat in cats) cat.id: cat.name};
+    });
+  }
+
+  // ✅ SHOW ITEM DETAILS DIALOG
+  void _showItemDetails(Item item) {
+    final TextEditingController priceController = TextEditingController(text: "100");
+    final TextEditingController soldController = TextEditingController(text: item.sold.toString());
+    final TextEditingController spoilageController = TextEditingController(text: item.spoilage.toString());
+    int? selectedCategoryId = item.categoryId;
+    // ✅ Get category name from categoryMap using item.categoryId
+    final categoryName = item.categoryId != null 
+        ? (categoryMap[item.categoryId] ?? "Uncategorized")
+        : "Uncategorized";
+    // TODO: Replace hardcoded values with actual item getters once database schema is updated
+    final price = 100; // TODO: Use item.price once added to database
+    final status = "Healthy"; // TODO: Use item.status once added to database
+    final sku = "ABC-123"; // TODO: Use item.sku once added to database
+    // ✅ Format lastUpdated as date
+    final dateOrdered = "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
+
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with item name and price
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          style: const TextStyle(
+                            fontFamily: fontAll,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          const Text(
+                            "Price: ",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          TextField(
+                            controller: priceController, // TODO: Replace with item.price
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 24),
+
+                  // Row 1: Category and Status
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Category:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: DropdownButtonFormField<int>(
+                                value: selectedCategoryId,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 4),
+                                ),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text("Uncategorized")
+                                  ),
+                                  ...categoryMap.entries.map((entry) => DropdownMenuItem<int>(
+                                    value: entry.key,
+                                    child: Text(entry.value),
+                                  )),
+                                ],
+                                onChanged: (value) {
+                                  selectedCategoryId = value;
+                                },
+                              )
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Status:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                status, // TODO: Replace with item.status
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Row 2: SKU and Amount Sold
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "SKU:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                sku, // TODO: Replace with item.sku
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Amount Sold:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: TextField(
+                                controller: soldController, // ✅ Using actual item.sold
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Row 3: Date Ordered and Amount Spoiled
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Date Ordered:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                dateOrdered, // Up
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Amount Spoiled:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: TextField(
+                                controller: spoilageController, // ✅ Using actual item.spoilage
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Action Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          "CANCEL",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[300],
+                          foregroundColor: Colors.black,
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          // TODO: Add edit functionality
+                        },
+                        child: const Text("SAVE ITEM DETAILS"),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   // Create Item Dialog
@@ -394,7 +739,7 @@ class _ItemsPageState extends State<ItemsPage> {
       }
 
       if (sort.order == SortOrder.desc) {
-        dbCategories = dbCategories.reversed.toList();
+        categories = categories.reversed.toList();
       }
     });
   }
@@ -518,6 +863,7 @@ class _ItemsPageState extends State<ItemsPage> {
   @override
   Widget build(BuildContext context) {
     if (AppLayout.isDesktop(context) == false) {
+      /// ✅ PHONE UI
       return Scaffold(
         backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
         body: SafeArea(
@@ -525,6 +871,7 @@ class _ItemsPageState extends State<ItemsPage> {
             padding: const EdgeInsets.all(12),
             child: Column(
               children: [
+                /// HEADER (STACKED)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -532,14 +879,11 @@ class _ItemsPageState extends State<ItemsPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Items',
+                          "Items",
                           style: TextStyle(fontSize: 26, fontFamily: fontAll),
                         ),
                         IconButton(
-                          icon: const Icon(
-                            Icons.notifications_outlined,
-                            size: 28,
-                          ),
+                          icon: const Icon(Icons.notifications_outlined, size: 28),
                           onPressed: () {},
                         ),
                       ],
@@ -547,6 +891,7 @@ class _ItemsPageState extends State<ItemsPage> {
                     const SizedBox(height: 10),
                     Row(
                       children: [
+                        /// SEARCH BAR
                         Expanded(
                           child: Container(
                             height: 42,
@@ -571,49 +916,39 @@ class _ItemsPageState extends State<ItemsPage> {
                             onSelected: _applyItemSort,
                             itemBuilder: (context) => const [
                               PopupMenuItem(
-                                value: ItemSort(
-                                  ItemSortField.date,
-                                  SortOrder.desc,
-                                ),
+                                value: ItemSort(ItemSortField.date, SortOrder.desc),
                                 child: Text("Date Modified (Newest)"),
                               ),
                               PopupMenuItem(
-                                value: ItemSort(
-                                  ItemSortField.date,
-                                  SortOrder.asc,
-                                ),
+                                value: ItemSort(ItemSortField.date, SortOrder.asc),
                                 child: Text("Date Modified (Oldest)"),
                               ),
                               PopupMenuDivider(),
                               PopupMenuItem(
-                                value: ItemSort(
-                                  ItemSortField.name,
-                                  SortOrder.desc,
-                                ),
-                                child: Text("Name (A–Z)"),
-                              ),
+                                  value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
                               PopupMenuItem(
-                                value: ItemSort(
-                                  ItemSortField.name,
-                                  SortOrder.asc,
-                                ),
-                                child: Text("Name (Z–A)"),
-                              ),
+                                  value: ItemSort(ItemSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
                               PopupMenuDivider(),
                               PopupMenuItem(
-                                value: ItemSort(
-                                  ItemSortField.stock,
-                                  SortOrder.desc,
-                                ),
-                                child: Text("Stock (Low → High)"),
-                              ),
+                                  value: ItemSort(ItemSortField.stock, SortOrder.desc),
+                                  child: Text("Stock (Low → High)")),
                               PopupMenuItem(
-                                value: ItemSort(
-                                  ItemSortField.stock,
-                                  SortOrder.asc,
-                                ),
-                                child: Text("Stock (High → Low)"),
-                              ),
+                                  value: ItemSort(ItemSortField.stock, SortOrder.asc),
+                                  child: Text("Stock (High → Low)")),
+                              PopupMenuDivider(),
+                              PopupMenuItem(
+                                  value: ItemSort(ItemSortField.sale, SortOrder.desc),
+                                  child: Text("Sale (Low → High)")),
+                              PopupMenuItem(
+                                  value: ItemSort(ItemSortField.sale, SortOrder.asc),
+                                  child: Text("Sale (High → Low)")),
+                              PopupMenuDivider(),
+                              PopupMenuItem(
+                                  value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
+                                  child: Text("Spoilage (Low → High)")),
+                              PopupMenuItem(
+                                  value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
+                                  child: Text("Spoilage (High → Low)")),
                             ],
                           )
                         else
@@ -622,34 +957,25 @@ class _ItemsPageState extends State<ItemsPage> {
                             onSelected: _applyCategorySort,
                             itemBuilder: (context) => const [
                               PopupMenuItem(
-                                value: CategorySort(
-                                  CategorySortField.date,
-                                  SortOrder.desc,
-                                ),
+                                value: CategorySort(CategorySortField.date, SortOrder.desc),
                                 child: Text("Date Modified (Newest)"),
                               ),
                               PopupMenuItem(
-                                value: CategorySort(
-                                  CategorySortField.date,
-                                  SortOrder.asc,
-                                ),
+                                value: CategorySort(CategorySortField.date, SortOrder.asc),
                                 child: Text("Date Modified (Oldest)"),
                               ),
                               PopupMenuDivider(),
                               PopupMenuItem(
-                                value: CategorySort(
-                                  CategorySortField.name,
-                                  SortOrder.desc,
-                                ),
-                                child: Text("Category (A–Z)"),
-                              ),
+                                  value: CategorySort(CategorySortField.name, SortOrder.desc), child: Text("Category (A–Z)")),
                               PopupMenuItem(
-                                value: CategorySort(
-                                  CategorySortField.name,
-                                  SortOrder.asc,
-                                ),
-                                child: Text("Category (Z–A)"),
-                              ),
+                                  value: CategorySort(CategorySortField.name, SortOrder.asc), child: Text("Category (Z–A)")),
+                              PopupMenuDivider(),
+                              PopupMenuItem(
+                                  value: CategorySort(CategorySortField.items, SortOrder.desc),
+                                  child: Text("Items (Low → High)")),
+                              PopupMenuItem(
+                                  value: CategorySort(CategorySortField.items, SortOrder.asc),
+                                  child: Text("Items (High → Low)")),
                             ],
                           ),
                       ],
@@ -657,6 +983,8 @@ class _ItemsPageState extends State<ItemsPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                /// TABS
                 Container(
                   height: 42,
                   decoration: BoxDecoration(
@@ -670,6 +998,8 @@ class _ItemsPageState extends State<ItemsPage> {
                     ],
                   ),
                 ),
+
+                /// CONTENT
                 Expanded(
                   child: Container(
                     width: double.infinity,
@@ -681,84 +1011,83 @@ class _ItemsPageState extends State<ItemsPage> {
                         bottomRight: Radius.circular(12),
                       ),
                     ),
-                    child: _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : selectedTab == 0
+                    child: selectedTab == 0
                         ? (dbItems.isEmpty
-                              ? emptyTables(
-                                  message: "You can manage your items here.",
-                                  onAddPressed: _createItem,
-                                  buttonType: EmptyButtonType.icon,
-                                  buttonText: null,
-                                )
-                              : buildUniversalTable(
-                                  headers: [
-                                    "Item Name",
-                                    "Stock",
-                                    "Sale",
-                                    "Spoilage",
-                                    "",
-                                  ],
-                                  rows: dbItems
-                                      .map(
-                                        (item) => [
-                                          item.name,
-                                          item.stock.toString(),
-                                          item.sold.toString(),
-                                          item.spoilage.toString(),
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.delete,
-                                              color: Colors.red,
-                                            ),
-                                            onPressed: () => _deleteItem(item),
-                                          ),
-                                        ],
-                                      )
-                                      .toList(),
-                                ))
-                        : (dbCategories.isEmpty
-                              ? emptyTables(
-                                  message: "You can add categories here.",
-                                  onAddPressed: _createCategory,
-                                  buttonType: EmptyButtonType.icon,
-                                  buttonText: null,
-                                )
-                              : FutureBuilder<List<Map<String, dynamic>>>(
-                                  future: _buildCategoryRows(),
-                                  builder: (context, snapshot) {
-                                    if (!snapshot.hasData) {
-                                      return const Center(
-                                        child: CircularProgressIndicator(),
-                                      );
-                                    }
-                                    return buildUniversalTable(
-                                      headers: [
-                                        "Category Name",
-                                        "Items in Category",
-                                        "",
-                                      ],
-                                      rows: snapshot.data!
-                                          .map(
-                                            (row) => [
-                                              row['name'],
-                                              row['itemCount'].toString(),
-                                              IconButton(
-                                                icon: const Icon(
-                                                  Icons.delete,
-                                                  color: Colors.red,
-                                                ),
-                                                onPressed: () =>
-                                                    _deleteCategory(
-                                                      row['category'],
-                                                    ),
-                                              ),
-                                            ],
-                                          )
-                                          .toList(),
-                                    );
-                                  },
-                                )),
+                            ? emptyTables(
+                                message: "You can manage your items here.",
+                                onAddPressed: _createItem,
+                                buttonType: EmptyButtonType.icon,
+                                buttonText: null)
+                            : buildUniversalTable(
+                                headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
+                                rows: dbItems.map((item) => [
+                                  GestureDetector(
+                                    onTap: () => _showItemDetails(item),
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Text(
+                                        item.name.toString(),
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => _showItemDetails(item),
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Text(
+                                        item.stock.toString(),
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => _showItemDetails(item),
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Text(
+                                        item.sold.toString(),
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => _showItemDetails(item),
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: Text(
+                                        item.spoilage.toString(),
+                                      ),
+                                    ),
+                                  ),
+                                  
+                                  
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () async {
+                                      await db.itemsDao.deleteItem(item.id);
+                                      _loadItems();
+                                    },
+                                  ),
+                                ]).toList(),
+                              ))
+                        : (categories.isEmpty
+                            ? emptyTables(
+                                message: "You can add categories here.",
+                                onAddPressed: _createCategory,
+                                buttonType: EmptyButtonType.icon,
+                                buttonText: null)
+                            : buildUniversalTable(
+                                headers: ["Category Name", "Items in Category", ""],
+                                rows: List.generate(categories.length, (i) {
+                                  final category = categories[i];
+                                  return [
+                                    category["category"].toString(),
+                                    category["itemNumber"].toString(),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () => _deleteCategory(i),
+                                    ),
+                                  ];
+                                }),
+                              )),
                   ),
                 ),
               ],
@@ -766,16 +1095,17 @@ class _ItemsPageState extends State<ItemsPage> {
           ),
         ),
         floatingActionButton:
-            (!_isLoading &&
-                ((selectedTab == 0 && dbItems.isNotEmpty) ||
-                    (selectedTab == 1 && dbCategories.isNotEmpty)))
-            ? FloatingActionButton(
-                backgroundColor: Colors.red[700],
-                onPressed: selectedTab == 0 ? _createItem : _createCategory,
-                child: const Icon(Icons.add, color: Colors.white),
-              )
-            : null,
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+            (selectedTab == 0 && dbItems.isNotEmpty) ||
+                    (selectedTab == 1 && categories.isNotEmpty)
+                ? FloatingActionButton(
+                    backgroundColor: Colors.red[700],
+                    onPressed:
+                        selectedTab == 0 ? _createItem : _createCategory,
+                    child: const Icon(Icons.add, color: Colors.white),
+                  )
+                : null,
+        floatingActionButtonLocation:
+            FloatingActionButtonLocation.centerFloat,
       );
     }
 
@@ -792,6 +1122,7 @@ class _ItemsPageState extends State<ItemsPage> {
                   style: TextStyle(fontSize: 30, fontFamily: fontAll),
                 ),
                 const SizedBox(width: 16),
+                // Search Bar
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -813,13 +1144,39 @@ class _ItemsPageState extends State<ItemsPage> {
                     onSelected: _applyItemSort,
                     itemBuilder: (context) => const [
                       PopupMenuItem(
-                        value: ItemSort(ItemSortField.name, SortOrder.desc),
-                        child: Text("Name (A–Z)"),
+                        value: ItemSort(ItemSortField.date, SortOrder.desc),
+                        child: Text("Date Modified (Newest)"),
                       ),
                       PopupMenuItem(
-                        value: ItemSort(ItemSortField.stock, SortOrder.desc),
-                        child: Text("Stock (Low → High)"),
+                        value: ItemSort(ItemSortField.date, SortOrder.asc),
+                        child: Text("Date Modified (Oldest)"),
                       ),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                          value: ItemSort(ItemSortField.name, SortOrder.desc), child: Text("Name (A–Z)")),
+                      PopupMenuItem(
+                          value: ItemSort(ItemSortField.name, SortOrder.asc), child: Text("Name (Z–A)")),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                          value: ItemSort(ItemSortField.stock, SortOrder.desc),
+                          child: Text("Stock (Low → High)")),
+                      PopupMenuItem(
+                          value: ItemSort(ItemSortField.stock, SortOrder.asc),
+                          child: Text("Stock (High → Low)")),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                          value: ItemSort(ItemSortField.sale, SortOrder.desc),
+                          child: Text("Sale (Low → High)")),
+                      PopupMenuItem(
+                          value: ItemSort(ItemSortField.sale, SortOrder.asc),
+                          child: Text("Sale (High → Low)")),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                          value: ItemSort(ItemSortField.spoilage, SortOrder.desc),
+                          child: Text("Spoilage (Low → High)")),
+                      PopupMenuItem(
+                          value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
+                          child: Text("Spoilage (High → Low)")),
                     ],
                   )
                 else
@@ -828,12 +1185,25 @@ class _ItemsPageState extends State<ItemsPage> {
                     onSelected: _applyCategorySort,
                     itemBuilder: (context) => const [
                       PopupMenuItem(
-                        value: CategorySort(
-                          CategorySortField.name,
-                          SortOrder.desc,
-                        ),
-                        child: Text("Category (A–Z)"),
+                        value: CategorySort(CategorySortField.date, SortOrder.desc),
+                        child: Text("Date Modified (Newest)"),
                       ),
+                      PopupMenuItem(
+                        value: CategorySort(CategorySortField.date, SortOrder.asc),
+                        child: Text("Date Modified (Oldest)"),
+                      ),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                          value: CategorySort(CategorySortField.name, SortOrder.desc), child: Text("Category (A–Z)")),
+                      PopupMenuItem(
+                          value: CategorySort(CategorySortField.name, SortOrder.asc), child: Text("Category (Z–A)")),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                          value: CategorySort(CategorySortField.items, SortOrder.desc),
+                          child: Text("Items (Low → High)")),
+                      PopupMenuItem(
+                          value: CategorySort(CategorySortField.items, SortOrder.asc),
+                          child: Text("Items (High → Low)")),
                     ],
                   ),
                 IconButton(
@@ -873,82 +1243,82 @@ class _ItemsPageState extends State<ItemsPage> {
                           ? const Center(child: CircularProgressIndicator())
                           : selectedTab == 0
                           ? (dbItems.isEmpty
-                                ? emptyTables(
-                                    message: "You can manage your items here.",
-                                    onAddPressed: _createItem,
-                                    buttonType: EmptyButtonType.icon,
-                                    buttonText: null,
-                                  )
-                                : buildUniversalTable(
-                                    headers: [
-                                      "Item Name",
-                                      "Stock",
-                                      "Sale",
-                                      "Spoilage",
-                                      "",
-                                    ],
-                                    rows: dbItems
-                                        .map(
-                                          (item) => [
-                                            item.name,
-                                            item.stock.toString(),
-                                            item.sold.toString(),
-                                            item.spoilage.toString(),
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.delete,
-                                                color: Colors.red,
-                                              ),
-                                              onPressed: () =>
-                                                  _deleteItem(item),
-                                            ),
-                                          ],
-                                        )
-                                        .toList(),
-                                  ))
-                          : (dbCategories.isEmpty
-                                ? emptyTables(
-                                    message:
-                                        "You can add categories here to organize your items.",
-                                    onAddPressed: _createCategory,
-                                    buttonType: EmptyButtonType.icon,
-                                    buttonText: null,
-                                  )
-                                : FutureBuilder<List<Map<String, dynamic>>>(
-                                    future: _buildCategoryRows(),
-                                    builder: (context, snapshot) {
-                                      if (!snapshot.hasData) {
-                                        return const Center(
-                                          child: CircularProgressIndicator(),
-                                        );
-                                      }
-                                      return buildUniversalTable(
-                                        headers: [
-                                          "Category Name",
-                                          "Items in Category",
-                                          "",
-                                        ],
-                                        rows: snapshot.data!
-                                            .map(
-                                              (row) => [
-                                                row['name'],
-                                                row['itemCount'].toString(),
-                                                IconButton(
-                                                  icon: const Icon(
-                                                    Icons.delete,
-                                                    color: Colors.red,
-                                                  ),
-                                                  onPressed: () =>
-                                                      _deleteCategory(
-                                                        row['category'],
-                                                      ),
-                                                ),
-                                              ],
-                                            )
-                                            .toList(),
-                                      );
-                                    },
-                                  )),
+                              ? emptyTables(
+                                  message: "You can manage your items here.",
+                                  onAddPressed: _createItem,
+                                  buttonType: EmptyButtonType.icon,
+                                  buttonText: null)
+                              : buildUniversalTable(
+                                  headers: ["Item Name", "Stock", "Sale", "Spoilage", ""],
+                                  rows: dbItems.map((item) => [
+                                    GestureDetector(
+                                      onTap: () => _showItemDetails(item),
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: Text(
+                                          item.name.toString(),
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => _showItemDetails(item),
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: Text(
+                                          item.stock.toString(),
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => _showItemDetails(item),
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: Text(
+                                          item.sold.toString(),
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => _showItemDetails(item),
+                                      child: MouseRegion(
+                                        cursor: SystemMouseCursors.click,
+                                        child: Text(
+                                          item.spoilage.toString(),
+                                        ),
+                                      ),
+                                    ),
+                                    
+                                    
+                                    
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () async {
+                                        await db.itemsDao.deleteItem(item.id);
+                                        _loadItems();
+                                      },
+                                    ),
+                                  ]).toList(),
+                                ))
+                          : (categories.isEmpty
+                              ? emptyTables(
+                                  message: "You can add categories here to organize your items.",
+                                  onAddPressed: _createCategory,
+                                  buttonType: EmptyButtonType.icon,
+                                  buttonText: null)
+                              : buildUniversalTable(
+                                  headers: ["Category Name", "Items in Category", ""],
+                                  rows: List.generate(categories.length, (i) {
+                                    final category = categories[i];
+                                    return [
+                                      category["category"].toString(),
+                                      category["itemNumber"].toString(),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                        onPressed: () => _deleteCategory(i),
+                                      ),
+                                    ];
+                                  }),
+                                )),
                     ),
                   ),
                 ],
@@ -957,10 +1327,8 @@ class _ItemsPageState extends State<ItemsPage> {
           ],
         ),
       ),
-      floatingActionButton:
-          (!_isLoading &&
-              ((selectedTab == 0 && dbItems.isNotEmpty) ||
-                  (selectedTab == 1 && dbCategories.isNotEmpty)))
+
+      floatingActionButton: (selectedTab == 0 && dbItems.isNotEmpty) || (selectedTab == 1 && categories.isNotEmpty)
           ? Container(
               margin: const EdgeInsets.only(bottom: 20),
               child: FloatingActionButton(
