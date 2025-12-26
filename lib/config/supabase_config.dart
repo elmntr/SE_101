@@ -7,4 +7,12 @@ class SupabaseConfig {
 
   // Validate that credentials are loaded
   static bool get isValid => url.isNotEmpty && anonKey.isNotEmpty;
+
+  /// Debug method to check configuration status
+  static void printConfigStatus() {
+    print('🔧 Supabase Configuration Status:');
+    print('   URL: ${url.isNotEmpty ? "✅ Set" : "❌ Missing"}');
+    print('   Anon Key: ${anonKey.isNotEmpty ? "✅ Set (${anonKey.substring(0, 20)}...)" : "❌ Missing"}');
+    print('   Auth Mode: RLS-based (user authentication required for sync)');
+  }
 }

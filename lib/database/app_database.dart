@@ -1,5 +1,6 @@
 // lib/database/app_database.dart
 import 'dart:io';
+import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
@@ -79,7 +80,8 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   final bool _seedData;
 
-  AppDatabase({bool seedData = true})
+  /// Set seedData to false - data will come from cloud sync
+  AppDatabase({bool seedData = false})
     : _seedData = seedData,
       super(_openConnection());
 
@@ -417,16 +419,75 @@ LazyDatabase _openConnection() {
   });
 }
 
-/// ✅ Hash password using SHA-256
-String hashPassword(String password) {
-  final bytes = utf8.encode(password);
-  final digest = sha256.convert(bytes);
-  return digest.toString();
+/// Generate a cryptographically secure random salt
+String _generateSalt([int length = 16]) {
+  final random = Random.secure();
+  final bytes = List<int>.generate(length, (_) => random.nextInt(256));
+  return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 }
 
-/// ✅ Verify password hash
-bool verifyPassword(String password, String hashedPassword) {
-  return hashPassword(password) == hashedPassword;
+/// Hash password with a specific salt using PBKDF2
+String _hashPasswordWithSalt(String password, String salt) {
+  const int iterations = 100000; // Work factor
+  const int keyLength = 32; // 32 bytes = 256-bit derived key
+
+  final hmac = Hmac(sha256, utf8.encode(password));
+  final saltBytes = utf8.encode(salt);
+
+  // PBKDF2 block 1
+  List<int> int32ToBytes(int i) {
+    return <int>[
+      (i >> 24) & 0xff,
+      (i >> 16) & 0xff,
+      (i >> 8) & 0xff,
+      i & 0xff,
+    ];
+  }
+
+  final blockIndexBytes = int32ToBytes(1);
+  var u = hmac.convert([...saltBytes, ...blockIndexBytes]).bytes;
+  final List<int> derivedBlock = List<int>.from(u);
+
+  for (int i = 1; i < iterations; i++) {
+    u = hmac.convert(u).bytes;
+    for (int j = 0; j < derivedBlock.length; j++) {
+      derivedBlock[j] ^= u[j];
+    }
+  }
+
+  final dk = derivedBlock.sublist(0, keyLength);
+  final hashHex = dk.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+
+  return '$salt\$$hashHex'; // Format: salt$hash
+}
+
+/// ✅ Hash password using PBKDF2 with per-user random salt
+/// Returns format: "salt$hash" where salt is 32-char hex, hash is 64-char hex
+String hashPassword(String password) {
+  final salt = _generateSalt();
+  return _hashPasswordWithSalt(password, salt);
+}
+
+/// ✅ Verify password against stored hash
+/// Handles format: "salt$hash"
+bool verifyPassword(String password, String storedHash) {
+  final parts = storedHash.split('\$');
+  if (parts.length != 2) {
+    print('⚠️ Invalid hash format (expected salt\$hash)');
+    return false;
+  }
+
+  final salt = parts[0];
+  final expectedFullHash = _hashPasswordWithSalt(password, salt);
+
+  // Constant-time comparison to prevent timing attacks
+  if (storedHash.length != expectedFullHash.length) return false;
+  
+  int result = 0;
+  for (int i = 0; i < storedHash.length; i++) {
+    result |= storedHash.codeUnitAt(i) ^ expectedFullHash.codeUnitAt(i);
+  }
+  return result == 0;
 }
 
 /// ✅ Safe database deletion with error handling

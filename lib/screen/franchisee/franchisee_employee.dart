@@ -241,24 +241,34 @@ class _EmployeePageState extends State<EmployeePage> {
                 }
 
                 try {
-                  await db.usersDao.insertUser(
-                    UsersCompanion.insert(
-                      email: email,
-                      username: name,
-                      fullName: Value(name),
-                      phone: Value(phone.isEmpty ? null : phone),
-                      password: password,
-                      roleId: selectedRoleId!,
-                      organizationId: _currentOrganizationId!,
-                    ),
+                  // Use auth service to create employee (creates both Supabase Auth + local user)
+                  final authService = AppGlobals.instance.authService;
+                  final result = await authService.createEmployee(
+                    email: email,
+                    username: name,
+                    password: password,
+                    organizationId: _currentOrganizationId!,
+                    roleId: selectedRoleId!,
+                    fullName: name,
+                    phone: phone.isEmpty ? null : phone,
                   );
+
                   if (!navigator.mounted || !messenger.mounted) return;
-                  navigator.pop();
-                  messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Employee added successfully.'),
-                    ),
-                  );
+                  
+                  if (result.success) {
+                    navigator.pop();
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Employee added successfully.'),
+                      ),
+                    );
+                  } else {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(result.message ?? 'Failed to add employee'),
+                      ),
+                    );
+                  }
                 } on Exception catch (e) {
                   if (!messenger.mounted) return;
                   messenger.showSnackBar(

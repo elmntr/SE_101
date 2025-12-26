@@ -10,6 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'config/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/supabase_sync_service.dart';
+import 'services/supabase_auth_service.dart';
 import 'app_globals.dart'; // ✅ Import AppGlobals
 import 'app.dart';
 import 'package:path_provider/path_provider.dart';
@@ -35,6 +36,12 @@ void main() async {
   }
 
   // -------------------------------------------------------------
+  // CLEAN DATABASE FOR FRESH START (one-time)
+  // Comment out after first run if you want to keep local data
+  // -------------------------------------------------------------
+  //await deleteOldDatabase();
+
+  // -------------------------------------------------------------
   // DATABASE INITIALIZATION
   // -------------------------------------------------------------
   print('🗄️ Initializing database...');
@@ -44,7 +51,7 @@ void main() async {
   // SUPABASE INITIALIZATION
   // -------------------------------------------------------------
   print('☁️ Initializing Supabase...');
-  bool supabaseInitialized = false;
+  SupabaseConfig.printConfigStatus(); // Debug: Show config status
 
   try {
     await Supabase.initialize(
@@ -52,7 +59,6 @@ void main() async {
       anonKey: SupabaseConfig.anonKey,
     );
     print('✅ Supabase initialized');
-    supabaseInitialized = true;
   } catch (e) {
     print('⚠️ Supabase initialization failed: $e');
     print('📱 App will work in offline-only mode');
@@ -94,7 +100,16 @@ void main() async {
   // -------------------------------------------------------------
   // APP GLOBALS INITIALIZATION
   // -------------------------------------------------------------
-  AppGlobals.instance.initialize(database: db, syncService: sync);
+  final authService = SupabaseAuthService(
+    supabase: Supabase.instance.client,
+    database: db,
+  );
+  
+  AppGlobals.instance.initialize(
+    database: db,
+    syncService: sync,
+    authService: authService,
+  );
   print('✅ AppGlobals initialized');
 
   // Non-blocking sync service start
@@ -111,21 +126,6 @@ void main() async {
 
   // Start periodic sync updates
   _startSyncStatusUpdates();
-
-  // -------------------------------------------------------------
-  // DEBUG: PRINT EXISTING USERS
-  // -------------------------------------------------------------
-  // final users = await db.usersDao.getAllUsers();
-  // for (var u in users) {
-  //   print('${u.email} / ${u.password} / ${u.isActive}');
-  // }
-
-  // -------------------------------------------------------------
-  // ADMIN SEEDER (RUN LAST)
-  // -------------------------------------------------------------
-  final testHash = hashPassword('admin123');
-  print(testHash);
-  //print("Computed hash = ${hashPassword("admin123")}");
 
   // -------------------------------------------------------------
   // RUN APPLICATION

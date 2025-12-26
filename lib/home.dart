@@ -1,15 +1,13 @@
-import 'package:chickenjoo_inventory/database/daos/users_dao.dart';
-import 'package:chickenjoo_inventory/database/daos/roles_dao.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/screen/employee/employee_items.dart';
 import 'package:flutter/material.dart';
-import 'package:collection/collection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// ✅ ADD THESE IMPORTS
+// Connectivity and sync imports
 import '../services/connectivity_service.dart';
 import '../connection_status_indicator.dart';
 import 'utils/sync_status.dart';
+import 'services/supabase_auth_service.dart';
 
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
@@ -22,7 +20,7 @@ import 'screen/employee/employee_account.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.signedInUser});
 
-  final User signedInUser;
+  final UserData signedInUser;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -115,6 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (shouldLogout == true && mounted) {
+      // Sign out from Supabase Auth
+      await AppGlobals.instance.authService.signOut();
+      
+      // Clear local session
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('loggedInUserId');
 
@@ -448,23 +450,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ✅ FIXED: Single _loadRoleAndMenu implementation with selectedIndex initialization
+  // ✅ FIXED: Build menu using UserData permissions directly
   Future<void> _loadRoleAndMenu() async {
     if (!mounted) return;
 
-    // 1️⃣ Get the user's roleId and DAOs
-    final usersDao = _db.usersDao;
-    final rolesDao = _db.rolesDao;
-    final userId = widget.signedInUser.id;
+    // Build menu using permissions from UserData (already loaded from Supabase)
+    final menu = _buildMenuFromUserData(widget.signedInUser);
 
-    // 2️⃣ Build menu for the user
-    final menu = await buildMenuForUser(usersDao, rolesDao, userId);
-
-    // 3️⃣ Update UI
+    // Update UI
     if (!mounted) return;
     setState(() {
       menuItems = menu;
-      selectedIndex = 0; // ✅ ADD THIS LINE
+      selectedIndex = 0;
       currentPage = menu.isNotEmpty
           ? menu.first["page"] as Widget
           : const SizedBox.shrink();
@@ -472,72 +469,22 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<List<Map<String, dynamic>>> buildMenuForUser(
-    UsersDao usersDao,
-    RolesDao rolesDao,
-    int userId,
-  ) async {
-    // 1️⃣ Get user + role from DB
-    final usersWithRoles = await usersDao.getUsersWithRoles();
-
-    final userWithRole = usersWithRoles.firstWhereOrNull(
-      (u) => u.user.id == userId,
-    );
-
-    // 2️⃣ Define default/fallback role and user
-    final defaultRole = Role(
-      id: 0,
-      name: 'Guest',
-      description: 'Default guest role',
-      canViewInventory: false,
-      canAddInventory: false,
-      canEditInventory: false,
-      canDeleteInventory: false,
-      canViewReports: false,
-      canExportData: false,
-      canAccessSettings: false,
-      canManageEmployees: false,
-      canManageRoles: false,
-      isSystemRole: false,
-      isActive: true,
-      createdAt: DateTime.now(),
-      lastUpdated: DateTime.now(),
-      isSynced: false,
-    );
-
-    final defaultUser = User(
-      id: 0,
-      username: 'guest',
-      fullName: 'Guest User', // NEW field
-      email: 'guest@example.com',
-      password: '',
-      roleId: 0,
-      organizationId: 0, // NEW field
-      isActive: true,
-      createdAt: DateTime.now(),
-      lastUpdated: DateTime.now(),
-      isSynced: false,
-    );
-
-    final user = userWithRole?.user ?? defaultUser;
-    final role = userWithRole?.role ?? defaultRole;
-
+  /// Build menu items from UserData permissions
+  List<Map<String, dynamic>> _buildMenuFromUserData(UserData userData) {
+    final permissions = userData.permissions;
     final List<Map<String, dynamic>> items = [];
 
-    // 3️⃣ Determine if role has "full access" (like admin)
-    final hasFullAccess = [
-      role.canViewReports,
-      role.canViewInventory,
-      role.canAddInventory,
-      role.canEditInventory,
-      role.canDeleteInventory,
-      role.canManageEmployees,
-      role.canManageRoles,
-      role.canAccessSettings,
-      role.canExportData,
-    ].every((flag) => flag == true);
+    // Check if user has full access (all permissions)
+    final hasFullAccess = permissions.canViewReports &&
+        permissions.canViewInventory &&
+        permissions.canAddInventory &&
+        permissions.canEditInventory &&
+        permissions.canDeleteInventory &&
+        permissions.canManageEmployees &&
+        permissions.canManageRoles &&
+        permissions.canAccessSettings &&
+        permissions.canExportData;
 
-    // 4️⃣ Add menu items dynamically based on access flags
     void addItemIf(bool condition, IconData icon, String label, Widget page) {
       if (condition) {
         items.add({"icon": icon, "label": label, "page": page});
@@ -546,38 +493,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Reports
     addItemIf(
-      role.canViewReports || hasFullAccess,
+      permissions.canViewReports || hasFullAccess,
       Icons.bar_chart,
       "Reports",
       const ReportsPage(),
     );
 
     // Items / Inventory
-    if (role.canViewInventory || hasFullAccess) {
-      // Employees with restricted inventory see EmployeeItemsPage
-      final isRestrictedEmployee =
-          !(role.canAddInventory ||
-              role.canEditInventory ||
-              role.canDeleteInventory);
-      addItemIf(
-        isRestrictedEmployee && !hasFullAccess,
-        Icons.shopping_cart,
-        "Items",
-        EmployeeItemsPage(user: user, role: role),
-      );
-      addItemIf(
-        !isRestrictedEmployee || hasFullAccess,
-        Icons.shopping_cart,
-        "Items",
-        const ItemsPage(),
-      );
+    if (permissions.canViewInventory || hasFullAccess) {
+      final isRestrictedEmployee = !(permissions.canAddInventory ||
+          permissions.canEditInventory ||
+          permissions.canDeleteInventory);
+      
+      // For restricted employees, show read-only items page
+      if (isRestrictedEmployee && !hasFullAccess) {
+        addItemIf(
+          true,
+          Icons.shopping_cart,
+          "Items",
+          EmployeeItemsPage(userData: userData),
+        );
+      } else {
+        addItemIf(
+          true,
+          Icons.shopping_cart,
+          "Items",
+          const ItemsPage(),
+        );
+      }
     }
 
     // Inventory management page
     addItemIf(
-      role.canAddInventory ||
-          role.canEditInventory ||
-          role.canDeleteInventory ||
+      permissions.canAddInventory ||
+          permissions.canEditInventory ||
+          permissions.canDeleteInventory ||
           hasFullAccess,
       Icons.inventory_2,
       "Inventory",
@@ -586,18 +536,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Employee management page
     addItemIf(
-      role.canManageEmployees || role.canManageRoles || hasFullAccess,
+      permissions.canManageEmployees || permissions.canManageRoles || hasFullAccess,
       Icons.person_2,
       "Employee",
       const EmployeePage(),
     );
 
-    // Account page for all employees or full-access users
+    // Account page for all users
     addItemIf(
-      (role.canViewInventory) || hasFullAccess,
+      true,
       Icons.account_circle,
       "Account",
-      EmployeeAccountPage(user: user, role: role),
+      EmployeeAccountPage(userData: userData),
     );
 
     return items;

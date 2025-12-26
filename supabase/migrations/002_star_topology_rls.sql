@@ -100,41 +100,74 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 -- ============================================================================
 
 DROP POLICY IF EXISTS organizations_select_policy ON organizations;
+DROP POLICY IF EXISTS organizations_anon_select ON organizations;
+DROP POLICY IF EXISTS organizations_star_select ON organizations;
+DROP POLICY IF EXISTS organizations_star_insert ON organizations;
+DROP POLICY IF EXISTS organizations_star_update ON organizations;
+DROP POLICY IF EXISTS organizations_star_delete ON organizations;
 DROP POLICY IF EXISTS organizations_insert_policy ON organizations;
 DROP POLICY IF EXISTS organizations_update_policy ON organizations;
 DROP POLICY IF EXISTS organizations_delete_policy ON organizations;
 
 DROP POLICY IF EXISTS roles_select_policy ON roles;
+DROP POLICY IF EXISTS roles_star_select ON roles;
+DROP POLICY IF EXISTS roles_star_insert ON roles;
+DROP POLICY IF EXISTS roles_star_update ON roles;
+DROP POLICY IF EXISTS roles_star_delete ON roles;
 DROP POLICY IF EXISTS roles_insert_policy ON roles;
 DROP POLICY IF EXISTS roles_update_policy ON roles;
 DROP POLICY IF EXISTS roles_delete_policy ON roles;
 
 DROP POLICY IF EXISTS users_select_policy ON users;
+DROP POLICY IF EXISTS users_star_select ON users;
+DROP POLICY IF EXISTS users_star_insert ON users;
+DROP POLICY IF EXISTS users_star_update ON users;
+DROP POLICY IF EXISTS users_star_delete ON users;
 DROP POLICY IF EXISTS users_insert_policy ON users;
 DROP POLICY IF EXISTS users_update_policy ON users;
 DROP POLICY IF EXISTS users_delete_policy ON users;
 
 DROP POLICY IF EXISTS items_select_policy ON items;
+DROP POLICY IF EXISTS items_star_select ON items;
+DROP POLICY IF EXISTS items_star_insert ON items;
+DROP POLICY IF EXISTS items_star_update ON items;
+DROP POLICY IF EXISTS items_star_delete ON items;
 DROP POLICY IF EXISTS items_insert_policy ON items;
 DROP POLICY IF EXISTS items_update_policy ON items;
 DROP POLICY IF EXISTS items_delete_policy ON items;
 
 DROP POLICY IF EXISTS ingredients_select_policy ON ingredients;
+DROP POLICY IF EXISTS ingredients_star_select ON ingredients;
+DROP POLICY IF EXISTS ingredients_star_insert ON ingredients;
+DROP POLICY IF EXISTS ingredients_star_update ON ingredients;
+DROP POLICY IF EXISTS ingredients_star_delete ON ingredients;
 DROP POLICY IF EXISTS ingredients_insert_policy ON ingredients;
 DROP POLICY IF EXISTS ingredients_update_policy ON ingredients;
 DROP POLICY IF EXISTS ingredients_delete_policy ON ingredients;
 
 DROP POLICY IF EXISTS recipe_ingredients_select_policy ON recipe_ingredients;
+DROP POLICY IF EXISTS recipe_ingredients_star_select ON recipe_ingredients;
+DROP POLICY IF EXISTS recipe_ingredients_star_insert ON recipe_ingredients;
+DROP POLICY IF EXISTS recipe_ingredients_star_update ON recipe_ingredients;
+DROP POLICY IF EXISTS recipe_ingredients_star_delete ON recipe_ingredients;
 DROP POLICY IF EXISTS recipe_ingredients_insert_policy ON recipe_ingredients;
 DROP POLICY IF EXISTS recipe_ingredients_update_policy ON recipe_ingredients;
 DROP POLICY IF EXISTS recipe_ingredients_delete_policy ON recipe_ingredients;
 
 DROP POLICY IF EXISTS replenishment_select_policy ON stock_replenishment_requests;
+DROP POLICY IF EXISTS replenishment_star_select ON stock_replenishment_requests;
+DROP POLICY IF EXISTS replenishment_star_insert ON stock_replenishment_requests;
+DROP POLICY IF EXISTS replenishment_star_update ON stock_replenishment_requests;
+DROP POLICY IF EXISTS replenishment_star_delete ON stock_replenishment_requests;
 DROP POLICY IF EXISTS replenishment_insert_policy ON stock_replenishment_requests;
 DROP POLICY IF EXISTS replenishment_update_policy ON stock_replenishment_requests;
 DROP POLICY IF EXISTS replenishment_delete_policy ON stock_replenishment_requests;
 
 DROP POLICY IF EXISTS stock_changes_select_policy ON stock_change_requests;
+DROP POLICY IF EXISTS stock_changes_star_select ON stock_change_requests;
+DROP POLICY IF EXISTS stock_changes_star_insert ON stock_change_requests;
+DROP POLICY IF EXISTS stock_changes_star_update ON stock_change_requests;
+DROP POLICY IF EXISTS stock_changes_star_delete ON stock_change_requests;
 DROP POLICY IF EXISTS stock_changes_insert_policy ON stock_change_requests;
 DROP POLICY IF EXISTS stock_changes_update_policy ON stock_change_requests;
 DROP POLICY IF EXISTS stock_changes_delete_policy ON stock_change_requests;
@@ -145,9 +178,21 @@ DROP POLICY IF EXISTS stock_changes_delete_policy ON stock_change_requests;
 
 -- ----------------------------------------------------------------------------
 -- ORGANIZATIONS: Commissary sees all, franchisee sees self + parent commissary
+-- Anonymous users can see basic info for branch selection (login screen)
 -- ----------------------------------------------------------------------------
+
+-- Allow anonymous users to read basic organization info for login branch dropdown
+CREATE POLICY organizations_anon_select ON organizations
+    FOR SELECT TO anon
+    USING (
+        -- Only allow reading active franchisee branches (for login dropdown)
+        type = 'franchisee' AND is_active = true
+    );
+
+-- Authenticated users see based on their role
 CREATE POLICY organizations_star_select ON organizations
-    FOR SELECT USING (
+    FOR SELECT TO authenticated
+    USING (
         CASE 
             WHEN is_commissary_user() THEN
                 -- Commissary sees: self + all child franchisees
@@ -207,10 +252,16 @@ CREATE POLICY roles_star_delete ON roles
 
 -- ----------------------------------------------------------------------------
 -- USERS: Commissary sees all users in network, franchisee sees own users
+-- Users can always read their own record (for login flow)
 -- ----------------------------------------------------------------------------
 CREATE POLICY users_star_select ON users
-    FOR SELECT USING (
-        is_in_commissary_network(organization_id)
+    FOR SELECT TO authenticated
+    USING (
+        -- Allow user to read their own record (by auth_user_id or email match)
+        auth_user_id = auth.uid()
+        OR email = auth.email()
+        -- Or if already linked, use network check
+        OR is_in_commissary_network(organization_id)
     );
 
 CREATE POLICY users_star_insert ON users
