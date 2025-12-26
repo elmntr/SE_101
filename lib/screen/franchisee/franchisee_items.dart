@@ -36,8 +36,7 @@ class _ItemsPageState extends State<ItemsPage> {
   void initState() {
     super.initState();
     db = database;
-    _loadItems();
-    _loadCategories();
+    _loadData();
   }
 
   Future<void> _loadData() async {
@@ -396,7 +395,7 @@ class _ItemsPageState extends State<ItemsPage> {
       }
 
       if (sort.order == SortOrder.desc) {
-        categories = categories.reversed.toList();
+        dbCategories = dbCategories.reversed.toList();
       }
     });
   }
@@ -520,7 +519,6 @@ class _ItemsPageState extends State<ItemsPage> {
   @override
   Widget build(BuildContext context) {
     if (AppLayout.isDesktop(context) == false) {
-      /// ✅ PHONE UI
       return Scaffold(
         backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
         body: SafeArea(
@@ -528,7 +526,6 @@ class _ItemsPageState extends State<ItemsPage> {
             padding: const EdgeInsets.all(12),
             child: Column(
               children: [
-                /// HEADER (STACKED)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -551,7 +548,6 @@ class _ItemsPageState extends State<ItemsPage> {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        /// SEARCH BAR
                         Expanded(
                           child: Container(
                             height: 42,
@@ -662,8 +658,6 @@ class _ItemsPageState extends State<ItemsPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-
-                /// TABS
                 Container(
                   height: 42,
                   decoration: BoxDecoration(
@@ -677,8 +671,6 @@ class _ItemsPageState extends State<ItemsPage> {
                     ],
                   ),
                 ),
-
-                /// CONTENT
                 Expanded(
                   child: Container(
                     width: double.infinity,
@@ -801,7 +793,6 @@ class _ItemsPageState extends State<ItemsPage> {
                   style: TextStyle(fontSize: 30, fontFamily: fontAll),
                 ),
                 const SizedBox(width: 16),
-                // Search Bar
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(

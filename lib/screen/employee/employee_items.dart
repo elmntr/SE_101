@@ -26,11 +26,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   List<StockChangeRequest> pendingChanges = [];
   bool _isLoading = true;
 
-  Map<int, String> categoryMap = {}; // Store category names by ID
-
-
-  int categoryCount = 0;
-  int selectedTab = 0; // 0 = Items, 1 = Categories
+  int selectedTab = 0; // 0 = Items, 1 = Review Changes
 
   ItemSort _currentSort = const ItemSort(ItemSortField.name, SortOrder.asc);
   ReviewSort _reviewSort = const ReviewSort(
