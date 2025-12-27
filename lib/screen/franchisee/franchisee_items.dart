@@ -485,25 +485,44 @@ class _ItemsPageState extends State<ItemsPage> {
 
   // ✅ SHOW ITEM DETAILS DIALOG
   void _showItemDetails(Item item) {
-    final TextEditingController priceController = TextEditingController(text: "100");
-    final TextEditingController soldController = TextEditingController(text: item.sold.toString());
-    final TextEditingController spoilageController = TextEditingController(text: item.spoilage.toString());
-    int? selectedCategoryId = item.categoryId;
-    // ✅ Get category name from categoryMap using item.categoryId
-    final categoryName = item.categoryId != null 
-        ? (categoryMap[item.categoryId] ?? "Uncategorized")
-        : "Uncategorized";
-    // TODO: Replace hardcoded values with actual item getters once database schema is updated
-    final price = 100; // TODO: Use item.price once added to database
-    final status = "Healthy"; // TODO: Use item.status once added to database
-    final sku = "ABC-123"; // TODO: Use item.sku once added to database
-    // ✅ Format lastUpdated as date
-    final dateOrdered = "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
+  final TextEditingController priceController = TextEditingController(
+    text: item.price?.toString() ?? "",
+  );
+  final TextEditingController soldController = TextEditingController(
+    text: item.sold.toString(),
+  );
+  final TextEditingController spoilageController = TextEditingController(
+    text: item.spoilage.toString(),
+  );
+  final TextEditingController unitController = TextEditingController(
+    text: item.unit,
+  );
+  final TextEditingController minStockController = TextEditingController(
+    text: item.minimumStock?.toString() ?? "",
+  );
+  
+  int? selectedCategoryId = item.categoryId;
+  
+  // Get category name
+  final categoryName = item.categoryId != null 
+      ? dbCategories.firstWhere(
+          (cat) => cat.id == item.categoryId, 
+          orElse: () => Category(
+            id: 0, 
+            name: 'Uncategorized', 
+            createdAt: DateTime.now(), 
+            lastUpdated: DateTime.now(), 
+            isDeleted: false,
+          ),
+        ).name
+      : "Uncategorized";
+  
+  final dateOrdered = "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
 
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => Dialog(
         insetPadding: const EdgeInsets.all(20),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 500),
@@ -528,36 +547,32 @@ class _ItemsPageState extends State<ItemsPage> {
                           ),
                         ),
                       ),
-                      Row(
-                        children: [
-                          const Text(
-                            "Price: ",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.red,
-                              fontWeight: FontWeight.w600,
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: priceController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: "Price",
+                            prefixText: "₱",
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
                             ),
                           ),
-                          TextField(
-                            controller: priceController, // TODO: Replace with item.price
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
                   
                   const SizedBox(height: 24),
 
-                  // Row 1: Category and Status
+                  // Row 1: Category and Unit
                   Row(
                     children: [
                       Expanded(
@@ -583,22 +598,28 @@ class _ItemsPageState extends State<ItemsPage> {
                                 value: selectedCategoryId,
                                 decoration: const InputDecoration(
                                   border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 4),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                 ),
                                 items: [
                                   const DropdownMenuItem(
                                     value: null,
-                                    child: Text("Uncategorized")
+                                    child: Text("Uncategorized"),
                                   ),
-                                  ...categoryMap.entries.map((entry) => DropdownMenuItem<int>(
-                                    value: entry.key,
-                                    child: Text(entry.value),
-                                  )),
+                                  ...dbCategories.map(
+                                    (cat) => DropdownMenuItem<int>(
+                                      value: cat.id,
+                                      child: Text(cat.name),
+                                    ),
+                                  ),
                                 ],
                                 onChanged: (value) {
-                                  selectedCategoryId = value;
+                                  setDialogState(() {
+                                    selectedCategoryId = value;
+                                  });
                                 },
-                              )
+                              ),
                             ),
                           ],
                         ),
@@ -609,27 +630,25 @@ class _ItemsPageState extends State<ItemsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              "Status:",
+                              "Unit:",
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+                            TextField(
+                              controller: unitController,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                               ),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                status, // TODO: Replace with item.status
-                                style: const TextStyle(fontSize: 14),
-                              ),
+                              style: const TextStyle(fontSize: 14),
                             ),
                           ],
                         ),
@@ -639,7 +658,7 @@ class _ItemsPageState extends State<ItemsPage> {
 
                   const SizedBox(height: 16),
 
-                  // Row 2: SKU and Amount Sold
+                  // Row 2: Min Stock and Amount Sold
                   Row(
                     children: [
                       Expanded(
@@ -647,27 +666,26 @@ class _ItemsPageState extends State<ItemsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              "SKU:",
+                              "Minimum Stock:",
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+                            TextField(
+                              controller: minStockController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                               ),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                sku, // TODO: Replace with item.sku
-                                style: const TextStyle(fontSize: 14),
-                              ),
+                              style: const TextStyle(fontSize: 14),
                             ),
                           ],
                         ),
@@ -685,25 +703,19 @@ class _ItemsPageState extends State<ItemsPage> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: TextField(
-                                controller: soldController, // ✅ Using actual item.sold
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            TextField(
+                              controller: soldController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                style: const TextStyle(fontSize: 14),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                               ),
+                              style: const TextStyle(fontSize: 14),
                             ),
                           ],
                         ),
@@ -739,7 +751,7 @@ class _ItemsPageState extends State<ItemsPage> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                dateOrdered, // Up
+                                dateOrdered,
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ),
@@ -759,25 +771,19 @@ class _ItemsPageState extends State<ItemsPage> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: TextField(
-                                controller: spoilageController, // ✅ Using actual item.spoilage
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            TextField(
+                              controller: spoilageController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                style: const TextStyle(fontSize: 14),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                               ),
+                              style: const TextStyle(fontSize: 14),
                             ),
                           ],
                         ),
@@ -810,6 +816,7 @@ class _ItemsPageState extends State<ItemsPage> {
                         onPressed: () {
                           Navigator.pop(context);
                           // TODO: Add edit functionality
+                          // You'll need to update the item using db.itemsDao.updateItem()
                         },
                         child: const Text("SAVE ITEM DETAILS"),
                       ),
@@ -821,8 +828,9 @@ class _ItemsPageState extends State<ItemsPage> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTab(String label, int index) {
     bool active = selectedTab == index;
