@@ -8,8 +8,9 @@ import '../models/category_statistics.dart';
 part 'categories_dao.g.dart';
 
 @DriftAccessor(tables: [Categories])
-class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMixin {
-  CategoriesDao(AppDatabase db) : super(db);
+class CategoriesDao extends DatabaseAccessor<AppDatabase>
+    with _$CategoriesDaoMixin {
+  CategoriesDao(super.db);
 
   static const int defaultPageSize = 50;
 
@@ -24,19 +25,18 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
     String? searchQuery,
   }) async {
     try {
-      final query = select(categories)
-        ..where((t) => t.isDeleted.equals(false));
-      
+      final query = select(categories)..where((t) => t.isDeleted.equals(false));
+
       if (searchQuery != null && searchQuery.isNotEmpty) {
         query.where((t) => t.name.contains(searchQuery));
       }
-      
+
       query.orderBy([(t) => OrderingTerm(expression: t.name)]);
-      
+
       if (limit != null) {
         query.limit(limit, offset: offset);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching categories: $e');
@@ -50,11 +50,11 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
       final query = selectOnly(categories)
         ..addColumns([categories.id.count()])
         ..where(categories.isDeleted.equals(false));
-      
+
       if (searchQuery != null && searchQuery.isNotEmpty) {
         query.where(categories.name.contains(searchQuery));
       }
-      
+
       final result = await query.getSingle();
       return result.read(categories.id.count()) ?? 0;
     } catch (e) {
@@ -70,10 +70,10 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
   }) {
     try {
       return (select(categories)
-        ..where((t) => t.isDeleted.equals(false))
-        ..orderBy([(t) => OrderingTerm(expression: t.name)])
-        ..limit(limit, offset: offset))
-        .watch();
+            ..where((t) => t.isDeleted.equals(false))
+            ..orderBy([(t) => OrderingTerm(expression: t.name)])
+            ..limit(limit, offset: offset))
+          .watch();
     } catch (e) {
       print('❌ Error watching categories: $e');
       return Stream.value([]);
@@ -87,10 +87,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
   }) async {
     try {
       return await into(categories).insert(
-        CategoriesCompanion.insert(
-          name: name,
-          description: Value(description),
-        ),
+        CategoriesCompanion.insert(name: name, description: Value(description)),
       );
     } catch (e) {
       print('❌ Error inserting category: $e');
@@ -99,7 +96,9 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
   }
 
   /// ✅ Batch insert categories
-  Future<void> insertCategories(List<CategoriesCompanion> categoriesList) async {
+  Future<void> insertCategories(
+    List<CategoriesCompanion> categoriesList,
+  ) async {
     try {
       await db.batch((batch) {
         batch.insertAll(categories, categoriesList);
@@ -113,9 +112,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
   /// ✅ Update an existing category
   Future<bool> updateCategory(Category category) async {
     try {
-      final updated = category.copyWith(
-        lastUpdated: DateTime.now(),
-      );
+      final updated = category.copyWith(lastUpdated: DateTime.now());
       return await update(categories).replace(updated);
     } catch (e) {
       print('❌ Error updating category: $e');
@@ -126,8 +123,9 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
   /// ✅ Get category by ID
   Future<Category?> getCategoryById(int id) async {
     try {
-      return await (select(categories)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+      return await (select(
+        categories,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching category by ID: $e');
       return null;
@@ -138,8 +136,8 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
   Future<Category?> getCategoryByName(String name) async {
     try {
       return await (select(categories)
-        ..where((t) => t.name.equals(name) & t.isDeleted.equals(false)))
-        .getSingleOrNull();
+            ..where((t) => t.name.equals(name) & t.isDeleted.equals(false)))
+          .getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching category by name: $e');
       return null;
@@ -155,13 +153,15 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
         print('⚠️ Cannot delete category $id: has $itemCount items');
         throw Exception('Category has $itemCount item(s). Remove items first.');
       }
-      
+
       final result = await (update(categories)..where((t) => t.id.equals(id)))
-        .write(CategoriesCompanion(
-          isDeleted: Value(true),
-          lastUpdated: Value(DateTime.now()),
-        ));
-      
+          .write(
+            CategoriesCompanion(
+              isDeleted: Value(true),
+              lastUpdated: Value(DateTime.now()),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error soft deleting category: $e');
@@ -178,7 +178,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
         print('⚠️ Cannot delete category $id: has $itemCount items');
         throw Exception('Category has $itemCount item(s). Remove items first.');
       }
-      
+
       // Get category to check if it needs cloud deletion
       final category = await getCategoryById(id);
       if (category == null) {
@@ -191,14 +191,16 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
         await softDeleteCategory(id);
         print('📤 Category $id marked for cloud deletion');
       }
-      
+
       // Then permanently delete from local database
-      final result = await (delete(categories)..where((t) => t.id.equals(id))).go();
-      
+      final result = await (delete(
+        categories,
+      )..where((t) => t.id.equals(id))).go();
+
       if (result > 0) {
         print('✅ Category $id permanently deleted from local database');
       }
-      
+
       return result > 0;
     } catch (e) {
       print('❌ Error deleting category: $e');
@@ -210,11 +212,13 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
   Future<bool> restoreCategory(int id) async {
     try {
       final result = await (update(categories)..where((t) => t.id.equals(id)))
-        .write(CategoriesCompanion(
-          isDeleted: Value(false),
-          lastUpdated: Value(DateTime.now()),
-        ));
-      
+          .write(
+            CategoriesCompanion(
+              isDeleted: Value(false),
+              lastUpdated: Value(DateTime.now()),
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error restoring category: $e');
@@ -232,10 +236,10 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
       final query = selectOnly(db.items)
         ..addColumns([db.items.id.count()])
         ..where(
-          db.items.categoryId.equals(categoryId) & 
-          db.items.isDeleted.equals(false)
+          db.items.categoryId.equals(categoryId) &
+              db.items.isDeleted.equals(false),
         );
-      
+
       final result = await query.getSingle();
       return result.read(db.items.id.count()) ?? 0;
     } catch (e) {
@@ -251,7 +255,8 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
   }) async {
     try {
       // Custom query with LEFT JOIN and COUNT
-      final query = '''
+      final query =
+          '''
         SELECT 
           c.id,
           c.name,
@@ -266,12 +271,12 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
         ORDER BY c.name
         ${limit != null ? 'LIMIT $limit OFFSET $offset' : ''}
       ''';
-      
+
       final results = await customSelect(
         query,
         readsFrom: {categories, db.items},
       ).get();
-      
+
       return results.map((row) {
         return CategoryWithCount(
           id: row.read<int>('id'),
@@ -305,22 +310,21 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
         GROUP BY c.id
         ORDER BY c.name
       ''';
-      
-      return customSelect(
-        query,
-        readsFrom: {categories, db.items},
-      ).watch().map((rows) {
-        return rows.map((row) {
-          return CategoryWithCount(
-            id: row.read<int>('id'),
-            name: row.read<String>('name'),
-            description: row.readNullable<String>('description'),
-            createdAt: row.read<DateTime>('created_at'),
-            lastUpdated: row.read<DateTime>('last_updated'),
-            itemCount: row.read<int>('item_count'),
-          );
-        }).toList();
-      });
+
+      return customSelect(query, readsFrom: {categories, db.items}).watch().map(
+        (rows) {
+          return rows.map((row) {
+            return CategoryWithCount(
+              id: row.read<int>('id'),
+              name: row.read<String>('name'),
+              description: row.readNullable<String>('description'),
+              createdAt: row.read<DateTime>('created_at'),
+              lastUpdated: row.read<DateTime>('last_updated'),
+              itemCount: row.read<int>('item_count'),
+            );
+          }).toList();
+        },
+      );
     } catch (e) {
       print('❌ Error watching categories with counts: $e');
       return Stream.value([]);
@@ -339,22 +343,23 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
         HAVING COUNT(i.id) = 0
         ORDER BY c.name
       ''';
-      
+
       final results = await customSelect(
         query,
         readsFrom: {categories, db.items},
       ).get();
-      
+
       return results.map((row) {
-        return Category(
-          id: row.read<int>('id'),
-          name: row.read<String>('name'),
-          description: row.readNullable<String>('description'),
-          createdAt: row.read<DateTime>('created_at'),
-          lastUpdated: row.read<DateTime>('last_updated'),
-          isDeleted: row.read<bool>('is_deleted'),
-        );
-      }).toList();
+  return Category(
+    id: row.read<int>('id'),
+    name: row.read<String>('name'),
+    description: row.readNullable<String>('description'),
+    createdAt: row.read<DateTime>('created_at'),
+    lastUpdated: row.read<DateTime>('last_updated'),
+    isDeleted: row.read<bool>('is_deleted'),
+     // ✅ Add this
+  );
+}).toList();
     } catch (e) {
       print('❌ Error fetching empty categories: $e');
       return [];
@@ -373,7 +378,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
           Variable.withInt(categoryId),
         ],
       );
-      
+
       return result;
     } catch (e) {
       print('❌ Error removing category from items: $e');
@@ -398,13 +403,13 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
         FROM items
         WHERE category_id = ? AND is_deleted = 0
       ''';
-      
+
       final result = await customSelect(
         query,
         variables: [Variable.withInt(categoryId)],
         readsFrom: {db.items},
       ).getSingleOrNull();
-      
+
       if (result == null) {
         return CategoryStatistics(
           totalItems: 0,
@@ -414,7 +419,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
           avgStock: 0.0,
         );
       }
-      
+
       return CategoryStatistics(
         totalItems: result.read<int>('total_items'),
         totalStock: result.read<int>('total_stock'),
@@ -438,29 +443,31 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase> with _$CategoriesDaoMi
   Future<int> cleanupDeletedCategories() async {
     try {
       // Only delete categories that are marked as deleted and have no items
-      final deletedCategories = await (select(categories)
-        ..where((t) => t.isDeleted.equals(true)))
-        .get();
-      
+      final deletedCategories = await (select(
+        categories,
+      )..where((t) => t.isDeleted.equals(true))).get();
+
       int cleanedCount = 0;
-      
+
       for (final category in deletedCategories) {
         final itemCount = await getItemCountInCategory(category.id);
         if (itemCount == 0) {
-          final result = await (delete(categories)
-            ..where((t) => t.id.equals(category.id)))
-            .go();
-          
+          final result = await (delete(
+            categories,
+          )..where((t) => t.id.equals(category.id))).go();
+
           if (result > 0) {
             cleanedCount++;
           }
         }
       }
-      
+
       if (cleanedCount > 0) {
-        print('🧹 Cleaned up $cleanedCount deleted categories from local database');
+        print(
+          '🧹 Cleaned up $cleanedCount deleted categories from local database',
+        );
       }
-      
+
       return cleanedCount;
     } catch (e) {
       print('❌ Error cleaning up deleted categories: $e');
