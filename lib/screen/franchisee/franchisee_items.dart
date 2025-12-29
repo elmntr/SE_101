@@ -5,6 +5,9 @@ import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:drift/drift.dart' hide Column;
+
+// New franchisee_items
 
 class ItemsPage extends StatefulWidget {
   const ItemsPage({super.key});
@@ -22,6 +25,8 @@ class _ItemsPageState extends State<ItemsPage> {
 
   int selectedTab = 0; // 0 = Items, 1 = Categories
   bool _isLoading = true;
+
+  Map<int, String> categoryMap = {}; // Store category names by ID
 
   static const String _orgIdKey = 'current_organization_id';
 
@@ -479,6 +484,397 @@ class _ItemsPageState extends State<ItemsPage> {
     }
   }
 
+  // ✅ SHOW ITEM DETAILS DIALOG
+  void _showItemDetails(Item item) {
+  final TextEditingController priceController = TextEditingController(
+    text: item.price?.toString() ?? "",
+  );
+  final TextEditingController soldController = TextEditingController(
+    text: item.sold.toString(),
+  );
+  final TextEditingController spoilageController = TextEditingController(
+    text: item.spoilage.toString(),
+  );
+  final TextEditingController unitController = TextEditingController(
+    text: item.unit,
+  );
+  final TextEditingController minStockController = TextEditingController(
+    text: item.minimumStock?.toString() ?? "",
+  );
+  
+  int? selectedCategoryId = item.categoryId;
+  
+  // Get category name
+  final categoryName = item.categoryId != null 
+      ? dbCategories.firstWhere(
+          (cat) => cat.id == item.categoryId, 
+          orElse: () => Category(
+            id: 0, 
+            name: 'Uncategorized', 
+            createdAt: DateTime.now(), 
+            lastUpdated: DateTime.now(), 
+            isDeleted: false,
+          ),
+        ).name
+      : "Uncategorized";
+  
+  final dateOrdered = "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
+
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) => Dialog(
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with item name and price
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          style: const TextStyle(
+                            fontFamily: fontAll,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          controller: priceController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: "Price",
+                            prefixText: "₱",
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                          ),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 24),
+
+                  // Row 1: Category and Unit
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Category:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: DropdownButtonFormField<int>(
+                                value: selectedCategoryId,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                ),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text("Uncategorized"),
+                                  ),
+                                  ...dbCategories.map(
+                                    (cat) => DropdownMenuItem<int>(
+                                      value: cat.id,
+                                      child: Text(cat.name),
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    selectedCategoryId = value;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Unit:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: unitController,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Row 2: Min Stock and Amount Sold
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Minimum Stock:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: minStockController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Amount Sold:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: soldController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Row 3: Date Ordered and Amount Spoiled
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Date Ordered:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                dateOrdered,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Amount Spoiled:",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: spoilageController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Action Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          "CANCEL",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[300],
+                          foregroundColor: Colors.black,
+                        ),
+                        onPressed: () async {
+                          final dialogContext = context;
+                          final messenger = ScaffoldMessenger.of(dialogContext);
+                          final navigator = Navigator.of(dialogContext);
+
+                          try {
+                            final double? parsedPrice = priceController.text.isNotEmpty
+                                ? double.tryParse(priceController.text)
+                                : null;
+                            final int parsedSold = int.tryParse(soldController.text) ?? item.sold;
+                            final int parsedSpoilage = int.tryParse(spoilageController.text) ?? item.spoilage;
+                            final int? parsedMinStock = minStockController.text.isNotEmpty
+                                ? int.tryParse(minStockController.text)
+                                : item.minimumStock;
+                            final String unitText = unitController.text;
+
+                            final updated = item.copyWith(
+                              price: Value(parsedPrice),
+                              sold: parsedSold,
+                              spoilage: parsedSpoilage,
+                              unit: unitText.isNotEmpty ? unitText : item.unit,
+                              minimumStock: Value(parsedMinStock),
+                              categoryId: Value(selectedCategoryId),
+                            );
+
+                            final success = await db.itemsDao.updateItem(updated);
+
+                            if (success) {
+                              if (!navigator.mounted || !messenger.mounted) return;
+                              navigator.pop();
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Item updated successfully')),
+                              );
+                              _loadData();
+                            } else {
+                              if (!messenger.mounted) return;
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Failed to update item')),
+                              );
+                            }
+                          } catch (e) {
+                            if (!ScaffoldMessenger.maybeOf(context)!.mounted ?? false) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error updating item: $e')),
+                            );
+                          }
+                        },
+                        child: const Text("SAVE ITEM DETAILS"),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
   Widget _buildTab(String label, int index) {
     bool active = selectedTab == index;
     return Expanded(
@@ -702,10 +1098,34 @@ class _ItemsPageState extends State<ItemsPage> {
                                   rows: dbItems
                                       .map(
                                         (item) => [
-                                          item.name,
-                                          item.stock.toString(),
-                                          item.sold.toString(),
-                                          item.spoilage.toString(),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(item.name),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(item.stock.toString()),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(item.sold.toString()),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(item.spoilage.toString()),
+                                            ),
+                                          ),
                                           IconButton(
                                             icon: const Icon(
                                               Icons.delete,
@@ -890,10 +1310,34 @@ class _ItemsPageState extends State<ItemsPage> {
                                     rows: dbItems
                                         .map(
                                           (item) => [
-                                            item.name,
-                                            item.stock.toString(),
-                                            item.sold.toString(),
-                                            item.spoilage.toString(),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(item.name),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(item.stock.toString()),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(item.sold.toString()),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(item.spoilage.toString()),
+                                              ),
+                                            ),
                                             IconButton(
                                               icon: const Icon(
                                                 Icons.delete,

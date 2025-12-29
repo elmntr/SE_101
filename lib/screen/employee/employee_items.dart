@@ -7,6 +7,8 @@ import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 
+// New employee_items
+
 class EmployeeItemsPage extends StatefulWidget {
   final UserData userData;
   const EmployeeItemsPage({super.key, required this.userData});
@@ -27,6 +29,8 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
   bool _isLoading = true;
 
   int selectedTab = 0; // 0 = Items, 1 = Review Changes
+
+  Map<int, String> categoryMap = {}; // Store category names by ID
 
   ItemSort _currentSort = const ItemSort(ItemSortField.name, SortOrder.asc);
   ReviewSort _reviewSort = const ReviewSort(
@@ -167,6 +171,144 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
       }
     }
   }
+
+  // ✅ SHOW ITEM DETAILS DIALOG
+  void _showItemDetails(Item item) async {
+  // Fetch category
+  Category? category;
+  if (item.categoryId != null) {
+    category = await db.categoriesDao.getCategoryById(item.categoryId!);
+  }
+  
+  final categoryName = category?.name ?? "Uncategorized";
+  final dateOrdered = "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
+
+  if (!mounted) return;
+
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      insetPadding: const EdgeInsets.all(20),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with item name and price
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontFamily: fontAll,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 24,
+                        ),
+                      ),
+                    ),
+                    if (item.price != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          "₱${item.price!.toStringAsFixed(2)}",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+
+                // Info Grid
+                _buildInfoRow("Category:", categoryName),
+                const SizedBox(height: 12),
+                _buildInfoRow("Unit:", item.unit),
+                const SizedBox(height: 12),
+                _buildInfoRow("Current Stock:", item.stock.toString()),
+                const SizedBox(height: 12),
+                _buildInfoRow("Amount Sold:", item.sold.toString()),
+                const SizedBox(height: 12),
+                _buildInfoRow("Amount Spoiled:", item.spoilage.toString()),
+                const SizedBox(height: 12),
+                _buildInfoRow("Date Updated:", dateOrdered),
+                if (item.minimumStock != null) ...[
+                  const SizedBox(height: 12),
+                  _buildInfoRow(
+                    "Minimum Stock:",
+                    item.minimumStock.toString(),
+                  ),
+                ],
+
+                const SizedBox(height: 24),
+
+                // Close Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[300],
+                        foregroundColor: Colors.black,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("CLOSE"),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+// Helper widget for read-only info rows
+Widget _buildInfoRow(String label, String value) {
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(
+        width: 140,
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+      Expanded(
+        child: Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    ],
+  );
+}
 
   void _viewChangeDetail(StockChangeRequest request) {
     setState(() {
@@ -454,10 +596,35 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                                   rows: dbItems
                                       .map(
                                         (item) => [
-                                          item.name,
-                                          item.stock.toString(),
-                                          item.sold.toString(),
-                                          item.spoilage.toString(),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(item.name),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(item.stock.toString()),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(item.sold.toString()),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(item.spoilage.toString()),
+                                            ),
+                                          ),
+                                          
                                         ],
                                       )
                                       .toList(),
@@ -640,10 +807,34 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
                                     rows: dbItems
                                         .map(
                                           (item) => [
-                                            item.name,
-                                            item.stock.toString(),
-                                            item.sold.toString(),
-                                            item.spoilage.toString(),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(item.name),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(item.stock.toString()),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(item.sold.toString()),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(item.spoilage.toString()),
+                                              ),
+                                            ),
                                           ],
                                         )
                                         .toList(),
