@@ -5,6 +5,7 @@ import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:drift/drift.dart' hide Column;
 
 // New franchisee_items
 
@@ -814,10 +815,52 @@ class _ItemsPageState extends State<ItemsPage> {
                           backgroundColor: Colors.grey[300],
                           foregroundColor: Colors.black,
                         ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          // TODO: Add edit functionality
-                          // You'll need to update the item using db.itemsDao.updateItem()
+                        onPressed: () async {
+                          final dialogContext = context;
+                          final messenger = ScaffoldMessenger.of(dialogContext);
+                          final navigator = Navigator.of(dialogContext);
+
+                          try {
+                            final double? parsedPrice = priceController.text.isNotEmpty
+                                ? double.tryParse(priceController.text)
+                                : null;
+                            final int parsedSold = int.tryParse(soldController.text) ?? item.sold;
+                            final int parsedSpoilage = int.tryParse(spoilageController.text) ?? item.spoilage;
+                            final int? parsedMinStock = minStockController.text.isNotEmpty
+                                ? int.tryParse(minStockController.text)
+                                : item.minimumStock;
+                            final String unitText = unitController.text;
+
+                            final updated = item.copyWith(
+                              price: Value(parsedPrice),
+                              sold: parsedSold,
+                              spoilage: parsedSpoilage,
+                              unit: unitText.isNotEmpty ? unitText : item.unit,
+                              minimumStock: Value(parsedMinStock),
+                              categoryId: Value(selectedCategoryId),
+                            );
+
+                            final success = await db.itemsDao.updateItem(updated);
+
+                            if (success) {
+                              if (!navigator.mounted || !messenger.mounted) return;
+                              navigator.pop();
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Item updated successfully')),
+                              );
+                              _loadData();
+                            } else {
+                              if (!messenger.mounted) return;
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Failed to update item')),
+                              );
+                            }
+                          } catch (e) {
+                            if (!ScaffoldMessenger.maybeOf(context)!.mounted ?? false) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error updating item: $e')),
+                            );
+                          }
                         },
                         child: const Text("SAVE ITEM DETAILS"),
                       ),
