@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
@@ -128,6 +129,7 @@ class _ItemsPageState extends State<ItemsPage> {
                         labelText: "Initial Stock",
                       ),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       controller: stock,
                     ),
                     const SizedBox(height: 16),
@@ -135,7 +137,10 @@ class _ItemsPageState extends State<ItemsPage> {
                       decoration: const InputDecoration(
                         labelText: "Price (Optional)",
                       ),
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}$')),
+                      ],
                       controller: price,
                     ),
                     const SizedBox(height: 16),
@@ -495,9 +500,7 @@ class _ItemsPageState extends State<ItemsPage> {
   final TextEditingController spoilageController = TextEditingController(
     text: item.spoilage.toString(),
   );
-  final TextEditingController unitController = TextEditingController(
-    text: item.unit,
-  );
+  String? selectedUnit = (item.unit == null || item.unit.isEmpty) ? null : item.unit;
   final TextEditingController minStockController = TextEditingController(
     text: item.minimumStock?.toString() ?? "",
   );
@@ -638,18 +641,40 @@ class _ItemsPageState extends State<ItemsPage> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            TextField(
-                              controller: unitController,
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
+                            PopupMenuButton<String>(
+                              onSelected: (value) {
+                                setDialogState(() {
+                                  selectedUnit = value;
+                                });
+                              },
+                              itemBuilder: (context) => const [
+                                PopupMenuItem(value: 'piece', child: Text('piece')),
+                                PopupMenuItem(value: 'grams', child: Text('grams')),
+                                PopupMenuItem(value: 'kg', child: Text('kg')),
+                                PopupMenuItem(value: 'ml', child: Text('ml')),
+                                PopupMenuItem(value: 'l', child: Text('l')),
+                              ],
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 8,
                                 ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      selectedUnit ?? 'Select unit',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                    const Icon(Icons.arrow_drop_down),
+                                  ],
+                                ),
                               ),
-                              style: const TextStyle(fontSize: 14),
                             ),
                           ],
                         ),
@@ -677,6 +702,7 @@ class _ItemsPageState extends State<ItemsPage> {
                             TextField(
                               controller: minStockController,
                               keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                               decoration: InputDecoration(
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -707,6 +733,7 @@ class _ItemsPageState extends State<ItemsPage> {
                             TextField(
                               controller: soldController,
                               keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                               decoration: InputDecoration(
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -775,6 +802,7 @@ class _ItemsPageState extends State<ItemsPage> {
                             TextField(
                               controller: spoilageController,
                               keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                               decoration: InputDecoration(
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -828,13 +856,13 @@ class _ItemsPageState extends State<ItemsPage> {
                             final int? parsedMinStock = minStockController.text.isNotEmpty
                                 ? int.tryParse(minStockController.text)
                                 : item.minimumStock;
-                            final String unitText = unitController.text;
+                            final String? unitText = selectedUnit;
 
                             final updated = item.copyWith(
                               price: Value(parsedPrice),
                               sold: parsedSold,
                               spoilage: parsedSpoilage,
-                              unit: unitText.isNotEmpty ? unitText : item.unit,
+                              unit: (unitText != null && unitText.isNotEmpty) ? unitText : item.unit,
                               minimumStock: Value(parsedMinStock),
                               categoryId: Value(selectedCategoryId),
                             );
