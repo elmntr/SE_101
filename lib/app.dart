@@ -1,8 +1,56 @@
 // lib/app.dart
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
 import 'screen/login/login_screen.dart';
 import 'home.dart';
+
+/// Reinitialize sync service with user's organization context after login
+void _reinitializeSyncWithUserContext(UserData userData) {
+  try {
+    // Get parent commissary info for franchisees
+    String? parentCommissaryCloudId;
+    int? parentCommissaryId;
+    
+    if (userData.isFranchisee) {
+      // For franchisees, we need to look up parent commissary
+      // This will be loaded from the organization record
+      AppGlobals.instance.database.organizationsDao
+          .getOrganizationById(userData.organizationId)
+          .then((org) {
+        if (org?.parentCommissaryId != null) {
+          // Get parent commissary cloud ID
+          AppGlobals.instance.database.organizationsDao
+              .getOrganizationById(org!.parentCommissaryId!)
+              .then((parentOrg) {
+            // Reinitialize with parent commissary context
+            AppGlobals.instance.syncService.initialize(
+              organizationId: userData.organizationId,
+              organizationCloudId: userData.organizationCloudId,
+              organizationType: userData.organizationType,
+              parentCommissaryId: org.parentCommissaryId,
+              parentCommissaryCloudId: parentOrg?.cloudId,
+            );
+          });
+        }
+      });
+    }
+
+    // Initial sync with known context (cloud ID from UserData)
+    AppGlobals.instance.syncService.initialize(
+      organizationId: userData.organizationId,
+      organizationCloudId: userData.organizationCloudId,  // ✅ Pass cloud ID directly
+      organizationType: userData.organizationType,
+      parentCommissaryId: parentCommissaryId,
+      parentCommissaryCloudId: parentCommissaryCloudId,
+    );
+    
+    print('✅ Sync service reinitialized for org: ${userData.organizationName} (${userData.organizationType})');
+    print('   📍 Org cloud ID: ${userData.organizationCloudId}');
+  } catch (e) {
+    print('⚠️ Failed to reinitialize sync service: $e');
+  }
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -32,6 +80,9 @@ class MyApp extends StatelessWidget {
           if (userData == null) {
             return MaterialPageRoute(builder: (context) => const LoginScreen());
           }
+
+          // ✅ Reinitialize sync service with user's organization context
+          _reinitializeSyncWithUserContext(userData);
 
           return MaterialPageRoute(
             builder: (context) => HomeScreen(signedInUser: userData),

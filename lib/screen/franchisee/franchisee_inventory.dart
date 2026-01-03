@@ -80,6 +80,20 @@ class _InventoryPageState extends State<InventoryPage> {
     // Try to get from current logged-in user session via auth service
     final currentUser = AppGlobals.instance.authService.currentUser;
     if (currentUser != null) {
+      // If local ID is 0 but we have cloud ID, look up the local ID
+      // This happens on first login when data is synced but UserData has ID 0
+      if (currentUser.organizationId == 0 && currentUser.organizationCloudId != null) {
+        final org = await db.organizationsDao.getOrganizationByCloudId(
+          currentUser.organizationCloudId!,
+        );
+        if (org != null) {
+          currentOrganizationId = org.id;
+          await prefs.setInt(_orgIdKey, org.id);
+          print('📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}');
+          return;
+        }
+      }
+      
       await prefs.setInt(_orgIdKey, currentUser.organizationId);
       currentOrganizationId = currentUser.organizationId;
     } else {
