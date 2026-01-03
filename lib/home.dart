@@ -56,6 +56,25 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Manual sync trigger
+  Future<void> _triggerManualSync() async {
+    if (!_isOnline || _syncStatus == SyncStatus.syncing) return;
+
+    setState(() => _syncStatus = SyncStatus.syncing);
+
+    try {
+      await AppGlobals.instance.syncService.syncAll();
+      if (mounted) {
+        setState(() => _syncStatus = SyncStatus.synced);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _syncStatus = SyncStatus.error);
+      }
+    }
+  }
+
+  // ✅ ADD DISPOSE METHOD
   @override
   void dispose() {
     _connectivityService.dispose();
@@ -140,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ConnectionStatusIndicator(
                 isOnline: _isOnline,
                 syncStatus: _syncStatus,
+                onSyncPressed: _triggerManualSync,
               ),
             ),
 
@@ -298,6 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ConnectionStatusIndicator(
               isOnline: _isOnline,
               syncStatus: _syncStatus,
+              onSyncPressed: _triggerManualSync,
             ),
           ),
 

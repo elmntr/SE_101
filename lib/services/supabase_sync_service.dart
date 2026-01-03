@@ -113,16 +113,20 @@ class SupabaseSyncService {
   /// Initialize sync service with organization context
   Future<void> initialize({
     int? organizationId,
+    String? organizationCloudId,  // ✅ Accept cloud ID directly
     String? organizationType,
     int? parentCommissaryId,
+    String? parentCommissaryCloudId,  // ✅ Accept cloud ID directly
   }) async {
     print('🚀 Initializing optimized sync service...');
 
     try {
       // Set organization context for star topology
       _currentOrganizationId = organizationId;
+      _currentOrganizationCloudId = organizationCloudId;  // ✅ Use directly if provided
       _currentOrganizationType = organizationType;
       _parentCommissaryId = parentCommissaryId;
+      _parentCommissaryCloudId = parentCommissaryCloudId;  // ✅ Use directly if provided
 
       // Check initial connectivity
       _isOnline = await _checkConnectivity();
@@ -177,19 +181,25 @@ class SupabaseSyncService {
     }
   }
 
-  /// Load organization cloud IDs for context
+  /// Load organization cloud IDs for context (only if not already set)
   Future<void> _loadOrganizationCloudIds() async {
-    if (_currentOrganizationId != null) {
+    if (_currentOrganizationCloudId == null && _currentOrganizationId != null) {
       _currentOrganizationCloudId = _getCloudId(
         'organizations',
         _currentOrganizationId,
       );
     }
-    if (_parentCommissaryId != null) {
+    if (_parentCommissaryCloudId == null && _parentCommissaryId != null) {
       _parentCommissaryCloudId = _getCloudId(
         'organizations',
         _parentCommissaryId,
       );
+    }
+    
+    if (kDebugMode) {
+      print('   📍 Organization context loaded:');
+      print('      - currentOrgCloudId: $_currentOrganizationCloudId');
+      print('      - parentCommissaryCloudId: $_parentCommissaryCloudId');
     }
   }
 
@@ -556,15 +566,41 @@ class SupabaseSyncService {
         await db.organizationsDao.upsertBatchFromCloud(resolvedOrgs);
         print('   ↓ Pulled ${resolvedOrgs.length} organizations');
 
-        // Update caches
-        for (final org in resolvedOrgs) {
-          if (org['cloud_id'] != null && org['local_id'] != null) {
-            _updateCache('organizations', org['local_id'], org['cloud_id']);
-          }
+        // ✅ FIXED: Rebuild organization cache from local DB after upsert
+        // The cloud data doesn't have local_id, so we need to fetch from local DB
+        await _rebuildOrganizationCache();
+        
+        // ✅ FIXED: Reload organization cloud IDs after cache rebuild
+        await _loadOrganizationCloudIds();
+      }
+    } catch (e) {
+      print('   ⚠️ Failed to pull organizations: $e');
+    }
+  }
+
+  /// Rebuild organization cache from local database
+  Future<void> _rebuildOrganizationCache() async {
+    try {
+      final localOrgs = await db.organizationsDao.getAllOrganizations();
+      _localToCloudCache['organizations']!.clear();
+      _cloudToLocalCache['organizations']!.clear();
+      
+      for (final org in localOrgs) {
+        if (org.cloudId != null) {
+          _localToCloudCache['organizations']![org.id] = org.cloudId!;
+          _cloudToLocalCache['organizations']![org.cloudId!] = org.id;
+        }
+      }
+      print('   🔄 Rebuilt organization cache: ${localOrgs.length} entries');
+      
+      // ✅ Debug: Print cache contents
+      if (kDebugMode) {
+        for (final entry in _cloudToLocalCache['organizations']!.entries) {
+          print('      📍 Org: ${entry.key} → local ID ${entry.value}');
         }
       }
     } catch (e) {
-      print('   âš ï¸ Failed to pull organizations: $e');
+      print('   ⚠️ Failed to rebuild organization cache: $e');
     }
   }
 
@@ -663,14 +699,29 @@ class SupabaseSyncService {
         await db.rolesDao.upsertBatchFromCloud(cloudRoles);
         print('   ↓ Pulled ${cloudRoles.length} roles');
 
-        for (final role in cloudRoles) {
-          if (role['cloud_id'] != null && role['local_id'] != null) {
-            _updateCache('roles', role['local_id'], role['cloud_id']);
-          }
+        // ✅ FIXED: Rebuild roles cache from local DB after upsert
+        await _rebuildRolesCache();
+      }
+    } catch (e) {
+      print('   ⚠️ Failed to pull roles: $e');
+    }
+  }
+
+  /// Rebuild roles cache from local database
+  Future<void> _rebuildRolesCache() async {
+    try {
+      final localRoles = await db.rolesDao.getAllRoles();
+      _localToCloudCache['roles']!.clear();
+      _cloudToLocalCache['roles']!.clear();
+      
+      for (final role in localRoles) {
+        if (role.cloudId != null) {
+          _localToCloudCache['roles']![role.id] = role.cloudId!;
+          _cloudToLocalCache['roles']![role.cloudId!] = role.id;
         }
       }
     } catch (e) {
-      print('   âš ï¸ Failed to pull ingredients: $e');
+      print('   ⚠️ Failed to rebuild roles cache: $e');
     }
   }
 
@@ -774,7 +825,10 @@ class SupabaseSyncService {
           );
           final roleId = _getLocalId('roles', cloudUser['role_id']);
 
-          if (orgId == null || roleId == null) continue;
+          if (orgId == null || roleId == null) {
+            print('   ⚠️ Skipping user ${cloudUser['email']}: org=$orgId, role=$roleId');
+            continue;
+          }
 
           resolvedUsers.add({
             ...cloudUser,
@@ -786,10 +840,31 @@ class SupabaseSyncService {
         if (resolvedUsers.isNotEmpty) {
           await db.usersDao.upsertBatchFromCloud(resolvedUsers);
           print('   ↓ Pulled ${resolvedUsers.length} users');
+          
+          // ✅ FIXED: Rebuild users cache from local DB after upsert
+          await _rebuildUsersCache();
         }
       }
     } catch (e) {
-      print('   âš ï¸ Failed to pull recipe ingredients: $e');
+      print('   ⚠️ Failed to pull users: $e');
+    }
+  }
+
+  /// Rebuild users cache from local database
+  Future<void> _rebuildUsersCache() async {
+    try {
+      final localUsers = await db.usersDao.getAllUsers();
+      _localToCloudCache['users']!.clear();
+      _cloudToLocalCache['users']!.clear();
+      
+      for (final user in localUsers) {
+        if (user.cloudId != null) {
+          _localToCloudCache['users']![user.id] = user.cloudId!;
+          _cloudToLocalCache['users']![user.cloudId!] = user.id;
+        }
+      }
+    } catch (e) {
+      print('   ⚠️ Failed to rebuild users cache: $e');
     }
   }
 
@@ -880,10 +955,36 @@ class SupabaseSyncService {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
 
-      // RLS handles filtering - commissary sees all, franchisee sees own + master items
-      final cloudItems = await supabase
+      // ✅ Debug: Log current organization context
+      if (kDebugMode) {
+        print('   📍 Current org context:');
+        print('      - orgId (local): $_currentOrganizationId');
+        print('      - orgCloudId: $_currentOrganizationCloudId');
+        print('      - orgType: $_currentOrganizationType');
+        print('      - parentCommissaryCloudId: $_parentCommissaryCloudId');
+      }
+
+      // Build query with organization filter (belt & suspenders with RLS)
+      var query = supabase
           .from('items')
           .select()
+          .gte('last_updated', lastSync);
+
+      // Add explicit organization filter for extra safety
+      if (_currentOrganizationCloudId != null) {
+        if (_currentOrganizationType == 'franchisee' && _parentCommissaryCloudId != null) {
+          // Franchisee: pull own items + master items from parent commissary
+          query = query.or('organization_id.eq.$_currentOrganizationCloudId,and(organization_id.eq.$_parentCommissaryCloudId,master_item_id.is.null)');
+        } else {
+          // Commissary or single org: pull only own organization's items
+          query = query.eq('organization_id', _currentOrganizationCloudId!);
+        }
+        print('   🔍 Filtering items by org: $_currentOrganizationCloudId');
+      } else {
+        print('   ⚠️ No org filter applied - _currentOrganizationCloudId is null!');
+      }
+
+      final cloudItems = await query
           .order('last_updated', ascending: false)
           .limit(1000);
 
@@ -900,7 +1001,12 @@ class SupabaseSyncService {
             cloudItem['master_item_id'],
           );
 
-          if (orgId == null) continue;
+          if (orgId == null) {
+            if (kDebugMode) {
+              print('   ⚠️ Skipping item ${cloudItem['name']}: org ${cloudItem['organization_id']} not in cache');
+            }
+            continue;
+          }
 
           resolvedItems.add({
             ...cloudItem,
@@ -917,10 +1023,31 @@ class SupabaseSyncService {
             await db.itemsDao.upsertBatchFromCloud(batch);
           }
           print('   ↓ Pulled ${resolvedItems.length} items');
+          
+          // ✅ FIXED: Rebuild items cache from local DB after upsert
+          await _rebuildItemsCache();
         }
       }
     } catch (e) {
-      print('   âš ï¸ Failed to pull replenishment requests: $e');
+      print('   ⚠️ Failed to pull items: $e');
+    }
+  }
+
+  /// Rebuild items cache from local database
+  Future<void> _rebuildItemsCache() async {
+    try {
+      final localItems = await db.itemsDao.getAllItems();
+      _localToCloudCache['items']!.clear();
+      _cloudToLocalCache['items']!.clear();
+      
+      for (final item in localItems) {
+        if (item.cloudId != null) {
+          _localToCloudCache['items']![item.id] = item.cloudId!;
+          _cloudToLocalCache['items']![item.cloudId!] = item.id;
+        }
+      }
+    } catch (e) {
+      print('   ⚠️ Failed to rebuild items cache: $e');
     }
   }
 

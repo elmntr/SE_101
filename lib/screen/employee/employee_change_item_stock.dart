@@ -56,9 +56,19 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   }
 
   Future<void> _loadItems() async {
-    final loaded = await db.itemsDao.getItemsByOrganization(
-      widget.userData.organizationId,
-    );
+    // Resolve org ID - if local ID is 0, look up from cloud ID
+    int orgId = widget.userData.organizationId;
+    if (orgId == 0 && widget.userData.organizationCloudId != null) {
+      final org = await db.organizationsDao.getOrganizationByCloudId(
+        widget.userData.organizationCloudId!,
+      );
+      if (org != null) {
+        orgId = org.id;
+        print('📍 Change stock: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}');
+      }
+    }
+
+    final loaded = await db.itemsDao.getItemsByOrganization(orgId);
 
     setState(() {
       items = loaded;
