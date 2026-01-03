@@ -324,6 +324,9 @@ class _InventoryPageState extends State<InventoryPage> {
                                         ],
                                       )
                                       .toList(),
+                                      
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                 ))
                         : selectedTab == 1
                         ? (InventoryPage.pendingChanges.isEmpty
@@ -354,6 +357,9 @@ class _InventoryPageState extends State<InventoryPage> {
                                       ];
                                     },
                                   ),
+                                  
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                 ))
                         : emptyTables(
                             message:
@@ -523,6 +529,9 @@ class _InventoryPageState extends State<InventoryPage> {
                                           ],
                                         )
                                         .toList(),
+                                        
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                   ))
                           : selectedTab == 1
                           ? (InventoryPage.pendingChanges.isEmpty
@@ -553,6 +562,9 @@ class _InventoryPageState extends State<InventoryPage> {
                                         ];
                                       },
                                     ),
+                                    
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                   ))
                           : emptyTables(
                               message:

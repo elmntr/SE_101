@@ -628,6 +628,9 @@ Widget _buildInfoRow(String label, String value) {
                                         ],
                                       )
                                       .toList(),
+                          
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                 ))
                         : (pendingChanges.isEmpty
                               ? emptyTables(
@@ -671,6 +674,9 @@ Widget _buildInfoRow(String label, String value) {
                                             ],
                                           )
                                           .toList(),
+                                          
+                                      smallHeaderWidth: 20,
+                                      largeHeaderWidth: 120,
                                     );
                                   },
                                 )),
@@ -838,6 +844,9 @@ Widget _buildInfoRow(String label, String value) {
                                           ],
                                         )
                                         .toList(),
+                                        
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                   ))
                           : (pendingChanges.isEmpty
                                 ? emptyTables(
@@ -899,6 +908,9 @@ Widget _buildInfoRow(String label, String value) {
                                               ],
                                             )
                                             .toList(),
+                                            
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                       );
                                     },
                                   )),
