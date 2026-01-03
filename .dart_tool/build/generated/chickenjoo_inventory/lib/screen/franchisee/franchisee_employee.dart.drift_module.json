@@ -7,6 +7,7 @@
     "package:chickenjoo_inventory/database/app_database.dart",
     "package:chickenjoo_inventory/tables/sorting_and_filters.dart",
     "package:chickenjoo_inventory/app_globals.dart",
-    "package:drift/drift.dart"
+    "package:drift/drift.dart",
+    "package:shared_preferences/shared_preferences.dart"
   ]
 }

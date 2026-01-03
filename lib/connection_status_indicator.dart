@@ -4,11 +4,13 @@ import '../utils/sync_status.dart';
 class ConnectionStatusIndicator extends StatefulWidget {
   final bool isOnline;
   final SyncStatus syncStatus;
+  final VoidCallback? onSyncPressed;
 
   const ConnectionStatusIndicator({
     super.key,
     required this.isOnline,
     required this.syncStatus,
+    this.onSyncPressed,
   });
 
   @override
@@ -111,6 +113,8 @@ class _ConnectionStatusIndicatorState extends State<ConnectionStatusIndicator>
       child: Icon(Icons.circle, size: 10, color: _statusColor()),
     );
 
+    final isSyncing = widget.syncStatus == SyncStatus.syncing;
+
     return Tooltip(
       message: _tooltipMessage(),
       child: Row(
@@ -119,6 +123,26 @@ class _ConnectionStatusIndicatorState extends State<ConnectionStatusIndicator>
           icon,
           const SizedBox(width: 6),
           Text(_statusText(), style: const TextStyle(fontSize: 12)),
+          if (widget.onSyncPressed != null && widget.isOnline) ...[
+            const SizedBox(width: 4),
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                iconSize: 16,
+                tooltip: isSyncing ? 'Syncing...' : 'Sync now',
+                onPressed: isSyncing ? null : widget.onSyncPressed,
+                icon: isSyncing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync),
+              ),
+            ),
+          ],
         ],
       ),
     );

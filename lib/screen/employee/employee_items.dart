@@ -55,10 +55,20 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     setState(() => _isLoading = true);
 
     try {
+      // Resolve org ID - if local ID is 0, look up from cloud ID
+      int orgId = widget.userData.organizationId;
+      if (orgId == 0 && widget.userData.organizationCloudId != null) {
+        final org = await db.organizationsDao.getOrganizationByCloudId(
+          widget.userData.organizationCloudId!,
+        );
+        if (org != null) {
+          orgId = org.id;
+          print('📍 Employee items: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}');
+        }
+      }
+
       // Load items for the user's organization
-      final items = await db.itemsDao.getItemsByOrganization(
-        widget.userData.organizationId,
-      );
+      final items = await db.itemsDao.getItemsByOrganization(orgId);
 
       // Load pending/draft changes for this employee
       final changes = await db.stockChangeRequestsDao.getAllChangeRequests(

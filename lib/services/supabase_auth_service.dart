@@ -1114,18 +1114,36 @@ class SupabaseAuthService {
       final orgRecord = userRecord['organizations'] as Map<String, dynamic>;
       final roleRecord = userRecord['roles'] as Map<String, dynamic>;
 
-      // 3. Build UserData from Supabase response
+      // 3. Look up local IDs from local database using cloud IDs
+      // The cloud data has local_id = null, so we need to resolve from local DB
+      final localOrg = await _db.organizationsDao.getOrganizationByCloudId(branchCloudId);
+      final localRole = await _db.rolesDao.getRoleByCloudId(roleRecord['cloud_id']);
+      final localUser = await _db.usersDao.getUserByCloudId(userRecord['cloud_id']);
+
+      // Use local IDs if found, otherwise use 0 (will be synced later)
+      final localOrgId = localOrg?.id ?? 0;
+      final localRoleId = localRole?.id ?? 0;
+      final localUserId = localUser?.id ?? 0;
+
+      if (kDebugMode) {
+        print('   📍 Local ID resolution:');
+        print('      - Org: cloud=${branchCloudId} → local=$localOrgId');
+        print('      - Role: cloud=${roleRecord['cloud_id']} → local=$localRoleId');
+        print('      - User: cloud=${userRecord['cloud_id']} → local=$localUserId');
+      }
+
+      // 4. Build UserData from Supabase response with resolved local IDs
       _currentUser = UserData(
-        id: userRecord['local_id'] ?? 0,
+        id: localUserId,
         username: userRecord['username'] ?? email.split('@').first,
         email: email,
         fullName: userRecord['full_name'],
         phone: userRecord['phone'],
-        organizationId: orgRecord['local_id'] ?? 0,
+        organizationId: localOrgId,
         organizationCloudId: branchCloudId,
         organizationType: orgRecord['type'] ?? 'franchisee',
         organizationName: orgRecord['name'] ?? 'Unknown Branch',
-        roleId: roleRecord['local_id'] ?? 0,
+        roleId: localRoleId,
         roleName: roleRecord['name'] ?? 'Employee',
         permissions: RolePermissions(
           canViewInventory: roleRecord['can_view_inventory'] ?? false,
