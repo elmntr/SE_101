@@ -552,6 +552,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
 
   /// ✅ Batch upsert from cloud
   /// ✅ FIXED: Batch upsert from cloud with ALL new columns
+  /// Uses cloud_id for conflict resolution, not local_id
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudItems,
   ) async {
@@ -559,7 +560,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       await db.transaction(() async {
         for (final cloudItem in cloudItems) {
           await upsertFromCloud(
-            id: cloudItem['local_id'],
+            cloudId: cloudItem['cloud_id'],
             name: cloudItem['name'],
             organizationId: cloudItem['organization_id'], // ✅ NEW
             stock: cloudItem['stock'],
@@ -567,15 +568,18 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
             spoilage: cloudItem['spoilage'] ?? 0,
             categoryId: cloudItem['category_id'],
             masterItemId: cloudItem['master_item_id'], // ✅ NEW
-            price: cloudItem['price']?.toDouble(), // ✅ NEW
-            costPrice: cloudItem['cost_price']?.toDouble(), // ✅ NEW
+            price: cloudItem['price'] is String 
+                ? double.tryParse(cloudItem['price']) 
+                : cloudItem['price']?.toDouble(), // ✅ Handle string prices
+            costPrice: cloudItem['cost_price'] is String
+                ? double.tryParse(cloudItem['cost_price'])
+                : cloudItem['cost_price']?.toDouble(), // ✅ NEW
             unit: cloudItem['unit'], // ✅ NEW
             minimumStock: cloudItem['minimum_stock'], // ✅ NEW
             description: cloudItem['description'], // ✅ NEW
             createdAt: DateTime.parse(cloudItem['created_at']),
             lastUpdated: DateTime.parse(cloudItem['last_updated']),
             isDeleted: cloudItem['is_deleted'] ?? false,
-            cloudId: cloudItem['cloud_id'],
           );
         }
       });
@@ -585,8 +589,9 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     }
   }
 
+  /// Upsert a single item from cloud using cloud_id for conflict resolution
   Future<void> upsertFromCloud({
-    required int id,
+    required String cloudId,
     required String name,
     required int organizationId, // ✅ NEW
     required int stock,
@@ -602,31 +607,57 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     required DateTime createdAt,
     required DateTime lastUpdated,
     required bool isDeleted,
-    required String cloudId,
   }) async {
     try {
-      await into(items).insertOnConflictUpdate(
-        ItemsCompanion.insert(
-          id: Value(id),
-          name: name,
-          organizationId: organizationId, // ✅ NEW
-          categoryId: Value(categoryId),
-          masterItemId: Value(masterItemId), // ✅ NEW
-          stock: Value(stock),
-          sold: Value(sold),
-          spoilage: Value(spoilage),
-          price: Value(price), // ✅ NEW
-          costPrice: Value(costPrice), // ✅ NEW
-          unit: Value(unit ?? 'piece'), // ✅ NEW
-          minimumStock: Value(minimumStock), // ✅ NEW
-          description: Value(description), // ✅ NEW
-          createdAt: Value(createdAt),
-          lastUpdated: Value(lastUpdated),
-          isDeleted: Value(isDeleted),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ),
-      );
+      // First check if item exists by cloud_id
+      final existing = await getItemByCloudId(cloudId);
+      
+      if (existing != null) {
+        // Update existing item
+        await (update(items)..where((t) => t.cloudId.equals(cloudId))).write(
+          ItemsCompanion(
+            name: Value(name),
+            organizationId: Value(organizationId),
+            categoryId: Value(categoryId),
+            masterItemId: Value(masterItemId),
+            stock: Value(stock),
+            sold: Value(sold),
+            spoilage: Value(spoilage),
+            price: Value(price),
+            costPrice: Value(costPrice),
+            unit: Value(unit ?? 'piece'),
+            minimumStock: Value(minimumStock),
+            description: Value(description),
+            createdAt: Value(createdAt),
+            lastUpdated: Value(lastUpdated),
+            isDeleted: Value(isDeleted),
+            isSynced: Value(true),
+          ),
+        );
+      } else {
+        // Insert new item (let database auto-generate id)
+        await into(items).insert(
+          ItemsCompanion.insert(
+            name: name,
+            organizationId: organizationId,
+            categoryId: Value(categoryId),
+            masterItemId: Value(masterItemId),
+            stock: Value(stock),
+            sold: Value(sold),
+            spoilage: Value(spoilage),
+            price: Value(price),
+            costPrice: Value(costPrice),
+            unit: Value(unit ?? 'piece'),
+            minimumStock: Value(minimumStock),
+            description: Value(description),
+            createdAt: Value(createdAt),
+            lastUpdated: Value(lastUpdated),
+            isDeleted: Value(isDeleted),
+            isSynced: Value(true),
+            cloudId: Value(cloudId),
+          ),
+        );
+      }
     } catch (e) {
       print('❌ Error upserting item from cloud: $e');
       rethrow;

@@ -51,12 +51,24 @@ class _ItemsPageState extends State<ItemsPage> {
       // Get current organization from auth service or local storage
       await _loadCurrentOrganization();
 
-      List<Item> items;
-      if (_currentOrganizationId != null) {
-        items = await db.itemsDao.getItemsByOrganization(_currentOrganizationId!);
-      } else {
-        items = await db.itemsDao.getAllItems();
+      // Only load items if we have a valid organization context
+      if (_currentOrganizationId == null) {
+        if (mounted) {
+          setState(() {
+            dbItems = [];
+            dbCategories = [];
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No organization context. Please log in again.'),
+            ),
+          );
+        }
+        return;
       }
+
+      final items = await db.itemsDao.getItemsByOrganization(_currentOrganizationId!);
       
       final categories = await db.categoriesDao.getAllCategories();
 
@@ -81,6 +93,20 @@ class _ItemsPageState extends State<ItemsPage> {
     // Try to get from current logged-in user session via auth service
     final currentUser = AppGlobals.instance.authService.currentUser;
     if (currentUser != null) {
+      // If local ID is 0 but we have cloud ID, look up the local ID
+      // This happens on first login when data is synced but UserData has ID 0
+      if (currentUser.organizationId == 0 && currentUser.organizationCloudId != null) {
+        final org = await db.organizationsDao.getOrganizationByCloudId(
+          currentUser.organizationCloudId!,
+        );
+        if (org != null) {
+          _currentOrganizationId = org.id;
+          await prefs.setInt(_orgIdKey, org.id);
+          print('📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}');
+          return;
+        }
+      }
+      
       await prefs.setInt(_orgIdKey, currentUser.organizationId);
       _currentOrganizationId = currentUser.organizationId;
     } else {
@@ -197,12 +223,17 @@ class _ItemsPageState extends State<ItemsPage> {
                             }
 
                             try {
-                              // Get user's organization ID
-                              final currentUser = await db.usersDao.getUserById(
-                                1,
-                              ); // TODO: Get from session
-                              final organizationId =
-                                  currentUser?.organizationId ?? 1;
+                              // Get user's organization ID from auth service
+                              final currentUser = AppGlobals.instance.authService.currentUser;
+                              if (currentUser == null) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Not logged in. Please log in again.'),
+                                  ),
+                                );
+                                return;
+                              }
+                              final organizationId = currentUser.organizationId;
 
                               await db.itemsDao.insertItem(
                                 name: name.text,
