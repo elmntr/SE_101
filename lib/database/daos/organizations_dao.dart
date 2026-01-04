@@ -455,33 +455,32 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Batch upsert from cloud
-  Future<void> upsertBatchFromCloud(
-    List<Map<String, dynamic>> cloudOrganizations,
-  ) async {
-    try {
-      await db.transaction(() async {
-        for (final cloudOrg in cloudOrganizations) {
-          await upsertFromCloud(
-            id: cloudOrg['local_id'],
-            name: cloudOrg['name'],
-            type: cloudOrg['type'],
-            parentCommissaryId: cloudOrg['parent_commissary_id'],
-            contactPerson: cloudOrg['contact_person'],
-            phone: cloudOrg['phone'],
-            email: cloudOrg['email'],
-            address: cloudOrg['address'],
-            isActive: cloudOrg['is_active'],
-            createdAt: DateTime.parse(cloudOrg['created_at']),
-            lastUpdated: DateTime.parse(cloudOrg['last_updated']),
-            cloudId: cloudOrg['cloud_id'],
-          );
-        }
-      });
-    } catch (e) {
-      print('❌ Error batch upserting organizations from cloud: $e');
-      rethrow;
-    }
+  /// ✅ Batch upsert from cloud
+Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations) async {
+  try {
+    await db.transaction(() async {
+      for (final cloudOrg in cloudOrganizations) {
+        await upsertFromCloud(
+          id: cloudOrg['local_id'] ?? 0,
+          name: cloudOrg['name'] ?? 'Unknown Organization',
+          type: cloudOrg['type'] ?? 'commissary',
+          parentCommissaryId: cloudOrg['parent_commissary_id'], // ✅ Can be null
+          contactPerson: cloudOrg['contact_person'], // ✅ Already nullable (String?)
+          phone: cloudOrg['phone'],
+          email: cloudOrg['email'],
+          address: cloudOrg['address'],
+          isActive: cloudOrg['is_active'] ?? true, // ✅ Default to true
+          createdAt: DateTime.tryParse(cloudOrg['created_at'] ?? '') ?? DateTime.now(), // ✅ Safe parse
+          lastUpdated: DateTime.tryParse(cloudOrg['last_updated'] ?? '') ?? DateTime.now(), // ✅ Safe parse
+          cloudId: cloudOrg['cloud_id'] ?? '', // ✅ Default to empty string
+        );
+      }
+    });
+  } catch (e) {
+    print('❌ Error batch upserting organizations from cloud: $e');
+    rethrow;
   }
+}
 
   /// ✅ Upsert from cloud (individual)
   /// If id > 0, updates existing record. If id == 0, checks by cloudId first.

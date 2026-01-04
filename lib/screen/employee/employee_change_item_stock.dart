@@ -24,6 +24,7 @@ class EmployeeChangeStockPage extends StatefulWidget {
     this.role,
   });
 
+
   @override
   State<EmployeeChangeStockPage> createState() =>
       _EmployeeChangeStockPageState();

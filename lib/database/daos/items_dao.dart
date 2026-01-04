@@ -712,6 +712,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   }
 }
 
+
 /// ✅ Sorting options for items
 enum ItemSortOrder {
   nameAsc,

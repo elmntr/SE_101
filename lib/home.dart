@@ -32,10 +32,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isSideBarOpen = false;
   bool showLabels = false;
   late AppDatabase _db;
-
+  
+  // ✅ ADD THESE STATE VARIABLES (NO DUPLICATES)
   SyncStatus _syncStatus = SyncStatus.synced;
   DateTime? _lastSyncTime;
-
   late ConnectivityService _connectivityService;
   bool _isOnline = true;
 
@@ -47,6 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _db = database;
     _loadRoleAndMenu();
+    
+    // ✅ ADD CONNECTIVITY SERVICE INITIALIZATION
     _connectivityService = ConnectivityService();
     _connectivityService.connectionStream.listen((status) {
       setState(() {
@@ -134,9 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
       
       // Clear local session
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(
-        'loggedInUserId',
-      ); // or prefs.clear() if you want to clear everything
+      await prefs.remove('loggedInUserId');
 
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     }
@@ -153,6 +153,16 @@ class _HomeScreenState extends State<HomeScreen> {
           centerTitle: true,
           iconTheme: const IconThemeData(color: Colors.white),
           actions: [
+            // ✅ ADD CONNECTION STATUS INDICATOR
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ConnectionStatusIndicator(
+                isOnline: _isOnline,
+                syncStatus: _syncStatus,
+                onSyncPressed: _triggerManualSync,
+              ),
+            ),
+            
             // ✅ PROFILE MENU WITH LOGOUT
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -312,6 +322,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
+          // ✅ ADD CONNECTION STATUS INDICATOR
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ConnectionStatusIndicator(
+              isOnline: _isOnline,
+              syncStatus: _syncStatus,
+              onSyncPressed: _triggerManualSync,
+            ),
+          ),
+          
           // ✅ PROFILE MENU WITH LOGOUT
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -479,7 +499,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() {
       menuItems = menu;
-      selectedIndex = 0;
       selectedIndex = 0;
       currentPage = menu.isNotEmpty
           ? menu.first["page"] as Widget

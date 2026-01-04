@@ -329,7 +329,7 @@ class SupabaseSyncService {
   void startPeriodicSync() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(syncInterval, (_) => syncAll());
-    print('â° Periodic sync started (every ${syncInterval.inMinutes} minutes)');
+    print('⏰ Periodic sync started (every ${syncInterval.inMinutes} minutes)');
   }
 
   void stopPeriodicSync() {
@@ -476,7 +476,6 @@ class SupabaseSyncService {
   Future<void> _pushOrganizations() async {
     int totalPushed = 0;
     int offset = 0;
-    int totalPushed = 0;
 
     while (true) {
       final unsynced = await db.organizationsDao.getUnsyncedOrganizations(
@@ -545,6 +544,7 @@ class SupabaseSyncService {
       final cloudOrgs = await supabase
           .from('organizations')
           .select()
+          .gte('last_updated', lastSync)
           .order('last_updated', ascending: false)
           .limit(500);
 
@@ -621,13 +621,12 @@ class SupabaseSyncService {
     await _pullRoles();
   }
 
-  Future<void> _pushIngredients() async {
-    int offset = 0;
+  Future<void> _pushRoles() async {
     int totalPushed = 0;
     int offset = 0;
 
     while (true) {
-      final unsynced = await db.ingredientsDao.getUnsyncedIngredients(
+      final unsynced = await db.rolesDao.getUnsyncedRoles(
         limit: batchSize,
         offset: offset,
       );
@@ -675,7 +674,7 @@ class SupabaseSyncService {
       }
 
       if (syncedIds.isNotEmpty) {
-        await db.ingredientsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+        await db.rolesDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
       }
 
       offset += batchSize;
@@ -684,7 +683,7 @@ class SupabaseSyncService {
     if (totalPushed > 0) print('   ↑ Pushed $totalPushed roles');
   }
 
-  Future<void> _pullIngredients() async {
+  Future<void> _pullRoles() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
@@ -692,6 +691,7 @@ class SupabaseSyncService {
       final cloudRoles = await supabase
           .from('roles')
           .select()
+          .gte('last_updated', lastSync)
           .order('last_updated', ascending: false)
           .limit(500);
 
@@ -734,15 +734,16 @@ class SupabaseSyncService {
     await _pullUsers();
   }
 
-  Future<void> _pushRecipeIngredients() async {
-    int offset = 0;
+  Future<void> _pushUsers() async {
     int totalPushed = 0;
     int skipped = 0;
     int offset = 0;
 
     while (true) {
-      final unsynced = await db.recipeIngredientsDao
-          .getUnsyncedRecipeIngredients(limit: batchSize, offset: offset);
+      final unsynced = await db.usersDao.getUnsyncedUsers(
+        limit: batchSize,
+        offset: offset,
+      );
 
       if (unsynced.isEmpty) break;
 
@@ -790,10 +791,7 @@ class SupabaseSyncService {
       }
 
       if (syncedIds.isNotEmpty) {
-        await db.recipeIngredientsDao.markAsSynced(
-          syncedIds,
-          cloudIds: cloudIdMap,
-        );
+        await db.usersDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
       }
 
       offset += batchSize;
@@ -803,7 +801,7 @@ class SupabaseSyncService {
     if (skipped > 0) print('   ⚠️ Skipped $skipped users (missing FKs)');
   }
 
-  Future<void> _pullRecipeIngredients() async {
+  Future<void> _pullUsers() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
@@ -812,6 +810,7 @@ class SupabaseSyncService {
       final cloudUsers = await supabase
           .from('users')
           .select()
+          .gte('last_updated', lastSync)
           .order('last_updated', ascending: false)
           .limit(500);
 
@@ -877,15 +876,16 @@ class SupabaseSyncService {
     await _pullItems();
   }
 
-  Future<void> _pushReplenishmentRequests() async {
-    int offset = 0;
+  Future<void> _pushItems() async {
     int totalPushed = 0;
     int skipped = 0;
     int offset = 0;
 
     while (true) {
-      final unsynced = await db.stockReplenishmentRequestsDao
-          .getUnsyncedRequests(limit: batchSize, offset: offset);
+      final unsynced = await db.itemsDao.getUnsyncedItems(
+        limit: batchSize,
+        offset: offset,
+      );
 
       if (unsynced.isEmpty) break;
 
@@ -937,10 +937,7 @@ class SupabaseSyncService {
       }
 
       if (syncedIds.isNotEmpty) {
-        await db.stockReplenishmentRequestsDao.markAsSynced(
-          syncedIds,
-          cloudIds: cloudIdMap,
-        );
+        await db.itemsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
       }
 
       offset += batchSize;
@@ -950,7 +947,7 @@ class SupabaseSyncService {
     if (skipped > 0) print('   ⚠️ Skipped $skipped items (missing FKs)');
   }
 
-  Future<void> _pullReplenishmentRequests() async {
+  Future<void> _pullItems() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
@@ -1060,14 +1057,15 @@ class SupabaseSyncService {
     await _pullIngredients();
   }
 
-  Future<void> _pushChangeRequests() async {
-    int offset = 0;
+  Future<void> _pushIngredients() async {
     int totalPushed = 0;
     int offset = 0;
 
     while (true) {
-      final unsynced = await db.stockChangeRequestsDao
-          .getUnsyncedChangeRequests(limit: batchSize, offset: offset);
+      final unsynced = await db.ingredientsDao.getUnsyncedIngredients(
+        limit: batchSize,
+        offset: offset,
+      );
 
       if (unsynced.isEmpty) break;
 
@@ -1114,10 +1112,7 @@ class SupabaseSyncService {
       }
 
       if (syncedIds.isNotEmpty) {
-        await db.stockChangeRequestsDao.markAsSynced(
-          syncedIds,
-          cloudIds: cloudIdMap,
-        );
+        await db.ingredientsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
       }
 
       offset += batchSize;
@@ -1126,7 +1121,7 @@ class SupabaseSyncService {
     if (totalPushed > 0) print('   ↑ Pushed $totalPushed ingredients');
   }
 
-  Future<void> _pullChangeRequests() async {
+  Future<void> _pullIngredients() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
@@ -1134,6 +1129,7 @@ class SupabaseSyncService {
       final cloudIngredients = await supabase
           .from('ingredients')
           .select()
+          .gte('last_updated', lastSync)
           .order('last_updated', ascending: false)
           .limit(500);
 
@@ -1160,7 +1156,7 @@ class SupabaseSyncService {
         }
       }
     } catch (e) {
-      print('   âš ï¸ Failed to pull change requests: $e');
+      print('   ⚠️ Failed to pull ingredients: $e');
     }
   }
 
@@ -1173,8 +1169,7 @@ class SupabaseSyncService {
     await _pullRecipeIngredients();
   }
 
-  Future<void> _pushItems() async {
-    int offset = 0;
+  Future<void> _pushRecipeIngredients() async {
     int totalPushed = 0;
     int offset = 0;
 
@@ -1182,7 +1177,7 @@ class SupabaseSyncService {
       final unsynced = await db.recipeIngredientsDao
           .getUnsyncedRecipeIngredients(limit: batchSize, offset: offset);
 
-      if (unsyncedItems.isEmpty) break;
+      if (unsynced.isEmpty) break;
 
       final batchData = <Map<String, dynamic>>[];
       final syncedIds = <int>[];
@@ -1238,7 +1233,7 @@ class SupabaseSyncService {
     if (totalPushed > 0) print('   ↑ Pushed $totalPushed recipe ingredients');
   }
 
-  Future<void> _pullItems() async {
+  Future<void> _pullRecipeIngredients() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
@@ -1246,6 +1241,7 @@ class SupabaseSyncService {
       final cloudRecipes = await supabase
           .from('recipe_ingredients')
           .select()
+          .gte('last_updated', lastSync)
           .order('last_updated', ascending: false)
           .limit(500);
 
@@ -1274,7 +1270,7 @@ class SupabaseSyncService {
         }
       }
     } catch (e) {
-      print('   âš ï¸ Failed to pull items: $e');
+      print('   ⚠️ Failed to pull recipe ingredients: $e');
     }
   }
 
@@ -1282,19 +1278,12 @@ class SupabaseSyncService {
   // STOCK REPLENISHMENT REQUESTS SYNC
   // ============================================================================
 
-  Future<void> syncUsers() async {
-    try {
-      print('ðŸ¥ Syncing users...');
-      await _pushUsers();
-      await _pullUsers();
-      print('   âœ… Users sync complete');
-    } catch (e) {
-      print('   âŒ Users sync failed: $e');
-    }
+  Future<void> syncStockReplenishmentRequests() async {
+    await _pushReplenishmentRequests();
+    await _pullReplenishmentRequests();
   }
 
-  Future<void> _pushUsers() async {
-    int offset = 0;
+  Future<void> _pushReplenishmentRequests() async {
     int totalPushed = 0;
     int offset = 0;
 
@@ -1302,7 +1291,7 @@ class SupabaseSyncService {
       final unsynced = await db.stockReplenishmentRequestsDao
           .getUnsyncedRequests(limit: batchSize, offset: offset);
 
-      if (unsyncedUsers.isEmpty) break;
+      if (unsynced.isEmpty) break;
 
       final batchData = <Map<String, dynamic>>[];
       final syncedIds = <int>[];
@@ -1354,7 +1343,6 @@ class SupabaseSyncService {
         syncedIds.add(request.id);
       }
 
-
       if (batchData.isNotEmpty) {
         await _syncClient
             .from('stock_replenishment_requests')
@@ -1376,7 +1364,7 @@ class SupabaseSyncService {
       print('   ↑ Pushed $totalPushed replenishment requests');
   }
 
-  Future<void> _pullUsers() async {
+  Future<void> _pullReplenishmentRequests() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
@@ -1385,6 +1373,7 @@ class SupabaseSyncService {
       final cloudRequests = await supabase
           .from('stock_replenishment_requests')
           .select()
+          .gte('last_updated', lastSync)
           .order('last_updated', ascending: false)
           .limit(500);
 
@@ -1436,7 +1425,7 @@ class SupabaseSyncService {
         }
       }
     } catch (e) {
-      print('   âš ï¸ Failed to pull users: $e');
+      print('   ⚠️ Failed to pull replenishment requests: $e');
     }
   }
 
@@ -1444,19 +1433,12 @@ class SupabaseSyncService {
   // STOCK CHANGE REQUESTS SYNC
   // ============================================================================
 
-  Future<void> syncRoles() async {
-    try {
-      print('ðŸ" Syncing roles...');
-      await _pushRoles();
-      await _pullRoles();
-      print('   âœ… Roles sync complete');
-    } catch (e) {
-      print('   âŒ Roles sync failed: $e');
-    }
+  Future<void> syncStockChangeRequests() async {
+    await _pushChangeRequests();
+    await _pullChangeRequests();
   }
 
-  Future<void> _pushRoles() async {
-    int offset = 0;
+  Future<void> _pushChangeRequests() async {
     int totalPushed = 0;
     int offset = 0;
 
@@ -1464,7 +1446,7 @@ class SupabaseSyncService {
       final unsynced = await db.stockChangeRequestsDao
           .getUnsyncedChangeRequests(limit: batchSize, offset: offset);
 
-      if (unsyncedRoles.isEmpty) break;
+      if (unsynced.isEmpty) break;
 
       final batchData = <Map<String, dynamic>>[];
       final syncedIds = <int>[];
@@ -1512,7 +1494,6 @@ class SupabaseSyncService {
         syncedIds.add(request.id);
       }
 
-
       if (batchData.isNotEmpty) {
         await _syncClient
             .from('stock_change_requests')
@@ -1533,7 +1514,7 @@ class SupabaseSyncService {
     if (totalPushed > 0) print('   ↑ Pushed $totalPushed change requests');
   }
 
-  Future<void> _pullRoles() async {
+  Future<void> _pullChangeRequests() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
@@ -1541,6 +1522,7 @@ class SupabaseSyncService {
       final cloudRequests = await supabase
           .from('stock_change_requests')
           .select()
+          .gte('last_updated', lastSync)
           .order('last_updated', ascending: false)
           .limit(500);
 
@@ -1582,7 +1564,7 @@ class SupabaseSyncService {
         }
       }
     } catch (e) {
-      print('   âš ï¸ Failed to pull roles: $e');
+      print('   ⚠️ Failed to pull change requests: $e');
     }
   }
 
@@ -1614,7 +1596,7 @@ class SupabaseSyncService {
 
   /// Force immediate sync
   Future<void> syncImmediate() async {
-    print('âš¡ Immediate sync requested');
+    print('⚡ Immediate sync requested');
     await syncAll();
   }
 
