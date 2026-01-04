@@ -245,7 +245,6 @@ class _LoginScreenState extends State<LoginScreen> {
       width: width,
       child: Column(
         children: [
-          // Offline mode indicator
           if (_isOfflineMode)
             Container(
               width: width,
@@ -274,48 +273,103 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           Card(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: DropdownButtonFormField<String>(
-                value: _selectedBranch?['cloud_id'] as String?,
-                decoration: const InputDecoration(
-                  labelText: 'Select Branch',
-                  border: InputBorder.none,
-                  prefixIcon: Icon(Icons.store),
-                ),
-                hint: const Text('Choose your branch'),
-                isExpanded: true,
-                items: _branches.map((branch) {
-                  return DropdownMenuItem<String>(
-                    value: branch['cloud_id'] as String,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          branch['name'] as String? ?? 'Unknown',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        if (branch['address'] != null)
-                          Text(
-                            branch['address'] as String,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                            overflow: TextOverflow.ellipsis,
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      setState(() {
+                        _selectedBranch = _branches.firstWhere(
+                          (b) => b['cloud_id'] == value,
+                          orElse: () => {},
+                        );
+                      });
+                    },
+                    itemBuilder: (context) {
+                      return _branches.map((branch) {
+                        return PopupMenuItem<String>(
+                          value: branch['cloud_id'] as String,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                branch['name'] as String? ?? 'Unknown',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              if (branch['address'] != null)
+                                Text(
+                                  branch['address'] as String,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
                           ),
+                        );
+                      }).toList();
+                    },
+                    child: Row(
+                      children: [
+                        const Icon(Icons.store, color: Colors.grey),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Select Branch',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              if (_selectedBranch != null)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _selectedBranch!['name'] as String? ?? 'Unknown',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (_selectedBranch!['address'] != null)
+                                      Text(
+                                        _selectedBranch!['address'] as String,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[600],
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                  ],
+                                )
+                              else
+                                const Text(
+                                  'Choose your branch',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_drop_down),
                       ],
                     ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedBranch = _branches.firstWhere(
-                      (b) => b['cloud_id'] == value,
-                      orElse: () => {},
-                    );
-                  });
-                },
+                  ),
+                ],
               ),
             ),
           ),

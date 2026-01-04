@@ -1472,7 +1472,7 @@ class _ItemsPageState extends State<ItemsPage> {
                                         .toList(),
                                         
                                 smallHeaderWidth: 20,
-                                largeHeaderWidth: 60,
+                                largeHeaderWidth: 80,
                                   ))
                           : (dbCategories.isEmpty
                                 ? emptyTables(
