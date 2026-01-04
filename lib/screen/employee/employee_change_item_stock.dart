@@ -12,16 +12,12 @@ class EmployeeChangeStockPage extends StatefulWidget {
   final UserData userData;
   final VoidCallback onBack;
   final ValueChanged<ChangeRecord>? onRecordSaved;
-  final User user;
-  final Role? role;
 
   const EmployeeChangeStockPage({
     super.key,
     required this.userData,
     required this.onBack,
     this.onRecordSaved,
-    required this.user,
-    this.role,
   });
 
 

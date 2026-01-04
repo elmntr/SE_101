@@ -368,6 +368,12 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "mockito",
+      "rootUri": "file:///C:/Users/Bob/AppData/Local/Pub/Cache/hosted/pub.dev/mockito-5.6.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
       "name": "nm",
       "rootUri": "file:///C:/Users/Bob/AppData/Local/Pub/Cache/hosted/pub.dev/nm-0.5.0",
       "packageUri": "lib/",

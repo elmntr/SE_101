@@ -1,0 +1,20 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_test/flutter_test.dart",
+    "package:mockito/annotations.dart",
+    "package:mockito/mockito.dart",
+    "package:supabase_flutter/supabase_flutter.dart",
+    "package:chickenjoo_inventory/services/supabase_sync_service.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/database/daos/organizations_dao.dart",
+    "package:chickenjoo_inventory/database/daos/roles_dao.dart",
+    "package:chickenjoo_inventory/database/daos/users_dao.dart",
+    "package:chickenjoo_inventory/database/daos/items_dao.dart",
+    "package:chickenjoo_inventory/database/daos/ingredients_dao.dart",
+    "package:chickenjoo_inventory/database/daos/recipe_ingredients_dao.dart",
+    "package:chickenjoo_inventory/database/daos/stock_change_requests_dao.dart",
+    "package:chickenjoo_inventory/database/daos/stock_replenishment_requests_dao.dart",
+    "asset:chickenjoo_inventory/test/services/supabase_sync_service_test.mocks.dart"
+  ]
+}

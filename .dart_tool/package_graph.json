@@ -26,7 +26,8 @@
         "build_runner",
         "drift_dev",
         "flutter_lints",
-        "flutter_test"
+        "flutter_test",
+        "mockito"
       ]
     },
     {
@@ -1180,6 +1181,22 @@
       "dependencies": [
         "collection",
         "meta"
+      ]
+    },
+    {
+      "name": "mockito",
+      "version": "5.6.1",
+      "dependencies": [
+        "analyzer",
+        "build",
+        "code_builder",
+        "collection",
+        "dart_style",
+        "matcher",
+        "meta",
+        "path",
+        "source_gen",
+        "test_api"
       ]
     }
   ],
