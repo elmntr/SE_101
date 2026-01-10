@@ -1,6 +1,7 @@
 {
   "elements": {},
   "imports": [
+    "package:flutter/services.dart",
     "package:flutter_test/flutter_test.dart",
     "package:mockito/annotations.dart",
     "package:mockito/mockito.dart",

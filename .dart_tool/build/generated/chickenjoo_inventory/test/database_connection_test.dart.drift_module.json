@@ -1,0 +1,14 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_test/flutter_test.dart",
+    "package:mockito/mockito.dart",
+    "package:mockito/annotations.dart",
+    "package:drift/drift.dart",
+    "package:drift/native.dart",
+    "package:path_provider/path_provider.dart",
+    "package:path/path.dart",
+    "package:chickenjoo_inventory/database/database_connection.dart",
+    "asset:chickenjoo_inventory/test/database_connection_test.mocks.dart"
+  ]
+}
