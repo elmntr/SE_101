@@ -983,6 +983,9 @@ class _EmployeePageState extends State<EmployeePage> {
                                       ),
                                     ];
                                   }).toList(),
+                                  
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                 ))
                         : (_roles.isEmpty
                               ? emptyTables(
@@ -1056,6 +1059,9 @@ class _EmployeePageState extends State<EmployeePage> {
                                       ),
                                     ];
                                   }).toList(),
+                                  
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                 )),
                   ),
                 ),
@@ -1292,6 +1298,9 @@ class _EmployeePageState extends State<EmployeePage> {
                                         ),
                                       ];
                                     }).toList(),
+                                    
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                   ))
                           : (_roles.isEmpty
                                 ? emptyTables(
@@ -1369,6 +1378,9 @@ class _EmployeePageState extends State<EmployeePage> {
                                         ),
                                       ];
                                     }).toList(),
+                                    
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                   )),
                     ),
                   ),

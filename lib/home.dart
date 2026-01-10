@@ -14,7 +14,7 @@ import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'screen/franchisee/franchisee_reports.dart';
 import 'screen/franchisee/franchisee_inventory.dart';
 import 'screen/franchisee/franchisee_items.dart';
-import 'screen/franchisee/franchisee_employee.dart';
+import 'screen/franchisee/franchisee_employee.dart' hide Text;
 import 'screen/employee/employee_account.dart';
 
 class HomeScreen extends StatefulWidget {
