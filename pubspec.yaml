@@ -26,6 +26,9 @@ dependencies:
   uuid: ^4.0.0  
   crypto: ^3.0.3 
 
+  #LOGGING
+  logger: ^2.0.2
+
   window_size:
   
 

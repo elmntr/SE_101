@@ -32,7 +32,9 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   Map<int, String> categoryMap = {}; // Store category names by ID
 
+  // ignore: unused_field - Reserved for future sort UI implementation
   ItemSort _currentSort = const ItemSort(ItemSortField.name, SortOrder.asc);
+  // ignore: unused_field - Reserved for future sort UI implementation
   ReviewSort _reviewSort = const ReviewSort(
     ReviewSortField.employee,
     SortOrder.asc,
@@ -118,6 +120,7 @@ class _EmployeeItemsPageState extends State<EmployeeItemsPage> {
     });
   }
 
+  // ignore: unused_element
   void _applyReviewSort(ReviewSort sort) {
     setState(() {
       _reviewSort = sort;
@@ -346,7 +349,7 @@ Widget _buildInfoRow(String label, String value) {
               boxShadow: active
                   ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha: 0.12),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -1001,7 +1004,7 @@ Widget _buildInfoRow(String label, String value) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color),
       ),

@@ -559,27 +559,32 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     try {
       await db.transaction(() async {
         for (final cloudItem in cloudItems) {
+          // Map Supabase column names to local column names
+          final stockValue = cloudItem['stock'];
+          final criticalLevel = cloudItem['critical_level'] ?? cloudItem['minimum_stock'];
+          final costValue = cloudItem['cost'] ?? cloudItem['cost_price'];
+          
           await upsertFromCloud(
             cloudId: cloudItem['cloud_id'],
             name: cloudItem['name'],
-            organizationId: cloudItem['organization_id'], // ✅ NEW
-            stock: cloudItem['stock'],
-            sold: cloudItem['sold'] ?? 0,
-            spoilage: cloudItem['spoilage'] ?? 0,
+            organizationId: cloudItem['organization_id'],
+            stock: stockValue is num ? stockValue.toInt() : 0,
+            sold: (cloudItem['sold'] as num?)?.toInt() ?? 0,
+            spoilage: (cloudItem['spoilage'] as num?)?.toInt() ?? 0,
             categoryId: cloudItem['category_id'],
-            masterItemId: cloudItem['master_item_id'], // ✅ NEW
+            masterItemId: cloudItem['master_item_id'],
             price: cloudItem['price'] is String 
                 ? double.tryParse(cloudItem['price']) 
-                : cloudItem['price']?.toDouble(), // ✅ Handle string prices
-            costPrice: cloudItem['cost_price'] is String
-                ? double.tryParse(cloudItem['cost_price'])
-                : cloudItem['cost_price']?.toDouble(), // ✅ NEW
-            unit: cloudItem['unit'], // ✅ NEW
-            minimumStock: cloudItem['minimum_stock'], // ✅ NEW
-            description: cloudItem['description'], // ✅ NEW
+                : (cloudItem['price'] as num?)?.toDouble(),
+            costPrice: costValue is String
+                ? double.tryParse(costValue)
+                : (costValue as num?)?.toDouble(),
+            unit: cloudItem['unit'],
+            minimumStock: criticalLevel is num ? criticalLevel.toInt() : null,  // Map critical_level
+            description: cloudItem['description'],
             createdAt: DateTime.parse(cloudItem['created_at']),
             lastUpdated: DateTime.parse(cloudItem['last_updated']),
-            isDeleted: cloudItem['is_deleted'] ?? false,
+            isDeleted: cloudItem['is_deleted'] ?? (cloudItem['is_active'] == false),
           );
         }
       });

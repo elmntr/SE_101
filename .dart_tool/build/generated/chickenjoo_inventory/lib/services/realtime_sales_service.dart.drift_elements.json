@@ -1,0 +1,1 @@
+{"valid_import":true,"imports":[{"uri":"package:flutter/foundation.dart","transitive":false},{"uri":"package:supabase_flutter/supabase_flutter.dart","transitive":false},{"uri":"package:chickenjoo_inventory/database/app_database.dart","transitive":false},{"uri":"package:chickenjoo_inventory/utils/app_logger.dart","transitive":false}],"elements":[]}

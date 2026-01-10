@@ -548,19 +548,23 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
     try {
       await db.transaction(() async {
         for (final cloudIngredient in cloudIngredients) {
+          // Map Supabase column names to local column names
+          final stockValue = cloudIngredient['stock'];
+          final criticalLevel = cloudIngredient['critical_level'];
+          
           await upsertFromCloud(
-            id: cloudIngredient['local_id'],
+            id: cloudIngredient['id'] ?? cloudIngredient['local_id'],  // Supabase uses 'id'
             name: cloudIngredient['name'],
             commissaryId: cloudIngredient['commissary_id'],
-            stock: cloudIngredient['stock'],
-            spoilage: cloudIngredient['spoilage'] ?? 0,
+            stock: stockValue is num ? stockValue.toInt() : 0,  // Convert double to int
+            spoilage: cloudIngredient['spoilage'] ?? 0,  // Default to 0 if not in Supabase
             unit: cloudIngredient['unit'],
             categoryId: cloudIngredient['category_id'],
-            minimumStock: cloudIngredient['minimum_stock'],
+            minimumStock: criticalLevel is num ? criticalLevel.toInt() : null,  // Map critical_level to minimumStock
             description: cloudIngredient['description'],
             createdAt: DateTime.parse(cloudIngredient['created_at']),
             lastUpdated: DateTime.parse(cloudIngredient['last_updated']),
-            isDeleted: cloudIngredient['is_deleted'] ?? false,
+            isDeleted: cloudIngredient['is_deleted'] ?? cloudIngredient['is_active'] == false,
             cloudId: cloudIngredient['cloud_id'],
           );
         }

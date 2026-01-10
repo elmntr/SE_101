@@ -14,6 +14,7 @@
         "drift",
         "flutter",
         "flutter_dotenv",
+        "logger",
         "path",
         "path_provider",
         "shared_preferences",
@@ -126,6 +127,13 @@
       "version": "0.1.0",
       "dependencies": [
         "flutter"
+      ]
+    },
+    {
+      "name": "logger",
+      "version": "2.6.2",
+      "dependencies": [
+        "meta"
       ]
     },
     {
@@ -338,7 +346,7 @@
     },
     {
       "name": "meta",
-      "version": "1.17.0",
+      "version": "1.16.0",
       "dependencies": []
     },
     {
@@ -637,7 +645,7 @@
     },
     {
       "name": "test_api",
-      "version": "0.7.7",
+      "version": "0.7.6",
       "dependencies": [
         "async",
         "boolean_selector",

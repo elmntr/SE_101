@@ -305,7 +305,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             )
             ..orderBy([
               (t) => OrderingTerm(
-                expression: t.submittedAt ?? t.requestedAt,
+                expression: t.submittedAt,
                 mode: OrderingMode.desc,
               ),
             ]))
@@ -333,7 +333,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
                   t.isDeleted.equals(false),
             )
             ..orderBy([
-              (t) => OrderingTerm(expression: t.submittedAt ?? t.requestedAt),
+              (t) => OrderingTerm(expression: t.submittedAt),
             ]))
           .get();
     } catch (e) {
