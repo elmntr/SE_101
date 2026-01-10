@@ -28,6 +28,7 @@ class _EmployeePageState extends State<EmployeePage> {
     EmployeeSortField.name,
     SortOrder.desc,
   );
+  // ignore: unused_field - Reserved for future sort UI implementation
   RoleSort _currentRoleSort = RoleSort(RoleSortField.name, SortOrder.desc);
   int? _selectedRoleFilter;
   static const int _allRolesKey = -1;
@@ -324,6 +325,7 @@ class _EmployeePageState extends State<EmployeePage> {
     });
   }
 
+  // ignore: unused_element - Reserved for future sort UI implementation
   void _applyRoleSort(RoleSort sort) {
     setState(() {
       _currentRoleSort = sort;
@@ -698,7 +700,7 @@ class _EmployeePageState extends State<EmployeePage> {
               boxShadow: active
                   ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha: 0.12),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),

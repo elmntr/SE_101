@@ -315,7 +315,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
                   t.isDeleted.equals(false),
             )
             ..orderBy([
-              (t) => OrderingTerm(expression: t.reviewedAt ?? t.requestedAt),
+              (t) => OrderingTerm(expression: t.reviewedAt),
             ]))
           .get();
     } catch (e) {

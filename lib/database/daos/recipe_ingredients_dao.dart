@@ -418,12 +418,15 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase>
     try {
       await db.transaction(() async {
         for (final cloudRI in cloudRecipeIngredients) {
+          // Map Supabase column names to local column names
+          final quantityValue = cloudRI['quantity_needed'] ?? cloudRI['quantity'];
+          
           await upsertFromCloud(
-            id: cloudRI['local_id'],
+            id: cloudRI['id'] ?? cloudRI['local_id'],  // Supabase uses 'id'
             itemId: cloudRI['item_id'],
             ingredientId: cloudRI['ingredient_id'],
-            quantityNeeded: cloudRI['quantity_needed'],
-            unit: cloudRI['unit'],
+            quantityNeeded: quantityValue is num ? quantityValue.toDouble() : 0.0,
+            unit: cloudRI['unit'] ?? 'piece',
             notes: cloudRI['notes'],
             createdAt: DateTime.parse(cloudRI['created_at']),
             lastUpdated: DateTime.parse(cloudRI['last_updated']),

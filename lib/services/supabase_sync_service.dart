@@ -1,11 +1,13 @@
 // lib/services/supabase_sync_service.dart
 import 'dart:async';
 import 'dart:math';
+import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/app_logger.dart';
 
 /// ============================================================================
 /// OPTIMIZED SUPABASE SYNC SERVICE WITH STAR TOPOLOGY SUPPORT
@@ -42,6 +44,8 @@ class SupabaseSyncService {
     'recipe_ingredients': {},
     'stock_replenishment_requests': {},
     'stock_change_requests': {},
+    'daily_sales_summary': {},
+    'branch_ingredient_stock': {},
   };
 
   // ✅ Reverse cache for cloud to local lookups
@@ -54,6 +58,8 @@ class SupabaseSyncService {
     'recipe_ingredients': {},
     'stock_replenishment_requests': {},
     'stock_change_requests': {},
+    'daily_sales_summary': {},
+    'branch_ingredient_stock': {},
   };
 
   // ✅ Configuration - Optimized values
@@ -87,7 +93,7 @@ class SupabaseSyncService {
     // Check if user is authenticated
     if (supabase.auth.currentUser == null) {
       if (kDebugMode) {
-        print('⚠️ Sync client: No authenticated user - some operations may fail');
+        AppLogger.sync('⚠️ Sync client: No authenticated user - some operations may fail');
       }
     }
     return supabase;
@@ -118,7 +124,7 @@ class SupabaseSyncService {
     int? parentCommissaryId,
     String? parentCommissaryCloudId,  // ✅ Accept cloud ID directly
   }) async {
-    print('🚀 Initializing optimized sync service...');
+    AppLogger.sync('🚀 Initializing optimized sync service...');
 
     try {
       // Set organization context for star topology
@@ -157,7 +163,7 @@ class SupabaseSyncService {
         '✅ Sync service initialized (${_currentOrganizationType ?? 'unknown'} mode)',
       );
     } catch (e, stackTrace) {
-      print('❌ Failed to initialize sync service: $e');
+      AppLogger.sync('❌ Failed to initialize sync service: $e');
       if (kDebugMode) print(stackTrace);
       onSyncError?.call('Initialization failed: $e');
     }
@@ -172,10 +178,10 @@ class SupabaseSyncService {
       onConnectivityChanged?.call(_isOnline);
 
       if (_isOnline) {
-        print('📡 Network restored, triggering sync...');
+        AppLogger.sync('📡 Network restored, triggering sync...');
         syncAll();
       } else {
-        print('🔵 Network lost');
+        AppLogger.sync('🔵 Network lost');
         onSyncStatusChanged?.call('Offline');
       }
     }
@@ -197,9 +203,9 @@ class SupabaseSyncService {
     }
     
     if (kDebugMode) {
-      print('   📍 Organization context loaded:');
-      print('      - currentOrgCloudId: $_currentOrganizationCloudId');
-      print('      - parentCommissaryCloudId: $_parentCommissaryCloudId');
+      AppLogger.sync('   📍 Organization context loaded:');
+      AppLogger.sync('      - currentOrgCloudId: $_currentOrganizationCloudId');
+      AppLogger.sync('      - parentCommissaryCloudId: $_parentCommissaryCloudId');
     }
   }
 
@@ -209,7 +215,7 @@ class SupabaseSyncService {
 
   /// Build both forward and reverse caches
   Future<void> _buildCaches() async {
-    print('🔧 Building UUID caches...');
+    AppLogger.sync('🔧 Building UUID caches...');
     final stopwatch = Stopwatch()..start();
 
     try {
@@ -261,7 +267,7 @@ class SupabaseSyncService {
         '✅ Caches built: $totalEntries entries in ${stopwatch.elapsedMilliseconds}ms',
       );
     } catch (e) {
-      print('⚠️ Error building caches: $e');
+      AppLogger.sync('⚠️ Error building caches: $e');
     }
   }
 
@@ -305,6 +311,7 @@ class SupabaseSyncService {
   }
 
   /// Clear caches for a table
+  // ignore: unused_element - Reserved for future cache invalidation use
   void _clearTableCache(String table) {
     _localToCloudCache[table]?.clear();
     _cloudToLocalCache[table]?.clear();
@@ -321,7 +328,7 @@ class SupabaseSyncService {
       );
       return result != ConnectivityResult.none;
     } catch (e) {
-      print('⚠️ Connectivity check failed: $e');
+      AppLogger.sync('⚠️ Connectivity check failed: $e');
       return false;
     }
   }
@@ -329,13 +336,13 @@ class SupabaseSyncService {
   void startPeriodicSync() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(syncInterval, (_) => syncAll());
-    print('⏰ Periodic sync started (every ${syncInterval.inMinutes} minutes)');
+    AppLogger.sync('⏰ Periodic sync started (every ${syncInterval.inMinutes} minutes)');
   }
 
   void stopPeriodicSync() {
     _syncTimer?.cancel();
     _syncTimer = null;
-    print('⏸️ Periodic sync stopped');
+    AppLogger.sync('⏸️ Periodic sync stopped');
   }
 
   // ============================================================================
@@ -345,19 +352,19 @@ class SupabaseSyncService {
   /// Main sync method with star topology awareness
   Future<void> syncAll() async {
     if (_isSyncing) {
-      print('⏳ Sync already in progress, skipping...');
+      AppLogger.sync('⏳ Sync already in progress, skipping...');
       return;
     }
 
     if (!_isOnline) {
-      print('🔵 Offline, sync skipped');
+      AppLogger.sync('🔵 Offline, sync skipped');
       onSyncStatusChanged?.call('Offline');
       return;
     }
 
     // Check if user is authenticated (required for RLS-protected operations)
     if (!canSync) {
-      print('🔒 Not authenticated, sync skipped (login required)');
+      AppLogger.sync('🔒 Not authenticated, sync skipped (login required)');
       onSyncStatusChanged?.call('Not authenticated');
       return;
     }
@@ -368,7 +375,7 @@ class SupabaseSyncService {
       try {
         onSyncStatusChanged?.call('Syncing...');
 
-        print('🔄 Starting sync (attempt $attempt/$maxRetries)...');
+        AppLogger.sync('🔄 Starting sync (attempt $attempt/$maxRetries)...');
         print(
           '   Mode: ${_currentOrganizationType ?? 'full'} | Org: $_currentOrganizationId',
         );
@@ -386,7 +393,7 @@ class SupabaseSyncService {
         _lastSuccessfulSync = DateTime.now();
         final duration = _lastSuccessfulSync!.difference(startTime);
 
-        print('✅ Sync completed in ${duration.inSeconds}s');
+        AppLogger.sync('✅ Sync completed in ${duration.inSeconds}s');
         onSyncStatusChanged?.call('Synced');
         onSyncComplete?.call();
 
@@ -399,7 +406,7 @@ class SupabaseSyncService {
         _isSyncing = false;
         return;
       } catch (e, stackTrace) {
-        print('❌ Sync attempt $attempt failed: $e');
+        AppLogger.sync('❌ Sync attempt $attempt failed: $e');
         if (kDebugMode) print(stackTrace);
 
         if (attempt == maxRetries) {
@@ -411,7 +418,7 @@ class SupabaseSyncService {
 
         // Exponential backoff with jitter
         final delay = _calculateBackoff(attempt);
-        print('⏳ Retrying in ${delay.inSeconds}s...');
+        AppLogger.sync('⏳ Retrying in ${delay.inSeconds}s...');
         await Future.delayed(delay);
       }
     }
@@ -428,8 +435,10 @@ class SupabaseSyncService {
       _SyncStep('Items', syncItems),
       _SyncStep('Ingredients', syncIngredients),
       _SyncStep('RecipeIngredients', syncRecipeIngredients),
+      _SyncStep('BranchIngredientStock', syncBranchIngredientStock),
       _SyncStep('ReplenishmentRequests', syncStockReplenishmentRequests),
       _SyncStep('ChangeRequests', syncStockChangeRequests),
+      _SyncStep('DailySalesSummary', syncDailySalesSummary),
     ];
   }
 
@@ -446,11 +455,11 @@ class SupabaseSyncService {
     Future<void> Function() syncFunction,
   ) async {
     try {
-      print('📊 Syncing $tableName...');
+      AppLogger.sync('📊 Syncing $tableName...');
       await syncFunction().timeout(requestTimeout);
-      print('   ✅ $tableName done');
+      AppLogger.sync('   ✅ $tableName done');
     } catch (e) {
-      print('   ⚠️ $tableName failed: $e');
+      AppLogger.sync('   ⚠️ $tableName failed: $e');
       // Don't rethrow - continue with other tables
       onSyncError?.call('$tableName: $e');
     }
@@ -468,7 +477,7 @@ class SupabaseSyncService {
     if (_currentOrganizationType == 'commissary') {
       await _pushOrganizations();
     } else {
-      print('   ℹ️ Skipping organization push (franchisee mode - read-only)');
+      AppLogger.sync('   ℹ️ Skipping organization push (franchisee mode - read-only)');
     }
     await _pullOrganizations();
   }
@@ -532,7 +541,7 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed organizations');
+    if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed organizations');
   }
 
   Future<void> _pullOrganizations() async {
@@ -564,7 +573,7 @@ class SupabaseSyncService {
         }
 
         await db.organizationsDao.upsertBatchFromCloud(resolvedOrgs);
-        print('   ↓ Pulled ${resolvedOrgs.length} organizations');
+        AppLogger.sync('   ↓ Pulled ${resolvedOrgs.length} organizations');
 
         // ✅ FIXED: Rebuild organization cache from local DB after upsert
         // The cloud data doesn't have local_id, so we need to fetch from local DB
@@ -574,7 +583,7 @@ class SupabaseSyncService {
         await _loadOrganizationCloudIds();
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull organizations: $e');
+      AppLogger.sync('   ⚠️ Failed to pull organizations: $e');
     }
   }
 
@@ -591,16 +600,16 @@ class SupabaseSyncService {
           _cloudToLocalCache['organizations']![org.cloudId!] = org.id;
         }
       }
-      print('   🔄 Rebuilt organization cache: ${localOrgs.length} entries');
+      AppLogger.sync('   🔄 Rebuilt organization cache: ${localOrgs.length} entries');
       
       // ✅ Debug: Print cache contents
       if (kDebugMode) {
         for (final entry in _cloudToLocalCache['organizations']!.entries) {
-          print('      📍 Org: ${entry.key} → local ID ${entry.value}');
+          AppLogger.sync('      📍 Org: ${entry.key} → local ID ${entry.value}');
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to rebuild organization cache: $e');
+      AppLogger.sync('   ⚠️ Failed to rebuild organization cache: $e');
     }
   }
 
@@ -616,7 +625,7 @@ class SupabaseSyncService {
     if (_currentOrganizationType == 'commissary') {
       await _pushRoles();
     } else {
-      print('   ℹ️ Skipping roles push (franchisee mode - read-only)');
+      AppLogger.sync('   ℹ️ Skipping roles push (franchisee mode - read-only)');
     }
     await _pullRoles();
   }
@@ -680,7 +689,7 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed roles');
+    if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed roles');
   }
 
   Future<void> _pullRoles() async {
@@ -697,13 +706,13 @@ class SupabaseSyncService {
 
       if (cloudRoles.isNotEmpty) {
         await db.rolesDao.upsertBatchFromCloud(cloudRoles);
-        print('   ↓ Pulled ${cloudRoles.length} roles');
+        AppLogger.sync('   ↓ Pulled ${cloudRoles.length} roles');
 
         // ✅ FIXED: Rebuild roles cache from local DB after upsert
         await _rebuildRolesCache();
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull roles: $e');
+      AppLogger.sync('   ⚠️ Failed to pull roles: $e');
     }
   }
 
@@ -721,7 +730,7 @@ class SupabaseSyncService {
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to rebuild roles cache: $e');
+      AppLogger.sync('   ⚠️ Failed to rebuild roles cache: $e');
     }
   }
 
@@ -797,8 +806,8 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed users');
-    if (skipped > 0) print('   ⚠️ Skipped $skipped users (missing FKs)');
+    if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed users');
+    if (skipped > 0) AppLogger.sync('   ⚠️ Skipped $skipped users (missing FKs)');
   }
 
   Future<void> _pullUsers() async {
@@ -825,7 +834,7 @@ class SupabaseSyncService {
           final roleId = _getLocalId('roles', cloudUser['role_id']);
 
           if (orgId == null || roleId == null) {
-            print('   ⚠️ Skipping user ${cloudUser['email']}: org=$orgId, role=$roleId');
+            AppLogger.sync('   ⚠️ Skipping user ${cloudUser['email']}: org=$orgId, role=$roleId');
             continue;
           }
 
@@ -838,14 +847,14 @@ class SupabaseSyncService {
 
         if (resolvedUsers.isNotEmpty) {
           await db.usersDao.upsertBatchFromCloud(resolvedUsers);
-          print('   ↓ Pulled ${resolvedUsers.length} users');
+          AppLogger.sync('   ↓ Pulled ${resolvedUsers.length} users');
           
           // ✅ FIXED: Rebuild users cache from local DB after upsert
           await _rebuildUsersCache();
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull users: $e');
+      AppLogger.sync('   ⚠️ Failed to pull users: $e');
     }
   }
 
@@ -863,7 +872,7 @@ class SupabaseSyncService {
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to rebuild users cache: $e');
+      AppLogger.sync('   ⚠️ Failed to rebuild users cache: $e');
     }
   }
 
@@ -897,13 +906,10 @@ class SupabaseSyncService {
         if (item.isDeleted) continue;
 
         final cloudId = item.cloudId ?? _uuid.v4();
-        final orgCloudId = _getCloudId('organizations', item.organizationId);
+        // NOTE: Supabase stores organization_id as INTEGER, not cloud_id
+        final orgId = item.organizationId;
+        // master_item_id is stored as TEXT (cloud_id) in Supabase
         final masterItemCloudId = _getCloudId('items', item.masterItemId);
-
-        if (orgCloudId == null) {
-          skipped++;
-          continue;
-        }
 
         cloudIdMap[item.id] = cloudId;
         _updateCache('items', item.id, cloudId);
@@ -912,7 +918,7 @@ class SupabaseSyncService {
           'cloud_id': cloudId,
           // NOTE: Don't send local_id - it causes conflicts across devices
           'name': item.name,
-          'organization_id': orgCloudId,
+          'organization_id': orgId,  // INTEGER, not cloud_id
           'master_item_id': masterItemCloudId,
           'stock': item.stock,
           'sold': item.sold,
@@ -943,8 +949,8 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed items');
-    if (skipped > 0) print('   ⚠️ Skipped $skipped items (missing FKs)');
+    if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed items');
+    if (skipped > 0) AppLogger.sync('   ⚠️ Skipped $skipped items (missing FKs)');
   }
 
   Future<void> _pullItems() async {
@@ -954,45 +960,49 @@ class SupabaseSyncService {
 
       // ✅ Debug: Log current organization context
       if (kDebugMode) {
-        print('   📍 Current org context:');
-        print('      - orgId (local): $_currentOrganizationId');
-        print('      - orgCloudId: $_currentOrganizationCloudId');
-        print('      - orgType: $_currentOrganizationType');
-        print('      - parentCommissaryCloudId: $_parentCommissaryCloudId');
+        AppLogger.sync('   📍 Current org context:');
+        AppLogger.sync('      - orgId (local): $_currentOrganizationId');
+        AppLogger.sync('      - orgCloudId: $_currentOrganizationCloudId');
+        AppLogger.sync('      - orgType: $_currentOrganizationType');
+        AppLogger.sync('      - parentCommissaryId (local): $_parentCommissaryId');
+        AppLogger.sync('      - parentCommissaryCloudId: $_parentCommissaryCloudId');
       }
 
-      // Build query with organization filter (belt & suspenders with RLS)
+      // Build query with organization filter
+      // NOTE: Supabase items.organization_id stores INTEGER (local ID), not cloud_id
       var query = supabase
           .from('items')
           .select()
           .gte('last_updated', lastSync);
 
-      // Add explicit organization filter for extra safety
-      if (_currentOrganizationCloudId != null) {
-        if (_currentOrganizationType == 'franchisee' && _parentCommissaryCloudId != null) {
+      // Add explicit organization filter using LOCAL IDs (since Supabase stores integers)
+      if (_currentOrganizationId != null) {
+        if (_currentOrganizationType == 'franchisee' && _parentCommissaryId != null) {
           // Franchisee: pull own items + master items from parent commissary
-          query = query.or('organization_id.eq.$_currentOrganizationCloudId,and(organization_id.eq.$_parentCommissaryCloudId,master_item_id.is.null)');
+          query = query.or('organization_id.eq.$_currentOrganizationId,and(organization_id.eq.$_parentCommissaryId,master_item_id.is.null)');
+          AppLogger.sync('   🔍 Filtering items: org=$_currentOrganizationId OR (org=$_parentCommissaryId AND master_item_id IS NULL)');
         } else {
           // Commissary or single org: pull only own organization's items
-          query = query.eq('organization_id', _currentOrganizationCloudId!);
+          query = query.eq('organization_id', _currentOrganizationId!);
+          AppLogger.sync('   🔍 Filtering items by org ID: $_currentOrganizationId');
         }
-        print('   🔍 Filtering items by org: $_currentOrganizationCloudId');
       } else {
-        print('   ⚠️ No org filter applied - _currentOrganizationCloudId is null!');
+        AppLogger.sync('   ⚠️ No org filter applied - _currentOrganizationId is null!');
       }
 
       final cloudItems = await query
           .order('last_updated', ascending: false)
           .limit(1000);
 
+      AppLogger.sync('   📥 Received ${cloudItems.length} items from Supabase');
+
       if (cloudItems.isNotEmpty) {
         final resolvedItems = <Map<String, dynamic>>[];
 
         for (final cloudItem in cloudItems) {
-          final orgId = _getLocalId(
-            'organizations',
-            cloudItem['organization_id'],
-          );
+          // organization_id is already an integer in Supabase, use directly
+          final orgId = cloudItem['organization_id'] as int?;
+          // master_item_id is TEXT (cloud_id) in Supabase, needs resolution
           final masterItemId = _getLocalId(
             'items',
             cloudItem['master_item_id'],
@@ -1000,7 +1010,7 @@ class SupabaseSyncService {
 
           if (orgId == null) {
             if (kDebugMode) {
-              print('   ⚠️ Skipping item ${cloudItem['name']}: org ${cloudItem['organization_id']} not in cache');
+              AppLogger.sync('   ⚠️ Skipping item ${cloudItem['name']}: org_id is null');
             }
             continue;
           }
@@ -1012,6 +1022,8 @@ class SupabaseSyncService {
           });
         }
 
+        AppLogger.sync('   ✅ Resolved ${resolvedItems.length} items for local insert');
+
         if (resolvedItems.isNotEmpty) {
           // Process in batches
           for (int i = 0; i < resolvedItems.length; i += batchSize) {
@@ -1019,14 +1031,14 @@ class SupabaseSyncService {
             final batch = resolvedItems.sublist(i, end);
             await db.itemsDao.upsertBatchFromCloud(batch);
           }
-          print('   ↓ Pulled ${resolvedItems.length} items');
+          AppLogger.sync('   ↓ Pulled ${resolvedItems.length} items');
           
           // ✅ FIXED: Rebuild items cache from local DB after upsert
           await _rebuildItemsCache();
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull items: $e');
+      AppLogger.sync('   ⚠️ Failed to pull items: $e');
     }
   }
 
@@ -1044,7 +1056,7 @@ class SupabaseSyncService {
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to rebuild items cache: $e');
+      AppLogger.sync('   ⚠️ Failed to rebuild items cache: $e');
     }
   }
 
@@ -1077,12 +1089,8 @@ class SupabaseSyncService {
         if (ingredient.isDeleted) continue;
 
         final cloudId = ingredient.cloudId ?? _uuid.v4();
-        final commissaryCloudId = _getCloudId(
-          'organizations',
-          ingredient.commissaryId,
-        );
-
-        if (commissaryCloudId == null) continue;
+        // NOTE: Supabase stores commissary_id as INTEGER, not cloud_id
+        final commissaryId = ingredient.commissaryId;
 
         cloudIdMap[ingredient.id] = cloudId;
         _updateCache('ingredients', ingredient.id, cloudId);
@@ -1091,7 +1099,7 @@ class SupabaseSyncService {
           'cloud_id': cloudId,
           // NOTE: Don't send local_id - it causes conflicts across devices
           'name': ingredient.name,
-          'commissary_id': commissaryCloudId,
+          'commissary_id': commissaryId,  // INTEGER, not cloud_id
           'stock': ingredient.stock,
           'spoilage': ingredient.spoilage,
           'unit': ingredient.unit,
@@ -1118,7 +1126,7 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed ingredients');
+    if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed ingredients');
   }
 
   Future<void> _pullIngredients() async {
@@ -1126,23 +1134,37 @@ class SupabaseSyncService {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
 
-      final cloudIngredients = await supabase
-          .from('ingredients')
-          .select()
-          .gte('last_updated', lastSync)
-          .order('last_updated', ascending: false)
-          .limit(500);
+      // Try to fetch with last_updated filter, fallback to fetching all if column doesn't exist
+      List<dynamic> cloudIngredients;
+      try {
+        cloudIngredients = await supabase
+            .from('ingredients')
+            .select()
+            .gte('last_updated', lastSync)
+            .order('last_updated', ascending: false)
+            .limit(500);
+      } catch (e) {
+        // Fallback: fetch all ingredients without last_updated filter
+        AppLogger.sync('   ⚠️ last_updated filter failed, fetching all ingredients...');
+        cloudIngredients = await supabase
+            .from('ingredients')
+            .select()
+            .limit(500);
+      }
+
+      AppLogger.sync('   📥 Received ${cloudIngredients.length} ingredients from Supabase');
 
       if (cloudIngredients.isNotEmpty) {
         final resolvedIngredients = <Map<String, dynamic>>[];
 
         for (final cloudIngredient in cloudIngredients) {
-          final commissaryId = _getLocalId(
-            'organizations',
-            cloudIngredient['commissary_id'],
-          );
+          // commissary_id is already an integer in Supabase, use directly
+          final commissaryId = cloudIngredient['commissary_id'] as int?;
 
-          if (commissaryId == null) continue;
+          if (commissaryId == null) {
+            AppLogger.sync('   ⚠️ Skipping ingredient ${cloudIngredient['name']}: commissary_id is null');
+            continue;
+          }
 
           resolvedIngredients.add({
             ...cloudIngredient,
@@ -1152,11 +1174,15 @@ class SupabaseSyncService {
 
         if (resolvedIngredients.isNotEmpty) {
           await db.ingredientsDao.upsertBatchFromCloud(resolvedIngredients);
-          print('   ↓ Pulled ${resolvedIngredients.length} ingredients');
+          AppLogger.sync('   ↓ Pulled ${resolvedIngredients.length} ingredients');
+        } else {
+          AppLogger.sync('   ℹ️ No valid ingredients to pull (all had null commissary_id)');
         }
+      } else {
+        AppLogger.sync('   ℹ️ No ingredients found in Supabase');
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull ingredients: $e');
+      AppLogger.sync('   ⚠️ Failed to pull ingredients: $e');
     }
   }
 
@@ -1187,13 +1213,9 @@ class SupabaseSyncService {
         if (recipe.isDeleted) continue;
 
         final cloudId = recipe.cloudId ?? _uuid.v4();
-        final itemCloudId = _getCloudId('items', recipe.itemId);
-        final ingredientCloudId = _getCloudId(
-          'ingredients',
-          recipe.ingredientId,
-        );
-
-        if (itemCloudId == null || ingredientCloudId == null) continue;
+        // NOTE: Supabase stores item_id and ingredient_id as INTEGER, not cloud_id
+        final itemId = recipe.itemId;
+        final ingredientId = recipe.ingredientId;
 
         cloudIdMap[recipe.id] = cloudId;
         _updateCache('recipe_ingredients', recipe.id, cloudId);
@@ -1201,8 +1223,8 @@ class SupabaseSyncService {
         batchData.add({
           'cloud_id': cloudId,
           // NOTE: Don't send local_id - it causes conflicts across devices
-          'item_id': itemCloudId,
-          'ingredient_id': ingredientCloudId,
+          'item_id': itemId,  // INTEGER, not cloud_id
+          'ingredient_id': ingredientId,  // INTEGER, not cloud_id
           'quantity_needed': recipe.quantityNeeded,
           'unit': recipe.unit,
           'notes': recipe.notes,
@@ -1230,7 +1252,7 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed recipe ingredients');
+    if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed recipe ingredients');
   }
 
   Future<void> _pullRecipeIngredients() async {
@@ -1238,24 +1260,38 @@ class SupabaseSyncService {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
 
-      final cloudRecipes = await supabase
-          .from('recipe_ingredients')
-          .select()
-          .gte('last_updated', lastSync)
-          .order('last_updated', ascending: false)
-          .limit(500);
+      // Try to fetch with last_updated filter, fallback if column doesn't exist
+      List<dynamic> cloudRecipes;
+      try {
+        cloudRecipes = await supabase
+            .from('recipe_ingredients')
+            .select()
+            .gte('last_updated', lastSync)
+            .order('last_updated', ascending: false)
+            .limit(500);
+      } catch (e) {
+        // Fallback: fetch all without last_updated filter
+        AppLogger.sync('   ⚠️ last_updated filter failed, fetching all recipe_ingredients...');
+        cloudRecipes = await supabase
+            .from('recipe_ingredients')
+            .select()
+            .limit(500);
+      }
+
+      AppLogger.sync('   📥 Received ${cloudRecipes.length} recipe_ingredients from Supabase');
 
       if (cloudRecipes.isNotEmpty) {
         final resolvedRecipes = <Map<String, dynamic>>[];
 
         for (final cloudRecipe in cloudRecipes) {
-          final itemId = _getLocalId('items', cloudRecipe['item_id']);
-          final ingredientId = _getLocalId(
-            'ingredients',
-            cloudRecipe['ingredient_id'],
-          );
+          // item_id and ingredient_id are already integers in Supabase, use directly
+          final itemId = cloudRecipe['item_id'] as int?;
+          final ingredientId = cloudRecipe['ingredient_id'] as int?;
 
-          if (itemId == null || ingredientId == null) continue;
+          if (itemId == null || ingredientId == null) {
+            AppLogger.sync('   ⚠️ Skipping recipe: item_id=$itemId, ingredient_id=$ingredientId');
+            continue;
+          }
 
           resolvedRecipes.add({
             ...cloudRecipe,
@@ -1266,11 +1302,15 @@ class SupabaseSyncService {
 
         if (resolvedRecipes.isNotEmpty) {
           await db.recipeIngredientsDao.upsertBatchFromCloud(resolvedRecipes);
-          print('   ↓ Pulled ${resolvedRecipes.length} recipe ingredients');
+          AppLogger.sync('   ↓ Pulled ${resolvedRecipes.length} recipe ingredients');
+        } else {
+          AppLogger.sync('   ℹ️ No valid recipe_ingredients to pull');
         }
+      } else {
+        AppLogger.sync('   ℹ️ No recipe_ingredients found in Supabase');
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull recipe ingredients: $e');
+      AppLogger.sync('   ⚠️ Failed to pull recipe ingredients: $e');
     }
   }
 
@@ -1361,7 +1401,7 @@ class SupabaseSyncService {
     }
 
     if (totalPushed > 0)
-      print('   ↑ Pushed $totalPushed replenishment requests');
+      AppLogger.sync('   ↑ Pushed $totalPushed replenishment requests');
   }
 
   Future<void> _pullReplenishmentRequests() async {
@@ -1425,7 +1465,7 @@ class SupabaseSyncService {
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull replenishment requests: $e');
+      AppLogger.sync('   ⚠️ Failed to pull replenishment requests: $e');
     }
   }
 
@@ -1511,7 +1551,7 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed change requests');
+    if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed change requests');
   }
 
   Future<void> _pullChangeRequests() async {
@@ -1560,11 +1600,305 @@ class SupabaseSyncService {
           await db.stockChangeRequestsDao.upsertBatchFromCloud(
             resolvedRequests,
           );
-          print('   ↓ Pulled ${resolvedRequests.length} change requests');
+          AppLogger.sync('   ↓ Pulled ${resolvedRequests.length} change requests');
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull change requests: $e');
+      AppLogger.sync('   ⚠️ Failed to pull change requests: $e');
+    }
+  }
+
+  // ============================================================================
+  // DAILY SALES SUMMARY SYNC
+  // ============================================================================
+
+  Future<void> syncDailySalesSummary() async {
+    await _pushDailySalesSummary();
+    await _pullDailySalesSummary();
+  }
+
+  Future<void> _pushDailySalesSummary() async {
+    int totalPushed = 0;
+
+    while (true) {
+      final unsynced = await db.dailySalesSummaryDao.getUnsyncedSummaries(
+        limit: batchSize,
+      );
+
+      if (unsynced.isEmpty) break;
+
+      final batchData = <Map<String, dynamic>>[];
+      final syncedIds = <int>[];
+      final cloudIdMap = <int, String>{};
+
+      for (final summary in unsynced) {
+        final cloudId = summary.cloudId ?? _uuid.v4();
+        cloudIdMap[summary.id] = cloudId;
+        _updateCache('daily_sales_summary', summary.id, cloudId);
+
+        final orgCloudId = _getCloudId('organizations', summary.organizationId);
+        final itemCloudId = _getCloudId('items', summary.itemId);
+
+        if (orgCloudId == null || itemCloudId == null) {
+          AppLogger.sync('   ⚠️ Missing FK for sales summary ${summary.id}');
+          continue;
+        }
+
+        batchData.add({
+          'cloud_id': cloudId,
+          'organization_id': orgCloudId,
+          'item_id': itemCloudId,
+          'summary_date': summary.summaryDate.toIso8601String().split('T')[0],
+          'quantity_sold': summary.quantitySold,
+          'quantity_spoiled': summary.quantitySpoiled,
+          'revenue': summary.revenue,
+          'cost_of_goods_sold': summary.costOfGoodsSold,
+          'gross_profit': summary.grossProfit,
+          'transaction_count': summary.transactionCount,
+          'opening_stock': summary.openingStock,
+          'closing_stock': summary.closingStock,
+          'created_at': summary.createdAt.toIso8601String(),
+          'last_updated': summary.lastUpdated.toIso8601String(),
+        });
+        syncedIds.add(summary.id);
+      }
+
+      if (batchData.isNotEmpty) {
+        await _syncClient
+            .from('daily_sales_summary')
+            .upsert(batchData, onConflict: 'cloud_id');
+        totalPushed += batchData.length;
+      }
+
+      if (syncedIds.isNotEmpty) {
+        await db.dailySalesSummaryDao.markAsSynced(syncedIds);
+        for (final entry in cloudIdMap.entries) {
+          await db.dailySalesSummaryDao.updateCloudId(entry.key, entry.value);
+        }
+      }
+
+      // Break after processing since getUnsyncedSummaries returns all unsynced
+      break;
+    }
+
+    if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed sales summaries');
+  }
+
+  Future<void> _pullDailySalesSummary() async {
+    try {
+      // Only commissary pulls all summaries; franchisees only get their own (via RLS)
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
+      final cloudSummaries = await supabase
+          .from('daily_sales_summary')
+          .select()
+          .gte('last_updated', lastSync)
+          .order('last_updated', ascending: false)
+          .limit(500);
+
+      if (cloudSummaries.isNotEmpty) {
+        int pulled = 0;
+        for (final cloudSummary in cloudSummaries) {
+          final orgId = _getLocalId('organizations', cloudSummary['organization_id']);
+          final itemId = _getLocalId('items', cloudSummary['item_id']);
+
+          if (orgId == null || itemId == null) continue;
+
+          // Upsert into local database
+          final summaryDate = DateTime.parse(cloudSummary['summary_date']);
+          
+          await db.dailySalesSummaryDao.upsertDailySummary(
+            DailySalesSummaryCompanion(
+              cloudId: Value(cloudSummary['cloud_id']),
+              organizationId: Value(orgId),
+              itemId: Value(itemId),
+              summaryDate: Value(summaryDate),
+              quantitySold: Value(cloudSummary['quantity_sold'] ?? 0),
+              quantitySpoiled: Value(cloudSummary['quantity_spoiled'] ?? 0),
+              revenue: Value((cloudSummary['revenue'] ?? 0).toDouble()),
+              costOfGoodsSold: Value((cloudSummary['cost_of_goods_sold'] ?? 0).toDouble()),
+              grossProfit: Value((cloudSummary['gross_profit'] ?? 0).toDouble()),
+              transactionCount: Value(cloudSummary['transaction_count'] ?? 0),
+              openingStock: Value(cloudSummary['opening_stock']),
+              closingStock: Value(cloudSummary['closing_stock']),
+              isSynced: const Value(true),
+            ),
+          );
+          pulled++;
+        }
+        if (pulled > 0) AppLogger.sync('   ↓ Pulled $pulled sales summaries');
+      }
+    } catch (e) {
+      AppLogger.sync('   ⚠️ Failed to pull sales summaries: $e');
+    }
+  }
+
+  // ============================================================================
+  // BRANCH INGREDIENT STOCK SYNC
+  // ============================================================================
+
+  Future<void> syncBranchIngredientStock() async {
+    await _pushBranchIngredientStock();
+    await _pullBranchIngredientStock();
+  }
+
+  Future<void> _pushBranchIngredientStock() async {
+    int totalPushed = 0;
+
+    while (true) {
+      final unsynced = await db.branchIngredientStockDao.getUnsyncedStocks(
+        limit: batchSize,
+      );
+
+      if (unsynced.isEmpty) break;
+
+      final batchData = <Map<String, dynamic>>[];
+      final syncedIds = <int>[];
+      final cloudIdMap = <int, String>{};
+
+      for (final stock in unsynced) {
+        final cloudId = stock.cloudId ?? _uuid.v4();
+        cloudIdMap[stock.id] = cloudId;
+        _updateCache('branch_ingredient_stock', stock.id, cloudId);
+
+        final orgCloudId = _getCloudId('organizations', stock.organizationId);
+        final ingredientCloudId = _getCloudId('ingredients', stock.ingredientId);
+
+        if (orgCloudId == null || ingredientCloudId == null) {
+          AppLogger.sync('   ⚠️ Missing FK for branch ingredient stock ${stock.id}');
+          continue;
+        }
+
+        batchData.add({
+          'cloud_id': cloudId,
+          'organization_id': orgCloudId,
+          'ingredient_id': ingredientCloudId,
+          'quantity': stock.quantity,
+          'minimum_stock': stock.minimumStock,
+          'last_received_at': stock.lastReceivedAt?.toIso8601String(),
+          'last_received_quantity': stock.lastReceivedQuantity,
+          'created_at': stock.createdAt.toIso8601String(),
+          'last_updated': stock.lastUpdated.toIso8601String(),
+        });
+        syncedIds.add(stock.id);
+      }
+
+      if (batchData.isNotEmpty) {
+        await _syncClient
+            .from('branch_ingredient_stock')
+            .upsert(batchData, onConflict: 'cloud_id');
+        totalPushed += batchData.length;
+      }
+
+      if (syncedIds.isNotEmpty) {
+        await db.branchIngredientStockDao.markAsSynced(syncedIds);
+        for (final entry in cloudIdMap.entries) {
+          await db.branchIngredientStockDao.updateCloudId(entry.key, entry.value);
+        }
+      }
+
+      // Break after processing since getUnsyncedStocks returns all unsynced
+      break;
+    }
+
+    if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed branch ingredient stocks');
+  }
+
+  Future<void> _pullBranchIngredientStock() async {
+    try {
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
+      final cloudStocks = await supabase
+          .from('branch_ingredient_stock')
+          .select()
+          .gte('last_updated', lastSync)
+          .order('last_updated', ascending: false)
+          .limit(500);
+
+      if (cloudStocks.isNotEmpty) {
+        int pulled = 0;
+        for (final cloudStock in cloudStocks) {
+          final orgId = _getLocalId('organizations', cloudStock['organization_id']);
+          final ingredientId = _getLocalId('ingredients', cloudStock['ingredient_id']);
+
+          if (orgId == null || ingredientId == null) continue;
+
+          await db.branchIngredientStockDao.upsertStock(
+            BranchIngredientStockCompanion(
+              cloudId: Value(cloudStock['cloud_id']),
+              organizationId: Value(orgId),
+              ingredientId: Value(ingredientId),
+              quantity: Value((cloudStock['quantity'] ?? 0).toDouble()),
+              minimumStock: Value(cloudStock['minimum_stock']?.toDouble()),
+              lastReceivedAt: Value(
+                cloudStock['last_received_at'] != null
+                    ? DateTime.parse(cloudStock['last_received_at'])
+                    : null,
+              ),
+              lastReceivedQuantity: Value(cloudStock['last_received_quantity']?.toDouble()),
+              isSynced: const Value(true),
+            ),
+          );
+          pulled++;
+        }
+        if (pulled > 0) AppLogger.sync('   ↓ Pulled $pulled branch ingredient stocks');
+      }
+    } catch (e) {
+      AppLogger.sync('   ⚠️ Failed to pull branch ingredient stocks: $e');
+    }
+  }
+
+  // ============================================================================
+  // IMMEDIATE SALES SYNC (for real-time)
+  // ============================================================================
+
+  /// Push a single sale immediately (bypasses batch sync)
+  /// Call this when a sale is recorded for real-time visibility
+  Future<bool> pushSaleImmediate(int stockChangeRequestId) async {
+    if (!_isOnline || !canSync) return false;
+
+    try {
+      final request = await db.stockChangeRequestsDao.getChangeRequestById(stockChangeRequestId);
+      if (request == null) return false;
+
+      final cloudId = request.cloudId ?? _uuid.v4();
+      final franchiseeCloudId = _getCloudId('organizations', request.franchiseeId);
+      final itemCloudId = _getCloudId('items', request.itemId);
+      final requestedByCloudId = _getCloudId('users', request.requestedBy);
+
+      if (franchiseeCloudId == null || itemCloudId == null || requestedByCloudId == null) {
+        AppLogger.sync('   ⚠️ Missing FK for immediate sale push');
+        return false;
+      }
+
+      await _syncClient.from('stock_change_requests').upsert({
+        'cloud_id': cloudId,
+        'franchisee_id': franchiseeCloudId,
+        'item_id': itemCloudId,
+        'change_type': request.changeType,
+        'quantity': request.quantity,
+        'status': request.status,
+        'requested_by': requestedByCloudId,
+        'requested_at': request.requestedAt.toIso8601String(),
+        'original_stock': request.originalStock,
+        'reason': request.reason,
+        'created_at': request.createdAt.toIso8601String(),
+        'last_updated': request.lastUpdated.toIso8601String(),
+      }, onConflict: 'cloud_id');
+
+      // Mark as synced locally
+      await db.stockChangeRequestsDao.markAsSynced(
+        [request.id],
+        cloudIds: {request.id: cloudId},
+      );
+
+      AppLogger.sync('⚡ Immediate sale pushed: $cloudId');
+      return true;
+    } catch (e) {
+      AppLogger.sync('❌ Immediate sale push failed: $e');
+      return false;
     }
   }
 
@@ -1575,7 +1909,7 @@ class SupabaseSyncService {
   /// Cleanup old deleted records
   Future<void> _cleanupDeletedRecords() async {
     try {
-      print('🧹 Cleaning up deleted records...');
+      AppLogger.sync('🧹 Cleaning up deleted records...');
 
       final results = await Future.wait([
         db.itemsDao.cleanupDeletedItems(),
@@ -1587,16 +1921,16 @@ class SupabaseSyncService {
       final totalCleaned = results.fold(0, (sum, count) => sum + count);
 
       if (totalCleaned > 0) {
-        print('✅ Cleaned up $totalCleaned deleted records');
+        AppLogger.sync('✅ Cleaned up $totalCleaned deleted records');
       }
     } catch (e) {
-      print('⚠️ Cleanup failed: $e');
+      AppLogger.sync('⚠️ Cleanup failed: $e');
     }
   }
 
   /// Force immediate sync
   Future<void> syncImmediate() async {
-    print('⚡ Immediate sync requested');
+    AppLogger.sync('⚡ Immediate sync requested');
     await syncAll();
   }
 
@@ -1654,7 +1988,7 @@ class SupabaseSyncService {
     _parentCommissaryId = parentCommissaryId;
     _loadOrganizationCloudIds();
 
-    print('📍 Sync context updated: $organizationType org #$organizationId');
+    AppLogger.sync('📍 Sync context updated: $organizationType org #$organizationId');
   }
 
   /// Dispose resources
@@ -1663,7 +1997,7 @@ class SupabaseSyncService {
     _connectivitySubscription?.cancel();
     _localToCloudCache.clear();
     _cloudToLocalCache.clear();
-    print('🛑 Sync service disposed');
+    AppLogger.sync('🛑 Sync service disposed');
   }
 }
 

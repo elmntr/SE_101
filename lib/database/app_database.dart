@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import '../utils/app_logger.dart';
 
 // ✅ Import existing tables
 import 'tables/categories.dart';
@@ -18,6 +19,8 @@ import 'tables/ingredients.dart';
 import 'tables/recipe_ingredients.dart';
 import 'tables/stock_replenishment_requests.dart';
 import 'tables/stock_change_requests.dart';
+import 'tables/daily_sales_summary.dart';
+import 'tables/branch_ingredient_stock.dart';
 
 // ✅ Import MODIFIED tables
 import 'tables/items.dart';
@@ -37,12 +40,14 @@ import 'daos/ingredients_dao.dart';
 import 'daos/recipe_ingredients_dao.dart';
 import 'daos/stock_replenishment_requests_dao.dart';
 import 'daos/stock_change_requests_dao.dart';
+import 'daos/daily_sales_summary_dao.dart';
+import 'daos/branch_ingredient_stock_dao.dart';
 
 import 'package:flutter/foundation.dart';
 
 part 'app_database.g.dart';
 
-/// ✅ Complete database with all 9 tables
+/// ✅ Complete database with all 11 tables
 @DriftDatabase(
   tables: [
     // Core tables
@@ -55,10 +60,14 @@ part 'app_database.g.dart';
     Items,
     Ingredients,
     RecipeIngredients,
+    BranchIngredientStock,
 
     // Request tables
     StockReplenishmentRequests,
     StockChangeRequests,
+
+    // Reporting tables
+    DailySalesSummary,
   ],
   daos: [
     // Core DAOs
@@ -71,10 +80,14 @@ part 'app_database.g.dart';
     ItemsDao,
     IngredientsDao,
     RecipeIngredientsDao,
+    BranchIngredientStockDao,
 
     // Request DAOs
     StockReplenishmentRequestsDao,
     StockChangeRequestsDao,
+
+    // Reporting DAOs
+    DailySalesSummaryDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -88,13 +101,13 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(super.executor) : _seedData = false;
 
   @override
-  int get schemaVersion => 1; // Start fresh at version 1
+  int get schemaVersion => 2; // Incremented for new tables
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
-        print(' Creating fresh database...');
+        AppLogger.database('Creating fresh database...');
 
         // Create all tables
         await m.createAll();
@@ -107,7 +120,34 @@ class AppDatabase extends _$AppDatabase {
           await _seedInitialData();
         }
 
-        print(' Database created successfully!');
+        AppLogger.database('Database created successfully!');
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        AppLogger.database('Upgrading database from v$from to v$to...');
+        
+        if (from < 2) {
+          // Add new tables for v2: DailySalesSummary and BranchIngredientStock
+          await m.createTable(dailySalesSummary);
+          await m.createTable(branchIngredientStock);
+          
+          // Create indexes for new tables
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_daily_sales_org_date ON daily_sales_summary(organization_id, summary_date)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_daily_sales_item ON daily_sales_summary(item_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_branch_stock_org ON branch_ingredient_stock(organization_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_branch_stock_ingredient ON branch_ingredient_stock(ingredient_id)',
+          );
+          
+          AppLogger.database('Added DailySalesSummary and BranchIngredientStock tables');
+        }
+        
+        AppLogger.database('Database upgrade complete!');
       },
       beforeOpen: (details) async {
         // Enable foreign keys
@@ -118,7 +158,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// ✅ Create all indexes for optimal performance
   Future<void> _createAllIndexes() async {
-    print('📑 Creating indexes...');
+    AppLogger.database('Creating indexes...');
 
     // Organizations indexes
     await customStatement(
@@ -237,12 +277,12 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_stock_changes_cloud_id ON stock_change_requests(cloud_id)',
     );
 
-    print('✅ All indexes created');
+    AppLogger.database('All indexes created');
   }
 
   /// ✅ Seed initial data (commissary, roles, admin user)
   Future<void> _seedInitialData() async {
-    print('🌱 Seeding initial data...');
+    AppLogger.database('Seeding initial data...');
 
     try {
       // 1. Create Main Commissary organization
@@ -256,7 +296,7 @@ class AppDatabase extends _$AppDatabase {
           phone: const Value('+63-123-4567'),
         ),
       );
-      print('✅ Created Main Commissary (ID: $commissaryId)');
+      AppLogger.database('Created Main Commissary (ID: $commissaryId)');
 
       // 2. Create default roles
       final adminRoleId = await rolesDao.insertRole(
@@ -327,7 +367,7 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
-      print('✅ Created 4 default roles');
+      AppLogger.database('Created 4 default roles');
 
       // 3. Create admin user
       await usersDao.insertUser(
@@ -342,7 +382,7 @@ class AppDatabase extends _$AppDatabase {
           isActive: const Value(true),
         ),
       );
-      print('✅ Created admin user (username: admin, password: admin123)');
+      AppLogger.auth('Created admin user (username: admin, password: admin123)');
 
       // 4. Create sample categories
       await categoriesDao.insertCategory(
@@ -357,20 +397,19 @@ class AppDatabase extends _$AppDatabase {
         name: 'Raw Materials',
         description: 'Ingredients and supplies',
       );
-      print('✅ Created 3 sample categories');
+      AppLogger.database('Created 3 sample categories');
 
-      print('✅ Initial data seeded successfully!');
-      print('');
-      print('═══════════════════════════════════════════');
-      print('  🎉 DATABASE READY!');
-      print('═══════════════════════════════════════════');
-      print('  Login credentials:');
-      print('  Username: admin');
-      print('  Password: admin123');
-      print('═══════════════════════════════════════════');
+      AppLogger.info('✅ Initial data seeded successfully!');
+      AppLogger.info('');
+      AppLogger.info('═══════════════════════════════════════════');
+      AppLogger.info('  🎉 DATABASE READY!');
+      AppLogger.info('═══════════════════════════════════════════');
+      AppLogger.info('  Login credentials:');
+      AppLogger.info('  Username: admin');
+      AppLogger.info('  Password: admin123');
+      AppLogger.info('═══════════════════════════════════════════');
     } catch (e, stackTrace) {
-      print('❌ Error seeding initial data: $e');
-      print('Stack trace: $stackTrace');
+      AppLogger.error('Error seeding initial data: $e', e, stackTrace);
       rethrow; // Rethrow to prevent app from starting with incomplete data
     }
   }
