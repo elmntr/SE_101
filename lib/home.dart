@@ -162,6 +162,15 @@ class _HomeScreenState extends State<HomeScreen> {
             
             // ✅ PROFILE MENU WITH LOGOUT
             Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ConnectionStatusIndicator(
+                isOnline: _isOnline,
+                syncStatus: _syncStatus,
+                onSyncPressed: _triggerManualSync,
+              ),
+            ),
+
+            Padding(
               padding: const EdgeInsets.only(right: 12),
               child: PopupMenuButton<String>(
                 icon: const Icon(
@@ -321,6 +330,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           
           // ✅ PROFILE MENU WITH LOGOUT
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ConnectionStatusIndicator(
+              isOnline: _isOnline,
+              syncStatus: _syncStatus,
+              onSyncPressed: _triggerManualSync,
+            ),
+          ),
+
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: PopupMenuButton<String>(

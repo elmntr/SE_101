@@ -24,6 +24,7 @@ class _ItemsPageState extends State<ItemsPage> {
   List<Category> dbCategories = [];
   int? _currentOrganizationId;
 
+  int categoryCount = 0;
   int selectedTab = 0; // 0 = Items, 1 = Categories
   bool _isLoading = true;
 

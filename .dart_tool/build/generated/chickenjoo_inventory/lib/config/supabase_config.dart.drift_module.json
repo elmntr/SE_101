@@ -1,8 +1,0 @@
-{
-  "elements": {},
-  "imports": [
-    "package:flutter/foundation.dart",
-    "package:flutter_dotenv/flutter_dotenv.dart",
-    "package:chickenjoo_inventory/utils/app_logger.dart"
-  ]
-}
