@@ -1120,7 +1120,7 @@ class SupabaseSyncService {
       }
 
       if (syncedIds.isNotEmpty) {
-        await db.rolesDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+        await db.ingredientsDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
       }
 
       offset += batchSize;
@@ -1129,7 +1129,7 @@ class SupabaseSyncService {
     if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed ingredients');
   }
 
-  Future<void> _pullRoles() async {
+  Future<void> _pullIngredients() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
@@ -1255,7 +1255,7 @@ class SupabaseSyncService {
     if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed recipe ingredients');
   }
 
-  Future<void> _pullUsers() async {
+  Future<void> _pullRecipeIngredients() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
@@ -1404,7 +1404,7 @@ class SupabaseSyncService {
       AppLogger.sync('   ↑ Pushed $totalPushed replenishment requests');
   }
 
-  Future<void> _pullItems() async {
+  Future<void> _pullReplenishmentRequests() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
@@ -1554,7 +1554,7 @@ class SupabaseSyncService {
     if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed change requests');
   }
 
-  Future<void> _pullIngredients() async {
+  Future<void> _pullChangeRequests() async {
     try {
       final lastSync =
           _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
