@@ -10,11 +10,11 @@ import 'utils/sync_status.dart';
 import 'services/supabase_auth_service.dart';
 
 import 'package:chickenjoo_inventory/app_globals.dart';
-import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'screen/franchisee/franchisee_reports.dart';
 import 'screen/franchisee/franchisee_inventory.dart';
 import 'screen/franchisee/franchisee_items.dart';
 import 'screen/franchisee/franchisee_employee.dart';
+import 'screen/franchisee/franchisee_products_view.dart';
 import 'screen/employee/employee_account.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -31,11 +31,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int selectedIndex = 0;
   bool isSideBarOpen = false;
   bool showLabels = false;
-  late AppDatabase _db;
   
-  // ✅ ADD THESE STATE VARIABLES (NO DUPLICATES)
+  // Connectivity and sync state
   SyncStatus _syncStatus = SyncStatus.synced;
-  DateTime? _lastSyncTime;
   late ConnectivityService _connectivityService;
   bool _isOnline = true;
 
@@ -45,10 +43,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _db = database;
     _loadRoleAndMenu();
     
-    // ✅ ADD CONNECTIVITY SERVICE INITIALIZATION
+    // Connectivity service initialization
     _connectivityService = ConnectivityService();
     _connectivityService.connectionStream.listen((status) {
       setState(() {
@@ -267,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           : FontWeight.normal,
                     ),
                   ),
-                  tileColor: isActive ? Colors.red.withOpacity(0.08) : null,
+                  tileColor: isActive ? Colors.red.withValues(alpha: 0.08) : null,
                   selected: isActive,
                   onTap: () {
                     Navigator.pop(context);
@@ -539,25 +536,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Items / Inventory
     if (permissions.canViewInventory || hasFullAccess) {
-      final isRestrictedEmployee = !(permissions.canAddInventory ||
-          permissions.canEditInventory ||
-          permissions.canDeleteInventory);
-      
-      // For restricted employees, show read-only items page
-      if (isRestrictedEmployee && !hasFullAccess) {
+      // For franchisees, show read-only products view from commissary
+      if (userData.isFranchisee) {
         addItemIf(
           true,
           Icons.shopping_cart,
-          "Items",
-          EmployeeItemsPage(userData: userData),
+          "Products",
+          const FranchiseeProductsView(),
         );
       } else {
-        addItemIf(
-          true,
-          Icons.shopping_cart,
-          "Items",
-          const ItemsPage(),
-        );
+        final isRestrictedEmployee = !(permissions.canAddInventory ||
+            permissions.canEditInventory ||
+            permissions.canDeleteInventory);
+        
+        // For restricted employees, show read-only items page
+        if (isRestrictedEmployee && !hasFullAccess) {
+          addItemIf(
+            true,
+            Icons.shopping_cart,
+            "Items",
+            EmployeeItemsPage(userData: userData),
+          );
+        } else {
+          addItemIf(
+            true,
+            Icons.shopping_cart,
+            "Items",
+            const ItemsPage(),
+          );
+        }
       }
     }
 

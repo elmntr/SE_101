@@ -25,6 +25,7 @@ class _InventoryPageState extends State<InventoryPage> {
 
   int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock
 
+  // ignore: unused_field - Reserved for future sort UI implementation
   ItemSort _currentSort = const ItemSort(ItemSortField.name, SortOrder.asc);
 
   @override
@@ -150,7 +151,7 @@ class _InventoryPageState extends State<InventoryPage> {
               boxShadow: active
                   ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha: 0.12),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -338,6 +339,9 @@ class _InventoryPageState extends State<InventoryPage> {
                                         ],
                                       )
                                       .toList(),
+                                      
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                 ))
                         : selectedTab == 1
                         ? (InventoryPage.pendingChanges.isEmpty
@@ -368,6 +372,9 @@ class _InventoryPageState extends State<InventoryPage> {
                                       ];
                                     },
                                   ),
+                                  
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                 ))
                         : emptyTables(
                             message:
@@ -537,6 +544,9 @@ class _InventoryPageState extends State<InventoryPage> {
                                           ],
                                         )
                                         .toList(),
+                                        
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                   ))
                           : selectedTab == 1
                           ? (InventoryPage.pendingChanges.isEmpty
@@ -567,6 +577,9 @@ class _InventoryPageState extends State<InventoryPage> {
                                         ];
                                       },
                                     ),
+                                    
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                   ))
                           : emptyTables(
                               message:

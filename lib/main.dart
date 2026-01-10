@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_size/window_size.dart';
@@ -11,9 +12,10 @@ import 'config/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/supabase_sync_service.dart';
 import 'services/supabase_auth_service.dart';
-import 'app_globals.dart'; // ✅ Import AppGlobals
+import 'app_globals.dart';
 import 'app.dart';
 import 'package:path_provider/path_provider.dart';
+import 'utils/app_logger.dart';
 
 import 'package:path/path.dart' as p;
 
@@ -24,6 +26,9 @@ final syncStatusNotifier = ValueNotifier<Map<String, dynamic>>({
   'status': 'Initializing...',
   'is_online': true,
 });
+
+// Timer for periodic sync status updates (cancellable)
+Timer? _syncStatusTimer;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,13 +49,13 @@ void main() async {
   // -------------------------------------------------------------
   // DATABASE INITIALIZATION
   // -------------------------------------------------------------
-  print('🗄️ Initializing database...');
+  AppLogger.database('Initializing database...');
   final db = AppDatabase();
 
   // -------------------------------------------------------------
   // SUPABASE INITIALIZATION
   // -------------------------------------------------------------
-  print('☁️ Initializing Supabase...');
+  AppLogger.info('☁️ Initializing Supabase...');
   SupabaseConfig.printConfigStatus(); // Debug: Show config status
 
   try {
@@ -58,22 +63,22 @@ void main() async {
       url: SupabaseConfig.url,
       anonKey: SupabaseConfig.anonKey,
     );
-    print('✅ Supabase initialized');
+    AppLogger.info('✅ Supabase initialized');
   } catch (e) {
-    print('⚠️ Supabase initialization failed: $e');
-    print('📱 App will work in offline-only mode');
+    AppLogger.warning('Supabase initialization failed: $e');
+    AppLogger.info('📱 App will work in offline-only mode');
   }
 
   // -------------------------------------------------------------
   // SYNC SERVICE INITIALIZATION
   // -------------------------------------------------------------
-  print('🔄 Initializing sync service...');
+  AppLogger.sync('Initializing sync service...');
 
   final sync = SupabaseSyncService(
     db: db,
     supabase: Supabase.instance.client,
     onConnectivityChanged: (isOnline) {
-      print('📡 Connectivity: ${isOnline ? "Online ✅" : "Offline 📵"}');
+      AppLogger.connectivity(isOnline ? 'Online ✅' : 'Offline 📵');
       syncStatusNotifier.value = {
         ...syncStatusNotifier.value,
         'is_online': isOnline,
@@ -81,14 +86,14 @@ void main() async {
       };
     },
     onSyncStatusChanged: (status) {
-      print('🔄 Sync status: $status');
+      AppLogger.sync('Sync status: $status');
       syncStatusNotifier.value = {
         ...syncStatusNotifier.value,
         'status': status,
       };
     },
     onSyncError: (error) {
-      print('❌ Sync error: $error');
+      AppLogger.error('Sync error: $error');
       syncStatusNotifier.value = {
         ...syncStatusNotifier.value,
         'status':
@@ -110,21 +115,21 @@ void main() async {
     syncService: sync,
     authService: authService,
   );
-  print('✅ AppGlobals initialized');
+  AppLogger.info('✅ AppGlobals initialized');
 
   // Non-blocking sync service start
   sync
       .initialize()
       .then((_) {
-        print('✅ Sync service initialized');
+        AppLogger.info('✅ Sync service initialized');
         _updateSyncStatus();
       })
       .catchError((e) {
-        print('⚠️ Sync service initialization failed: $e');
-        print('📱 App will continue in offline mode');
+        AppLogger.warning('Sync service initialization failed: $e');
+        AppLogger.info('📱 App will continue in offline mode');
       });
 
-  // Start periodic sync updates
+  // Start periodic sync updates with cancellable timer
   _startSyncStatusUpdates();
 
   // -------------------------------------------------------------
@@ -133,24 +138,24 @@ void main() async {
   runApp(const MyApp());
 }
 
-/// Update sync status periodically
+/// Update sync status periodically using a cancellable Timer
 void _startSyncStatusUpdates() {
-  Future.delayed(const Duration(seconds: 30), () async {
+  _syncStatusTimer?.cancel();
+  _syncStatusTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
     await _updateSyncStatus();
-    _startSyncStatusUpdates(); // Recursive call for continuous updates
   });
 }
 
 /// Update the sync status notifier
 Future<void> _updateSyncStatus() async {
   try {
-    // ✅ Check if initialized before accessing
+    // Check if initialized before accessing
     if (AppGlobals.instance.isInitialized) {
       final status = await syncService.getSyncStatus();
       syncStatusNotifier.value = {...syncStatusNotifier.value, ...status};
     }
   } catch (e) {
-    print('Error updating sync status: $e');
+    AppLogger.error('Error updating sync status: $e');
   }
 }
 
@@ -159,6 +164,6 @@ Future<void> deleteOldDatabase() async {
   final file = File(p.join(dbFolder.path, 'app_inventory.db'));
   if (await file.exists()) {
     await file.delete();
-    print('✅ Old database deleted');
+    AppLogger.database('Old database deleted');
   }
 }

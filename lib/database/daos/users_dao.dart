@@ -452,6 +452,24 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
+  /// ✅ Update user password hash directly (for offline login support)
+  /// Used when we already have the hashed password
+  Future<bool> updatePasswordHash(int userId, String hashedPassword) async {
+    try {
+      final result = await (update(users)..where((t) => t.id.equals(userId)))
+        .write(UsersCompanion(
+          password: Value(hashedPassword),
+          lastUpdated: Value(DateTime.now()),
+          // Don't mark as unsynced - this is just local cache for offline
+        ));
+      
+      return result > 0;
+    } catch (e) {
+      print('❌ Error updating password hash: $e');
+      return false;
+    }
+  }
+
   // ============================================================================
   // ROLE ASSIGNMENT
   // ============================================================================

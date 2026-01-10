@@ -50,8 +50,8 @@ Widget emptyTables({
 Widget buildUniversalTable({
   required List<String> headers,
   required List<List<dynamic>> rows, // ✅ Widgets now
-  double smallHeaderWidth = 60,
-  double largeHeaderWidth = 120,
+  required double smallHeaderWidth,
+  required double largeHeaderWidth,
 }) {
   return LayoutBuilder(
     builder: (context, constraints) {

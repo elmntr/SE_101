@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/utils/app_logger.dart';
 import 'screen/login/login_screen.dart';
 import 'home.dart';
 
@@ -45,10 +46,10 @@ void _reinitializeSyncWithUserContext(UserData userData) {
       parentCommissaryCloudId: parentCommissaryCloudId,
     );
     
-    print('✅ Sync service reinitialized for org: ${userData.organizationName} (${userData.organizationType})');
-    print('   📍 Org cloud ID: ${userData.organizationCloudId}');
+    AppLogger.sync('Sync service reinitialized for org: ${userData.organizationName} (${userData.organizationType})');
+    AppLogger.debug('   📍 Org cloud ID: ${userData.organizationCloudId}');
   } catch (e) {
-    print('⚠️ Failed to reinitialize sync service: $e');
+    AppLogger.warning('Failed to reinitialize sync service: $e');
   }
 }
 

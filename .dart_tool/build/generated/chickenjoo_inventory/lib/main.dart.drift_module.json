@@ -12,6 +12,7 @@
     "package:chickenjoo_inventory/app_globals.dart",
     "package:chickenjoo_inventory/app.dart",
     "package:path_provider/path_provider.dart",
+    "package:chickenjoo_inventory/utils/app_logger.dart",
     "package:path/path.dart"
   ]
 }

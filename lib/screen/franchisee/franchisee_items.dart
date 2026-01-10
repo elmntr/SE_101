@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import '../../../database/app_database.dart';
+import '../../database/app_database.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
@@ -32,7 +32,9 @@ class _ItemsPageState extends State<ItemsPage> {
 
   static const String _orgIdKey = 'current_organization_id';
 
+  // ignore: unused_field - Reserved for future sort UI implementation
   ItemSort _currentSort = ItemSort(ItemSortField.name, SortOrder.desc);
+  // ignore: unused_field - Reserved for future sort UI implementation
   CategorySort _currentCategorySort = CategorySort(
     CategorySortField.name,
     SortOrder.desc,
@@ -521,6 +523,15 @@ class _ItemsPageState extends State<ItemsPage> {
     }
   }
 
+  String _categoryNameForId(int? id) {
+    if (id == null) return 'Uncategorized';
+    try {
+      return dbCategories.firstWhere((c) => c.id == id).name;
+    } catch (_) {
+      return 'Uncategorized';
+    }
+  }
+
   // ✅ SHOW ITEM DETAILS DIALOG
   void _showItemDetails(Item item) {
   final TextEditingController priceController = TextEditingController(
@@ -532,26 +543,12 @@ class _ItemsPageState extends State<ItemsPage> {
   final TextEditingController spoilageController = TextEditingController(
     text: item.spoilage.toString(),
   );
-  String? selectedUnit = (item.unit == null || item.unit.isEmpty) ? null : item.unit;
+  String? selectedUnit = item.unit.isEmpty ? null : item.unit;
   final TextEditingController minStockController = TextEditingController(
     text: item.minimumStock?.toString() ?? "",
   );
   
   int? selectedCategoryId = item.categoryId;
-  
-  // Get category name
-  final categoryName = item.categoryId != null 
-      ? dbCategories.firstWhere(
-          (cat) => cat.id == item.categoryId, 
-          orElse: () => Category(
-            id: 0, 
-            name: 'Uncategorized', 
-            createdAt: DateTime.now(), 
-            lastUpdated: DateTime.now(), 
-            isDeleted: false,
-          ),
-        ).name
-      : "Uncategorized";
   
   final dateOrdered = "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
 
@@ -915,7 +912,7 @@ class _ItemsPageState extends State<ItemsPage> {
                               );
                             }
                           } catch (e) {
-                            if (!ScaffoldMessenger.maybeOf(context)!.mounted ?? false) return;
+                            if (!(ScaffoldMessenger.maybeOf(context)?.mounted ?? false)) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Error updating item: $e')),
                             );
@@ -954,7 +951,7 @@ class _ItemsPageState extends State<ItemsPage> {
               boxShadow: active
                   ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
+                        color: Colors.black.withValues(alpha: 0.12),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -1150,6 +1147,9 @@ class _ItemsPageState extends State<ItemsPage> {
                               : buildUniversalTable(
                                   headers: [
                                     "Item Name",
+                                    "Price",
+                                    "Category",
+                                    "Unit",
                                     "Stock",
                                     "Sale",
                                     "Spoilage",
@@ -1163,6 +1163,27 @@ class _ItemsPageState extends State<ItemsPage> {
                                             child: MouseRegion(
                                               cursor: SystemMouseCursors.click,
                                               child: Text(item.name),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(item.price != null ? '₱${item.price!.toStringAsFixed(2)}' : ''),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(_categoryNameForId(item.categoryId)),
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => _showItemDetails(item),
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Text(item.unit),
                                             ),
                                           ),
                                           GestureDetector(
@@ -1196,6 +1217,8 @@ class _ItemsPageState extends State<ItemsPage> {
                                         ],
                                       )
                                       .toList(),
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                 ))
                         : (dbCategories.isEmpty
                               ? emptyTables(
@@ -1236,6 +1259,9 @@ class _ItemsPageState extends State<ItemsPage> {
                                             ],
                                           )
                                           .toList(),
+                                          
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                     );
                                   },
                                 )),
@@ -1362,6 +1388,9 @@ class _ItemsPageState extends State<ItemsPage> {
                                 : buildUniversalTable(
                                     headers: [
                                       "Item Name",
+                                      "Price",
+                                      "Category",
+                                      "Unit",
                                       "Stock",
                                       "Sale",
                                       "Spoilage",
@@ -1375,6 +1404,27 @@ class _ItemsPageState extends State<ItemsPage> {
                                               child: MouseRegion(
                                                 cursor: SystemMouseCursors.click,
                                                 child: Text(item.name),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(item.price != null ? '₱${item.price!.toStringAsFixed(2)}' : ''),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(_categoryNameForId(item.categoryId)),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => _showItemDetails(item),
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors.click,
+                                                child: Text(item.unit),
                                               ),
                                             ),
                                             GestureDetector(
@@ -1409,6 +1459,9 @@ class _ItemsPageState extends State<ItemsPage> {
                                           ],
                                         )
                                         .toList(),
+                                        
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 80,
                                   ))
                           : (dbCategories.isEmpty
                                 ? emptyTables(
@@ -1450,6 +1503,9 @@ class _ItemsPageState extends State<ItemsPage> {
                                               ],
                                             )
                                             .toList(),
+                                            
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                                       );
                                     },
                                   )),

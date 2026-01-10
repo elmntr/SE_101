@@ -7,7 +7,7 @@
       },
       "declaration": {
         "source_uri": "package:chickenjoo_inventory/database/app_database.dart",
-        "offset": 1849,
+        "offset": 2232,
         "name": "AppDatabase"
       },
       "references": [
@@ -40,12 +40,20 @@
           "name": "recipe_ingredients"
         },
         {
+          "library_uri": "package:chickenjoo_inventory/database/tables/branch_ingredient_stock.dart",
+          "name": "branch_ingredient_stock"
+        },
+        {
           "library_uri": "package:chickenjoo_inventory/database/tables/stock_replenishment_requests.dart",
           "name": "stock_replenishment_requests"
         },
         {
           "library_uri": "package:chickenjoo_inventory/database/tables/stock_change_requests.dart",
           "name": "stock_change_requests"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/daily_sales_summary.dart",
+          "name": "daily_sales_summary"
         }
       ],
       "type": "database",
@@ -79,18 +87,26 @@
           "name": "recipe_ingredients"
         },
         {
+          "library_uri": "package:chickenjoo_inventory/database/tables/branch_ingredient_stock.dart",
+          "name": "branch_ingredient_stock"
+        },
+        {
           "library_uri": "package:chickenjoo_inventory/database/tables/stock_replenishment_requests.dart",
           "name": "stock_replenishment_requests"
         },
         {
           "library_uri": "package:chickenjoo_inventory/database/tables/stock_change_requests.dart",
           "name": "stock_change_requests"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/daily_sales_summary.dart",
+          "name": "daily_sales_summary"
         }
       ],
       "views": [],
       "includes": [],
       "queries": [],
-      "schema_version": 1,
+      "schema_version": 2,
       "daos": [
         {
           "library_uri": "package:chickenjoo_inventory/database/daos/organizations_dao.dart",
@@ -121,12 +137,20 @@
           "name": "RecipeIngredientsDao"
         },
         {
+          "library_uri": "package:chickenjoo_inventory/database/daos/branch_ingredient_stock_dao.dart",
+          "name": "BranchIngredientStockDao"
+        },
+        {
           "library_uri": "package:chickenjoo_inventory/database/daos/stock_replenishment_requests_dao.dart",
           "name": "StockReplenishmentRequestsDao"
         },
         {
           "library_uri": "package:chickenjoo_inventory/database/daos/stock_change_requests_dao.dart",
           "name": "StockChangeRequestsDao"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/daos/daily_sales_summary_dao.dart",
+          "name": "DailySalesSummaryDao"
         }
       ],
       "has_constructor_arg": false
@@ -138,6 +162,7 @@
     "package:path/path.dart",
     "package:path_provider/path_provider.dart",
     "package:crypto/crypto.dart",
+    "package:chickenjoo_inventory/utils/app_logger.dart",
     "package:chickenjoo_inventory/database/tables/categories.dart",
     "package:chickenjoo_inventory/database/tables/roles.dart",
     "package:chickenjoo_inventory/database/tables/organizations.dart",
@@ -145,6 +170,8 @@
     "package:chickenjoo_inventory/database/tables/recipe_ingredients.dart",
     "package:chickenjoo_inventory/database/tables/stock_replenishment_requests.dart",
     "package:chickenjoo_inventory/database/tables/stock_change_requests.dart",
+    "package:chickenjoo_inventory/database/tables/daily_sales_summary.dart",
+    "package:chickenjoo_inventory/database/tables/branch_ingredient_stock.dart",
     "package:chickenjoo_inventory/database/tables/items.dart",
     "package:chickenjoo_inventory/database/tables/users.dart",
     "package:chickenjoo_inventory/database/daos/categories_dao.dart",
@@ -156,6 +183,8 @@
     "package:chickenjoo_inventory/database/daos/recipe_ingredients_dao.dart",
     "package:chickenjoo_inventory/database/daos/stock_replenishment_requests_dao.dart",
     "package:chickenjoo_inventory/database/daos/stock_change_requests_dao.dart",
+    "package:chickenjoo_inventory/database/daos/daily_sales_summary_dao.dart",
+    "package:chickenjoo_inventory/database/daos/branch_ingredient_stock_dao.dart",
     "package:flutter/foundation.dart"
   ]
 }
