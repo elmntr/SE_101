@@ -5,7 +5,7 @@ import 'package:chickenjoo_inventory/app.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/screen/login/login_screen.dart';
-import 'package:chickenjoo_inventory/home.dart';
+import 'package:chickenjoo_inventory/home/home.dart';
 
 void main() {
   group('AppGlobals Tests', () {
