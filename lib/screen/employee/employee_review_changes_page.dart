@@ -1,5 +1,5 @@
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
-import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory.dart';
+import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory/franchisee_inventory.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
