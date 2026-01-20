@@ -1,5 +1,5 @@
 import 'package:chickenjoo_inventory/design_constants.dart';
-import 'package:chickenjoo_inventory/screen/employee/employee_items.dart';
+import 'package:chickenjoo_inventory/screen/employee/employee_items/employee_items.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
