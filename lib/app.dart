@@ -4,7 +4,7 @@ import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/utils/app_logger.dart';
 import 'screen/login/login_screen.dart';
-import 'home.dart';
+import 'home/home.dart';
 
 /// Reinitialize sync service with user's organization context after login
 void _reinitializeSyncWithUserContext(UserData userData) {
