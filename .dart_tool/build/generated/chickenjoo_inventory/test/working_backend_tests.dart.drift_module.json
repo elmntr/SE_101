@@ -1,0 +1,11 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_test/flutter_test.dart",
+    "package:flutter/material.dart",
+    "package:chickenjoo_inventory/app_globals.dart",
+    "package:chickenjoo_inventory/services/supabase_auth_service.dart",
+    "package:chickenjoo_inventory/design_constants.dart",
+    "package:chickenjoo_inventory/utils/sync_status.dart"
+  ]
+}

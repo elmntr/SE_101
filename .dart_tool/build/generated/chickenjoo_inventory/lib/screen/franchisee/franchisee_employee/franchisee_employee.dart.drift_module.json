@@ -1,0 +1,15 @@
+{
+  "elements": {},
+  "imports": [
+    "package:chickenjoo_inventory/tables/tables.dart",
+    "package:flutter/material.dart",
+    "package:chickenjoo_inventory/design_constants.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/tables/sorting_and_filters.dart",
+    "package:chickenjoo_inventory/app_globals.dart",
+    "package:drift/drift.dart",
+    "package:shared_preferences/shared_preferences.dart",
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_employee/franchisee_employee_mobile.dart",
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_employee/franchisee_employee_desktop.dart"
+  ]
+}

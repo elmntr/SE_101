@@ -1,0 +1,561 @@
+{
+  "elements": {
+    "items": {
+      "id": {
+        "library_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+        "name": "items"
+      },
+      "declaration": {
+        "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+        "offset": 700,
+        "name": "Items"
+      },
+      "references": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/categories.dart",
+          "name": "categories"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/organizations.dart",
+          "name": "organizations"
+        }
+      ],
+      "type": "table",
+      "columns": [
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": false,
+          "nameInSql": "id",
+          "nameInDart": "id",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 758,
+            "name": "id"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Primary key",
+          "constraints": [
+            {
+              "type": "primary",
+              "is_auto_increment": true
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "name",
+          "nameInDart": "name",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 875,
+            "name": "name"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Item name (e.g., \"Fried Chicken Meal\", \"Burger Combo\")",
+          "constraints": [
+            {
+              "type": "limit_text_length",
+              "min_length": 1,
+              "max_length": 200
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": true,
+          "nameInSql": "category_id",
+          "nameInDart": "categoryId",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 1008,
+            "name": "categoryId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Optional category for filtering (e.g., \"Food\", \"Beverages\")",
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:chickenjoo_inventory/database/tables/categories.dart",
+                  "name": "categories"
+                },
+                "name": "id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": false,
+          "nameInSql": "organization_id",
+          "nameInDart": "organizationId",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 1279,
+            "name": "organizationId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Which organization owns this item\n/// - If commissary: This is the master item that can be ordered\n/// - If franchisee: This is their local copy with their own price",
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:chickenjoo_inventory/database/tables/organizations.dart",
+                  "name": "organizations"
+                },
+                "name": "id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": true,
+          "nameInSql": "master_item_id",
+          "nameInDart": "masterItemId",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 1487,
+            "name": "masterItemId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// For franchisee items: Reference to the commissary's master item\n/// For commissary items: NULL (they are the master)",
+          "constraints": [
+            {
+              "type": "foreign_key",
+              "column": {
+                "table": {
+                  "library_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+                  "name": "items"
+                },
+                "name": "id"
+              },
+              "onUpdate": null,
+              "onDelete": null,
+              "initiallyDeferred": false
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": false,
+          "nameInSql": "stock",
+          "nameInDart": "stock",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 1599,
+            "name": "stock"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(0)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Current stock quantity",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": false,
+          "nameInSql": "sold",
+          "nameInDart": "sold",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 1711,
+            "name": "sold"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(0)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Total sold quantity (cumulative)",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": false,
+          "nameInSql": "spoilage",
+          "nameInDart": "spoilage",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 1825,
+            "name": "spoilage"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(0)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Total spoiled quantity (cumulative)",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "double"
+          },
+          "nullable": true,
+          "nameInSql": "price",
+          "nameInDart": "price",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 2035,
+            "name": "price"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Price set by franchisee (for their customers)\n/// Commissary items may not have a price (only franchisee sets retail price)",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "double"
+          },
+          "nullable": true,
+          "nameInSql": "cost_price",
+          "nameInDart": "costPrice",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 2158,
+            "name": "costPrice"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Cost per unit (for franchisee to know their cost from commissary)",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": false,
+          "nameInSql": "unit",
+          "nameInDart": "unit",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 2273,
+            "name": "unit"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "('piece')"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Unit of measurement (e.g., \"piece\", \"serving\", \"box\")",
+          "constraints": [
+            {
+              "type": "limit_text_length",
+              "min_length": 1,
+              "max_length": 50
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "int"
+          },
+          "nullable": true,
+          "nameInSql": "minimum_stock",
+          "nameInDart": "minimumStock",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 2434,
+            "name": "minimumStock"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Minimum stock threshold for low stock alerts",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": true,
+          "nameInSql": "description",
+          "nameInDart": "description",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 2522,
+            "name": "description"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Optional description",
+          "constraints": [
+            {
+              "type": "limit_text_length",
+              "min_length": null,
+              "max_length": 1000
+            }
+          ],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "dateTime"
+          },
+          "nullable": false,
+          "nameInSql": "created_at",
+          "nameInDart": "createdAt",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 2648,
+            "name": "createdAt"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": {
+            "elements": [
+              "() => ",
+              {
+                "lexeme": "DateTime",
+                "import_uri": "dart:core"
+              },
+              ".now()"
+            ]
+          },
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Track when item was created/modified",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "dateTime"
+          },
+          "nullable": false,
+          "nameInSql": "last_updated",
+          "nameInDart": "lastUpdated",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 2740,
+            "name": "lastUpdated"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": {
+            "elements": [
+              "() => ",
+              {
+                "lexeme": "DateTime",
+                "import_uri": "dart:core"
+              },
+              ".now()"
+            ]
+          },
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "bool"
+          },
+          "nullable": false,
+          "nameInSql": "is_deleted",
+          "nameInDart": "isDeleted",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 2851,
+            "name": "isDeleted"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(false)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Soft delete",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "bool"
+          },
+          "nullable": false,
+          "nameInSql": "is_synced",
+          "nameInDart": "isSynced",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 2977,
+            "name": "isSynced"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": {
+            "elements": [
+              "const ",
+              {
+                "lexeme": "Constant",
+                "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
+              },
+              "(false)"
+            ]
+          },
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": "/// Sync fields for cloud synchronization",
+          "constraints": [],
+          "customConstraints": null
+        },
+        {
+          "sqlType": {
+            "builtin": "string"
+          },
+          "nullable": true,
+          "nameInSql": "cloud_id",
+          "nameInDart": "cloudId",
+          "declaration": {
+            "source_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+            "offset": 3055,
+            "name": "cloudId"
+          },
+          "typeConverter": null,
+          "clientDefaultCode": null,
+          "defaultArgument": null,
+          "overriddenJsonName": null,
+          "referenceName": null,
+          "documentationComment": null,
+          "constraints": [],
+          "customConstraints": null
+        }
+      ],
+      "existing_data_class": null,
+      "table_constraints": [],
+      "custom_parent_class": null,
+      "interfaces_for_row_class": [],
+      "fixed_entity_info_name": null,
+      "base_dart_name": "Items",
+      "row_class_name": "Item",
+      "companion_class_name": null,
+      "without_rowid": false,
+      "strict": false,
+      "write_default_constraints": true,
+      "custom_constraints": [],
+      "attached_indices": []
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:chickenjoo_inventory/database/tables/categories.dart",
+    "package:chickenjoo_inventory/database/tables/organizations.dart"
+  ]
+}

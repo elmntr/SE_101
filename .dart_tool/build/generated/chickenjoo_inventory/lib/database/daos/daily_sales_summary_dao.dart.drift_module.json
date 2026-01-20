@@ -1,0 +1,70 @@
+{
+  "elements": {
+    "DailySalesSummaryDao": {
+      "id": {
+        "library_uri": "package:chickenjoo_inventory/database/daos/daily_sales_summary_dao.dart",
+        "name": "DailySalesSummaryDao"
+      },
+      "declaration": {
+        "source_uri": "package:chickenjoo_inventory/database/daos/daily_sales_summary_dao.dart",
+        "offset": 354,
+        "name": "DailySalesSummaryDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/daily_sales_summary.dart",
+          "name": "daily_sales_summary"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+          "name": "items"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/organizations.dart",
+          "name": "organizations"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/daily_sales_summary.dart",
+          "name": "daily_sales_summary"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+          "name": "items"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/organizations.dart",
+          "name": "organizations"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "DailySalesSummaryDao",
+            "import_uri": "package:chickenjoo_inventory/database/daos/daily_sales_summary_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:chickenjoo_inventory/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/database/tables/daily_sales_summary.dart",
+    "package:chickenjoo_inventory/database/tables/items.dart",
+    "package:chickenjoo_inventory/database/tables/organizations.dart"
+  ]
+}

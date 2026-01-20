@@ -1,0 +1,12 @@
+{
+  "elements": {},
+  "imports": [
+    "package:drift/drift.dart",
+    "package:supabase_flutter/supabase_flutter.dart",
+    "package:connectivity_plus/connectivity_plus.dart",
+    "package:uuid/uuid.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:flutter/foundation.dart",
+    "package:chickenjoo_inventory/utils/app_logger.dart"
+  ]
+}

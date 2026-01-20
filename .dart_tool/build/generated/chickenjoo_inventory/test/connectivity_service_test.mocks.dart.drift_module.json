@@ -1,0 +1,9 @@
+{
+  "elements": {},
+  "imports": [
+    "package:connectivity_plus/connectivity_plus.dart",
+    "package:connectivity_plus_platform_interface/connectivity_plus_platform_interface.dart",
+    "package:mockito/mockito.dart",
+    "package:mockito/src/dummies.dart"
+  ]
+}

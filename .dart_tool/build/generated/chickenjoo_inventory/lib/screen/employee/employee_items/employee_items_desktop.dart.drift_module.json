@@ -1,0 +1,10 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter/material.dart",
+    "package:chickenjoo_inventory/design_constants.dart",
+    "package:chickenjoo_inventory/tables/sorting_and_filters.dart",
+    "package:chickenjoo_inventory/tables/tables.dart",
+    "package:chickenjoo_inventory/screen/employee/employee_items/employee_items.dart"
+  ]
+}

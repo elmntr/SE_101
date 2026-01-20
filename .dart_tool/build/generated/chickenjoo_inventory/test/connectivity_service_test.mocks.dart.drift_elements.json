@@ -1,0 +1,1 @@
+{"valid_import":true,"imports":[{"uri":"package:connectivity_plus/connectivity_plus.dart","transitive":false},{"uri":"package:connectivity_plus_platform_interface/connectivity_plus_platform_interface.dart","transitive":false},{"uri":"package:mockito/mockito.dart","transitive":false},{"uri":"package:mockito/src/dummies.dart","transitive":false}],"elements":[]}

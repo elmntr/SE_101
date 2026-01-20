@@ -1,0 +1,10 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_test/flutter_test.dart",
+    "package:mockito/annotations.dart",
+    "package:mockito/mockito.dart",
+    "package:supabase_flutter/supabase_flutter.dart",
+    "asset:chickenjoo_inventory/test/services/supabase_sync_service_test.mocks.dart"
+  ]
+}

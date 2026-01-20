@@ -7,7 +7,7 @@ import 'screen/login/login_screen.dart';
 import 'home/home.dart';
 
 /// Reinitialize sync service with user's organization context after login
-void _reinitializeSyncWithUserContext(UserData userData) {
+void reinitializeSyncWithUserContext(UserData userData) {
   try {
     // Get parent commissary info for franchisees
     String? parentCommissaryCloudId;
@@ -53,12 +53,27 @@ void _reinitializeSyncWithUserContext(UserData userData) {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+
+  static _MyAppState? of(BuildContext? context) {
+    if (context == null) return null;
+    return context.findAncestorStateOfType<_MyAppState>();
+  }
+}
+
+class _MyAppState extends State<MyApp> {
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  NavigatorState get navigator => navigatorKey.currentState!;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Chicken Joo Inventory',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
@@ -83,7 +98,7 @@ class MyApp extends StatelessWidget {
           }
 
           // ✅ Reinitialize sync service with user's organization context
-          _reinitializeSyncWithUserContext(userData);
+          reinitializeSyncWithUserContext(userData);
 
           return MaterialPageRoute(
             builder: (context) => HomeScreen(signedInUser: userData),

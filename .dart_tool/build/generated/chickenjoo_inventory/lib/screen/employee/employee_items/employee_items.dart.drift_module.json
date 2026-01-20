@@ -1,0 +1,15 @@
+{
+  "elements": {},
+  "imports": [
+    "package:chickenjoo_inventory/services/supabase_auth_service.dart",
+    "package:chickenjoo_inventory/tables/tables.dart",
+    "package:flutter/material.dart",
+    "package:chickenjoo_inventory/design_constants.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/app_globals.dart",
+    "package:chickenjoo_inventory/screen/employee/employee_change_item_stock.dart",
+    "package:chickenjoo_inventory/tables/sorting_and_filters.dart",
+    "package:chickenjoo_inventory/screen/employee/employee_items/employee_items_mobile.dart",
+    "package:chickenjoo_inventory/screen/employee/employee_items/employee_items_desktop.dart"
+  ]
+}

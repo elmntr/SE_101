@@ -1,0 +1,9 @@
+{
+  "elements": {},
+  "imports": [
+    "package:chickenjoo_inventory/design_constants.dart",
+    "package:flutter/material.dart",
+    "package:chickenjoo_inventory/connection_status_indicator.dart",
+    "package:chickenjoo_inventory/home/home.dart"
+  ]
+}

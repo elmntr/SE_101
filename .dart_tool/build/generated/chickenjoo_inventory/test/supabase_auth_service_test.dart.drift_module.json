@@ -1,0 +1,15 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_test/flutter_test.dart",
+    "package:mockito/mockito.dart",
+    "package:mockito/annotations.dart",
+    "package:supabase_flutter/supabase_flutter.dart",
+    "package:chickenjoo_inventory/services/supabase_auth_service.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/database/daos/users_dao.dart",
+    "package:chickenjoo_inventory/database/daos/organizations_dao.dart",
+    "package:chickenjoo_inventory/database/daos/roles_dao.dart",
+    "asset:chickenjoo_inventory/test/supabase_auth_service_test.mocks.dart"
+  ]
+}

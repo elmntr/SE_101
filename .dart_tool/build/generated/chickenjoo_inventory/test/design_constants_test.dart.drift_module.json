@@ -1,0 +1,8 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_test/flutter_test.dart",
+    "package:flutter/material.dart",
+    "package:chickenjoo_inventory/design_constants.dart"
+  ]
+}
