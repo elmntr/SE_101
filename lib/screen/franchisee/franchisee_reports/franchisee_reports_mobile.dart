@@ -10,7 +10,9 @@ class ReportsPageMobile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Get current data for the selected metric
-    final data = state.chartData[state.selectedMetric] ?? List.filled(7, 0.0);
+    final labels = state.getChartLabels();
+    final data = state.chartData[state.selectedMetric] ??
+        List<double>.filled(labels.isEmpty ? 1 : labels.length, 0.0);
     final maxValue = data.isEmpty ? 1.0 : data.reduce((a, b) => a > b ? a : b);
 
     return Scaffold(
@@ -100,9 +102,8 @@ class ReportsPageMobile extends StatelessWidget {
                               onSelected: (value) {
                                 state.setState(() {
                                   state.selectedItemId = value;
-                                  state.calculateChartData();
-                                  state.calculateTotals();
                                 });
+                                state.calculateChartData();
                               },
                             );
                           },
@@ -158,8 +159,8 @@ class ReportsPageMobile extends StatelessWidget {
                               onSelected: (value) {
                                 state.setState(() {
                                   state.selectedPeriod = value;
-                                  state.calculateChartData();
                                 });
+                                state.calculateChartData();
                               },
                             );
                           },
@@ -187,9 +188,16 @@ class ReportsPageMobile extends StatelessWidget {
                           ),
                           onPressed: () => state.navigateDate(false),
                         ),
-                        Text(
-                          state.getDateRangeText(),
-                          style: const TextStyle(fontSize: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => state.openPeriodPicker(context),
+                            child: Text(
+                              state.getDateRangeText(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(
@@ -344,7 +352,7 @@ class ReportsPageMobile extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: state.getChartLabels()
+                      children: labels
                           .map(
                             (label) => Expanded(
                               child: Text(

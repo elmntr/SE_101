@@ -33,7 +33,7 @@
     },
     {
       "name": "mockito",
-      "version": "5.6.1",
+      "version": "5.6.3",
       "dependencies": [
         "analyzer",
         "build",
@@ -49,7 +49,7 @@
     },
     {
       "name": "build_runner",
-      "version": "2.10.4",
+      "version": "2.10.5",
       "dependencies": [
         "analyzer",
         "args",
@@ -86,7 +86,7 @@
     },
     {
       "name": "drift_dev",
-      "version": "2.29.0",
+      "version": "2.30.1",
       "dependencies": [
         "analyzer",
         "args",
@@ -178,7 +178,7 @@
     },
     {
       "name": "supabase_flutter",
-      "version": "2.10.3",
+      "version": "2.12.0",
       "dependencies": [
         "app_links",
         "async",
@@ -208,7 +208,7 @@
     },
     {
       "name": "shared_preferences",
-      "version": "2.5.3",
+      "version": "2.5.4",
       "dependencies": [
         "flutter",
         "shared_preferences_android",
@@ -243,14 +243,14 @@
     },
     {
       "name": "sqlite3_flutter_libs",
-      "version": "0.5.40",
+      "version": "0.5.41",
       "dependencies": [
         "flutter"
       ]
     },
     {
       "name": "drift",
-      "version": "2.29.0",
+      "version": "2.30.1",
       "dependencies": [
         "async",
         "collection",
@@ -297,7 +297,7 @@
     },
     {
       "name": "source_gen",
-      "version": "4.1.1",
+      "version": "4.2.0",
       "dependencies": [
         "analyzer",
         "async",
@@ -342,7 +342,7 @@
     },
     {
       "name": "code_builder",
-      "version": "4.11.0",
+      "version": "4.11.1",
       "dependencies": [
         "built_collection",
         "built_value",
@@ -353,7 +353,7 @@
     },
     {
       "name": "build",
-      "version": "4.0.3",
+      "version": "4.0.4",
       "dependencies": [
         "analyzer",
         "crypto",
@@ -365,7 +365,7 @@
     },
     {
       "name": "analyzer",
-      "version": "8.4.1",
+      "version": "9.0.0",
       "dependencies": [
         "_fe_analyzer_shared",
         "collection",
@@ -403,7 +403,7 @@
     },
     {
       "name": "watcher",
-      "version": "1.1.4",
+      "version": "1.2.1",
       "dependencies": [
         "async",
         "path"
@@ -517,7 +517,7 @@
     },
     {
       "name": "built_value",
-      "version": "8.12.1",
+      "version": "8.12.3",
       "dependencies": [
         "built_collection",
         "collection",
@@ -589,7 +589,7 @@
     },
     {
       "name": "sqlparser",
-      "version": "0.42.0",
+      "version": "0.43.0",
       "dependencies": [
         "charcode",
         "collection",
@@ -708,7 +708,7 @@
     },
     {
       "name": "supabase",
-      "version": "2.10.0",
+      "version": "2.10.2",
       "dependencies": [
         "functions_client",
         "gotrue",
@@ -861,9 +861,11 @@
     },
     {
       "name": "path_provider_foundation",
-      "version": "2.5.1",
+      "version": "2.6.0",
       "dependencies": [
+        "ffi",
         "flutter",
+        "objective_c",
         "path_provider_platform_interface"
       ]
     },
@@ -907,7 +909,7 @@
     },
     {
       "name": "_fe_analyzer_shared",
-      "version": "91.0.0",
+      "version": "92.0.0",
       "dependencies": [
         "meta"
       ]
@@ -959,7 +961,7 @@
     },
     {
       "name": "ffi",
-      "version": "2.1.4",
+      "version": "2.1.5",
       "dependencies": []
     },
     {
@@ -992,7 +994,7 @@
     },
     {
       "name": "url_launcher_web",
-      "version": "2.4.1",
+      "version": "2.4.2",
       "dependencies": [
         "flutter",
         "flutter_web_plugins",
@@ -1066,7 +1068,7 @@
     },
     {
       "name": "realtime_client",
-      "version": "2.6.0",
+      "version": "2.7.0",
       "dependencies": [
         "collection",
         "http",
@@ -1077,7 +1079,7 @@
     },
     {
       "name": "postgrest",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "dependencies": [
         "http",
         "logging",
@@ -1087,10 +1089,11 @@
     },
     {
       "name": "gotrue",
-      "version": "2.16.0",
+      "version": "2.18.0",
       "dependencies": [
         "collection",
         "crypto",
+        "dart_jsonwebtoken",
         "http",
         "jwt_decode",
         "logging",
@@ -1167,6 +1170,19 @@
       ]
     },
     {
+      "name": "objective_c",
+      "version": "9.2.3",
+      "dependencies": [
+        "code_assets",
+        "collection",
+        "ffi",
+        "hooks",
+        "logging",
+        "native_toolchain_c",
+        "pub_semver"
+      ]
+    },
+    {
       "name": "vm_service",
       "version": "15.0.2",
       "dependencies": []
@@ -1175,6 +1191,16 @@
       "name": "retry",
       "version": "3.1.2",
       "dependencies": []
+    },
+    {
+      "name": "dart_jsonwebtoken",
+      "version": "3.3.1",
+      "dependencies": [
+        "clock",
+        "convert",
+        "ed25519_edwards",
+        "pointycastle"
+      ]
     },
     {
       "name": "jwt_decode",
@@ -1200,11 +1226,68 @@
       ]
     },
     {
+      "name": "native_toolchain_c",
+      "version": "0.17.4",
+      "dependencies": [
+        "code_assets",
+        "glob",
+        "hooks",
+        "logging",
+        "meta",
+        "pub_semver"
+      ]
+    },
+    {
+      "name": "hooks",
+      "version": "1.0.0",
+      "dependencies": [
+        "collection",
+        "crypto",
+        "logging",
+        "meta",
+        "pub_semver",
+        "yaml"
+      ]
+    },
+    {
+      "name": "code_assets",
+      "version": "1.0.0",
+      "dependencies": [
+        "collection",
+        "hooks"
+      ]
+    },
+    {
+      "name": "ed25519_edwards",
+      "version": "0.3.1",
+      "dependencies": [
+        "adaptive_number",
+        "collection",
+        "convert",
+        "crypto"
+      ]
+    },
+    {
+      "name": "pointycastle",
+      "version": "4.0.0",
+      "dependencies": [
+        "collection",
+        "convert"
+      ]
+    },
+    {
       "name": "petitparser",
       "version": "7.0.1",
       "dependencies": [
         "collection",
         "meta"
+      ]
+    },
+    {
+      "name": "adaptive_number",
+      "version": "1.0.0",
+      "dependencies": [
+        "fixnum"
       ]
     }
   ],
