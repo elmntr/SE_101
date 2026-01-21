@@ -297,8 +297,6 @@ Version 1.0.0 represents the initial stable release of the ChickenJoo Inventory 
 
 2. **Inventory Control**
    - Product/item catalog management
-   - Ingredient tracking
-   - Recipe composition (bill of materials)
    - Branch-specific stock levels
 
 3. **Request Workflows**
@@ -343,26 +341,20 @@ Version 1.0.0 represents the initial stable release of the ChickenJoo Inventory 
 - **Item Attributes**: Name, description, price, unit, and availability status
 - **Item Images**: Support for product images (future enhancement)
 
-#### 4. 🥘 Ingredient Management
-- **Raw Materials**: Track ingredients used in recipes
-- **Recipe Composition**: Define which ingredients make up products
-- **Ingredient Stock**: Branch-specific ingredient inventory levels
-- **Unit Management**: Support for various measurement units (kg, L, pcs)
-
-#### 5. 📋 Request Workflows
+#### 4. 📋 Request Workflows
 - **Replenishment Requests**: Branches request ingredient stock from commissary
 - **Stock Change Requests**: Request approval for item stock adjustments
 - **Request Status Tracking**: Pending, approved, rejected, completed states
 - **Approval Workflows**: Manager/admin approval required for changes
 - **Request History**: Audit trail of all stock requests
 
-#### 6. 📊 Sales Reporting
+#### 5. 📊 Sales Reporting
 - **Daily Sales Summary**: Automated daily sales data collection
 - **Per-Item Sales**: Sales quantities and revenue per item
 - **Branch Analytics**: Sales performance per franchisee branch
 - **Date Range Reporting**: Historical sales data analysis
 
-#### 7. 🔄 Data Synchronization
+#### 6. 🔄 Data Synchronization
 - **Bi-Directional Sync**: Local changes pushed to cloud, cloud changes pulled locally
 - **Selective Sync**: Organization-scoped sync (franchisees only see their data)
 - **Conflict Resolution**: Last-write-wins with timestamp-based resolution
@@ -370,20 +362,20 @@ Version 1.0.0 represents the initial stable release of the ChickenJoo Inventory 
 - **Progress Tracking**: Real-time sync progress indicators
 - **Automatic Retry**: Exponential backoff with jitter for failed operations
 
-#### 8. 🌐 Connectivity Management
+#### 7. 🌐 Connectivity Management
 - **Connection Monitoring**: Real-time network connectivity detection
 - **Offline Mode**: Full app functionality when offline
 - **Auto-Sync on Reconnect**: Automatic sync when connection restored
 - **Connection Status UI**: Visual indicators for online/offline state
 
-#### 9. 🎨 Responsive UI
+#### 8. 🎨 Responsive UI
 - **Adaptive Layouts**: Separate desktop and mobile layouts for all screens
 - **Material Design**: Consistent Material Design 3 UI components
 - **Custom Themes**: ChickenJoo branding with custom color schemes
 - **Data Tables**: Sortable, filterable data tables for inventory lists
 - **Form Validation**: Client-side validation with error messages
 
-#### 10. 🔐 Security Features
+#### 9. 🔐 Security Features
 - **Row-Level Security**: Supabase RLS policies enforce data access
 - **JWT Authentication**: Secure token-based authentication
 - **Password Hashing**: Bcrypt password hashing on server-side
