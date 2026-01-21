@@ -1,0 +1,32 @@
+{
+  "assets": {},
+  "config": {
+    "build_asset_types": [
+      "code_assets/code"
+    ],
+    "extensions": {
+      "code_assets": {
+        "c_compiler": {
+          "ar": "D:\\Programs\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\lib.exe",
+          "cc": "D:\\Programs\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+          "ld": "D:\\Programs\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\link.exe",
+          "windows": {
+            "developer_command_prompt": {
+              "arguments": [],
+              "script": "D:\\Programs\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat"
+            }
+          }
+        },
+        "link_mode_preference": "dynamic",
+        "target_architecture": "x64",
+        "target_os": "windows"
+      }
+    },
+    "linking_enabled": true
+  },
+  "out_dir_shared": "D:\\Programs\\Flutter\\Projects\\SE_101\\.dart_tool\\hooks_runner\\shared\\objective_c\\build\\",
+  "out_file": "D:\\Programs\\Flutter\\Projects\\SE_101\\.dart_tool\\hooks_runner\\objective_c\\f693b8fba8d5541d84c1d5aabb2e509f\\output.json",
+  "package_name": "objective_c",
+  "package_root": "C:\\Users\\juan carlos\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\objective_c-9.2.3\\",
+  "user_defines": {}
+}
