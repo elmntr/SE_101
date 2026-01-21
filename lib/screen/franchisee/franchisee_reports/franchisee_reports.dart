@@ -35,6 +35,7 @@ class ReportsPageState extends State<ReportsPage> {
   int? selectedItemId; // null = "All Items"
   String selectedPeriod = 'Weekly';
   DateTime currentDate = DateTime.now();
+  DateTime? selectedSpecificDate; // null = show range, non-null = show specific date
   String selectedMetric = 'sold';
 
   // Data from database
@@ -43,8 +44,15 @@ class ReportsPageState extends State<ReportsPage> {
   Map<String, List<double>> chartData = {};
   double totalSold = 0;
   double totalSpoilage = 0;
+  // Specific date totals (when a date is selected from calendar)
+  double selectedDateSold = 0;
+  double selectedDateSpoilage = 0;
   bool isLoading = true;
   int _chartRequestId = 0;
+
+  // Getters for display - show specific date totals when selected, otherwise period totals
+  double get displayTotalSold => selectedSpecificDate != null ? selectedDateSold : totalSold;
+  double get displayTotalSpoilage => selectedSpecificDate != null ? selectedDateSpoilage : totalSpoilage;
 
   final List<String> periods = ['Weekly', 'Monthly', 'Yearly'];
   static const String orgIdKey = 'current_organization_id';
@@ -119,17 +127,20 @@ class ReportsPageState extends State<ReportsPage> {
 
   /// Calculate chart data based on selected item and period
   Future<void> calculateChartData() async {
-    final config = _getPeriodConfig();
+    final periodConfig = _getPeriodConfigForPeriod(); // Always get period-based config
+    final displayConfig = _getPeriodConfig(); // Gets single-day if specific date selected
     final requestId = ++_chartRequestId;
 
     if (mounted) {
       setState(() {
         chartData = {
-          'sold': List<double>.filled(config.bucketCount, 0.0),
-          'spoilage': List<double>.filled(config.bucketCount, 0.0),
+          'sold': List<double>.filled(displayConfig.bucketCount, 0.0),
+          'spoilage': List<double>.filled(displayConfig.bucketCount, 0.0),
         };
         totalSold = 0;
         totalSpoilage = 0;
+        selectedDateSold = 0;
+        selectedDateSpoilage = 0;
       });
     }
 
@@ -138,21 +149,53 @@ class ReportsPageState extends State<ReportsPage> {
     }
 
     try {
+      // Fetch summaries for the full period range
       final summaries = await db.dailySalesSummaryDao.getSummariesForDateRange(
         organizationId: currentOrganizationId!,
-        startDate: config.startDate,
-        endDate: config.endDate,
+        startDate: periodConfig.startDate,
+        endDate: periodConfig.endDate,
       );
 
       final iterable = selectedItemId == null
           ? summaries
           : summaries.where((summary) => summary.itemId == selectedItemId);
 
-      final soldSeries = List<double>.filled(config.bucketCount, 0.0);
-      final spoilageSeries = List<double>.filled(config.bucketCount, 0.0);
+      // Calculate period totals
+      double periodSold = 0;
+      double periodSpoilage = 0;
+      
+      // Calculate specific date/month totals (if selected)
+      double dateSold = 0;
+      double dateSpoilage = 0;
+      
+      // Calculate chart data for display
+      final soldSeries = List<double>.filled(displayConfig.bucketCount, 0.0);
+      final spoilageSeries = List<double>.filled(displayConfig.bucketCount, 0.0);
 
       for (final summary in iterable) {
-        final bucketIndex = config.resolveBucket(summary.summaryDate);
+        // Add to period totals
+        periodSold += summary.quantitySold.toDouble();
+        periodSpoilage += summary.quantitySpoiled.toDouble();
+        
+        // Check if this matches the selected specific date
+        if (selectedSpecificDate != null) {
+          final summaryDate = summary.summaryDate;
+          final selectedDate = selectedSpecificDate!;
+          
+          final normalizedSummary = _normalizeDate(summaryDate);
+          final normalizedSelected = _normalizeDate(selectedDate);
+          final matches = normalizedSummary.year == normalizedSelected.year &&
+                    normalizedSummary.month == normalizedSelected.month &&
+                    normalizedSummary.day == normalizedSelected.day;
+          
+          if (matches) {
+            dateSold += summary.quantitySold.toDouble();
+            dateSpoilage += summary.quantitySpoiled.toDouble();
+          }
+        }
+        
+        // Add to chart display data
+        final bucketIndex = displayConfig.resolveBucket(summary.summaryDate);
         if (bucketIndex == null) continue;
         soldSeries[bucketIndex] += summary.quantitySold.toDouble();
         spoilageSeries[bucketIndex] += summary.quantitySpoiled.toDouble();
@@ -167,8 +210,10 @@ class ReportsPageState extends State<ReportsPage> {
           'sold': soldSeries,
           'spoilage': spoilageSeries,
         };
-        totalSold = soldSeries.fold(0, (sum, value) => sum + value);
-        totalSpoilage = spoilageSeries.fold(0, (sum, value) => sum + value);
+        totalSold = periodSold;
+        totalSpoilage = periodSpoilage;
+        selectedDateSold = dateSold;
+        selectedDateSpoilage = dateSpoilage;
       });
     } catch (e) {
       print('❌ Error calculating chart data: $e');
@@ -176,6 +221,12 @@ class ReportsPageState extends State<ReportsPage> {
   }
 
   String getDateRangeText() {
+    // If a specific date is selected, show just that
+    if (selectedSpecificDate != null) {
+      return formatDate(selectedSpecificDate!);
+    }
+    
+    // Otherwise show the period-based text
     if (selectedPeriod == 'Weekly') {
       final start = currentDate.subtract(const Duration(days: 6));
       return '${formatDate(start)} - ${formatDate(currentDate)}';
@@ -186,6 +237,16 @@ class ReportsPageState extends State<ReportsPage> {
       final start = currentDate.year - 2;
       return '$start - ${currentDate.year}';
     }
+  }
+
+  bool get hasSpecificDateSelected => selectedSpecificDate != null;
+
+  void clearDateSelection() {
+    setState(() {
+      selectedSpecificDate = null;
+      currentDate = DateTime.now();
+    });
+    calculateChartData();
   }
 
   String formatDate(DateTime date) {
@@ -228,15 +289,21 @@ class ReportsPageState extends State<ReportsPage> {
       }
 
       setState(() {
+        selectedSpecificDate = DateTime(selectedYear, 1, 1);
         currentDate = DateTime(selectedYear, 1, 1);
       });
       await calculateChartData();
       return;
     }
 
+    // Show date picker for Weekly and Monthly periods
+    await _openDatePicker(context);
+  }
+
+  Future<void> _openDatePicker(BuildContext context) async {
     final now = DateTime.now();
-    final firstSelectableDate = DateTime(1900, 1, 1);
-    final lastSelectableDate = DateTime(now.year + 50, 12, 31);
+    final firstSelectableDate = DateTime(now.year - 20, 1, 1);
+    final lastSelectableDate = DateTime(now.year + 5, 12, 31);
     final normalizedCurrent = _normalizeDate(currentDate);
     final initialDate = normalizedCurrent.isBefore(firstSelectableDate)
         ? firstSelectableDate
@@ -249,10 +316,9 @@ class ReportsPageState extends State<ReportsPage> {
       initialDate: initialDate,
       firstDate: firstSelectableDate,
       lastDate: lastSelectableDate,
-      helpText: 'Select ${selectedPeriod.toLowerCase()} range',
-      initialEntryMode: DatePickerEntryMode.calendar,
-      initialDatePickerMode:
-          selectedPeriod == 'Monthly' ? DatePickerMode.year : DatePickerMode.day,
+      helpText: 'Select a date',
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      initialDatePickerMode: DatePickerMode.day,
     );
 
     if (picked == null || !mounted) {
@@ -260,7 +326,8 @@ class ReportsPageState extends State<ReportsPage> {
     }
 
     setState(() {
-      currentDate = _alignDateToPeriod(picked);
+      selectedSpecificDate = picked;
+      currentDate = picked;
     });
     await calculateChartData();
   }
@@ -282,8 +349,10 @@ class ReportsPageState extends State<ReportsPage> {
 
   Future<int?> _showYearPickerDialog(BuildContext context) async {
     final now = DateTime.now();
-    final firstDate = DateTime(1900, 1, 1);
-    final lastDate = DateTime(now.year + 50, 1, 1);
+    // Optimized: Reduced date range to prevent performance issues and crashes
+    // Using 20 years back and 5 years forward instead of 1900-2076
+    final firstDate = DateTime(now.year - 20, 1, 1);
+    final lastDate = DateTime(now.year + 5, 1, 1);
     final initialYear =
         currentDate.year.clamp(firstDate.year, lastDate.year).toInt();
 
@@ -425,8 +494,48 @@ _ChartPeriodConfig _buildYearlyConfig(DateTime current) {
   );
 }
 
+_ChartPeriodConfig _buildSingleDayConfig(DateTime date) {
+  final normalized = _normalizeDate(date);
+  final label = '${_monthNames[normalized.month - 1]} ${normalized.day}';
+
+  return _ChartPeriodConfig(
+    startDate: normalized,
+    endDate: normalized,
+    bucketCount: 1,
+    labels: [label],
+    resolveBucket: (d) {
+      final normalizedD = _normalizeDate(d);
+      if (normalizedD.year == normalized.year &&
+          normalizedD.month == normalized.month &&
+          normalizedD.day == normalized.day) {
+        return 0;
+      }
+      return null;
+    },
+  );
+}
+
 extension on ReportsPageState {
   _ChartPeriodConfig _getPeriodConfig() {
+    // If a specific date is selected, show only that data
+    if (selectedSpecificDate != null) {
+      return _buildSingleDayConfig(selectedSpecificDate!);
+    }
+
+    final normalizedCurrent = _normalizeDate(currentDate);
+
+    switch (selectedPeriod) {
+      case 'Monthly':
+        return _buildMonthlyConfig(normalizedCurrent);
+      case 'Yearly':
+        return _buildYearlyConfig(normalizedCurrent);
+      default:
+        return _buildWeeklyConfig(normalizedCurrent);
+    }
+  }
+
+  // Always returns period-based config (ignores selectedSpecificDate)
+  _ChartPeriodConfig _getPeriodConfigForPeriod() {
     final normalizedCurrent = _normalizeDate(currentDate);
 
     switch (selectedPeriod) {

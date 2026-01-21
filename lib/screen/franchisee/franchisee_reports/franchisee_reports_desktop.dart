@@ -61,11 +61,14 @@ class ReportsPageDesktop extends StatelessWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                state.getSelectedItemName(),
-                                style: const TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
+                              Flexible(
+                                child: Text(
+                                  state.getSelectedItemName(),
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               const Icon(
@@ -149,37 +152,49 @@ class ReportsPageDesktop extends StatelessWidget {
                 const SizedBox(width: 12),
 
                 // Date navigation
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left, color: Colors.red),
-                        onPressed: () => state.navigateDate(false),
-                      ),
-                      Expanded(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => state.openPeriodPicker(context),
-                          child: Text(
-                            state.getDateRangeText(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 13),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, color: Colors.red),
+                          onPressed: () => state.navigateDate(false),
+                        ),
+                        Expanded(
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => state.openPeriodPicker(context),
+                              child: Text(
+                                state.getDateRangeText(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.chevron_right,
-                          color: Colors.red,
-                        ),
-                        onPressed: () => state.navigateDate(true),
-                      ),
-                    ],
+                        if (state.hasSpecificDateSelected)
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                            onPressed: () => state.clearDateSelection(),
+                            tooltip: 'Clear selection',
+                          )
+                        else
+                          IconButton(
+                            icon: const Icon(
+                              Icons.chevron_right,
+                              color: Colors.red,
+                            ),
+                            onPressed: () => state.navigateDate(true),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -230,7 +245,7 @@ class ReportsPageDesktop extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    state.totalSold.toStringAsFixed(0),
+                                    state.displayTotalSold.toStringAsFixed(0),
                                     style: const TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
@@ -266,7 +281,7 @@ class ReportsPageDesktop extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    state.totalSpoilage.toStringAsFixed(0),
+                                    state.displayTotalSpoilage.toStringAsFixed(0),
                                     style: const TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
@@ -284,91 +299,94 @@ class ReportsPageDesktop extends StatelessWidget {
 
                     // Chart
                     Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              right: 12,
-                              bottom: 20,
-                            ),
-                            child: RotatedBox(
-                              quarterTurns: 3,
-                              child: Text(
-                                'Stock Amount',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
+                      child: data.isEmpty || labels.isEmpty
+                          ? const Center(child: Text('No data available'))
+                          : Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Expanded(
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: List.generate(data.length, (
-                                      index,
-                                    ) {
-                                      final value = data[index];
-                                      final heightPercent = maxValue > 0
-                                          ? (value / maxValue).clamp(0.0, 1.0)
-                                          : 0.01;
-
-                                      return Expanded(
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                          ),
-                                          child: FractionallySizedBox(
-                                            heightFactor: heightPercent.clamp(
-                                              0.0,
-                                              1.0,
-                                            ),
-                                            alignment: Alignment.bottomCenter,
-                                            child: Container(
-                                              decoration: const BoxDecoration(
-                                                color: Colors.red,
-                                                borderRadius:
-                                                    BorderRadius.vertical(
-                                                      top: Radius.circular(2),
-                                                    ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    right: 12,
+                                    bottom: 20,
+                                  ),
+                                  child: RotatedBox(
+                                    quarterTurns: 3,
+                                    child: Text(
+                                      'Stock Amount',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: labels
-                                      .map(
-                                        (label) => Expanded(
-                                          child: Text(
-                                            label,
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
+                                Expanded(
+                                  child: Column(
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceEvenly,
+                                          children: List.generate(data.length, (
+                                            index,
+                                          ) {
+                                            final value = data[index];
+                                            final heightPercent = maxValue > 0
+                                                ? (value / maxValue).clamp(0.0, 1.0)
+                                                : 0.01;
+
+                                            return Expanded(
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 4,
+                                                ),
+                                                child: FractionallySizedBox(
+                                                  heightFactor: heightPercent.clamp(
+                                                    0.0,
+                                                    1.0,
+                                                  ),
+                                                  alignment: Alignment.bottomCenter,
+                                                  child: Container(
+                                                    decoration: const BoxDecoration(
+                                                      color: Colors.red,
+                                                      borderRadius:
+                                                          BorderRadius.vertical(
+                                                            top: Radius.circular(2),
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }),
                                         ),
-                                      )
-                                      .toList(),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceEvenly,
+                                        children: labels
+                                            .map(
+                                              (label) => Expanded(
+                                                child: Text(
+                                                  label,
+                                                  textAlign: TextAlign.center,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ],
                 ),
