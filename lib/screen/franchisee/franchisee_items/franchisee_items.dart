@@ -883,6 +883,10 @@ class ItemsPageState extends State<ItemsPage> {
                                   : item.minimumStock;
                               final String? unitText = selectedUnit;
 
+                              // Calculate the change in sold/spoilage for daily summary
+                              final soldChange = parsedSold - item.sold;
+                              final spoilageChange = parsedSpoilage - item.spoilage;
+
                               final updated = item.copyWith(
                                 price: Value(parsedPrice),
                                 sold: parsedSold,
@@ -895,6 +899,26 @@ class ItemsPageState extends State<ItemsPage> {
                               final success = await db.itemsDao.updateItem(updated);
 
                               if (success) {
+                                // Record changes in daily sales summary for reports
+                                if (soldChange > 0 && currentOrganizationId != null) {
+                                  await db.dailySalesSummaryDao.recordSale(
+                                    organizationId: currentOrganizationId!,
+                                    itemId: item.id,
+                                    quantity: soldChange,
+                                    unitPrice: parsedPrice ?? item.price ?? 0,
+                                    unitCost: item.costPrice ?? 0,
+                                    currentStock: item.stock - soldChange,
+                                  );
+                                }
+                                if (spoilageChange > 0 && currentOrganizationId != null) {
+                                  await db.dailySalesSummaryDao.recordSpoilage(
+                                    organizationId: currentOrganizationId!,
+                                    itemId: item.id,
+                                    quantity: spoilageChange,
+                                    currentStock: item.stock - spoilageChange,
+                                  );
+                                }
+
                                 if (!navigator.mounted || !messenger.mounted) return;
                                 navigator.pop();
                                 messenger.showSnackBar(

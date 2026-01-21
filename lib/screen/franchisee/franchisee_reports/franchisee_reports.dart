@@ -6,6 +6,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'franchisee_reports_mobile.dart';
 import 'franchisee_reports_desktop.dart';
 
+const List<String> _monthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
 
@@ -20,6 +35,7 @@ class ReportsPageState extends State<ReportsPage> {
   int? selectedItemId; // null = "All Items"
   String selectedPeriod = 'Weekly';
   DateTime currentDate = DateTime.now();
+  DateTime? selectedSpecificDate; // null = show range, non-null = show specific date
   String selectedMetric = 'sold';
 
   // Data from database
@@ -28,7 +44,15 @@ class ReportsPageState extends State<ReportsPage> {
   Map<String, List<double>> chartData = {};
   double totalSold = 0;
   double totalSpoilage = 0;
+  // Specific date totals (when a date is selected from calendar)
+  double selectedDateSold = 0;
+  double selectedDateSpoilage = 0;
   bool isLoading = true;
+  int _chartRequestId = 0;
+
+  // Getters for display - show specific date totals when selected, otherwise period totals
+  double get displayTotalSold => selectedSpecificDate != null ? selectedDateSold : totalSold;
+  double get displayTotalSpoilage => selectedSpecificDate != null ? selectedDateSpoilage : totalSpoilage;
 
   final List<String> periods = ['Weekly', 'Monthly', 'Yearly'];
   static const String orgIdKey = 'current_organization_id';
@@ -44,7 +68,6 @@ class ReportsPageState extends State<ReportsPage> {
     setState(() => isLoading = true);
 
     try {
-      // Get current organization from auth service or local storage
       await loadCurrentOrganization();
 
       List<Item> items;
@@ -57,13 +80,17 @@ class ReportsPageState extends State<ReportsPage> {
       if (mounted) {
         setState(() {
           allItems = items;
-          calculateChartData();
-          calculateTotals();
-          isLoading = false;
+          if (selectedItemId != null &&
+              items.every((item) => item.id != selectedItemId)) {
+            selectedItemId = null;
+          }
         });
       }
+
+      await calculateChartData();
     } catch (e) {
       print('❌ Error loading reports data: $e');
+    } finally {
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -99,101 +126,107 @@ class ReportsPageState extends State<ReportsPage> {
   }
 
   /// Calculate chart data based on selected item and period
-  void calculateChartData() {
-    if (selectedItemId == null) {
-      // All items combined
-      calculateAllItemsData();
-    } else {
-      // Single item
-      calculateSingleItemData(selectedItemId!);
+  Future<void> calculateChartData() async {
+    final periodConfig = _getPeriodConfigForPeriod(); // Always get period-based config
+    final displayConfig = _getPeriodConfig(); // Gets single-day if specific date selected
+    final requestId = ++_chartRequestId;
+
+    if (mounted) {
+      setState(() {
+        chartData = {
+          'sold': List<double>.filled(displayConfig.bucketCount, 0.0),
+          'spoilage': List<double>.filled(displayConfig.bucketCount, 0.0),
+        };
+        totalSold = 0;
+        totalSpoilage = 0;
+        selectedDateSold = 0;
+        selectedDateSpoilage = 0;
+      });
     }
-  }
 
-  /// Calculate totals for the metric cards
-  void calculateTotals() {
-    if (selectedItemId == null) {
-      // Sum all items
-      totalSold = allItems.fold(0, (sum, item) => sum + item.sold);
-      totalSpoilage = allItems.fold(0, (sum, item) => sum + item.spoilage);
-    } else {
-      // Single item
-      final item = allItems.firstWhere((i) => i.id == selectedItemId);
-      totalSold = item.sold.toDouble();
-      totalSpoilage = item.spoilage.toDouble();
+    if (currentOrganizationId == null) {
+      return;
     }
-  }
 
-  /// Calculate chart data for all items
-  void calculateAllItemsData() {
-    // For now, we'll use mock data since we don't have historical tracking
-    // In a real app, you'd query historical data from a transactions table
+    try {
+      // Fetch summaries for the full period range
+      final summaries = await db.dailySalesSummaryDao.getSummariesForDateRange(
+        organizationId: currentOrganizationId!,
+        startDate: periodConfig.startDate,
+        endDate: periodConfig.endDate,
+      );
 
-    if (selectedPeriod == 'Weekly') {
-      // Generate realistic data based on current totals
-      final avgPerDay = totalSold / 7;
-      chartData = {
-        'sold': List.generate(7, (i) => avgPerDay * (0.8 + (i % 3) * 0.2)),
-        'spoilage': List.generate(
-          7,
-          (i) => totalSpoilage / 7 * (0.7 + (i % 3) * 0.3),
-        ),
-      };
-    } else if (selectedPeriod == 'Monthly') {
-      final avgPerMonth = totalSold / 6;
-      chartData = {
-        'sold': List.generate(6, (i) => avgPerMonth * (0.8 + (i % 3) * 0.2)),
-        'spoilage': List.generate(
-          6,
-          (i) => totalSpoilage / 6 * (0.7 + (i % 3) * 0.3),
-        ),
-      };
-    } else {
-      final avgPerYear = totalSold / 3;
-      chartData = {
-        'sold': List.generate(3, (i) => avgPerYear * (0.85 + i * 0.1)),
-        'spoilage': List.generate(
-          3,
-          (i) => totalSpoilage / 3 * (0.8 + i * 0.15),
-        ),
-      };
-    }
-  }
+      final iterable = selectedItemId == null
+          ? summaries
+          : summaries.where((summary) => summary.itemId == selectedItemId);
 
-  /// Calculate chart data for a single item
-  void calculateSingleItemData(int itemId) {
-    final item = allItems.firstWhere((i) => i.id == itemId);
+      // Calculate period totals
+      double periodSold = 0;
+      double periodSpoilage = 0;
+      
+      // Calculate specific date/month totals (if selected)
+      double dateSold = 0;
+      double dateSpoilage = 0;
+      
+      // Calculate chart data for display
+      final soldSeries = List<double>.filled(displayConfig.bucketCount, 0.0);
+      final spoilageSeries = List<double>.filled(displayConfig.bucketCount, 0.0);
 
-    if (selectedPeriod == 'Weekly') {
-      final avgPerDay = item.sold / 7;
-      chartData = {
-        'sold': List.generate(7, (i) => avgPerDay * (0.8 + (i % 3) * 0.2)),
-        'spoilage': List.generate(
-          7,
-          (i) => item.spoilage / 7 * (0.7 + (i % 3) * 0.3),
-        ),
-      };
-    } else if (selectedPeriod == 'Monthly') {
-      final avgPerMonth = item.sold / 6;
-      chartData = {
-        'sold': List.generate(6, (i) => avgPerMonth * (0.8 + (i % 3) * 0.2)),
-        'spoilage': List.generate(
-          6,
-          (i) => item.spoilage / 6 * (0.7 + (i % 3) * 0.3),
-        ),
-      };
-    } else {
-      final avgPerYear = item.sold / 3;
-      chartData = {
-        'sold': List.generate(3, (i) => avgPerYear * (0.85 + i * 0.1)),
-        'spoilage': List.generate(
-          3,
-          (i) => item.spoilage / 3 * (0.8 + i * 0.15),
-        ),
-      };
+      for (final summary in iterable) {
+        // Add to period totals
+        periodSold += summary.quantitySold.toDouble();
+        periodSpoilage += summary.quantitySpoiled.toDouble();
+        
+        // Check if this matches the selected specific date
+        if (selectedSpecificDate != null) {
+          final summaryDate = summary.summaryDate;
+          final selectedDate = selectedSpecificDate!;
+          
+          final normalizedSummary = _normalizeDate(summaryDate);
+          final normalizedSelected = _normalizeDate(selectedDate);
+          final matches = normalizedSummary.year == normalizedSelected.year &&
+                    normalizedSummary.month == normalizedSelected.month &&
+                    normalizedSummary.day == normalizedSelected.day;
+          
+          if (matches) {
+            dateSold += summary.quantitySold.toDouble();
+            dateSpoilage += summary.quantitySpoiled.toDouble();
+          }
+        }
+        
+        // Add to chart display data
+        final bucketIndex = displayConfig.resolveBucket(summary.summaryDate);
+        if (bucketIndex == null) continue;
+        soldSeries[bucketIndex] += summary.quantitySold.toDouble();
+        spoilageSeries[bucketIndex] += summary.quantitySpoiled.toDouble();
+      }
+
+      if (!mounted || requestId != _chartRequestId) {
+        return;
+      }
+
+      setState(() {
+        chartData = {
+          'sold': soldSeries,
+          'spoilage': spoilageSeries,
+        };
+        totalSold = periodSold;
+        totalSpoilage = periodSpoilage;
+        selectedDateSold = dateSold;
+        selectedDateSpoilage = dateSpoilage;
+      });
+    } catch (e) {
+      print('❌ Error calculating chart data: $e');
     }
   }
 
   String getDateRangeText() {
+    // If a specific date is selected, show just that
+    if (selectedSpecificDate != null) {
+      return formatDate(selectedSpecificDate!);
+    }
+    
+    // Otherwise show the period-based text
     if (selectedPeriod == 'Weekly') {
       final start = currentDate.subtract(const Duration(days: 6));
       return '${formatDate(start)} - ${formatDate(currentDate)}';
@@ -206,63 +239,29 @@ class ReportsPageState extends State<ReportsPage> {
     }
   }
 
+  bool get hasSpecificDateSelected => selectedSpecificDate != null;
+
+  void clearDateSelection() {
+    setState(() {
+      selectedSpecificDate = null;
+      currentDate = DateTime.now();
+    });
+    calculateChartData();
+  }
+
   String formatDate(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    return '${_monthNames[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   String formatMonthYear(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.year}';
+    return '${_monthNames[date.month - 1]} ${date.year}';
   }
 
   List<String> getChartLabels() {
-    if (selectedPeriod == 'Weekly') {
-      final labels = <String>[];
-      for (int i = 6; i >= 0; i--) {
-        final date = currentDate.subtract(Duration(days: i));
-        labels.add('${formatMonthYear(date).split(' ')[0]} ${date.day}');
-      }
-      return labels;
-    } else if (selectedPeriod == 'Monthly') {
-      final labels = <String>[];
-      for (int i = 5; i >= 0; i--) {
-        final date = DateTime(currentDate.year, currentDate.month - i, 1);
-        labels.add(formatMonthYear(date).split(' ')[0]);
-      }
-      return labels;
-    } else {
-      return List.generate(3, (i) => (currentDate.year - 2 + i).toString());
-    }
+    return _getPeriodConfig().labels;
   }
 
-  void navigateDate(bool forward) {
+  Future<void> navigateDate(bool forward) async {
     setState(() {
       if (selectedPeriod == 'Weekly') {
         currentDate = forward
@@ -277,8 +276,111 @@ class ReportsPageState extends State<ReportsPage> {
             ? DateTime(currentDate.year + 3, 1, 1)
             : DateTime(currentDate.year - 3, 1, 1);
       }
-      calculateChartData();
     });
+    await calculateChartData();
+  }
+
+  /// Opens a picker suited to the current aggregation period
+  Future<void> openPeriodPicker(BuildContext context) async {
+    if (selectedPeriod == 'Yearly') {
+      final selectedYear = await _showYearPickerDialog(context);
+      if (selectedYear == null || !mounted) {
+        return;
+      }
+
+      setState(() {
+        selectedSpecificDate = DateTime(selectedYear, 1, 1);
+        currentDate = DateTime(selectedYear, 1, 1);
+      });
+      await calculateChartData();
+      return;
+    }
+
+    // Show date picker for Weekly and Monthly periods
+    await _openDatePicker(context);
+  }
+
+  Future<void> _openDatePicker(BuildContext context) async {
+    final now = DateTime.now();
+    final firstSelectableDate = DateTime(now.year - 20, 1, 1);
+    final lastSelectableDate = DateTime(now.year + 5, 12, 31);
+    final normalizedCurrent = _normalizeDate(currentDate);
+    final initialDate = normalizedCurrent.isBefore(firstSelectableDate)
+        ? firstSelectableDate
+        : (normalizedCurrent.isAfter(lastSelectableDate)
+            ? lastSelectableDate
+            : normalizedCurrent);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstSelectableDate,
+      lastDate: lastSelectableDate,
+      helpText: 'Select a date',
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      initialDatePickerMode: DatePickerMode.day,
+    );
+
+    if (picked == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      selectedSpecificDate = picked;
+      currentDate = picked;
+    });
+    await calculateChartData();
+  }
+
+  DateTime _alignDateToPeriod(DateTime date) {
+    final normalized = _normalizeDate(date);
+
+    if (selectedPeriod == 'Weekly') {
+      final daysUntilEnd = (DateTime.sunday - normalized.weekday) % 7;
+      return normalized.add(Duration(days: daysUntilEnd));
+    }
+
+    if (selectedPeriod == 'Monthly') {
+      return DateTime(normalized.year, normalized.month, 1);
+    }
+
+    return normalized;
+  }
+
+  Future<int?> _showYearPickerDialog(BuildContext context) async {
+    final now = DateTime.now();
+    // Optimized: Reduced date range to prevent performance issues and crashes
+    // Using 20 years back and 5 years forward instead of 1900-2076
+    final firstDate = DateTime(now.year - 20, 1, 1);
+    final lastDate = DateTime(now.year + 5, 1, 1);
+    final initialYear =
+        currentDate.year.clamp(firstDate.year, lastDate.year).toInt();
+
+    return showDialog<int>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Select Year'),
+          content: SizedBox(
+            width: 320,
+            height: 320,
+            child: YearPicker(
+              firstDate: firstDate,
+              lastDate: lastDate,
+              initialDate: DateTime(initialYear, 1, 1),
+              selectedDate: DateTime(initialYear, 1, 1),
+              onChanged: (value) => Navigator.of(context).pop(value.year),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String getSelectedItemName() {
@@ -300,5 +402,149 @@ class ReportsPageState extends State<ReportsPage> {
       return ReportsPageMobile(state: this);
     }
     return ReportsPageDesktop(state: this);
+  }
+}
+
+class _ChartPeriodConfig {
+  const _ChartPeriodConfig({
+    required this.startDate,
+    required this.endDate,
+    required this.bucketCount,
+    required this.labels,
+    required this.resolveBucket,
+  });
+
+  final DateTime startDate;
+  final DateTime endDate;
+  final int bucketCount;
+  final List<String> labels;
+  final int? Function(DateTime date) resolveBucket;
+}
+
+DateTime _normalizeDate(DateTime date) => DateTime(date.year, date.month, date.day);
+
+_ChartPeriodConfig _buildWeeklyConfig(DateTime current) {
+  final end = _normalizeDate(current);
+  final start = end.subtract(const Duration(days: 6));
+  final labels = List<String>.generate(7, (index) {
+    final date = start.add(Duration(days: index));
+    return '${_monthNames[date.month - 1]} ${date.day}';
+  });
+
+  return _ChartPeriodConfig(
+    startDate: start,
+    endDate: end,
+    bucketCount: 7,
+    labels: labels,
+    resolveBucket: (date) {
+      final normalized = _normalizeDate(date);
+      final diff = normalized.difference(start).inDays;
+      if (diff < 0 || diff >= 7) {
+        return null;
+      }
+      return diff;
+    },
+  );
+}
+
+_ChartPeriodConfig _buildMonthlyConfig(DateTime current) {
+  final end = DateTime(current.year, current.month + 1, 0);
+  final start = DateTime(current.year, current.month - 5, 1);
+  final labels = List<String>.generate(6, (index) {
+    final date = DateTime(start.year, start.month + index, 1);
+    return _monthNames[date.month - 1];
+  });
+
+  return _ChartPeriodConfig(
+    startDate: start,
+    endDate: end,
+    bucketCount: 6,
+    labels: labels,
+    resolveBucket: (date) {
+      final normalized = DateTime(date.year, date.month, 1);
+      final diff =
+          (normalized.year - start.year) * 12 + (normalized.month - start.month);
+      if (diff < 0 || diff >= 6) {
+        return null;
+      }
+      return diff;
+    },
+  );
+}
+
+_ChartPeriodConfig _buildYearlyConfig(DateTime current) {
+  final startYear = current.year - 2;
+  final start = DateTime(startYear, 1, 1);
+  final end = DateTime(current.year, 12, 31);
+  final labels =
+      List<String>.generate(3, (index) => (startYear + index).toString());
+
+  return _ChartPeriodConfig(
+    startDate: start,
+    endDate: end,
+    bucketCount: 3,
+    labels: labels,
+    resolveBucket: (date) {
+      final yearIndex = date.year - startYear;
+      if (yearIndex < 0 || yearIndex >= 3) {
+        return null;
+      }
+      return yearIndex;
+    },
+  );
+}
+
+_ChartPeriodConfig _buildSingleDayConfig(DateTime date) {
+  final normalized = _normalizeDate(date);
+  final label = '${_monthNames[normalized.month - 1]} ${normalized.day}';
+
+  return _ChartPeriodConfig(
+    startDate: normalized,
+    endDate: normalized,
+    bucketCount: 1,
+    labels: [label],
+    resolveBucket: (d) {
+      final normalizedD = _normalizeDate(d);
+      if (normalizedD.year == normalized.year &&
+          normalizedD.month == normalized.month &&
+          normalizedD.day == normalized.day) {
+        return 0;
+      }
+      return null;
+    },
+  );
+}
+
+extension on ReportsPageState {
+  _ChartPeriodConfig _getPeriodConfig() {
+    // If a specific date is selected, show only that data
+    if (selectedSpecificDate != null) {
+      return _buildSingleDayConfig(selectedSpecificDate!);
+    }
+
+    final normalizedCurrent = _normalizeDate(currentDate);
+
+    switch (selectedPeriod) {
+      case 'Monthly':
+        return _buildMonthlyConfig(normalizedCurrent);
+      case 'Yearly':
+        return _buildYearlyConfig(normalizedCurrent);
+      default:
+        return _buildWeeklyConfig(normalizedCurrent);
+    }
+  }
+
+  // Always returns period-based config (ignores selectedSpecificDate)
+  _ChartPeriodConfig _getPeriodConfigForPeriod() {
+    final normalizedCurrent = _normalizeDate(currentDate);
+
+    switch (selectedPeriod) {
+      case 'Monthly':
+        return _buildMonthlyConfig(normalizedCurrent);
+      case 'Yearly':
+        return _buildYearlyConfig(normalizedCurrent);
+      default:
+        return _buildWeeklyConfig(normalizedCurrent);
+    }
   }
 }

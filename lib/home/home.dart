@@ -211,6 +211,7 @@ class HomeScreenState extends State<HomeScreen> {
           Icons.shopping_cart,
           "Products",
           const FranchiseeProductsView(),
+          //const ItemsPage(),
         );
       } else {
         final isRestrictedEmployee = !(permissions.canAddInventory ||

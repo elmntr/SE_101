@@ -2,7 +2,7 @@ import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import '../../../database/app_database.dart';
+import '../../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/screen/employee/employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';

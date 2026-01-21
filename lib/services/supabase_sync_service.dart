@@ -978,9 +978,24 @@ class SupabaseSyncService {
       // Add explicit organization filter using LOCAL IDs (since Supabase stores integers)
       if (_currentOrganizationId != null) {
         if (_currentOrganizationType == 'franchisee' && _parentCommissaryId != null) {
-          // Franchisee: pull own items + master items from parent commissary
+          // Franchisee with known parent: pull own items + master items from parent commissary
           query = query.or('organization_id.eq.$_currentOrganizationId,and(organization_id.eq.$_parentCommissaryId,master_item_id.is.null)');
           AppLogger.sync('   🔍 Filtering items: org=$_currentOrganizationId OR (org=$_parentCommissaryId AND master_item_id IS NULL)');
+        } else if (_currentOrganizationType == 'franchisee' && _parentCommissaryId == null) {
+          // ✅ FALLBACK: Franchisee without parent link - try to find commissary from local DB
+          AppLogger.sync('   ⚠️ Franchisee has no parentCommissaryId, trying fallback...');
+          final commissaries = await db.organizationsDao.getAllOrganizations(type: 'commissary');
+          if (commissaries.isNotEmpty) {
+            final fallbackCommissaryId = commissaries.first.id;
+            AppLogger.sync('   🔍 Using fallback commissary ID: $fallbackCommissaryId');
+            // Pull own items + all commissary master items (items without master_item_id)
+            query = query.or('organization_id.eq.$_currentOrganizationId,and(organization_id.eq.$fallbackCommissaryId,master_item_id.is.null)');
+            AppLogger.sync('   🔍 Filtering items: org=$_currentOrganizationId OR (org=$fallbackCommissaryId AND master_item_id IS NULL)');
+          } else {
+            // No commissary found, just pull own items
+            query = query.eq('organization_id', _currentOrganizationId!);
+            AppLogger.sync('   🔍 No commissary found, filtering items by org ID: $_currentOrganizationId');
+          }
         } else {
           // Commissary or single org: pull only own organization's items
           query = query.eq('organization_id', _currentOrganizationId!);
