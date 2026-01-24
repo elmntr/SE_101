@@ -1,9 +1,11 @@
-// lib/screen/franchisee/franchisee_products_view.dart
+// lib/screen/franchisee/franchisee_products_view/franchisee_products_view.dart
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import '../../database/app_database.dart';
+import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'franchisee_products_view_mobile.dart';
+import 'franchisee_products_view_desktop.dart';
 
 /// Franchisee Products View Page
 /// - View-only access to commissary products (no create/edit/delete)
@@ -12,50 +14,50 @@ class FranchiseeProductsView extends StatefulWidget {
   const FranchiseeProductsView({super.key});
 
   @override
-  State<FranchiseeProductsView> createState() => _FranchiseeProductsViewState();
+  State<FranchiseeProductsView> createState() => FranchiseeProductsViewState();
 }
 
-class _FranchiseeProductsViewState extends State<FranchiseeProductsView> {
+class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
   late AppDatabase db;
 
   List<Item> commissaryProducts = [];
   List<Category> dbCategories = [];
-  int? _commissaryId;
-  bool _isLoading = true;
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
+  int? commissaryId;
+  bool isLoading = true;
+  String searchQuery = '';
+  final TextEditingController searchController = TextEditingController();
 
   // Cache for recipe ingredients
-  Map<int, List<RecipeIngredientWithDetails>> _recipeCache = {};
+  Map<int, List<RecipeIngredientWithDetails>> recipeCache = {};
 
   @override
   void initState() {
     super.initState();
     db = database;
-    _loadData();
+    loadData();
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> loadData() async {
+    setState(() => isLoading = true);
 
     try {
       // Get commissary ID from the franchisee's parent organization
       await _loadCommissaryId();
       
-      print('🔍 DEBUG: Commissary ID resolved to: $_commissaryId');
+      print('🔍 DEBUG: Commissary ID resolved to: $commissaryId');
 
-      if (_commissaryId == null) {
+      if (commissaryId == null) {
         if (mounted) {
           setState(() {
             commissaryProducts = [];
             dbCategories = [];
-            _isLoading = false;
+            isLoading = false;
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -67,7 +69,7 @@ class _FranchiseeProductsViewState extends State<FranchiseeProductsView> {
       }
 
       // Load master items from commissary
-      final items = await db.itemsDao.getCommissaryMasterItems(_commissaryId!);
+      final items = await db.itemsDao.getCommissaryMasterItems(commissaryId!);
       print('🔍 DEBUG: Found ${items.length} commissary master items');
       
       // Also check all items in the database for debugging
@@ -86,13 +88,13 @@ class _FranchiseeProductsViewState extends State<FranchiseeProductsView> {
         setState(() {
           commissaryProducts = items;
           dbCategories = categories;
-          _isLoading = false;
+          isLoading = false;
         });
       }
     } catch (e) {
       print('Error loading data: $e');
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading products: $e')),
         );
@@ -127,31 +129,31 @@ class _FranchiseeProductsViewState extends State<FranchiseeProductsView> {
         if (organization != null) {
           // If this is a franchisee, get the parent commissary
           if (organization.type == 'franchisee' && organization.parentCommissaryId != null) {
-            _commissaryId = organization.parentCommissaryId;
-            print('🔍 DEBUG: Set commissaryId from parent: $_commissaryId');
+            commissaryId = organization.parentCommissaryId;
+            print('🔍 DEBUG: Set commissaryId from parent: $commissaryId');
           } else if (organization.type == 'commissary') {
             // If this is a commissary, use its own ID
-            _commissaryId = organization.id;
-            print('🔍 DEBUG: Set commissaryId from self (commissary): $_commissaryId');
+            commissaryId = organization.id;
+            print('🔍 DEBUG: Set commissaryId from self (commissary): $commissaryId');
           }
         }
       }
     }
 
     // Fallback: Try to get any commissary from the database
-    if (_commissaryId == null) {
+    if (commissaryId == null) {
       print('🔍 DEBUG: Commissary ID still null, trying fallback...');
       final commissaries = await db.organizationsDao.getAllOrganizations(type: 'commissary');
       print('🔍 DEBUG: Found ${commissaries.length} commissaries in database');
       if (commissaries.isNotEmpty) {
-        _commissaryId = commissaries.first.id;
-        print('🔍 DEBUG: Using fallback commissary ID: $_commissaryId');
+        commissaryId = commissaries.first.id;
+        print('🔍 DEBUG: Using fallback commissary ID: $commissaryId');
       }
     }
   }
 
   Future<void> _loadRecipeIngredients(List<Item> items) async {
-    _recipeCache.clear();
+    recipeCache.clear();
 
     for (final item in items) {
       final recipeIngredients = await db.recipeIngredientsDao.getIngredientsForItem(item.id);
@@ -167,11 +169,11 @@ class _FranchiseeProductsViewState extends State<FranchiseeProductsView> {
         }
       }
       
-      _recipeCache[item.id] = detailedList;
+      recipeCache[item.id] = detailedList;
     }
   }
 
-  String _categoryNameForId(int? id) {
+  String categoryNameForId(int? id) {
     if (id == null) return 'Uncategorized';
     try {
       return dbCategories.firstWhere((c) => c.id == id).name;
@@ -180,8 +182,8 @@ class _FranchiseeProductsViewState extends State<FranchiseeProductsView> {
     }
   }
 
-  String _getIngredientsDisplay(int itemId) {
-    final ingredients = _recipeCache[itemId];
+  String getIngredientsDisplay(int itemId) {
+    final ingredients = recipeCache[itemId];
     if (ingredients == null || ingredients.isEmpty) {
       return 'No recipe';
     }
@@ -190,8 +192,8 @@ class _FranchiseeProductsViewState extends State<FranchiseeProductsView> {
         .join(', ');
   }
 
-  void _showProductDetails(Item item) {
-    final ingredients = _recipeCache[item.id] ?? [];
+  void showProductDetails(Item item) {
+    final ingredients = recipeCache[item.id] ?? [];
 
     showDialog(
       context: context,
@@ -230,7 +232,7 @@ class _FranchiseeProductsViewState extends State<FranchiseeProductsView> {
                   const Divider(height: 24),
 
                   // Product Info
-                  _buildInfoRow('Category', _categoryNameForId(item.categoryId)),
+                  _buildInfoRow('Category', categoryNameForId(item.categoryId)),
                   _buildInfoRow('Unit', item.unit),
                   if (item.costPrice != null)
                     _buildInfoRow('Cost Price', '₱${item.costPrice!.toStringAsFixed(2)}'),
@@ -349,201 +351,19 @@ class _FranchiseeProductsViewState extends State<FranchiseeProductsView> {
     );
   }
 
-  List<Item> get _filteredProducts {
-    if (_searchQuery.isEmpty) return commissaryProducts;
+  List<Item> get filteredProducts {
+    if (searchQuery.isEmpty) return commissaryProducts;
     return commissaryProducts
-        .where((item) => item.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .where((item) => item.name.toLowerCase().contains(searchQuery.toLowerCase()))
         .toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = AppLayout.isDesktop(context);
-
-    return Scaffold(
-      backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(isDesktop ? 16 : 12),
-          child: Column(
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Commissary Products',
-                    style: TextStyle(
-                      fontSize: isDesktop ? 30 : 26,
-                      fontFamily: fontAll,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.refresh, size: 28),
-                        tooltip: 'Refresh',
-                        onPressed: _loadData,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined, size: 28),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // Search bar
-              Container(
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    hintText: "Search products...",
-                    icon: Icon(Icons.search),
-                    border: InputBorder.none,
-                  ),
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value);
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Info banner
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[200]!),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Viewing products from commissary. Tap a product to see recipe details.',
-                        style: TextStyle(color: Colors.blue, fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Products table
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(isDesktop ? 20 : 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _filteredProducts.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _searchQuery.isNotEmpty
-                                        ? Icons.search_off
-                                        : Icons.inventory_2_outlined,
-                                    size: 64,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    _searchQuery.isNotEmpty
-                                        ? 'No products match your search'
-                                        : 'No products available from commissary',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : buildUniversalTable(
-                              headers: [
-                                'Product Name',
-                                'Category',
-                                'Unit',
-                                'Recipe Ingredients',
-                                '',
-                              ],
-                              rows: _filteredProducts.map((item) => [
-                                    GestureDetector(
-                                      onTap: () => _showProductDetails(item),
-                                      child: MouseRegion(
-                                        cursor: SystemMouseCursors.click,
-                                        child: Text(
-                                          item.name,
-                                          style: const TextStyle(fontWeight: FontWeight.w500),
-                                        ),
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () => _showProductDetails(item),
-                                      child: MouseRegion(
-                                        cursor: SystemMouseCursors.click,
-                                        child: Text(_categoryNameForId(item.categoryId)),
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () => _showProductDetails(item),
-                                      child: MouseRegion(
-                                        cursor: SystemMouseCursors.click,
-                                        child: Text(item.unit),
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () => _showProductDetails(item),
-                                      child: MouseRegion(
-                                        cursor: SystemMouseCursors.click,
-                                        child: SizedBox(
-                                          width: 200,
-                                          child: Text(
-                                            _getIngredientsDisplay(item.id),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.visibility, color: Colors.blue),
-                                      tooltip: 'View Details',
-                                      onPressed: () => _showProductDetails(item),
-                                    ),
-                                  ]).toList(),
-                              smallHeaderWidth: 20,
-                              largeHeaderWidth: isDesktop ? 120 : 80,
-                            ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    if (AppLayout.isDesktop(context) == false) {
+      return FranchiseeProductsViewMobile(state: this);
+    }
+    return FranchiseeProductsViewDesktop(state: this);
   }
 }
 

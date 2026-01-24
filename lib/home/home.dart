@@ -14,7 +14,7 @@ import '../screen/franchisee/franchisee_reports/franchisee_reports.dart';
 import '../screen/franchisee/franchisee_inventory/franchisee_inventory.dart';
 import '../screen/franchisee/franchisee_items/franchisee_items.dart';
 import '../screen/franchisee/franchisee_employee/franchisee_employee.dart';
-import '../screen/franchisee/franchisee_products_view.dart';
+import '../screen/franchisee/franchisee_products_view/franchisee_products_view.dart';
 import '../screen/employee/employee_account.dart';
 
 // Import the separated UI files
