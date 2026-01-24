@@ -1,8 +1,0 @@
-{
-  "elements": {},
-  "imports": [
-    "package:drift/native.dart",
-    "package:flutter_test/flutter_test.dart",
-    "package:chickenjoo_inventory/database/app_database.dart"
-  ]
-}

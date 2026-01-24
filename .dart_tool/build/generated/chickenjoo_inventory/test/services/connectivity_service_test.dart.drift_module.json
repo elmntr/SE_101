@@ -1,8 +1,0 @@
-{
-  "elements": {},
-  "imports": [
-    "package:flutter/services.dart",
-    "package:flutter_test/flutter_test.dart",
-    "package:chickenjoo_inventory/services/connectivity_service.dart"
-  ]
-}
