@@ -59,6 +59,7 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
             dbCategories = [];
             isLoading = false;
           });
+          ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('No commissary linked. Please contact support.'),
@@ -95,6 +96,7 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
       print('Error loading data: $e');
       if (mounted) {
         setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading products: $e')),
         );
