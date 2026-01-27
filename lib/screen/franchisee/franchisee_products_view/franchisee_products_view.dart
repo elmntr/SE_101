@@ -24,23 +24,51 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
   List<Category> dbCategories = [];
   int? commissaryId;
   bool isLoading = true;
+  bool _isWaitingForSync = false;  // Track if we're waiting for initial sync
   String searchQuery = '';
   final TextEditingController searchController = TextEditingController();
 
   // Cache for recipe ingredients
   Map<int, List<RecipeIngredientWithDetails>> recipeCache = {};
+  
+  // Store original callback to restore later
+  Function()? _originalSyncCallback;
 
   @override
   void initState() {
     super.initState();
     db = database;
+    _setupSyncListener();
     loadData();
   }
 
   @override
   void dispose() {
     searchController.dispose();
+    // Restore original callback when disposing
+    if (_originalSyncCallback != null) {
+      syncService.onSyncComplete = _originalSyncCallback;
+    }
     super.dispose();
+  }
+  
+  /// Setup listener for sync completion to reload data
+  void _setupSyncListener() {
+    // Store original callback
+    _originalSyncCallback = syncService.onSyncComplete;
+    
+    // Chain our callback with the original
+    syncService.onSyncComplete = () {
+      // Call original callback if it exists
+      _originalSyncCallback?.call();
+      
+      // Reload data when sync completes (only if we're waiting or have no items)
+      if (mounted && (_isWaitingForSync || commissaryProducts.isEmpty)) {
+        print('🔄 Sync completed, reloading commissary products...');
+        _isWaitingForSync = false;
+        loadData();
+      }
+    };
   }
 
   Future<void> loadData() async {
@@ -53,6 +81,23 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
       print('🔍 DEBUG: Commissary ID resolved to: $commissaryId');
 
       if (commissaryId == null) {
+        // Check if sync is still in progress - don't show error yet
+        final allOrgs = await db.organizationsDao.getAllOrganizations();
+        if (allOrgs.isEmpty) {
+          // Database is empty, likely first launch - wait for sync
+          print('🔍 DEBUG: Database empty, waiting for initial sync...');
+          _isWaitingForSync = true;
+          if (mounted) {
+            setState(() {
+              commissaryProducts = [];
+              dbCategories = [];
+              isLoading = true;  // Keep showing loading indicator
+            });
+          }
+          return;
+        }
+        
+        // Database has orgs but no commissary linked
         if (mounted) {
           setState(() {
             commissaryProducts = [];
@@ -73,11 +118,29 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
       final items = await db.itemsDao.getCommissaryMasterItems(commissaryId!);
       print('🔍 DEBUG: Found ${items.length} commissary master items');
       
-      // Also check all items in the database for debugging
-      final allItems = await db.itemsDao.getAllItems();
-      print('🔍 DEBUG: Total items in database: ${allItems.length}');
-      for (var item in allItems) {
-        print('   - Item: ${item.name}, orgId: ${item.organizationId}, masterItemId: ${item.masterItemId}, isDeleted: ${item.isDeleted}');
+      // Check if items are empty but sync might still be running
+      if (items.isEmpty) {
+        final allItems = await db.itemsDao.getAllItems();
+        print('🔍 DEBUG: Total items in database: ${allItems.length}');
+        
+        if (allItems.isEmpty) {
+          // No items at all - might be waiting for sync
+          print('🔍 DEBUG: No items in database, waiting for sync...');
+          _isWaitingForSync = true;
+          if (mounted) {
+            setState(() {
+              commissaryProducts = [];
+              dbCategories = [];
+              isLoading = true;  // Keep showing loading indicator
+            });
+          }
+          return;
+        }
+        
+        // Debug: print all items if commissary items are empty but others exist
+        for (var item in allItems) {
+          print('   - Item: ${item.name}, orgId: ${item.organizationId}, masterItemId: ${item.masterItemId}, isDeleted: ${item.isDeleted}');
+        }
       }
       
       final categories = await db.categoriesDao.getAllCategories();
