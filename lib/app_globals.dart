@@ -1,7 +1,17 @@
 // lib/app_globals.dart
+import 'package:flutter/foundation.dart';
 import 'database/app_database.dart';
 import 'services/supabase_sync_service.dart';
 import 'services/supabase_auth_service.dart';
+
+/// Global notifier that fires when sync completes
+/// Screens can listen to this to refresh their data
+final syncCompleteNotifier = ValueNotifier<int>(0);
+
+/// Notify all listeners that sync has completed
+void notifySyncComplete() {
+  syncCompleteNotifier.value++;
+}
 
 class AppGlobals {
   // Private constructor

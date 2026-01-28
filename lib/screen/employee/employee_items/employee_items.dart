@@ -43,6 +43,22 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
     super.initState();
     db = database;
     loadData();
+    
+    // ✅ FIX: Listen to sync completion to refresh data
+    syncCompleteNotifier.addListener(_onSyncComplete);
+  }
+  
+  @override
+  void dispose() {
+    syncCompleteNotifier.removeListener(_onSyncComplete);
+    super.dispose();
+  }
+  
+  void _onSyncComplete() {
+    if (mounted) {
+      print('🔄 Sync completed, refreshing employee items...');
+      loadData();
+    }
   }
 
   void toggleChangeStockMode() {

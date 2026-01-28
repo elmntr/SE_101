@@ -32,8 +32,8 @@ class FranchiseeProductsViewMobile extends StatelessWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.refresh, size: 28),
-                        tooltip: 'Refresh',
-                        onPressed: state.loadData,
+                        tooltip: 'Refresh products from cloud',
+                        onPressed: state.refreshProducts,
                       ),
                       IconButton(
                         icon: const Icon(Icons.notifications_outlined, size: 28),
@@ -88,6 +88,26 @@ class FranchiseeProductsViewMobile extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 12),
+              
+              // Record Stock/Sales button (only if user has edit permission)
+              if (state.canEditStock)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: state.toggleChangeStockMode,
+                    icon: const Icon(Icons.edit_note),
+                    label: const Text('Record Stock/Sales Change'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 16),
 
               // Products table
