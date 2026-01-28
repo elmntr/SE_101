@@ -210,7 +210,7 @@ class HomeScreenState extends State<HomeScreen> {
           true,
           Icons.shopping_cart,
           "Products",
-          const FranchiseeProductsView(),
+          FranchiseeProductsView(userData: userData),
           //const ItemsPage(),
         );
       } else {

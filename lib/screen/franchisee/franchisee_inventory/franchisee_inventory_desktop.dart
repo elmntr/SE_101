@@ -132,6 +132,12 @@ class InventoryPageDesktop extends StatelessWidget {
                   ),
 
                 IconButton(
+                  icon: const Icon(Icons.refresh, size: 28),
+                  tooltip: 'Refresh inventory from cloud',
+                  onPressed: state.refreshInventory,
+                ),
+
+                IconButton(
                   icon: const Icon(Icons.notifications_outlined, size: 35),
                   onPressed: () {},
                 ),

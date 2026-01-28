@@ -2,16 +2,20 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
-import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
+import 'package:chickenjoo_inventory/screen/employee/employee_change_item_stock.dart';
 import 'franchisee_products_view_mobile.dart';
 import 'franchisee_products_view_desktop.dart';
 
 /// Franchisee Products View Page
-/// - View-only access to commissary products (no create/edit/delete)
+/// - View access to commissary products
 /// - Shows recipe ingredients for each product
+/// - Employees can record stock changes (sales/spoilage) with tracking
 class FranchiseeProductsView extends StatefulWidget {
-  const FranchiseeProductsView({super.key});
+  final UserData? userData;
+  
+  const FranchiseeProductsView({super.key, this.userData});
 
   @override
   State<FranchiseeProductsView> createState() => FranchiseeProductsViewState();
@@ -27,48 +31,59 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
   bool _isWaitingForSync = false;  // Track if we're waiting for initial sync
   String searchQuery = '';
   final TextEditingController searchController = TextEditingController();
+  
+  // Stock editing mode
+  bool isInChangeStockMode = false;
 
   // Cache for recipe ingredients
   Map<int, List<RecipeIngredientWithDetails>> recipeCache = {};
   
-  // Store original callback to restore later
-  Function()? _originalSyncCallback;
+  /// Get current user data (from widget or auth service)
+  UserData? get currentUserData => widget.userData ?? AppGlobals.instance.authService.currentUser;
+  
+  /// Check if user can edit stock (has edit inventory permission)
+  bool get canEditStock => currentUserData?.permissions.canEditInventory ?? false;
 
   @override
   void initState() {
     super.initState();
     db = database;
-    _setupSyncListener();
     loadData();
+    
+    // ✅ FIX: Listen to sync completion to refresh data
+    syncCompleteNotifier.addListener(_onSyncComplete);
   }
 
   @override
   void dispose() {
     searchController.dispose();
-    // Restore original callback when disposing
-    if (_originalSyncCallback != null) {
-      syncService.onSyncComplete = _originalSyncCallback;
-    }
+    syncCompleteNotifier.removeListener(_onSyncComplete);
     super.dispose();
   }
   
-  /// Setup listener for sync completion to reload data
-  void _setupSyncListener() {
-    // Store original callback
-    _originalSyncCallback = syncService.onSyncComplete;
-    
-    // Chain our callback with the original
-    syncService.onSyncComplete = () {
-      // Call original callback if it exists
-      _originalSyncCallback?.call();
-      
-      // Reload data when sync completes (only if we're waiting or have no items)
-      if (mounted && (_isWaitingForSync || commissaryProducts.isEmpty)) {
-        print('🔄 Sync completed, reloading commissary products...');
-        _isWaitingForSync = false;
-        loadData();
+  void _onSyncComplete() {
+    if (mounted) {
+      print('🔄 Sync completed, reloading commissary products...');
+      _isWaitingForSync = false;
+      loadData();
+    }
+  }
+
+  /// Quick refresh - syncs only items/products from cloud then reloads
+  Future<void> refreshProducts() async {
+    setState(() => isLoading = true);
+    try {
+      await AppGlobals.instance.syncService.syncItemsOnly();
+      // loadData will be called automatically via _onSyncComplete
+    } catch (e) {
+      print('Error refreshing products: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error refreshing: $e')),
+        );
       }
-    };
+    }
   }
 
   Future<void> loadData() async {
@@ -423,8 +438,29 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
         .toList();
   }
 
+  /// Toggle stock change mode - opens the employee stock change page
+  void toggleChangeStockMode() {
+    setState(() {
+      isInChangeStockMode = !isInChangeStockMode;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Stock Change Mode - use existing EmployeeChangeStockPage which tracks who made changes
+    if (isInChangeStockMode && currentUserData != null) {
+      return EmployeeChangeStockPage(
+        userData: currentUserData!,
+        onBack: () async {
+          toggleChangeStockMode();
+          await loadData();  // Refresh data after changes
+        },
+        onRecordSaved: (_) async {
+          await loadData();
+        },
+      );
+    }
+    
     if (AppLayout.isDesktop(context) == false) {
       return FranchiseeProductsViewMobile(state: this);
     }

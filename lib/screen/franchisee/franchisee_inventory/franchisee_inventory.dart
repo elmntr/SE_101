@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../../database/app_database.dart';
+import '../../../../database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,8 +21,12 @@ class InventoryPage extends StatefulWidget {
 
 class InventoryPageState extends State<InventoryPage> {
   late AppDatabase db;
-  List<Item> items = [];
+  
+  /// Items with branch-specific stock data
+  List<ItemWithBranchStock> items = [];
+  
   int? currentOrganizationId;
+  int? commissaryId;  // Parent commissary for master items
   bool isLoading = true;
 
   int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock
@@ -33,6 +38,22 @@ class InventoryPageState extends State<InventoryPage> {
     super.initState();
     db = database;
     loadData();
+    
+    // ✅ FIX: Listen to sync completion to refresh data
+    syncCompleteNotifier.addListener(_onSyncComplete);
+  }
+  
+  @override
+  void dispose() {
+    syncCompleteNotifier.removeListener(_onSyncComplete);
+    super.dispose();
+  }
+  
+  void _onSyncComplete() {
+    if (mounted) {
+      print('🔄 Sync completed, refreshing inventory...');
+      loadData();
+    }
   }
 
   static const String orgIdKey = 'current_organization_id';
@@ -41,14 +62,21 @@ class InventoryPageState extends State<InventoryPage> {
     setState(() => isLoading = true);
 
     try {
-      // Get current organization from auth service or local storage
+      // Get current organization and commissary IDs
       await loadCurrentOrganization();
+      await loadCommissaryId();
 
-      if (currentOrganizationId != null) {
-        // Load items for this organization
-        final loadedItems = await db.itemsDao.getItemsByOrganization(
+      if (currentOrganizationId != null && commissaryId != null) {
+        // ✅ NEW: Load items with branch-specific stock
+        final loadedItems = await db.branchItemStockDao.getItemsWithStockForBranch(
           currentOrganizationId!,
+          commissaryId!,
         );
+
+        print('📦 Loaded ${loadedItems.length} items with branch stock');
+        for (final item in loadedItems) {
+          print('   - ${item.name}: stock=${item.stock}, sold=${item.sold}, spoilage=${item.spoilage}, hasBranchStock=${item.hasBranchStock}');
+        }
 
         if (mounted) {
           setState(() {
@@ -57,11 +85,10 @@ class InventoryPageState extends State<InventoryPage> {
           });
         }
       } else {
-        // Fallback to all items if no organization found
-        final loadedItems = await db.itemsDao.getAllItems();
+        print('⚠️ Missing org context: orgId=$currentOrganizationId, commissaryId=$commissaryId');
         if (mounted) {
           setState(() {
-            items = loadedItems;
+            items = [];
             isLoading = false;
           });
         }
@@ -102,6 +129,35 @@ class InventoryPageState extends State<InventoryPage> {
     }
   }
 
+  /// Load the parent commissary ID for this franchisee
+  Future<void> loadCommissaryId() async {
+    if (currentOrganizationId == null) return;
+
+    // Get the franchisee's organization to find parent commissary
+    final organization = await db.organizationsDao.getOrganizationById(currentOrganizationId!);
+    
+    if (organization != null) {
+      if (organization.type == 'franchisee' && organization.parentCommissaryId != null) {
+        // Franchisee: use parent commissary
+        commissaryId = organization.parentCommissaryId;
+        print('📍 Franchisee mode: commissaryId=${commissaryId}');
+      } else if (organization.type == 'commissary') {
+        // Commissary viewing own inventory
+        commissaryId = organization.id;
+        print('📍 Commissary mode: commissaryId=${commissaryId}');
+      }
+    }
+
+    // Fallback: find any commissary in database
+    if (commissaryId == null) {
+      final commissaries = await db.organizationsDao.getAllOrganizations(type: 'commissary');
+      if (commissaries.isNotEmpty) {
+        commissaryId = commissaries.first.id;
+        print('📍 Fallback commissary: commissaryId=${commissaryId}');
+      }
+    }
+  }
+
   void applyItemSort(ItemSort sort) {
     setState(() {
       currentSort = sort;
@@ -128,6 +184,22 @@ class InventoryPageState extends State<InventoryPage> {
         items = items.reversed.toList();
       }
     });
+  }
+
+  /// Quick refresh - syncs only items from cloud
+  Future<void> refreshInventory() async {
+    setState(() => isLoading = true);
+    try {
+      await AppGlobals.instance.syncService.syncItemsOnly();
+      // Also sync branch item stock
+      await AppGlobals.instance.syncService.syncBranchItemStock();
+      // loadData will be called via _onSyncComplete
+    } catch (e) {
+      print('Error refreshing inventory: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
   }
 
   @override

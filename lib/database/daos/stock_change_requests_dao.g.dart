@@ -11,4 +11,26 @@ mixin _$StockChangeRequestsDaoMixin on DatabaseAccessor<AppDatabase> {
   $UsersTable get users => attachedDatabase.users;
   $StockChangeRequestsTable get stockChangeRequests =>
       attachedDatabase.stockChangeRequests;
+  StockChangeRequestsDaoManager get managers =>
+      StockChangeRequestsDaoManager(this);
+}
+
+class StockChangeRequestsDaoManager {
+  final _$StockChangeRequestsDaoMixin _db;
+  StockChangeRequestsDaoManager(this._db);
+  $$OrganizationsTableTableManager get organizations =>
+      $$OrganizationsTableTableManager(_db.attachedDatabase, _db.organizations);
+  $$CategoriesTableTableManager get categories =>
+      $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
+  $$ItemsTableTableManager get items =>
+      $$ItemsTableTableManager(_db.attachedDatabase, _db.items);
+  $$RolesTableTableManager get roles =>
+      $$RolesTableTableManager(_db.attachedDatabase, _db.roles);
+  $$UsersTableTableManager get users =>
+      $$UsersTableTableManager(_db.attachedDatabase, _db.users);
+  $$StockChangeRequestsTableTableManager get stockChangeRequests =>
+      $$StockChangeRequestsTableTableManager(
+        _db.attachedDatabase,
+        _db.stockChangeRequests,
+      );
 }

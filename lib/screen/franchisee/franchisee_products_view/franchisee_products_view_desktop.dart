@@ -48,8 +48,8 @@ class FranchiseeProductsViewDesktop extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.refresh, size: 28),
-                  tooltip: 'Refresh',
-                  onPressed: state.loadData,
+                  tooltip: 'Refresh products from cloud',
+                  onPressed: state.refreshProducts,
                 ),
                 IconButton(
                   icon: const Icon(Icons.notifications_outlined, size: 35),
@@ -67,16 +67,31 @@ class FranchiseeProductsViewDesktop extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.blue[200]!),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(
+                  const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(
                     child: Text(
                       'Viewing products from commissary. Click a product to see recipe details.',
                       style: TextStyle(color: Colors.blue, fontSize: 13),
                     ),
                   ),
+                  // Record Stock/Sales button (only if user has edit permission)
+                  if (state.canEditStock)
+                    ElevatedButton.icon(
+                      onPressed: state.toggleChangeStockMode,
+                      icon: const Icon(Icons.edit_note, size: 20),
+                      label: const Text('Record Stock/Sales Change'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

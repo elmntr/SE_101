@@ -42,6 +42,22 @@ class ItemsPageState extends State<ItemsPage> {
     super.initState();
     db = database;
     loadData();
+    
+    // ✅ FIX: Listen to sync completion to refresh data
+    syncCompleteNotifier.addListener(_onSyncComplete);
+  }
+  
+  @override
+  void dispose() {
+    syncCompleteNotifier.removeListener(_onSyncComplete);
+    super.dispose();
+  }
+  
+  void _onSyncComplete() {
+    if (mounted) {
+      print('🔄 Sync completed, refreshing items...');
+      loadData();
+    }
   }
 
   Future<void> loadData() async {

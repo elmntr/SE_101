@@ -62,9 +62,18 @@ class InventoryPageMobile extends StatelessWidget {
                     "Inventory",
                     style: TextStyle(fontSize: 26, fontFamily: fontAll),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.notifications_outlined, size: 28),
-                    onPressed: () {},
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh, size: 28),
+                        tooltip: 'Refresh inventory from cloud',
+                        onPressed: state.refreshInventory,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined, size: 28),
+                        onPressed: () {},
+                      ),
+                    ],
                   ),
                 ],
               ),
