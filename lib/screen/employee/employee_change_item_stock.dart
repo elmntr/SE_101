@@ -53,19 +53,17 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   }
 
   Future<void> _loadItems() async {
-    // Resolve org ID - if local ID is 0, look up from cloud ID
-    int orgId = widget.userData.organizationId;
-    if (orgId == 0 && widget.userData.organizationCloudId != null) {
-      final org = await db.organizationsDao.getOrganizationByCloudId(
-        widget.userData.organizationCloudId!,
-      );
-      if (org != null) {
-        orgId = org.id;
-        print('📍 Change stock: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}');
-      }
-    }
+    // Load commissary items instead of local organization items
+    // Find commissary organization (type = 'commissary')
+    final allOrgs = await db.organizationsDao.getAllOrganizations();
+    final commissary = allOrgs.firstWhere(
+      (org) => org.type == 'commissary',
+      orElse: () => allOrgs.first, // Fallback to first org if no commissary found
+    );
+    
+    print('📍 Loading commissary items from org: ${commissary.name} (ID: ${commissary.id})');
 
-    final loaded = await db.itemsDao.getItemsByOrganization(orgId);
+    final loaded = await db.itemsDao.getItemsByOrganization(commissary.id);
 
     setState(() {
       items = loaded;
@@ -83,7 +81,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   int get totalSold => pendingSold.fold(0, (sum, qty) => sum + qty);
   int get totalSpoiled => pendingSpoilage.fold(0, (sum, qty) => sum + qty);
 
-  /// ✅ FIXED: Save changes to database as stock_change_requests
+  /// ✅ Save changes directly to item stock and record who made the change
   Future<void> _saveChanges() async {
     // Validate input
     bool hasChanges = false;
@@ -114,7 +112,6 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     }
 
     try {
-      // ✅ Save each change as a separate stock_change_request in the database
       List<Item> changedItems = [];
 
       for (int i = 0; i < items.length; i++) {
@@ -123,33 +120,52 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         final spoilageQty = pendingSpoilage[i];
 
         if (soldQty > 0 || spoilageQty > 0) {
-          // Create stock change request for sold items
+          // ✅ Directly update item stock - reduce by sold + spoiled
+          final newStock = item.stock - soldQty - spoilageQty;
+          final updatedSold = item.sold + soldQty;
+          final updatedSpoilage = item.spoilage + spoilageQty;
+          
+          print('📝 Updating item ${item.name}: stock ${item.stock} → $newStock, sold ${item.sold} → $updatedSold, spoilage ${item.spoilage} → $updatedSpoilage');
+          
+          final updateSuccess = await db.itemsDao.updateItem(
+            item.copyWith(
+              stock: newStock,
+              sold: updatedSold,
+              spoilage: updatedSpoilage,
+            ),
+          );
+          
+          print(updateSuccess ? '   ✅ Item updated successfully' : '   ❌ Item update failed');
+
+          // ✅ Record the change in stock_change_requests for audit trail (already applied)
           if (soldQty > 0) {
-            await db.stockChangeRequestsDao.createChangeRequest(
+            final requestId = await db.stockChangeRequestsDao.createChangeRequest(
               franchiseeId: widget.userData.organizationId,
               itemId: item.id,
               changeType: 'sold',
               quantity: soldQty,
               requestedBy: widget.userData.id,
               originalStock: item.stock,
-              reason: 'Employee stock change',
+              reason: 'Employee stock change - ${widget.userData.fullName ?? widget.userData.username}',
             );
+            // Mark as applied since we already updated the stock
+            await db.stockChangeRequestsDao.submitChangeRequest(requestId);
           }
 
-          // Create stock change request for spoiled items
           if (spoilageQty > 0) {
-            await db.stockChangeRequestsDao.createChangeRequest(
+            final requestId = await db.stockChangeRequestsDao.createChangeRequest(
               franchiseeId: widget.userData.organizationId,
               itemId: item.id,
               changeType: 'spoiled',
               quantity: spoilageQty,
               requestedBy: widget.userData.id,
               originalStock: item.stock,
-              reason: 'Employee stock change',
+              reason: 'Employee stock change - ${widget.userData.fullName ?? widget.userData.username}',
             );
+            // Mark as applied since we already updated the stock
+            await db.stockChangeRequestsDao.submitChangeRequest(requestId);
           }
 
-          // Track changed items for the record
           changedItems.add(item.copyWith(sold: soldQty, spoilage: spoilageQty));
         }
       }
@@ -164,14 +180,6 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         return;
       }
 
-      // ✅ Submit all draft requests automatically
-      final draftRequests = await db.stockChangeRequestsDao.getEmployeeDrafts(
-        widget.userData.id,
-      );
-      for (final request in draftRequests) {
-        await db.stockChangeRequestsDao.submitChangeRequest(request.id);
-      }
-
       // Create in-memory record for UI callback (if needed)
       final record = ChangeRecord(
         employeeName: widget.userData.fullName ?? widget.userData.username,
@@ -179,7 +187,9 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         items: changedItems,
       );
 
-      // Reset UI
+      // Reset UI and reload items to show updated stock
+      await _loadItems();
+      
       setState(() {
         selectedReasons = List.filled(items.length, 'Sale');
         pendingSold = List.filled(items.length, 0);
@@ -190,12 +200,11 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
       });
 
       widget.onRecordSaved?.call(record);
-      widget.onBack();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("✅ Changes saved and submitted for review!"),
+            content: Text("✅ Stock updated successfully!"),
             backgroundColor: Colors.green,
           ),
         );

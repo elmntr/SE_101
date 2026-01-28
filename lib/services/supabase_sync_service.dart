@@ -964,6 +964,7 @@ class SupabaseSyncService {
         final orgCloudId = _getCloudId('organizations', item.organizationId);
         // master_item_id is stored as TEXT (cloud_id) in Supabase
         final masterItemCloudId = _getCloudId('items', item.masterItemId);
+        final categoryCloudId = _getCloudId('categories', item.categoryId);
 
         if (orgCloudId == null) {
           AppLogger.sync('   ⚠️ Skipping item ${item.name}: org cloud_id not found for org ${item.organizationId}');
@@ -978,6 +979,7 @@ class SupabaseSyncService {
           // NOTE: Don't send local_id - it causes conflicts across devices
           'name': item.name,
           'organization_id': orgCloudId,  // ✅ FIX: Use cloud_id (UUID), not local int
+          'category_id': categoryCloudId,
           'master_item_id': masterItemCloudId,
           'stock': item.stock,
           'sold': item.sold,

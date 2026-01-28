@@ -133,6 +133,11 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
       final items = await db.itemsDao.getCommissaryMasterItems(commissaryId!);
       print('🔍 DEBUG: Found ${items.length} commissary master items');
       
+      // ✅ DEBUG: Print stock/sold/spoilage values for loaded items
+      for (var item in items) {
+        print('   📦 Item: ${item.name} | stock: ${item.stock}, sold: ${item.sold}, spoilage: ${item.spoilage}');
+      }
+      
       // Check if items are empty but sync might still be running
       if (items.isEmpty) {
         final allItems = await db.itemsDao.getAllItems();
