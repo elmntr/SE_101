@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
-import '../employee_change_item_stock.dart';
+import 'package:chickenjoo_inventory/screen/employee/employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'employee_items_mobile.dart';
 import 'employee_items_desktop.dart';
@@ -43,6 +43,22 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
     super.initState();
     db = database;
     loadData();
+    
+    // ✅ FIX: Listen to sync completion to refresh data
+    syncCompleteNotifier.addListener(_onSyncComplete);
+  }
+  
+  @override
+  void dispose() {
+    syncCompleteNotifier.removeListener(_onSyncComplete);
+    super.dispose();
+  }
+  
+  void _onSyncComplete() {
+    if (mounted) {
+      print('🔄 Sync completed, refreshing employee items...');
+      loadData();
+    }
   }
 
   void toggleChangeStockMode() {
