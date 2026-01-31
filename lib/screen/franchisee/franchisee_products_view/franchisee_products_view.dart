@@ -12,10 +12,13 @@ export 'franchisee_products_view_controller.dart'
     show RecipeIngredientWithDetails;
 
 /// Franchisee Products View Page
-/// - View-only access to commissary products (no create/edit/delete)
+/// - View access to commissary products
 /// - Shows recipe ingredients for each product
+/// - Employees can record stock changes (sales/spoilage) with tracking
 class FranchiseeProductsView extends StatefulWidget {
-  const FranchiseeProductsView({super.key});
+  final UserData? userData;
+  
+  const FranchiseeProductsView({super.key, this.userData});
 
   @override
   State<FranchiseeProductsView> createState() => FranchiseeProductsViewState();
@@ -69,6 +72,31 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
     controller.dispose();
     super.dispose();
   }
+  
+  void _onSyncComplete() {
+    if (mounted) {
+      print('🔄 Sync completed, reloading commissary products...');
+      _isWaitingForSync = false;
+      loadData();
+    }
+  }
+
+  /// Quick refresh - syncs only items/products from cloud then reloads
+  Future<void> refreshProducts() async {
+    setState(() => isLoading = true);
+    try {
+      await AppGlobals.instance.syncService.syncItemsOnly();
+      // loadData will be called automatically via _onSyncComplete
+    } catch (e) {
+      print('Error refreshing products: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error refreshing: $e')),
+        );
+      }
+    }
+  }
 
   Future<void> loadData() async {
     await controller.loadData();
@@ -86,8 +114,29 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
     controller.showProductDetails(context, item);
   }
 
+  /// Toggle stock change mode - opens the employee stock change page
+  void toggleChangeStockMode() {
+    setState(() {
+      isInChangeStockMode = !isInChangeStockMode;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Stock Change Mode - use existing EmployeeChangeStockPage which tracks who made changes
+    if (isInChangeStockMode && currentUserData != null) {
+      return EmployeeChangeStockPage(
+        userData: currentUserData!,
+        onBack: () async {
+          toggleChangeStockMode();
+          await loadData();  // Refresh data after changes
+        },
+        onRecordSaved: (_) async {
+          await loadData();
+        },
+      );
+    }
+    
     if (AppLayout.isDesktop(context) == false) {
       return FranchiseeProductsViewMobile(state: this);
     }

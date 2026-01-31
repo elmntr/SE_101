@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../database/app_database.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/app_logger.dart';
+import '../app_globals.dart' show notifySyncComplete;
 
 /// ============================================================================
 /// OPTIMIZED SUPABASE SYNC SERVICE WITH STAR TOPOLOGY SUPPORT
@@ -46,6 +47,7 @@ class SupabaseSyncService {
     'stock_change_requests': {},
     'daily_sales_summary': {},
     'branch_ingredient_stock': {},
+    'branch_item_stock': {},
   };
 
   // ✅ Reverse cache for cloud to local lookups
@@ -60,6 +62,7 @@ class SupabaseSyncService {
     'stock_change_requests': {},
     'daily_sales_summary': {},
     'branch_ingredient_stock': {},
+    'branch_item_stock': {},
   };
 
   // ✅ Configuration - Optimized values
@@ -206,6 +209,47 @@ class SupabaseSyncService {
       AppLogger.sync('   📍 Organization context loaded:');
       AppLogger.sync('      - currentOrgCloudId: $_currentOrganizationCloudId');
       AppLogger.sync('      - parentCommissaryCloudId: $_parentCommissaryCloudId');
+    }
+  }
+
+  /// ✅ FIX: Reload parent commissary ID from local database after organizations sync
+  /// This resolves the issue where franchisees can't pull commissary items because
+  /// _parentCommissaryId was null or stale when sync started (before organizations were pulled)
+  Future<void> _reloadParentCommissaryId() async {
+    if (_currentOrganizationType != 'franchisee') return;
+    
+    try {
+      // If we already have a valid parent commissary ID, verify it still exists
+      if (_parentCommissaryId != null) {
+        final existing = await db.organizationsDao.getOrganizationById(_parentCommissaryId!);
+        if (existing != null) {
+          AppLogger.sync('   ✅ Parent commissary ID $_parentCommissaryId verified');
+          return;
+        }
+      }
+      
+      // Try to find the parent commissary from the current organization's record
+      if (_currentOrganizationId != null) {
+        final currentOrg = await db.organizationsDao.getOrganizationById(_currentOrganizationId!);
+        if (currentOrg?.parentCommissaryId != null) {
+          _parentCommissaryId = currentOrg!.parentCommissaryId;
+          _parentCommissaryCloudId = _getCloudId('organizations', _parentCommissaryId);
+          AppLogger.sync('   🔄 Reloaded parent commissary ID from org record: $_parentCommissaryId');
+          return;
+        }
+      }
+      
+      // Fallback: Find any commissary in the database
+      final commissaries = await db.organizationsDao.getAllOrganizations(type: 'commissary');
+      if (commissaries.isNotEmpty) {
+        _parentCommissaryId = commissaries.first.id;
+        _parentCommissaryCloudId = commissaries.first.cloudId;
+        AppLogger.sync('   🔄 Found commissary via fallback: $_parentCommissaryId (${commissaries.first.name})');
+      } else {
+        AppLogger.sync('   ⚠️ No commissary found in local database');
+      }
+    } catch (e) {
+      AppLogger.sync('   ⚠️ Failed to reload parent commissary ID: $e');
     }
   }
 
@@ -396,6 +440,11 @@ class SupabaseSyncService {
         AppLogger.sync('✅ Sync completed in ${duration.inSeconds}s');
         onSyncStatusChanged?.call('Synced');
         onSyncComplete?.call();
+        
+        // ✅ FIX: Notify all screens that sync is complete so they can refresh
+        AppLogger.sync('📢 Calling notifySyncComplete() to refresh UI...');
+        notifySyncComplete();
+        AppLogger.sync('📢 syncCompleteNotifier triggered - screens should refresh now');
 
         // Rebuild caches after successful sync
         await _buildCaches();
@@ -436,6 +485,7 @@ class SupabaseSyncService {
       _SyncStep('Ingredients', syncIngredients),
       _SyncStep('RecipeIngredients', syncRecipeIngredients),
       _SyncStep('BranchIngredientStock', syncBranchIngredientStock),
+      _SyncStep('BranchItemStock', syncBranchItemStock),  // ✅ NEW: Per-branch item inventory
       _SyncStep('ReplenishmentRequests', syncStockReplenishmentRequests),
       _SyncStep('ChangeRequests', syncStockChangeRequests),
       _SyncStep('DailySalesSummary', syncDailySalesSummary),
@@ -581,6 +631,10 @@ class SupabaseSyncService {
         
         // ✅ FIXED: Reload organization cloud IDs after cache rebuild
         await _loadOrganizationCloudIds();
+        
+        // ✅ FIX: Reload parent commissary ID for franchisees
+        // This ensures _parentCommissaryId is set correctly before pulling items
+        await _reloadParentCommissaryId();
       }
     } catch (e) {
       AppLogger.sync('   ⚠️ Failed to pull organizations: $e');
@@ -906,10 +960,15 @@ class SupabaseSyncService {
         if (item.isDeleted) continue;
 
         final cloudId = item.cloudId ?? _uuid.v4();
-        // NOTE: Supabase stores organization_id as INTEGER, not cloud_id
-        final orgId = item.organizationId;
+        // ✅ FIX: Supabase RLS uses UUID for organization_id, so we must send the cloud_id
+        final orgCloudId = _getCloudId('organizations', item.organizationId);
         // master_item_id is stored as TEXT (cloud_id) in Supabase
         final masterItemCloudId = _getCloudId('items', item.masterItemId);
+
+        if (orgCloudId == null) {
+          AppLogger.sync('   ⚠️ Skipping item ${item.name}: org cloud_id not found for org ${item.organizationId}');
+          continue;
+        }
 
         cloudIdMap[item.id] = cloudId;
         _updateCache('items', item.id, cloudId);
@@ -918,7 +977,7 @@ class SupabaseSyncService {
           'cloud_id': cloudId,
           // NOTE: Don't send local_id - it causes conflicts across devices
           'name': item.name,
-          'organization_id': orgId,  // INTEGER, not cloud_id
+          'organization_id': orgCloudId,  // ✅ FIX: Use cloud_id (UUID), not local int
           'master_item_id': masterItemCloudId,
           'stock': item.stock,
           'sold': item.sold,
@@ -955,8 +1014,11 @@ class SupabaseSyncService {
 
   Future<void> _pullItems() async {
     try {
-      final lastSync =
-          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+      // ✅ FIX: Always do a full pull for items to ensure all master items are synced
+      // The incremental sync was causing items to be missed if created before the 
+      // franchisee's first sync but not yet synced to this client.
+      // For a more robust solution, we'd track per-record sync status.
+      final lastSync = '1970-01-01T00:00:00.000Z';  // Always full refresh for items
 
       // ✅ Debug: Log current organization context
       if (kDebugMode) {
@@ -966,28 +1028,38 @@ class SupabaseSyncService {
         AppLogger.sync('      - orgType: $_currentOrganizationType');
         AppLogger.sync('      - parentCommissaryId (local): $_parentCommissaryId');
         AppLogger.sync('      - parentCommissaryCloudId: $_parentCommissaryCloudId');
+        
+        // Debug: Print organization cache
+        AppLogger.sync('   📍 Organization cache contents:');
+        for (final entry in _cloudToLocalCache['organizations']!.entries) {
+          AppLogger.sync('      ${entry.key} → local ID ${entry.value}');
+        }
       }
 
       // Build query with organization filter
-      // NOTE: Supabase items.organization_id stores INTEGER (local ID), not cloud_id
+      // ✅ FIX: Supabase RLS already filters items based on organization.
+      // Franchisees can see their own items + commissary master items.
+      // We don't need to manually filter here - RLS handles it.
+      // The organization_id in Supabase is a UUID (cloud_id), not local int.
       var query = supabase
           .from('items')
           .select()
           .gte('last_updated', lastSync);
 
-      // Add explicit organization filter using LOCAL IDs (since Supabase stores integers)
-      if (_currentOrganizationId != null) {
-        if (_currentOrganizationType == 'franchisee' && _parentCommissaryId != null) {
-          // Franchisee: pull own items + master items from parent commissary
-          query = query.or('organization_id.eq.$_currentOrganizationId,and(organization_id.eq.$_parentCommissaryId,master_item_id.is.null)');
-          AppLogger.sync('   🔍 Filtering items: org=$_currentOrganizationId OR (org=$_parentCommissaryId AND master_item_id IS NULL)');
+      // RLS handles the filtering, but we can add explicit filter for debugging
+      if (_currentOrganizationId != null && _currentOrganizationCloudId != null) {
+        if (_currentOrganizationType == 'franchisee') {
+          // ✅ FIX: For franchisees, pull master items from commissary + own items
+          // RLS already allows this, but we can be explicit with cloud IDs
+          AppLogger.sync('   🔍 Franchisee mode: RLS will filter to show master items + own items');
+          // Don't manually filter - let RLS handle it based on authenticated user
+          // The RLS policy: organization_id = own OR (parent_commissary AND master_item_id IS NULL)
         } else {
-          // Commissary or single org: pull only own organization's items
-          query = query.eq('organization_id', _currentOrganizationId!);
-          AppLogger.sync('   🔍 Filtering items by org ID: $_currentOrganizationId');
+          // Commissary: RLS filters to own network
+          AppLogger.sync('   🔍 Commissary mode: RLS will filter to network items');
         }
       } else {
-        AppLogger.sync('   ⚠️ No org filter applied - _currentOrganizationId is null!');
+        AppLogger.sync('   ⚠️ Warning: org context incomplete - relying on RLS only');
       }
 
       final cloudItems = await query
@@ -995,13 +1067,21 @@ class SupabaseSyncService {
           .limit(1000);
 
       AppLogger.sync('   📥 Received ${cloudItems.length} items from Supabase');
+      
+      // ✅ Debug: Log each item received
+      if (kDebugMode) {
+        for (final item in cloudItems) {
+          AppLogger.sync('      📦 Cloud item: ${item['name']} | org_id=${item['organization_id']} | master=${item['master_item_id']}');
+        }
+      }
 
       if (cloudItems.isNotEmpty) {
         final resolvedItems = <Map<String, dynamic>>[];
 
         for (final cloudItem in cloudItems) {
-          // organization_id is already an integer in Supabase, use directly
-          final orgId = cloudItem['organization_id'] as int?;
+          // ✅ FIX: organization_id in Supabase is now a UUID (cloud_id), needs resolution
+          final orgCloudId = cloudItem['organization_id']?.toString();
+          final orgId = _getLocalId('organizations', orgCloudId);
           // master_item_id is TEXT (cloud_id) in Supabase, needs resolution
           final masterItemId = _getLocalId(
             'items',
@@ -1010,9 +1090,14 @@ class SupabaseSyncService {
 
           if (orgId == null) {
             if (kDebugMode) {
-              AppLogger.sync('   ⚠️ Skipping item ${cloudItem['name']}: org_id is null');
+              AppLogger.sync('   ⚠️ Skipping item ${cloudItem['name']}: org not found for cloud_id=$orgCloudId');
             }
             continue;
+          }
+          
+          // ✅ Debug: Log resolved item
+          if (kDebugMode) {
+            AppLogger.sync('      ✅ Resolved: ${cloudItem['name']} | orgCloudId=$orgCloudId → localOrgId=$orgId');
           }
 
           resolvedItems.add({
@@ -1851,6 +1936,140 @@ class SupabaseSyncService {
   }
 
   // ============================================================================
+  // BRANCH ITEM STOCK SYNC (Per-branch item inventory)
+  // ============================================================================
+
+  Future<void> syncBranchItemStock() async {
+    await _pushBranchItemStock();
+    await _pullBranchItemStock();
+  }
+
+  Future<void> _pushBranchItemStock() async {
+    int totalPushed = 0;
+
+    while (true) {
+      final unsynced = await db.branchItemStockDao.getUnsyncedStock(
+        limit: batchSize,
+      );
+
+      if (unsynced.isEmpty) break;
+
+      final batchData = <Map<String, dynamic>>[];
+      final syncedIds = <int>[];
+      final cloudIdMap = <int, String>{};
+
+      for (final stock in unsynced) {
+        final cloudId = stock.cloudId ?? _uuid.v4();
+        cloudIdMap[stock.id] = cloudId;
+        _updateCache('branch_item_stock', stock.id, cloudId);
+
+        final orgCloudId = _getCloudId('organizations', stock.organizationId);
+        final itemCloudId = _getCloudId('items', stock.itemId);
+
+        if (orgCloudId == null || itemCloudId == null) {
+          AppLogger.sync('   ⚠️ Missing FK for branch item stock ${stock.id}: org=$orgCloudId, item=$itemCloudId');
+          continue;
+        }
+
+        batchData.add({
+          'cloud_id': cloudId,
+          'organization_id': orgCloudId,
+          'item_id': itemCloudId,
+          'stock': stock.stock,
+          'sold': stock.sold,
+          'spoilage': stock.spoilage,
+          'price': stock.price,
+          'cost_price': stock.costPrice,
+          'minimum_stock': stock.minimumStock,
+          'last_received_at': stock.lastReceivedAt?.toIso8601String(),
+          'last_received_quantity': stock.lastReceivedQuantity,
+          'created_at': stock.createdAt.toIso8601String(),
+          'last_updated': stock.lastUpdated.toIso8601String(),
+          'is_deleted': stock.isDeleted,
+        });
+        syncedIds.add(stock.id);
+      }
+
+      if (batchData.isNotEmpty) {
+        await _syncClient
+            .from('branch_item_stock')
+            .upsert(batchData, onConflict: 'cloud_id');
+        totalPushed += batchData.length;
+      }
+
+      if (syncedIds.isNotEmpty) {
+        await db.branchItemStockDao.markAsSynced(syncedIds, cloudIds: cloudIdMap);
+      }
+
+      // Break after processing since we're not using offset
+      break;
+    }
+
+    if (totalPushed > 0) AppLogger.sync('   ↑ Pushed $totalPushed branch item stocks');
+  }
+
+  Future<void> _pullBranchItemStock() async {
+    try {
+      final lastSync =
+          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+
+      // RLS will filter to show only stocks for this org (or all for commissary)
+      final cloudStocks = await supabase
+          .from('branch_item_stock')
+          .select()
+          .gte('last_updated', lastSync)
+          .order('last_updated', ascending: false)
+          .limit(1000);
+
+      AppLogger.sync('   📥 Received ${cloudStocks.length} branch item stocks from Supabase');
+
+      if (cloudStocks.isNotEmpty) {
+        int pulled = 0;
+        for (final cloudStock in cloudStocks) {
+          final orgCloudId = cloudStock['organization_id']?.toString();
+          final itemCloudId = cloudStock['item_id']?.toString();
+
+          final orgId = _getLocalId('organizations', orgCloudId);
+          final itemId = _getLocalId('items', itemCloudId);
+
+          if (orgId == null || itemId == null) {
+            if (kDebugMode) {
+              AppLogger.sync('   ⚠️ Skipping branch item stock: org=$orgId, item=$itemId');
+            }
+            continue;
+          }
+
+          await db.branchItemStockDao.upsertFromCloud({
+            'cloud_id': cloudStock['cloud_id'],
+            'organization_id': orgId,
+            'item_id': itemId,
+            'stock': cloudStock['stock'] ?? 0,
+            'sold': cloudStock['sold'] ?? 0,
+            'spoilage': cloudStock['spoilage'] ?? 0,
+            'price': cloudStock['price'],
+            'cost_price': cloudStock['cost_price'],
+            'minimum_stock': cloudStock['minimum_stock'],
+            'last_received_at': cloudStock['last_received_at'],
+            'last_received_quantity': cloudStock['last_received_quantity'],
+            'last_updated': cloudStock['last_updated'] ?? DateTime.now().toIso8601String(),
+            'is_deleted': cloudStock['is_deleted'] ?? false,
+          });
+          pulled++;
+
+          // Update cache
+          final localStock = await db.branchItemStockDao.getStockForItem(orgId, itemId);
+          if (localStock != null) {
+            _updateCache('branch_item_stock', localStock.id, cloudStock['cloud_id']);
+          }
+        }
+        if (pulled > 0) AppLogger.sync('   ↓ Pulled $pulled branch item stocks');
+      }
+    } catch (e) {
+      AppLogger.sync('   ⚠️ Failed to pull branch item stocks: $e');
+    }
+  }
+
+  // ============================================================================
   // IMMEDIATE SALES SYNC (for real-time)
   // ============================================================================
 
@@ -1932,6 +2151,41 @@ class SupabaseSyncService {
   Future<void> syncImmediate() async {
     AppLogger.sync('⚡ Immediate sync requested');
     await syncAll();
+  }
+
+  /// Quick sync for items/products only (faster than full sync)
+  /// Use this for refresh buttons on product screens
+  Future<void> syncItemsOnly() async {
+    if (_isSyncing) {
+      AppLogger.sync('⏳ Sync already in progress, skipping items-only sync...');
+      return;
+    }
+
+    _isSyncing = true;
+    AppLogger.sync('🔄 Quick sync: Items only...');
+    onSyncStatusChanged?.call('Syncing products...');
+
+    try {
+      // Ensure caches are built
+      if (_localToCloudCache['organizations']!.isEmpty) {
+        await _buildCaches();
+      }
+
+      // Sync items (push local changes, pull from cloud)
+      await syncItems();
+
+      AppLogger.sync('✅ Quick sync completed');
+      onSyncStatusChanged?.call('Synced');
+      
+      // Notify screens to refresh
+      notifySyncComplete();
+    } catch (e) {
+      AppLogger.sync('❌ Quick sync failed: $e');
+      onSyncError?.call('Quick sync failed: $e');
+      onSyncStatusChanged?.call('Sync failed');
+    } finally {
+      _isSyncing = false;
+    }
   }
 
   /// Get current sync status

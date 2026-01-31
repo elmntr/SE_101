@@ -6342,6 +6342,952 @@ class BranchIngredientStockCompanion
   }
 }
 
+class $BranchItemStockTable extends BranchItemStock
+    with TableInfo<$BranchItemStockTable, BranchItemStockData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BranchItemStockTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
+    'organizationId',
+  );
+  @override
+  late final GeneratedColumn<int> organizationId = GeneratedColumn<int>(
+    'organization_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES organizations (id)',
+    ),
+  );
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<int> itemId = GeneratedColumn<int>(
+    'item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES items (id)',
+    ),
+  );
+  static const VerificationMeta _stockMeta = const VerificationMeta('stock');
+  @override
+  late final GeneratedColumn<int> stock = GeneratedColumn<int>(
+    'stock',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _soldMeta = const VerificationMeta('sold');
+  @override
+  late final GeneratedColumn<int> sold = GeneratedColumn<int>(
+    'sold',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _spoilageMeta = const VerificationMeta(
+    'spoilage',
+  );
+  @override
+  late final GeneratedColumn<int> spoilage = GeneratedColumn<int>(
+    'spoilage',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _priceMeta = const VerificationMeta('price');
+  @override
+  late final GeneratedColumn<double> price = GeneratedColumn<double>(
+    'price',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _costPriceMeta = const VerificationMeta(
+    'costPrice',
+  );
+  @override
+  late final GeneratedColumn<double> costPrice = GeneratedColumn<double>(
+    'cost_price',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _minimumStockMeta = const VerificationMeta(
+    'minimumStock',
+  );
+  @override
+  late final GeneratedColumn<int> minimumStock = GeneratedColumn<int>(
+    'minimum_stock',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastReceivedAtMeta = const VerificationMeta(
+    'lastReceivedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastReceivedAt =
+      GeneratedColumn<DateTime>(
+        'last_received_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _lastReceivedQuantityMeta =
+      const VerificationMeta('lastReceivedQuantity');
+  @override
+  late final GeneratedColumn<int> lastReceivedQuantity = GeneratedColumn<int>(
+    'last_received_quantity',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
+    'lastUpdated',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUpdated = GeneratedColumn<DateTime>(
+    'last_updated',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    organizationId,
+    itemId,
+    stock,
+    sold,
+    spoilage,
+    price,
+    costPrice,
+    minimumStock,
+    lastReceivedAt,
+    lastReceivedQuantity,
+    createdAt,
+    lastUpdated,
+    isDeleted,
+    isSynced,
+    cloudId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'branch_item_stock';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BranchItemStockData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('organization_id')) {
+      context.handle(
+        _organizationIdMeta,
+        organizationId.isAcceptableOrUnknown(
+          data['organization_id']!,
+          _organizationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_organizationIdMeta);
+    }
+    if (data.containsKey('item_id')) {
+      context.handle(
+        _itemIdMeta,
+        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('stock')) {
+      context.handle(
+        _stockMeta,
+        stock.isAcceptableOrUnknown(data['stock']!, _stockMeta),
+      );
+    }
+    if (data.containsKey('sold')) {
+      context.handle(
+        _soldMeta,
+        sold.isAcceptableOrUnknown(data['sold']!, _soldMeta),
+      );
+    }
+    if (data.containsKey('spoilage')) {
+      context.handle(
+        _spoilageMeta,
+        spoilage.isAcceptableOrUnknown(data['spoilage']!, _spoilageMeta),
+      );
+    }
+    if (data.containsKey('price')) {
+      context.handle(
+        _priceMeta,
+        price.isAcceptableOrUnknown(data['price']!, _priceMeta),
+      );
+    }
+    if (data.containsKey('cost_price')) {
+      context.handle(
+        _costPriceMeta,
+        costPrice.isAcceptableOrUnknown(data['cost_price']!, _costPriceMeta),
+      );
+    }
+    if (data.containsKey('minimum_stock')) {
+      context.handle(
+        _minimumStockMeta,
+        minimumStock.isAcceptableOrUnknown(
+          data['minimum_stock']!,
+          _minimumStockMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_received_at')) {
+      context.handle(
+        _lastReceivedAtMeta,
+        lastReceivedAt.isAcceptableOrUnknown(
+          data['last_received_at']!,
+          _lastReceivedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_received_quantity')) {
+      context.handle(
+        _lastReceivedQuantityMeta,
+        lastReceivedQuantity.isAcceptableOrUnknown(
+          data['last_received_quantity']!,
+          _lastReceivedQuantityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('last_updated')) {
+      context.handle(
+        _lastUpdatedMeta,
+        lastUpdated.isAcceptableOrUnknown(
+          data['last_updated']!,
+          _lastUpdatedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {organizationId, itemId},
+  ];
+  @override
+  BranchItemStockData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BranchItemStockData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      organizationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}organization_id'],
+      )!,
+      itemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}item_id'],
+      )!,
+      stock: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}stock'],
+      )!,
+      sold: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sold'],
+      )!,
+      spoilage: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}spoilage'],
+      )!,
+      price: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}price'],
+      ),
+      costPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cost_price'],
+      ),
+      minimumStock: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}minimum_stock'],
+      ),
+      lastReceivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_received_at'],
+      ),
+      lastReceivedQuantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_received_quantity'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastUpdated: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_updated'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      ),
+    );
+  }
+
+  @override
+  $BranchItemStockTable createAlias(String alias) {
+    return $BranchItemStockTable(attachedDatabase, alias);
+  }
+}
+
+class BranchItemStockData extends DataClass
+    implements Insertable<BranchItemStockData> {
+  /// Primary key
+  final int id;
+
+  /// Which branch owns this stock
+  final int organizationId;
+
+  /// Reference to master item (for name, description, recipe, etc.)
+  final int itemId;
+
+  /// Current stock quantity at this branch
+  final int stock;
+
+  /// Total sold quantity (can be cumulative or daily-reset)
+  final int sold;
+
+  /// Total spoiled quantity
+  final int spoilage;
+
+  /// Branch-specific selling price (overrides master item price if set)
+  final double? price;
+
+  /// Branch-specific cost price (what they pay commissary)
+  final double? costPrice;
+
+  /// Minimum stock level for low stock alerts
+  final int? minimumStock;
+
+  /// Last time this branch received a delivery of this item
+  final DateTime? lastReceivedAt;
+
+  /// Quantity from last delivery
+  final int? lastReceivedQuantity;
+
+  /// Track when record was created/modified
+  final DateTime createdAt;
+  final DateTime lastUpdated;
+
+  /// Soft delete
+  final bool isDeleted;
+
+  /// Sync fields for cloud synchronization
+  final bool isSynced;
+  final String? cloudId;
+  const BranchItemStockData({
+    required this.id,
+    required this.organizationId,
+    required this.itemId,
+    required this.stock,
+    required this.sold,
+    required this.spoilage,
+    this.price,
+    this.costPrice,
+    this.minimumStock,
+    this.lastReceivedAt,
+    this.lastReceivedQuantity,
+    required this.createdAt,
+    required this.lastUpdated,
+    required this.isDeleted,
+    required this.isSynced,
+    this.cloudId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['organization_id'] = Variable<int>(organizationId);
+    map['item_id'] = Variable<int>(itemId);
+    map['stock'] = Variable<int>(stock);
+    map['sold'] = Variable<int>(sold);
+    map['spoilage'] = Variable<int>(spoilage);
+    if (!nullToAbsent || price != null) {
+      map['price'] = Variable<double>(price);
+    }
+    if (!nullToAbsent || costPrice != null) {
+      map['cost_price'] = Variable<double>(costPrice);
+    }
+    if (!nullToAbsent || minimumStock != null) {
+      map['minimum_stock'] = Variable<int>(minimumStock);
+    }
+    if (!nullToAbsent || lastReceivedAt != null) {
+      map['last_received_at'] = Variable<DateTime>(lastReceivedAt);
+    }
+    if (!nullToAbsent || lastReceivedQuantity != null) {
+      map['last_received_quantity'] = Variable<int>(lastReceivedQuantity);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_updated'] = Variable<DateTime>(lastUpdated);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    map['is_synced'] = Variable<bool>(isSynced);
+    if (!nullToAbsent || cloudId != null) {
+      map['cloud_id'] = Variable<String>(cloudId);
+    }
+    return map;
+  }
+
+  BranchItemStockCompanion toCompanion(bool nullToAbsent) {
+    return BranchItemStockCompanion(
+      id: Value(id),
+      organizationId: Value(organizationId),
+      itemId: Value(itemId),
+      stock: Value(stock),
+      sold: Value(sold),
+      spoilage: Value(spoilage),
+      price: price == null && nullToAbsent
+          ? const Value.absent()
+          : Value(price),
+      costPrice: costPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(costPrice),
+      minimumStock: minimumStock == null && nullToAbsent
+          ? const Value.absent()
+          : Value(minimumStock),
+      lastReceivedAt: lastReceivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastReceivedAt),
+      lastReceivedQuantity: lastReceivedQuantity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastReceivedQuantity),
+      createdAt: Value(createdAt),
+      lastUpdated: Value(lastUpdated),
+      isDeleted: Value(isDeleted),
+      isSynced: Value(isSynced),
+      cloudId: cloudId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudId),
+    );
+  }
+
+  factory BranchItemStockData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BranchItemStockData(
+      id: serializer.fromJson<int>(json['id']),
+      organizationId: serializer.fromJson<int>(json['organizationId']),
+      itemId: serializer.fromJson<int>(json['itemId']),
+      stock: serializer.fromJson<int>(json['stock']),
+      sold: serializer.fromJson<int>(json['sold']),
+      spoilage: serializer.fromJson<int>(json['spoilage']),
+      price: serializer.fromJson<double?>(json['price']),
+      costPrice: serializer.fromJson<double?>(json['costPrice']),
+      minimumStock: serializer.fromJson<int?>(json['minimumStock']),
+      lastReceivedAt: serializer.fromJson<DateTime?>(json['lastReceivedAt']),
+      lastReceivedQuantity: serializer.fromJson<int?>(
+        json['lastReceivedQuantity'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      cloudId: serializer.fromJson<String?>(json['cloudId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'organizationId': serializer.toJson<int>(organizationId),
+      'itemId': serializer.toJson<int>(itemId),
+      'stock': serializer.toJson<int>(stock),
+      'sold': serializer.toJson<int>(sold),
+      'spoilage': serializer.toJson<int>(spoilage),
+      'price': serializer.toJson<double?>(price),
+      'costPrice': serializer.toJson<double?>(costPrice),
+      'minimumStock': serializer.toJson<int?>(minimumStock),
+      'lastReceivedAt': serializer.toJson<DateTime?>(lastReceivedAt),
+      'lastReceivedQuantity': serializer.toJson<int?>(lastReceivedQuantity),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'cloudId': serializer.toJson<String?>(cloudId),
+    };
+  }
+
+  BranchItemStockData copyWith({
+    int? id,
+    int? organizationId,
+    int? itemId,
+    int? stock,
+    int? sold,
+    int? spoilage,
+    Value<double?> price = const Value.absent(),
+    Value<double?> costPrice = const Value.absent(),
+    Value<int?> minimumStock = const Value.absent(),
+    Value<DateTime?> lastReceivedAt = const Value.absent(),
+    Value<int?> lastReceivedQuantity = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? lastUpdated,
+    bool? isDeleted,
+    bool? isSynced,
+    Value<String?> cloudId = const Value.absent(),
+  }) => BranchItemStockData(
+    id: id ?? this.id,
+    organizationId: organizationId ?? this.organizationId,
+    itemId: itemId ?? this.itemId,
+    stock: stock ?? this.stock,
+    sold: sold ?? this.sold,
+    spoilage: spoilage ?? this.spoilage,
+    price: price.present ? price.value : this.price,
+    costPrice: costPrice.present ? costPrice.value : this.costPrice,
+    minimumStock: minimumStock.present ? minimumStock.value : this.minimumStock,
+    lastReceivedAt: lastReceivedAt.present
+        ? lastReceivedAt.value
+        : this.lastReceivedAt,
+    lastReceivedQuantity: lastReceivedQuantity.present
+        ? lastReceivedQuantity.value
+        : this.lastReceivedQuantity,
+    createdAt: createdAt ?? this.createdAt,
+    lastUpdated: lastUpdated ?? this.lastUpdated,
+    isDeleted: isDeleted ?? this.isDeleted,
+    isSynced: isSynced ?? this.isSynced,
+    cloudId: cloudId.present ? cloudId.value : this.cloudId,
+  );
+  BranchItemStockData copyWithCompanion(BranchItemStockCompanion data) {
+    return BranchItemStockData(
+      id: data.id.present ? data.id.value : this.id,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      stock: data.stock.present ? data.stock.value : this.stock,
+      sold: data.sold.present ? data.sold.value : this.sold,
+      spoilage: data.spoilage.present ? data.spoilage.value : this.spoilage,
+      price: data.price.present ? data.price.value : this.price,
+      costPrice: data.costPrice.present ? data.costPrice.value : this.costPrice,
+      minimumStock: data.minimumStock.present
+          ? data.minimumStock.value
+          : this.minimumStock,
+      lastReceivedAt: data.lastReceivedAt.present
+          ? data.lastReceivedAt.value
+          : this.lastReceivedAt,
+      lastReceivedQuantity: data.lastReceivedQuantity.present
+          ? data.lastReceivedQuantity.value
+          : this.lastReceivedQuantity,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastUpdated: data.lastUpdated.present
+          ? data.lastUpdated.value
+          : this.lastUpdated,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BranchItemStockData(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('itemId: $itemId, ')
+          ..write('stock: $stock, ')
+          ..write('sold: $sold, ')
+          ..write('spoilage: $spoilage, ')
+          ..write('price: $price, ')
+          ..write('costPrice: $costPrice, ')
+          ..write('minimumStock: $minimumStock, ')
+          ..write('lastReceivedAt: $lastReceivedAt, ')
+          ..write('lastReceivedQuantity: $lastReceivedQuantity, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('cloudId: $cloudId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    organizationId,
+    itemId,
+    stock,
+    sold,
+    spoilage,
+    price,
+    costPrice,
+    minimumStock,
+    lastReceivedAt,
+    lastReceivedQuantity,
+    createdAt,
+    lastUpdated,
+    isDeleted,
+    isSynced,
+    cloudId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BranchItemStockData &&
+          other.id == this.id &&
+          other.organizationId == this.organizationId &&
+          other.itemId == this.itemId &&
+          other.stock == this.stock &&
+          other.sold == this.sold &&
+          other.spoilage == this.spoilage &&
+          other.price == this.price &&
+          other.costPrice == this.costPrice &&
+          other.minimumStock == this.minimumStock &&
+          other.lastReceivedAt == this.lastReceivedAt &&
+          other.lastReceivedQuantity == this.lastReceivedQuantity &&
+          other.createdAt == this.createdAt &&
+          other.lastUpdated == this.lastUpdated &&
+          other.isDeleted == this.isDeleted &&
+          other.isSynced == this.isSynced &&
+          other.cloudId == this.cloudId);
+}
+
+class BranchItemStockCompanion extends UpdateCompanion<BranchItemStockData> {
+  final Value<int> id;
+  final Value<int> organizationId;
+  final Value<int> itemId;
+  final Value<int> stock;
+  final Value<int> sold;
+  final Value<int> spoilage;
+  final Value<double?> price;
+  final Value<double?> costPrice;
+  final Value<int?> minimumStock;
+  final Value<DateTime?> lastReceivedAt;
+  final Value<int?> lastReceivedQuantity;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastUpdated;
+  final Value<bool> isDeleted;
+  final Value<bool> isSynced;
+  final Value<String?> cloudId;
+  const BranchItemStockCompanion({
+    this.id = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.itemId = const Value.absent(),
+    this.stock = const Value.absent(),
+    this.sold = const Value.absent(),
+    this.spoilage = const Value.absent(),
+    this.price = const Value.absent(),
+    this.costPrice = const Value.absent(),
+    this.minimumStock = const Value.absent(),
+    this.lastReceivedAt = const Value.absent(),
+    this.lastReceivedQuantity = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.cloudId = const Value.absent(),
+  });
+  BranchItemStockCompanion.insert({
+    this.id = const Value.absent(),
+    required int organizationId,
+    required int itemId,
+    this.stock = const Value.absent(),
+    this.sold = const Value.absent(),
+    this.spoilage = const Value.absent(),
+    this.price = const Value.absent(),
+    this.costPrice = const Value.absent(),
+    this.minimumStock = const Value.absent(),
+    this.lastReceivedAt = const Value.absent(),
+    this.lastReceivedQuantity = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.cloudId = const Value.absent(),
+  }) : organizationId = Value(organizationId),
+       itemId = Value(itemId);
+  static Insertable<BranchItemStockData> custom({
+    Expression<int>? id,
+    Expression<int>? organizationId,
+    Expression<int>? itemId,
+    Expression<int>? stock,
+    Expression<int>? sold,
+    Expression<int>? spoilage,
+    Expression<double>? price,
+    Expression<double>? costPrice,
+    Expression<int>? minimumStock,
+    Expression<DateTime>? lastReceivedAt,
+    Expression<int>? lastReceivedQuantity,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastUpdated,
+    Expression<bool>? isDeleted,
+    Expression<bool>? isSynced,
+    Expression<String>? cloudId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (itemId != null) 'item_id': itemId,
+      if (stock != null) 'stock': stock,
+      if (sold != null) 'sold': sold,
+      if (spoilage != null) 'spoilage': spoilage,
+      if (price != null) 'price': price,
+      if (costPrice != null) 'cost_price': costPrice,
+      if (minimumStock != null) 'minimum_stock': minimumStock,
+      if (lastReceivedAt != null) 'last_received_at': lastReceivedAt,
+      if (lastReceivedQuantity != null)
+        'last_received_quantity': lastReceivedQuantity,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastUpdated != null) 'last_updated': lastUpdated,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (cloudId != null) 'cloud_id': cloudId,
+    });
+  }
+
+  BranchItemStockCompanion copyWith({
+    Value<int>? id,
+    Value<int>? organizationId,
+    Value<int>? itemId,
+    Value<int>? stock,
+    Value<int>? sold,
+    Value<int>? spoilage,
+    Value<double?>? price,
+    Value<double?>? costPrice,
+    Value<int?>? minimumStock,
+    Value<DateTime?>? lastReceivedAt,
+    Value<int?>? lastReceivedQuantity,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastUpdated,
+    Value<bool>? isDeleted,
+    Value<bool>? isSynced,
+    Value<String?>? cloudId,
+  }) {
+    return BranchItemStockCompanion(
+      id: id ?? this.id,
+      organizationId: organizationId ?? this.organizationId,
+      itemId: itemId ?? this.itemId,
+      stock: stock ?? this.stock,
+      sold: sold ?? this.sold,
+      spoilage: spoilage ?? this.spoilage,
+      price: price ?? this.price,
+      costPrice: costPrice ?? this.costPrice,
+      minimumStock: minimumStock ?? this.minimumStock,
+      lastReceivedAt: lastReceivedAt ?? this.lastReceivedAt,
+      lastReceivedQuantity: lastReceivedQuantity ?? this.lastReceivedQuantity,
+      createdAt: createdAt ?? this.createdAt,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+      isDeleted: isDeleted ?? this.isDeleted,
+      isSynced: isSynced ?? this.isSynced,
+      cloudId: cloudId ?? this.cloudId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (organizationId.present) {
+      map['organization_id'] = Variable<int>(organizationId.value);
+    }
+    if (itemId.present) {
+      map['item_id'] = Variable<int>(itemId.value);
+    }
+    if (stock.present) {
+      map['stock'] = Variable<int>(stock.value);
+    }
+    if (sold.present) {
+      map['sold'] = Variable<int>(sold.value);
+    }
+    if (spoilage.present) {
+      map['spoilage'] = Variable<int>(spoilage.value);
+    }
+    if (price.present) {
+      map['price'] = Variable<double>(price.value);
+    }
+    if (costPrice.present) {
+      map['cost_price'] = Variable<double>(costPrice.value);
+    }
+    if (minimumStock.present) {
+      map['minimum_stock'] = Variable<int>(minimumStock.value);
+    }
+    if (lastReceivedAt.present) {
+      map['last_received_at'] = Variable<DateTime>(lastReceivedAt.value);
+    }
+    if (lastReceivedQuantity.present) {
+      map['last_received_quantity'] = Variable<int>(lastReceivedQuantity.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastUpdated.present) {
+      map['last_updated'] = Variable<DateTime>(lastUpdated.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BranchItemStockCompanion(')
+          ..write('id: $id, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('itemId: $itemId, ')
+          ..write('stock: $stock, ')
+          ..write('sold: $sold, ')
+          ..write('spoilage: $spoilage, ')
+          ..write('price: $price, ')
+          ..write('costPrice: $costPrice, ')
+          ..write('minimumStock: $minimumStock, ')
+          ..write('lastReceivedAt: $lastReceivedAt, ')
+          ..write('lastReceivedQuantity: $lastReceivedQuantity, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastUpdated: $lastUpdated, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('cloudId: $cloudId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $StockReplenishmentRequestsTable extends StockReplenishmentRequests
     with
         TableInfo<$StockReplenishmentRequestsTable, StockReplenishmentRequest> {
@@ -9471,6 +10417,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $RecipeIngredientsTable(this);
   late final $BranchIngredientStockTable branchIngredientStock =
       $BranchIngredientStockTable(this);
+  late final $BranchItemStockTable branchItemStock = $BranchItemStockTable(
+    this,
+  );
   late final $StockReplenishmentRequestsTable stockReplenishmentRequests =
       $StockReplenishmentRequestsTable(this);
   late final $StockChangeRequestsTable stockChangeRequests =
@@ -9492,6 +10441,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final BranchIngredientStockDao branchIngredientStockDao =
       BranchIngredientStockDao(this as AppDatabase);
+  late final BranchItemStockDao branchItemStockDao = BranchItemStockDao(
+    this as AppDatabase,
+  );
   late final StockReplenishmentRequestsDao stockReplenishmentRequestsDao =
       StockReplenishmentRequestsDao(this as AppDatabase);
   late final StockChangeRequestsDao stockChangeRequestsDao =
@@ -9512,6 +10464,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     ingredients,
     recipeIngredients,
     branchIngredientStock,
+    branchItemStock,
     stockReplenishmentRequests,
     stockChangeRequests,
     dailySalesSummary,
@@ -9685,6 +10638,29 @@ final class $$OrganizationsTableReferences
 
     final cache = $_typedResult.readTableOrNull(
       _branchIngredientStockRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$BranchItemStockTable, List<BranchItemStockData>>
+  _branchItemStockRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.branchItemStock,
+    aliasName: $_aliasNameGenerator(
+      db.organizations.id,
+      db.branchItemStock.organizationId,
+    ),
+  );
+
+  $$BranchItemStockTableProcessedTableManager get branchItemStockRefs {
+    final manager = $$BranchItemStockTableTableManager(
+      $_db,
+      $_db.branchItemStock,
+    ).filter((f) => f.organizationId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _branchItemStockRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -9992,6 +10968,31 @@ class $$OrganizationsTableFilterComposer
                     $removeJoinBuilderFromRootComposer,
               ),
         );
+    return f(composer);
+  }
+
+  Expression<bool> branchItemStockRefs(
+    Expression<bool> Function($$BranchItemStockTableFilterComposer f) f,
+  ) {
+    final $$BranchItemStockTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.branchItemStock,
+      getReferencedColumn: (t) => t.organizationId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BranchItemStockTableFilterComposer(
+            $db: $db,
+            $table: $db.branchItemStock,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
     return f(composer);
   }
 
@@ -10366,6 +11367,31 @@ class $$OrganizationsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> branchItemStockRefs<T extends Object>(
+    Expression<T> Function($$BranchItemStockTableAnnotationComposer a) f,
+  ) {
+    final $$BranchItemStockTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.branchItemStock,
+      getReferencedColumn: (t) => t.organizationId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BranchItemStockTableAnnotationComposer(
+            $db: $db,
+            $table: $db.branchItemStock,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> franchiseeReplenishmentRequests<T extends Object>(
     Expression<T> Function(
       $$StockReplenishmentRequestsTableAnnotationComposer a,
@@ -10496,6 +11522,7 @@ class $$OrganizationsTableTableManager
             bool itemsRefs,
             bool ingredientsRefs,
             bool branchIngredientStockRefs,
+            bool branchItemStockRefs,
             bool franchiseeReplenishmentRequests,
             bool commissaryReplenishmentRequests,
             bool stockChangeRequestsRefs,
@@ -10588,6 +11615,7 @@ class $$OrganizationsTableTableManager
                 itemsRefs = false,
                 ingredientsRefs = false,
                 branchIngredientStockRefs = false,
+                branchItemStockRefs = false,
                 franchiseeReplenishmentRequests = false,
                 commissaryReplenishmentRequests = false,
                 stockChangeRequestsRefs = false,
@@ -10600,6 +11628,7 @@ class $$OrganizationsTableTableManager
                     if (itemsRefs) db.items,
                     if (ingredientsRefs) db.ingredients,
                     if (branchIngredientStockRefs) db.branchIngredientStock,
+                    if (branchItemStockRefs) db.branchItemStock,
                     if (franchiseeReplenishmentRequests)
                       db.stockReplenishmentRequests,
                     if (commissaryReplenishmentRequests)
@@ -10727,6 +11756,27 @@ class $$OrganizationsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (branchItemStockRefs)
+                        await $_getPrefetchedData<
+                          Organization,
+                          $OrganizationsTable,
+                          BranchItemStockData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$OrganizationsTableReferences
+                              ._branchItemStockRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$OrganizationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).branchItemStockRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.organizationId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                       if (franchiseeReplenishmentRequests)
                         await $_getPrefetchedData<
                           Organization,
@@ -10837,6 +11887,7 @@ typedef $$OrganizationsTableProcessedTableManager =
         bool itemsRefs,
         bool ingredientsRefs,
         bool branchIngredientStockRefs,
+        bool branchItemStockRefs,
         bool franchiseeReplenishmentRequests,
         bool commissaryReplenishmentRequests,
         bool stockChangeRequestsRefs,
@@ -12921,6 +13972,26 @@ final class $$ItemsTableReferences
     );
   }
 
+  static MultiTypedResultKey<$BranchItemStockTable, List<BranchItemStockData>>
+  _branchItemStockRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.branchItemStock,
+    aliasName: $_aliasNameGenerator(db.items.id, db.branchItemStock.itemId),
+  );
+
+  $$BranchItemStockTableProcessedTableManager get branchItemStockRefs {
+    final manager = $$BranchItemStockTableTableManager(
+      $_db,
+      $_db.branchItemStock,
+    ).filter((f) => f.itemId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _branchItemStockRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<
     $StockReplenishmentRequestsTable,
     List<StockReplenishmentRequest>
@@ -13172,6 +14243,31 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
           }) => $$RecipeIngredientsTableFilterComposer(
             $db: $db,
             $table: $db.recipeIngredients,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> branchItemStockRefs(
+    Expression<bool> Function($$BranchItemStockTableFilterComposer f) f,
+  ) {
+    final $$BranchItemStockTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.branchItemStock,
+      getReferencedColumn: (t) => t.itemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BranchItemStockTableFilterComposer(
+            $db: $db,
+            $table: $db.branchItemStock,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -13568,6 +14664,31 @@ class $$ItemsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> branchItemStockRefs<T extends Object>(
+    Expression<T> Function($$BranchItemStockTableAnnotationComposer a) f,
+  ) {
+    final $$BranchItemStockTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.branchItemStock,
+      getReferencedColumn: (t) => t.itemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BranchItemStockTableAnnotationComposer(
+            $db: $db,
+            $table: $db.branchItemStock,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> stockReplenishmentRequestsRefs<T extends Object>(
     Expression<T> Function(
       $$StockReplenishmentRequestsTableAnnotationComposer a,
@@ -13668,6 +14789,7 @@ class $$ItemsTableTableManager
             bool organizationId,
             bool masterItemId,
             bool recipeIngredientsRefs,
+            bool branchItemStockRefs,
             bool stockReplenishmentRequestsRefs,
             bool stockChangeRequestsRefs,
             bool dailySalesSummaryRefs,
@@ -13776,6 +14898,7 @@ class $$ItemsTableTableManager
                 organizationId = false,
                 masterItemId = false,
                 recipeIngredientsRefs = false,
+                branchItemStockRefs = false,
                 stockReplenishmentRequestsRefs = false,
                 stockChangeRequestsRefs = false,
                 dailySalesSummaryRefs = false,
@@ -13784,6 +14907,7 @@ class $$ItemsTableTableManager
                   db: db,
                   explicitlyWatchedTables: [
                     if (recipeIngredientsRefs) db.recipeIngredients,
+                    if (branchItemStockRefs) db.branchItemStock,
                     if (stockReplenishmentRequestsRefs)
                       db.stockReplenishmentRequests,
                     if (stockChangeRequestsRefs) db.stockChangeRequests,
@@ -13864,6 +14988,27 @@ class $$ItemsTableTableManager
                                 table,
                                 p0,
                               ).recipeIngredientsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.itemId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (branchItemStockRefs)
+                        await $_getPrefetchedData<
+                          Item,
+                          $ItemsTable,
+                          BranchItemStockData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ItemsTableReferences
+                              ._branchItemStockRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ItemsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).branchItemStockRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.itemId == item.id,
@@ -13958,6 +15103,7 @@ typedef $$ItemsTableProcessedTableManager =
         bool organizationId,
         bool masterItemId,
         bool recipeIngredientsRefs,
+        bool branchItemStockRefs,
         bool stockReplenishmentRequestsRefs,
         bool stockChangeRequestsRefs,
         bool dailySalesSummaryRefs,
@@ -15854,6 +17000,641 @@ typedef $$BranchIngredientStockTableProcessedTableManager =
       (BranchIngredientStockData, $$BranchIngredientStockTableReferences),
       BranchIngredientStockData,
       PrefetchHooks Function({bool organizationId, bool ingredientId})
+    >;
+typedef $$BranchItemStockTableCreateCompanionBuilder =
+    BranchItemStockCompanion Function({
+      Value<int> id,
+      required int organizationId,
+      required int itemId,
+      Value<int> stock,
+      Value<int> sold,
+      Value<int> spoilage,
+      Value<double?> price,
+      Value<double?> costPrice,
+      Value<int?> minimumStock,
+      Value<DateTime?> lastReceivedAt,
+      Value<int?> lastReceivedQuantity,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastUpdated,
+      Value<bool> isDeleted,
+      Value<bool> isSynced,
+      Value<String?> cloudId,
+    });
+typedef $$BranchItemStockTableUpdateCompanionBuilder =
+    BranchItemStockCompanion Function({
+      Value<int> id,
+      Value<int> organizationId,
+      Value<int> itemId,
+      Value<int> stock,
+      Value<int> sold,
+      Value<int> spoilage,
+      Value<double?> price,
+      Value<double?> costPrice,
+      Value<int?> minimumStock,
+      Value<DateTime?> lastReceivedAt,
+      Value<int?> lastReceivedQuantity,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastUpdated,
+      Value<bool> isDeleted,
+      Value<bool> isSynced,
+      Value<String?> cloudId,
+    });
+
+final class $$BranchItemStockTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $BranchItemStockTable,
+          BranchItemStockData
+        > {
+  $$BranchItemStockTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $OrganizationsTable _organizationIdTable(_$AppDatabase db) =>
+      db.organizations.createAlias(
+        $_aliasNameGenerator(
+          db.branchItemStock.organizationId,
+          db.organizations.id,
+        ),
+      );
+
+  $$OrganizationsTableProcessedTableManager get organizationId {
+    final $_column = $_itemColumn<int>('organization_id')!;
+
+    final manager = $$OrganizationsTableTableManager(
+      $_db,
+      $_db.organizations,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_organizationIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $ItemsTable _itemIdTable(_$AppDatabase db) => db.items.createAlias(
+    $_aliasNameGenerator(db.branchItemStock.itemId, db.items.id),
+  );
+
+  $$ItemsTableProcessedTableManager get itemId {
+    final $_column = $_itemColumn<int>('item_id')!;
+
+    final manager = $$ItemsTableTableManager(
+      $_db,
+      $_db.items,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_itemIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$BranchItemStockTableFilterComposer
+    extends Composer<_$AppDatabase, $BranchItemStockTable> {
+  $$BranchItemStockTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get stock => $composableBuilder(
+    column: $table.stock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sold => $composableBuilder(
+    column: $table.sold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get spoilage => $composableBuilder(
+    column: $table.spoilage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get price => $composableBuilder(
+    column: $table.price,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get costPrice => $composableBuilder(
+    column: $table.costPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minimumStock => $composableBuilder(
+    column: $table.minimumStock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastReceivedAt => $composableBuilder(
+    column: $table.lastReceivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastReceivedQuantity => $composableBuilder(
+    column: $table.lastReceivedQuantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$OrganizationsTableFilterComposer get organizationId {
+    final $$OrganizationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.organizationId,
+      referencedTable: $db.organizations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$OrganizationsTableFilterComposer(
+            $db: $db,
+            $table: $db.organizations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ItemsTableFilterComposer get itemId {
+    final $$ItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.itemId,
+      referencedTable: $db.items,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.items,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BranchItemStockTableOrderingComposer
+    extends Composer<_$AppDatabase, $BranchItemStockTable> {
+  $$BranchItemStockTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get stock => $composableBuilder(
+    column: $table.stock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sold => $composableBuilder(
+    column: $table.sold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get spoilage => $composableBuilder(
+    column: $table.spoilage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get price => $composableBuilder(
+    column: $table.price,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get costPrice => $composableBuilder(
+    column: $table.costPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minimumStock => $composableBuilder(
+    column: $table.minimumStock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastReceivedAt => $composableBuilder(
+    column: $table.lastReceivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastReceivedQuantity => $composableBuilder(
+    column: $table.lastReceivedQuantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$OrganizationsTableOrderingComposer get organizationId {
+    final $$OrganizationsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.organizationId,
+      referencedTable: $db.organizations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$OrganizationsTableOrderingComposer(
+            $db: $db,
+            $table: $db.organizations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ItemsTableOrderingComposer get itemId {
+    final $$ItemsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.itemId,
+      referencedTable: $db.items,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ItemsTableOrderingComposer(
+            $db: $db,
+            $table: $db.items,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BranchItemStockTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BranchItemStockTable> {
+  $$BranchItemStockTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get stock =>
+      $composableBuilder(column: $table.stock, builder: (column) => column);
+
+  GeneratedColumn<int> get sold =>
+      $composableBuilder(column: $table.sold, builder: (column) => column);
+
+  GeneratedColumn<int> get spoilage =>
+      $composableBuilder(column: $table.spoilage, builder: (column) => column);
+
+  GeneratedColumn<double> get price =>
+      $composableBuilder(column: $table.price, builder: (column) => column);
+
+  GeneratedColumn<double> get costPrice =>
+      $composableBuilder(column: $table.costPrice, builder: (column) => column);
+
+  GeneratedColumn<int> get minimumStock => $composableBuilder(
+    column: $table.minimumStock,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastReceivedAt => $composableBuilder(
+    column: $table.lastReceivedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastReceivedQuantity => $composableBuilder(
+    column: $table.lastReceivedQuantity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
+
+  $$OrganizationsTableAnnotationComposer get organizationId {
+    final $$OrganizationsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.organizationId,
+      referencedTable: $db.organizations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$OrganizationsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.organizations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ItemsTableAnnotationComposer get itemId {
+    final $$ItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.itemId,
+      referencedTable: $db.items,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.items,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BranchItemStockTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BranchItemStockTable,
+          BranchItemStockData,
+          $$BranchItemStockTableFilterComposer,
+          $$BranchItemStockTableOrderingComposer,
+          $$BranchItemStockTableAnnotationComposer,
+          $$BranchItemStockTableCreateCompanionBuilder,
+          $$BranchItemStockTableUpdateCompanionBuilder,
+          (BranchItemStockData, $$BranchItemStockTableReferences),
+          BranchItemStockData,
+          PrefetchHooks Function({bool organizationId, bool itemId})
+        > {
+  $$BranchItemStockTableTableManager(
+    _$AppDatabase db,
+    $BranchItemStockTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BranchItemStockTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BranchItemStockTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BranchItemStockTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> organizationId = const Value.absent(),
+                Value<int> itemId = const Value.absent(),
+                Value<int> stock = const Value.absent(),
+                Value<int> sold = const Value.absent(),
+                Value<int> spoilage = const Value.absent(),
+                Value<double?> price = const Value.absent(),
+                Value<double?> costPrice = const Value.absent(),
+                Value<int?> minimumStock = const Value.absent(),
+                Value<DateTime?> lastReceivedAt = const Value.absent(),
+                Value<int?> lastReceivedQuantity = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+              }) => BranchItemStockCompanion(
+                id: id,
+                organizationId: organizationId,
+                itemId: itemId,
+                stock: stock,
+                sold: sold,
+                spoilage: spoilage,
+                price: price,
+                costPrice: costPrice,
+                minimumStock: minimumStock,
+                lastReceivedAt: lastReceivedAt,
+                lastReceivedQuantity: lastReceivedQuantity,
+                createdAt: createdAt,
+                lastUpdated: lastUpdated,
+                isDeleted: isDeleted,
+                isSynced: isSynced,
+                cloudId: cloudId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int organizationId,
+                required int itemId,
+                Value<int> stock = const Value.absent(),
+                Value<int> sold = const Value.absent(),
+                Value<int> spoilage = const Value.absent(),
+                Value<double?> price = const Value.absent(),
+                Value<double?> costPrice = const Value.absent(),
+                Value<int?> minimumStock = const Value.absent(),
+                Value<DateTime?> lastReceivedAt = const Value.absent(),
+                Value<int?> lastReceivedQuantity = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+              }) => BranchItemStockCompanion.insert(
+                id: id,
+                organizationId: organizationId,
+                itemId: itemId,
+                stock: stock,
+                sold: sold,
+                spoilage: spoilage,
+                price: price,
+                costPrice: costPrice,
+                minimumStock: minimumStock,
+                lastReceivedAt: lastReceivedAt,
+                lastReceivedQuantity: lastReceivedQuantity,
+                createdAt: createdAt,
+                lastUpdated: lastUpdated,
+                isDeleted: isDeleted,
+                isSynced: isSynced,
+                cloudId: cloudId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$BranchItemStockTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({organizationId = false, itemId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (organizationId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.organizationId,
+                                referencedTable:
+                                    $$BranchItemStockTableReferences
+                                        ._organizationIdTable(db),
+                                referencedColumn:
+                                    $$BranchItemStockTableReferences
+                                        ._organizationIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (itemId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.itemId,
+                                referencedTable:
+                                    $$BranchItemStockTableReferences
+                                        ._itemIdTable(db),
+                                referencedColumn:
+                                    $$BranchItemStockTableReferences
+                                        ._itemIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$BranchItemStockTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BranchItemStockTable,
+      BranchItemStockData,
+      $$BranchItemStockTableFilterComposer,
+      $$BranchItemStockTableOrderingComposer,
+      $$BranchItemStockTableAnnotationComposer,
+      $$BranchItemStockTableCreateCompanionBuilder,
+      $$BranchItemStockTableUpdateCompanionBuilder,
+      (BranchItemStockData, $$BranchItemStockTableReferences),
+      BranchItemStockData,
+      PrefetchHooks Function({bool organizationId, bool itemId})
     >;
 typedef $$StockReplenishmentRequestsTableCreateCompanionBuilder =
     StockReplenishmentRequestsCompanion Function({
@@ -18407,6 +20188,8 @@ class $AppDatabaseManager {
       $$RecipeIngredientsTableTableManager(_db, _db.recipeIngredients);
   $$BranchIngredientStockTableTableManager get branchIngredientStock =>
       $$BranchIngredientStockTableTableManager(_db, _db.branchIngredientStock);
+  $$BranchItemStockTableTableManager get branchItemStock =>
+      $$BranchItemStockTableTableManager(_db, _db.branchItemStock);
   $$StockReplenishmentRequestsTableTableManager
   get stockReplenishmentRequests =>
       $$StockReplenishmentRequestsTableTableManager(
