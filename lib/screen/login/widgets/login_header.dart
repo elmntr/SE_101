@@ -25,6 +25,7 @@ class LoginHeader extends StatelessWidget {
             letterSpacing: 0.5,
           ),
         ),
+        const SizedBox(height: 40),
       ],
     );
   }
