@@ -2,7 +2,9 @@
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:drift/drift.dart' show Value;
 import '../../../database/app_database.dart';
+import '../../database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 
@@ -28,7 +30,13 @@ class EmployeeChangeStockPage extends StatefulWidget {
 
 class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   late AppDatabase db;
-  List<Item> items = [];
+  
+  /// Items with branch-specific stock data
+  List<ItemWithBranchStock> items = [];
+  
+  /// Parent commissary ID (for loading master items)
+  int? commissaryId;
+  
   bool isLoading = true;
 
   // Track pending changes separately (don't modify actual items yet)
@@ -53,37 +61,92 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   }
 
   Future<void> _loadItems() async {
-    // Resolve org ID - if local ID is 0, look up from cloud ID
-    int orgId = widget.userData.organizationId;
-    if (orgId == 0 && widget.userData.organizationCloudId != null) {
+    // Get the current branch's organization ID
+    int branchOrgId = widget.userData.organizationId;
+    
+    // Handle case where local ID is 0 but we have cloud ID (happens on first sync)
+    if (branchOrgId == 0 && widget.userData.organizationCloudId != null) {
       final org = await db.organizationsDao.getOrganizationByCloudId(
         widget.userData.organizationCloudId!,
       );
       if (org != null) {
-        orgId = org.id;
-        print('📍 Change stock: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}');
+        branchOrgId = org.id;
+        print('📍 Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}');
       }
     }
-
-    final loaded = await db.itemsDao.getItemsByOrganization(orgId);
+    
+    // Get the parent commissary ID for this branch
+    final branchOrg = branchOrgId > 0 
+        ? await db.organizationsDao.getOrganizationById(branchOrgId)
+        : null;
+    
+    if (branchOrg == null) {
+      print('❌ Could not find branch organization: $branchOrgId');
+      // Initialize empty lists to avoid late initialization error
+      _initializeEmptyLists();
+      setState(() => isLoading = false);
+      return;
+    }
+    
+    // Determine commissary ID
+    if (branchOrg.type == 'franchisee' && branchOrg.parentCommissaryId != null) {
+      commissaryId = branchOrg.parentCommissaryId;
+    } else if (branchOrg.type == 'commissary') {
+      commissaryId = branchOrg.id;
+    } else {
+      // Fallback: find any commissary
+      final commissaries = await db.organizationsDao.getAllOrganizations(type: 'commissary');
+      if (commissaries.isNotEmpty) {
+        commissaryId = commissaries.first.id;
+      }
+    }
+    
+    if (commissaryId == null) {
+      print('❌ Could not determine commissary ID');
+      _initializeEmptyLists();
+      setState(() => isLoading = false);
+      return;
+    }
+    
+    print('📍 Loading items for branch $branchOrgId from commissary $commissaryId');
+    
+    // ✅ NEW: Load items WITH branch-specific stock (not shared items table)
+    final loadedItems = await db.branchItemStockDao.getItemsWithStockForBranch(
+      branchOrgId,
+      commissaryId!,
+    );
+    
+    print('📦 Loaded ${loadedItems.length} items with branch stock');
+    for (final item in loadedItems) {
+      print('   - ${item.name}: stock=${item.stock}, hasBranchStock=${item.hasBranchStock}');
+    }
 
     setState(() {
-      items = loaded;
-      selectedReasons = List.filled(loaded.length, 'Sale');
-      pendingSold = List.filled(loaded.length, 0);
-      pendingSpoilage = List.filled(loaded.length, 0);
+      items = loadedItems;
+      selectedReasons = List.filled(loadedItems.length, 'Sale');
+      pendingSold = List.filled(loadedItems.length, 0);
+      pendingSpoilage = List.filled(loadedItems.length, 0);
       qtyControllers = List.generate(
-        loaded.length,
+        loadedItems.length,
         (_) => TextEditingController(),
       );
       isLoading = false;
     });
   }
 
+  /// Initialize empty lists to avoid LateInitializationError on early return
+  void _initializeEmptyLists() {
+    items = [];
+    selectedReasons = [];
+    pendingSold = [];
+    pendingSpoilage = [];
+    qtyControllers = [];
+  }
+
   int get totalSold => pendingSold.fold(0, (sum, qty) => sum + qty);
   int get totalSpoiled => pendingSpoilage.fold(0, (sum, qty) => sum + qty);
 
-  /// ✅ FIXED: Save changes to database as stock_change_requests
+  /// ✅ Save changes directly to item stock and record who made the change
   Future<void> _saveChanges() async {
     // Validate input
     bool hasChanges = false;
@@ -114,7 +177,6 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     }
 
     try {
-      // ✅ Save each change as a separate stock_change_request in the database
       List<Item> changedItems = [];
 
       for (int i = 0; i < items.length; i++) {
@@ -123,34 +185,74 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         final spoilageQty = pendingSpoilage[i];
 
         if (soldQty > 0 || spoilageQty > 0) {
-          // Create stock change request for sold items
+          // ✅ NEW: Update BRANCH-SPECIFIC stock, not the shared items table
+          // This ensures each branch has isolated inventory
+          
+          // Check if branch stock record exists
+          if (!item.hasBranchStock) {
+            // Create branch stock record first
+            print('📝 Creating branch stock record for ${item.name}');
+            await db.branchItemStockDao.createStock(
+              BranchItemStockCompanion(
+                organizationId: Value(widget.userData.organizationId),
+                itemId: Value(item.id),
+                stock: const Value(0),
+                sold: const Value(0),
+                spoilage: const Value(0),
+              ),
+            );
+            // Reload to get the new record with its ID
+            await _loadItems();
+            // Skip this item for now, user can try again
+            continue;
+          }
+          
+          final branchStockId = item.branchStockId!;
+          final currentStock = item.stock;
+          final newStock = currentStock - soldQty - spoilageQty;
+          
+          print('📝 Updating branch stock for ${item.name}: stock $currentStock → $newStock (sold: $soldQty, spoilage: $spoilageQty)');
+          
+          // ✅ Use branch stock DAO methods - these only affect THIS branch's stock
+          bool success = true;
           if (soldQty > 0) {
-            await db.stockChangeRequestsDao.createChangeRequest(
+            success = await db.branchItemStockDao.recordSale(branchStockId, soldQty);
+            print(success ? '   ✅ Sale recorded' : '   ❌ Sale record failed');
+          }
+          if (spoilageQty > 0 && success) {
+            success = await db.branchItemStockDao.recordSpoilage(branchStockId, spoilageQty);
+            print(success ? '   ✅ Spoilage recorded' : '   ❌ Spoilage record failed');
+          }
+
+          // ✅ Record the change in stock_change_requests for audit trail
+          if (soldQty > 0) {
+            final requestId = await db.stockChangeRequestsDao.createChangeRequest(
               franchiseeId: widget.userData.organizationId,
               itemId: item.id,
               changeType: 'sold',
               quantity: soldQty,
               requestedBy: widget.userData.id,
-              originalStock: item.stock,
-              reason: 'Employee stock change',
+              originalStock: currentStock,
+              reason: 'Employee stock change - ${widget.userData.fullName ?? widget.userData.username}',
             );
+            await db.stockChangeRequestsDao.submitChangeRequest(requestId);
           }
 
-          // Create stock change request for spoiled items
           if (spoilageQty > 0) {
-            await db.stockChangeRequestsDao.createChangeRequest(
+            final requestId = await db.stockChangeRequestsDao.createChangeRequest(
               franchiseeId: widget.userData.organizationId,
               itemId: item.id,
               changeType: 'spoiled',
               quantity: spoilageQty,
               requestedBy: widget.userData.id,
-              originalStock: item.stock,
-              reason: 'Employee stock change',
+              originalStock: currentStock,
+              reason: 'Employee stock change - ${widget.userData.fullName ?? widget.userData.username}',
             );
+            await db.stockChangeRequestsDao.submitChangeRequest(requestId);
           }
 
-          // Track changed items for the record
-          changedItems.add(item.copyWith(sold: soldQty, spoilage: spoilageQty));
+          // Create Item for the ChangeRecord callback (backwards compatibility)
+          changedItems.add(item.item.copyWith(sold: soldQty, spoilage: spoilageQty));
         }
       }
 
@@ -164,14 +266,6 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         return;
       }
 
-      // ✅ Submit all draft requests automatically
-      final draftRequests = await db.stockChangeRequestsDao.getEmployeeDrafts(
-        widget.userData.id,
-      );
-      for (final request in draftRequests) {
-        await db.stockChangeRequestsDao.submitChangeRequest(request.id);
-      }
-
       // Create in-memory record for UI callback (if needed)
       final record = ChangeRecord(
         employeeName: widget.userData.fullName ?? widget.userData.username,
@@ -179,7 +273,9 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         items: changedItems,
       );
 
-      // Reset UI
+      // Reset UI and reload items to show updated stock
+      await _loadItems();
+      
       setState(() {
         selectedReasons = List.filled(items.length, 'Sale');
         pendingSold = List.filled(items.length, 0);
@@ -190,12 +286,11 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
       });
 
       widget.onRecordSaved?.call(record);
-      widget.onBack();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("✅ Changes saved and submitted for review!"),
+            content: Text("✅ Stock updated successfully!"),
             backgroundColor: Colors.green,
           ),
         );
