@@ -17,6 +17,20 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    
+    // Force Java 17 for all subprojects (including Flutter plugins)
+    plugins.withId("com.android.library") {
+        val android = extensions.getByName("android") as com.android.build.gradle.BaseExtension
+        android.compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
+        }
+    }
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        kotlinOptions {
+            jvmTarget = "17"
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {
