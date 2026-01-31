@@ -8,6 +8,7 @@ import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'franchisee_inventory_mobile.dart';
 import 'franchisee_inventory_desktop.dart';
+import 'replenish_stock_tab.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -27,6 +28,7 @@ class InventoryPageState extends State<InventoryPage> {
   
   int? currentOrganizationId;
   int? commissaryId;  // Parent commissary for master items
+  int? currentUserId;  // Current logged-in user
   bool isLoading = true;
 
   int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock
@@ -65,8 +67,9 @@ class InventoryPageState extends State<InventoryPage> {
       // Get current organization and commissary IDs
       await loadCurrentOrganization();
       await loadCommissaryId();
+      await loadCurrentUserId();
 
-      if (currentOrganizationId != null && commissaryId != null) {
+      if (currentOrganizationId != null && currentOrganizationId! > 0 && commissaryId != null) {
         // ✅ NEW: Load items with branch-specific stock
         final loadedItems = await db.branchItemStockDao.getItemsWithStockForBranch(
           currentOrganizationId!,
@@ -156,6 +159,34 @@ class InventoryPageState extends State<InventoryPage> {
         print('📍 Fallback commissary: commissaryId=${commissaryId}');
       }
     }
+  }
+
+  Future<void> loadCurrentUserId() async {
+    final currentUser = AppGlobals.instance.authService.currentUser;
+    if (currentUser != null) {
+      // Resolve local ID if it's 0 (meaning we have auth but no local mapping yet)
+      if (currentUser.id == 0 && currentUser.cloudId != null) {
+        final localUser = await db.usersDao.getUserByCloudId(currentUser.cloudId!);
+        if (localUser != null) {
+          currentUserId = localUser.id;
+          print('👤 Resolved local User ID from cloud ID: ${currentUser.cloudId} → ${localUser.id}');
+        } else {
+          print('⚠️ Could not resolve local user from cloud ID: ${currentUser.cloudId}');
+          currentUserId = 0;
+        }
+      } else {
+        currentUserId = currentUser.id;
+      }
+    } else {
+      // If we don't have a user, we might need one for the request.
+      // For now, we'll try to get it from the DAO if possible, or fallback.
+      // In a real app, we should enforce login.
+      final users = await db.usersDao.getAllUsers();
+      if (users.isNotEmpty) {
+        currentUserId = users.first.id;
+      }
+    }
+    print('👤 Current User ID: $currentUserId');
   }
 
   void applyItemSort(ItemSort sort) {
