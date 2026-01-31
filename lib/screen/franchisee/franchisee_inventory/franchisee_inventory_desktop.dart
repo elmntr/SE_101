@@ -3,6 +3,7 @@ import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'franchisee_inventory.dart';
+import 'replenish_stock_tab.dart';
 
 class InventoryPageDesktop extends StatelessWidget {
   final InventoryPageState state;
@@ -239,14 +240,11 @@ class InventoryPageDesktop extends StatelessWidget {
                                 smallHeaderWidth: 20,
                                 largeHeaderWidth: 120,
                                   ))
-                          : emptyTables(
-                              message:
-                                  "You can request stock replenishment here.",
-                              onAddPressed: () {
-                                print("✅ Request Stock pressed");
-                              },
-                              buttonType: EmptyButtonType.elevated,
-                              buttonText: "Request Stock",
+                          : ReplenishStockTab(
+                              branchId: state.currentOrganizationId ?? 0,
+                              commissaryId: state.commissaryId ?? 0,
+                              userId: state.currentUserId ?? 0,
+                              items: state.items,
                             ),
                     ),
                   ),

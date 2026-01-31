@@ -119,8 +119,10 @@ class FranchiseeProductsViewDesktop extends StatelessWidget {
                             headers: [
                               'Product Name',
                               'Category',
+                              'Stock',
+                              'Sold',
+                              'Spoilage',
                               'Unit',
-                              'Recipe Ingredients',
                               '',
                             ],
                             rows: state.filteredProducts.map((item) => [
@@ -141,29 +143,25 @@ class FranchiseeProductsViewDesktop extends StatelessWidget {
                                       child: Text(state.categoryNameForId(item.categoryId)),
                                     ),
                                   ),
-                                  GestureDetector(
-                                    onTap: () => state.showProductDetails(item),
-                                    child: MouseRegion(
-                                      cursor: SystemMouseCursors.click,
-                                      child: Text(item.unit),
+                                  Text(
+                                    '${item.stock}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: item.stock <= (item.minimumStock ?? 10) ? Colors.red : Colors.black,
+                                    ),
+                                  ),
+                                  Text('${item.sold}'),
+                                  Text(
+                                    '${item.spoilage}',
+                                    style: TextStyle(
+                                      color: item.spoilage > 0 ? Colors.orange : Colors.black,
                                     ),
                                   ),
                                   GestureDetector(
                                     onTap: () => state.showProductDetails(item),
                                     child: MouseRegion(
                                       cursor: SystemMouseCursors.click,
-                                      child: SizedBox(
-                                        width: 200,
-                                        child: Text(
-                                          state.getIngredientsDisplay(item.id),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ),
+                                      child: Text(item.unit),
                                     ),
                                   ),
                                   IconButton(

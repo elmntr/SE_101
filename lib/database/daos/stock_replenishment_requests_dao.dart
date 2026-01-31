@@ -1,5 +1,6 @@
 // lib/database/daos/stock_replenishment_requests_dao.dart
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 import '../app_database.dart';
 import '../tables/stock_replenishment_requests.dart';
 import '../tables/items.dart';
@@ -175,6 +176,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
           requestedBy: requestedBy,
           franchiseeNotes: Value(franchiseeNotes),
           isSynced: Value(false),
+          cloudId: Value(const Uuid().v4()),
         ),
       );
     } catch (e) {
