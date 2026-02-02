@@ -474,13 +474,27 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
+          final cloudId = cloudReq['cloud_id'] as String;
+          final cloudStatus = cloudReq['status'] as String;
+          
+          // First, check if we already have this record locally by cloud_id
+          final existing = await getRequestByCloudId(cloudId);
+          final localId = existing?.id;
+          
+          print('   🔍 Processing cloud request: cloudId=$cloudId, cloudStatus=$cloudStatus');
+          if (existing != null) {
+            print('      Found local record #${existing.id}, localStatus=${existing.status}');
+          } else {
+            print('      No local record found, will insert new');
+          }
+          
           await upsertFromCloud(
-            id: cloudReq['local_id'],
+            id: localId,
             franchiseeId: cloudReq['franchisee_id'],
             commissaryId: cloudReq['commissary_id'],
             itemId: cloudReq['item_id'],
             quantityRequested: cloudReq['quantity_requested'],
-            status: cloudReq['status'],
+            status: cloudStatus,
             requestedBy: cloudReq['requested_by'],
             requestedAt: DateTime.parse(cloudReq['requested_at']),
             reviewedBy: cloudReq['reviewed_by'],
@@ -495,10 +509,11 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             createdAt: DateTime.parse(cloudReq['created_at']),
             lastUpdated: DateTime.parse(cloudReq['last_updated']),
             isDeleted: cloudReq['is_deleted'] ?? false,
-            cloudId: cloudReq['cloud_id'],
+            cloudId: cloudId,
           );
         }
       });
+      print('   ✅ Batch upsert completed');
     } catch (e) {
       print('❌ Error batch upserting requests from cloud: $e');
       rethrow;
@@ -507,7 +522,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
 
   /// ✅ Upsert from cloud (individual)
   Future<void> upsertFromCloud({
-    required int id,
+    int? id,
     required int franchiseeId,
     required int commissaryId,
     required int itemId,
@@ -526,15 +541,16 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
     required String cloudId,
   }) async {
     try {
-      await into(stockReplenishmentRequests).insertOnConflictUpdate(
-        StockReplenishmentRequestsCompanion.insert(
-          id: Value(id),
-          franchiseeId: franchiseeId,
-          commissaryId: commissaryId,
-          itemId: itemId,
-          quantityRequested: quantityRequested,
+      if (id != null) {
+        // Update existing record by ID
+        await (update(stockReplenishmentRequests)..where((t) => t.id.equals(id)))
+            .write(StockReplenishmentRequestsCompanion(
+          franchiseeId: Value(franchiseeId),
+          commissaryId: Value(commissaryId),
+          itemId: Value(itemId),
+          quantityRequested: Value(quantityRequested),
           status: Value(status),
-          requestedBy: requestedBy,
+          requestedBy: Value(requestedBy),
           requestedAt: Value(requestedAt),
           reviewedBy: Value(reviewedBy),
           reviewedAt: Value(reviewedAt),
@@ -544,10 +560,35 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
           createdAt: Value(createdAt),
           lastUpdated: Value(lastUpdated),
           isDeleted: Value(isDeleted),
-          isSynced: Value(true),
+          isSynced: const Value(true),
           cloudId: Value(cloudId),
-        ),
-      );
+        ));
+        print('   ✓ Updated request #$id (status: $status)');
+      } else {
+        // Insert new record
+        await into(stockReplenishmentRequests).insert(
+          StockReplenishmentRequestsCompanion.insert(
+            franchiseeId: franchiseeId,
+            commissaryId: commissaryId,
+            itemId: itemId,
+            quantityRequested: quantityRequested,
+            status: Value(status),
+            requestedBy: requestedBy,
+            requestedAt: Value(requestedAt),
+            reviewedBy: Value(reviewedBy),
+            reviewedAt: Value(reviewedAt),
+            deliveryDate: Value(deliveryDate),
+            franchiseeNotes: Value(franchiseeNotes),
+            commissaryNotes: Value(commissaryNotes),
+            createdAt: Value(createdAt),
+            lastUpdated: Value(lastUpdated),
+            isDeleted: Value(isDeleted),
+            isSynced: const Value(true),
+            cloudId: Value(cloudId),
+          ),
+        );
+        print('   ✓ Inserted new request from cloud (cloudId: $cloudId, status: $status)');
+      }
     } catch (e) {
       print('❌ Error upserting request from cloud: $e');
       rethrow;

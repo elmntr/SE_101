@@ -172,10 +172,13 @@ class InventoryPageState extends State<InventoryPage> {
           print('👤 Resolved local User ID from cloud ID: ${currentUser.cloudId} → ${localUser.id}');
         } else {
           print('⚠️ Could not resolve local user from cloud ID: ${currentUser.cloudId}');
-          currentUserId = 0;
+          // Don't set to 0 - leave as null so we know it's invalid
+          currentUserId = null;
         }
-      } else {
+      } else if (currentUser.id > 0) {
         currentUserId = currentUser.id;
+      } else {
+        currentUserId = null;
       }
     } else {
       // If we don't have a user, we might need one for the request.

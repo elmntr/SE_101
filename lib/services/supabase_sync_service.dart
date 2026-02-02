@@ -1023,19 +1023,17 @@ class SupabaseSyncService {
       final lastSync = '1970-01-01T00:00:00.000Z';  // Always full refresh for items
 
       // ✅ Debug: Log current organization context
-      if (kDebugMode) {
-        AppLogger.sync('   📍 Current org context:');
-        AppLogger.sync('      - orgId (local): $_currentOrganizationId');
-        AppLogger.sync('      - orgCloudId: $_currentOrganizationCloudId');
-        AppLogger.sync('      - orgType: $_currentOrganizationType');
-        AppLogger.sync('      - parentCommissaryId (local): $_parentCommissaryId');
-        AppLogger.sync('      - parentCommissaryCloudId: $_parentCommissaryCloudId');
-        
-        // Debug: Print organization cache
-        AppLogger.sync('   📍 Organization cache contents:');
-        for (final entry in _cloudToLocalCache['organizations']!.entries) {
-          AppLogger.sync('      ${entry.key} → local ID ${entry.value}');
-        }
+      print('   📍 _pullItems: Current org context:');
+      print('      - orgId (local): $_currentOrganizationId');
+      print('      - orgCloudId: $_currentOrganizationCloudId');
+      print('      - orgType: $_currentOrganizationType');
+      print('      - parentCommissaryId (local): $_parentCommissaryId');
+      print('      - parentCommissaryCloudId: $_parentCommissaryCloudId');
+      
+      // Debug: Print organization cache
+      print('   📍 Organization cache contents (${_cloudToLocalCache['organizations']!.length} entries):');
+      for (final entry in _cloudToLocalCache['organizations']!.entries) {
+        print('      ${entry.key} → local ID ${entry.value}');
       }
 
       // Build query with organization filter
@@ -1053,7 +1051,7 @@ class SupabaseSyncService {
         if (_currentOrganizationType == 'franchisee') {
           // ✅ FIX: For franchisees, pull master items from commissary + own items
           // RLS already allows this, but we can be explicit with cloud IDs
-          AppLogger.sync('   🔍 Franchisee mode: RLS will filter to show master items + own items');
+          print('   🔍 Franchisee mode: RLS will filter to show master items + own items');
           // Don't manually filter - let RLS handle it based on authenticated user
           // The RLS policy: organization_id = own OR (parent_commissary AND master_item_id IS NULL)
         } else {
@@ -1068,13 +1066,11 @@ class SupabaseSyncService {
           .order('last_updated', ascending: false)
           .limit(1000);
 
-      AppLogger.sync('   📥 Received ${cloudItems.length} items from Supabase');
+      print('   📥 Received ${cloudItems.length} items from Supabase');
       
-      // ✅ Debug: Log each item received
-      if (kDebugMode) {
-        for (final item in cloudItems) {
-          AppLogger.sync('      📦 Cloud item: ${item['name']} | org_id=${item['organization_id']} | master=${item['master_item_id']}');
-        }
+      // Debug: Log each item received
+      for (final item in cloudItems) {
+        print('      📦 Cloud item: ${item['name']} | org_id=${item['organization_id']} | master=${item['master_item_id']}');
       }
 
       if (cloudItems.isNotEmpty) {
@@ -1091,16 +1087,12 @@ class SupabaseSyncService {
           );
 
           if (orgId == null) {
-            if (kDebugMode) {
-              AppLogger.sync('   ⚠️ Skipping item ${cloudItem['name']}: org not found for cloud_id=$orgCloudId');
-            }
+            print('   ⚠️ Skipping item ${cloudItem['name']}: org not found for cloud_id=$orgCloudId');
             continue;
           }
           
-          // ✅ Debug: Log resolved item
-          if (kDebugMode) {
-            AppLogger.sync('      ✅ Resolved: ${cloudItem['name']} | orgCloudId=$orgCloudId → localOrgId=$orgId');
-          }
+          // Debug: Log resolved item
+          print('      ✅ Resolved: ${cloudItem['name']} | orgCloudId=$orgCloudId → localOrgId=$orgId');
 
           resolvedItems.add({
             ...cloudItem,
@@ -1109,7 +1101,7 @@ class SupabaseSyncService {
           });
         }
 
-        AppLogger.sync('   ✅ Resolved ${resolvedItems.length} items for local insert');
+        print('   ✅ Resolved ${resolvedItems.length} items for local insert');
 
         if (resolvedItems.isNotEmpty) {
           // Process in batches
@@ -1493,16 +1485,19 @@ class SupabaseSyncService {
 
   Future<void> _pullReplenishmentRequests() async {
     try {
-      final lastSync =
-          _lastSuccessfulSync?.toIso8601String() ?? '1970-01-01T00:00:00.000Z';
+      // Always pull recent requests (last 30 days) to catch status updates
+      // Don't rely on lastSync since status changes can happen anytime
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
 
       // RLS filters: Commissary sees requests to them, Franchisee sees own requests
       final cloudRequests = await supabase
           .from('stock_replenishment_requests')
           .select()
-          .gte('last_updated', lastSync)
+          .gte('last_updated', thirtyDaysAgo)
           .order('last_updated', ascending: false)
           .limit(500);
+
+      print('   📥 Fetched ${cloudRequests.length} replenishment requests from cloud');
 
       if (cloudRequests.isNotEmpty) {
         final resolvedRequests = <Map<String, dynamic>>[];
@@ -1529,8 +1524,12 @@ class SupabaseSyncService {
           if (franchiseeId == null ||
               commissaryId == null ||
               itemId == null ||
-              requestedById == null)
+              requestedById == null) {
+            print('   ⚠️ Skipping request ${cloudRequest['cloud_id']}: missing local FK');
             continue;
+          }
+
+          print('   📋 Processing request ${cloudRequest['cloud_id']}: status=${cloudRequest['status']}');
 
           resolvedRequests.add({
             ...cloudRequest,
@@ -1553,6 +1552,7 @@ class SupabaseSyncService {
       }
     } catch (e) {
       AppLogger.sync('   ⚠️ Failed to pull replenishment requests: $e');
+      print('   ⚠️ Failed to pull replenishment requests: $e');
     }
   }
 
