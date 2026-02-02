@@ -177,107 +177,8 @@ class EmployeeItemsPageMobile extends StatelessWidget {
                   child: state.isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : state.selectedTab == 0
-                      ? (state.dbItems.isEmpty
-                            ? emptyTables(
-                                message: "No items available",
-                                onAddPressed: null,
-                                buttonType: EmptyButtonType.none,
-                                buttonText: null,
-                              )
-                            : buildUniversalTable(
-                                headers: [
-                                  "Item Name",
-                                  "Stock",
-                                  "Sale",
-                                  "Spoilage",
-                                ],
-                                rows: state.dbItems
-                                    .map(
-                                      (item) => [
-                                        GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
-                                          child: MouseRegion(
-                                            cursor: SystemMouseCursors.click,
-                                            child: Text(item.name),
-                                          ),
-                                        ),
-                                        GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
-                                          child: MouseRegion(
-                                            cursor: SystemMouseCursors.click,
-                                            child: Text(item.stock.toString()),
-                                          ),
-                                        ),
-                                        GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
-                                          child: MouseRegion(
-                                            cursor: SystemMouseCursors.click,
-                                            child: Text(item.sold.toString()),
-                                          ),
-                                        ),
-                                        GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
-                                          child: MouseRegion(
-                                            cursor: SystemMouseCursors.click,
-                                            child: Text(item.spoilage.toString()),
-                                          ),
-                                        ),
-                                        
-                                      ],
-                                    )
-                                    .toList(),
-                        
-                              smallHeaderWidth: 20,
-                              largeHeaderWidth: 120,
-                              ))
-                      : (state.pendingChanges.isEmpty
-                            ? emptyTables(
-                                message: "No pending changes",
-                                onAddPressed: null,
-                                buttonType: EmptyButtonType.none,
-                                buttonText: null,
-                              )
-                            : FutureBuilder<List<Map<String, dynamic>>>(
-                                future: state.buildChangeRequestRows(),
-                                builder: (context, snapshot) {
-                                  if (!snapshot.hasData) {
-                                    return const Center(
-                                      child: CircularProgressIndicator(),
-                                    );
-                                  }
-                                  return buildUniversalTable(
-                                    headers: [
-                                      "Item",
-                                      "Type",
-                                      "Qty",
-                                      "Status",
-                                      "",
-                                    ],
-                                    rows: snapshot.data!
-                                        .map(
-                                          (row) => [
-                                            row['itemName'],
-                                            row['changeType'],
-                                            row['quantity'],
-                                            state.buildStatusChip(row['status']),
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.visibility,
-                                              ),
-                                              onPressed: () =>
-                                                  state.viewChangeDetail(
-                                                    row['request'],
-                                                  ),
-                                            ),
-                                          ],
-                                        )
-                                        .toList(),
-                                        
-                                    smallHeaderWidth: 20,
-                                    largeHeaderWidth: 120,
-                                  );
-                                },
-                              )),
+                      ? _buildItemsTab()
+                      : _buildReviewChangesTab(),
                 ),
               ),
             ],
@@ -285,11 +186,13 @@ class EmployeeItemsPageMobile extends StatelessWidget {
         ),
       ),
       floatingActionButton:
-          (state.selectedTab == 0 && state.dbItems.isNotEmpty && !state.isLoading)
+          (state.selectedTab == 0 &&
+              state.dbItems.isNotEmpty &&
+              !state.isLoading)
           ? Padding(
               padding: const EdgeInsets.only(bottom: 20),
               child: FloatingActionButton.extended(
-                onPressed: state.toggleChangeStockMode,
+                onPressed: state.showChangeStockDialog,
                 backgroundColor: const Color(0xFFE30417),
                 elevation: 8,
                 shape: RoundedRectangleBorder(
@@ -311,6 +214,94 @@ class EmployeeItemsPageMobile extends StatelessWidget {
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildItemsTab() {
+    if (state.dbItems.isEmpty) {
+      return emptyTables(
+        message: "No items available",
+        onAddPressed: null,
+        buttonType: EmptyButtonType.none,
+        buttonText: null,
+      );
+    }
+    return buildUniversalTable(
+      headers: ["Item Name", "Stock", "Sale", "Spoilage"],
+      rows: state.dbItems
+          .map(
+            (item) => [
+              GestureDetector(
+                onTap: () => state.showItemDetails(item),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Text(item.name),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => state.showItemDetails(item),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Text(item.stock.toString()),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => state.showItemDetails(item),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Text(item.sold.toString()),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => state.showItemDetails(item),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Text(item.spoilage.toString()),
+                ),
+              ),
+            ],
+          )
+          .toList(),
+      smallHeaderWidth: 20,
+      largeHeaderWidth: 120,
+    );
+  }
+
+  Widget _buildReviewChangesTab() {
+    if (state.pendingChanges.isEmpty) {
+      return emptyTables(
+        message: "No pending changes",
+        onAddPressed: null,
+        buttonType: EmptyButtonType.none,
+        buttonText: null,
+      );
+    }
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: state.buildChangeRequestRows(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return buildUniversalTable(
+          headers: ["Item", "Type", "Qty", "Status", ""],
+          rows: snapshot.data!
+              .map(
+                (row) => [
+                  row['itemName'],
+                  row['changeType'],
+                  row['quantity'],
+                  state.buildStatusChip(row['status']),
+                  IconButton(
+                    icon: const Icon(Icons.visibility),
+                    onPressed: () => state.viewChangeDetail(row['request']),
+                  ),
+                ],
+              )
+              .toList(),
+          smallHeaderWidth: 20,
+          largeHeaderWidth: 120,
+        );
+      },
     );
   }
 }
