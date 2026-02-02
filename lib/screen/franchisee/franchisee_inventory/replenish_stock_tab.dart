@@ -1,5 +1,4 @@
 // lib/screen/franchisee/franchisee_inventory/replenish_stock_tab.dart
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
@@ -41,7 +40,19 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
       widget.items.length,
       (_) => TextEditingController(),
     );
-    _loadExistingRequests();
+    _syncAndLoadRequests();
+  }
+
+  Future<void> _syncAndLoadRequests() async {
+    // First sync to get latest status updates from cloud
+    try {
+      print('🔄 Syncing replenishment requests...');
+      await AppGlobals.instance.syncService.syncStockReplenishmentRequests();
+    } catch (e) {
+      print('⚠️ Sync failed: $e');
+    }
+    // Then load from local DB
+    await _loadExistingRequests();
   }
 
   @override
@@ -71,6 +82,17 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
   }
 
   Future<void> _submitRequests() async {
+    // Validate user ID before submitting
+    if (widget.userId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: User not logged in properly. Please re-login.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Collect items with quantities > 0
     final requestItems = <MapEntry<ItemWithBranchStock, int>>[];
     for (int i = 0; i < widget.items.length; i++) {
@@ -108,6 +130,15 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
       // Clear inputs
       for (var c in qtyControllers) {
         c.clear();
+      }
+
+      // Auto-sync to push requests to commissary
+      try {
+        print('🔄 Auto-syncing replenishment requests...');
+        await AppGlobals.instance.syncService.syncStockReplenishmentRequests();
+        print('✅ Requests synced to cloud');
+      } catch (syncError) {
+        print('⚠️ Sync failed (will retry later): $syncError');
       }
 
       // Reload requests
@@ -282,14 +313,27 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
         
         const SizedBox(height: 20),
         
-        // Existing requests section
-        const Text(
-          'Recent Requests',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            fontFamily: fontAll,
-          ),
+        // Existing requests section with refresh button
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Recent Requests',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                fontFamily: fontAll,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh to see latest status',
+              onPressed: isLoading ? null : () {
+                setState(() => isLoading = true);
+                _syncAndLoadRequests();
+              },
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         

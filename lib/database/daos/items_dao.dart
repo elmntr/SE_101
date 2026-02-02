@@ -213,7 +213,28 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     }
   }
 
+  /// ✅ Get item by name (case-insensitive)
+  Future<Item?> getItemByName(
+    String name, {
+    int? organizationId,
+  }) async {
+    try {
+      final query = select(items)
+        ..where((t) => t.name.lower().equals(name.toLowerCase()) & t.isDeleted.equals(false));
+
+      if (organizationId != null) {
+        query.where((t) => t.organizationId.equals(organizationId));
+      }
+
+      return await query.getSingleOrNull();
+    } catch (e) {
+      print('❌ Error fetching item by name: $e');
+      return null;
+    }
+  }
+
   /// ✅ Insert a new item with error handling
+  /// Throws an exception if an item with the same name already exists in the organization
   Future<int> insertItem({
     required String name,
     required int organizationId, // ✅ NEW - Required
@@ -228,6 +249,15 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     String? cloudId,
   }) async {
     try {
+      // Check for duplicate item name within the organization
+      final existingItem = await getItemByName(
+        name,
+        organizationId: organizationId,
+      );
+      if (existingItem != null) {
+        throw Exception('A product with the name "$name" already exists');
+      }
+
       return await into(items).insert(
         ItemsCompanion.insert(
           name: name,
