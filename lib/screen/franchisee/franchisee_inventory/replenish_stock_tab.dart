@@ -156,10 +156,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
       print('Error submitting requests: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -190,193 +187,366 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Request form section
-        const Text(
-          'Request Stock from Commissary',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            fontFamily: fontAll,
-          ),
-        ),
-        const SizedBox(height: 12),
-        
-        // Items table with quantity inputs
-        Expanded(
-          flex: 2,
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(8),
-                      topRight: Radius.circular(8),
-                    ),
-                  ),
-                  child: const Row(
-                    children: [
-                      Expanded(flex: 3, child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold))),
-                      Expanded(flex: 2, child: Text('Current Stock', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                      Expanded(flex: 2, child: Text('Request Qty', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                    ],
+                // Request form section
+                Text(
+                  'Request Stock from Commissary',
+                  style: TextStyle(
+                    fontSize: isMobile ? 16 : 18,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: fontAll,
                   ),
                 ),
-                // Items list
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: widget.items.length,
-                    itemBuilder: (context, index) {
-                      final item = widget.items[index];
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(flex: 3, child: Text(item.name)),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                item.stock.toString(),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: item.isLowStock ? Colors.red : Colors.black,
-                                  fontWeight: item.isLowStock ? FontWeight.bold : FontWeight.normal,
+                const SizedBox(height: 12),
+
+                // Items list with quantity inputs
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header (only show on wider screens)
+                      if (!isMobile)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(8),
+                              topRight: Radius.circular(8),
+                            ),
+                          ),
+                          child: const Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  'Item Name',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                                child: TextField(
-                                  controller: qtyControllers[index],
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  'Current Stock',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                   textAlign: TextAlign.center,
-                                  decoration: const InputDecoration(
-                                    hintText: '0',
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                                    isDense: true,
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  'Request Qty',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      // Items list - use non-scrolling list since parent scrolls
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: widget.items.length,
+                        itemBuilder: (context, index) {
+                          final item = widget.items[index];
+
+                          if (isMobile) {
+                            // Mobile card layout
+                            return Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: Colors.grey.shade200,
                                   ),
                                 ),
                               ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            const Text(
+                                              'Stock: ',
+                                              style: TextStyle(
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                            Text(
+                                              item.stock.toString(),
+                                              style: TextStyle(
+                                                color: item.isLowStock
+                                                    ? Colors.red
+                                                    : Colors.black,
+                                                fontWeight: item.isLowStock
+                                                    ? FontWeight.bold
+                                                    : FontWeight.normal,
+                                              ),
+                                            ),
+                                            if (item.isLowStock)
+                                              const Padding(
+                                                padding: EdgeInsets.only(
+                                                  left: 4,
+                                                ),
+                                                child: Icon(
+                                                  Icons.warning,
+                                                  color: Colors.red,
+                                                  size: 16,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      SizedBox(
+                                        width: 100,
+                                        child: TextField(
+                                          controller: qtyControllers[index],
+                                          keyboardType: TextInputType.number,
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter
+                                                .digitsOnly,
+                                          ],
+                                          textAlign: TextAlign.center,
+                                          decoration: const InputDecoration(
+                                            hintText: 'Qty',
+                                            border: OutlineInputBorder(),
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                                  vertical: 8,
+                                                  horizontal: 8,
+                                                ),
+                                            isDense: true,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          // Desktop/tablet row layout
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
                             ),
-                          ],
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(color: Colors.grey.shade200),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(flex: 3, child: Text(item.name)),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    item.stock.toString(),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: item.isLowStock
+                                          ? Colors.red
+                                          : Colors.black,
+                                      fontWeight: item.isLowStock
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    child: TextField(
+                                      controller: qtyControllers[index],
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                      ],
+                                      textAlign: TextAlign.center,
+                                      decoration: const InputDecoration(
+                                        hintText: '0',
+                                        border: OutlineInputBorder(),
+                                        contentPadding: EdgeInsets.symmetric(
+                                          vertical: 8,
+                                          horizontal: 8,
+                                        ),
+                                        isDense: true,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Submit button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE30417),
+                      padding: EdgeInsets.symmetric(
+                        vertical: isMobile ? 14 : 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: isSubmitting ? null : _submitRequests,
+                    child: isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            'SUBMIT REQUEST',
+                            style: TextStyle(
+                              fontSize: isMobile ? 14 : 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Existing requests section with refresh button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Recent Requests',
+                      style: TextStyle(
+                        fontSize: isMobile ? 16 : 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: fontAll,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      tooltip: 'Refresh to see latest status',
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              setState(() => isLoading = true);
+                              _syncAndLoadRequests();
+                            },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Recent requests list
+                if (existingRequests.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Text(
+                        'No requests yet',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: existingRequests.length,
+                    itemBuilder: (context, index) {
+                      final req = existingRequests[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          dense: isMobile,
+                          title: FutureBuilder<Item?>(
+                            future: db.itemsDao.getItemById(req.itemId),
+                            builder: (context, snapshot) {
+                              return Text(
+                                snapshot.data?.name ?? 'Item #${req.itemId}',
+                                style: TextStyle(fontSize: isMobile ? 14 : 16),
+                              );
+                            },
+                          ),
+                          subtitle: Text(
+                            'Qty: ${req.quantityRequested}',
+                            style: TextStyle(fontSize: isMobile ? 12 : 14),
+                          ),
+                          trailing: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isMobile ? 8 : 12,
+                              vertical: isMobile ? 4 : 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(req.status),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              req.status.toUpperCase(),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: isMobile ? 10 : 12,
+                              ),
+                            ),
+                          ),
                         ),
                       );
                     },
                   ),
-                ),
+
+                // Add bottom padding for mobile
+                SizedBox(height: isMobile ? 16 : 0),
               ],
             ),
           ),
-        ),
-        
-        const SizedBox(height: 12),
-        
-        // Submit button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE30417),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: isSubmitting ? null : _submitRequests,
-            child: isSubmitting
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                : const Text(
-                    'SUBMIT REQUEST',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-          ),
-        ),
-        
-        const SizedBox(height: 20),
-        
-        // Existing requests section with refresh button
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Recent Requests',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                fontFamily: fontAll,
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Refresh to see latest status',
-              onPressed: isLoading ? null : () {
-                setState(() => isLoading = true);
-                _syncAndLoadRequests();
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        
-        Expanded(
-          flex: 1,
-          child: existingRequests.isEmpty
-              ? Center(
-                  child: Text(
-                    'No requests yet',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: existingRequests.length,
-                  itemBuilder: (context, index) {
-                    final req = existingRequests[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        title: FutureBuilder<Item?>(
-                          future: db.itemsDao.getItemById(req.itemId),
-                          builder: (context, snapshot) {
-                            return Text(snapshot.data?.name ?? 'Item #${req.itemId}');
-                          },
-                        ),
-                        subtitle: Text('Qty: ${req.quantityRequested}'),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(req.status),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            req.status.toUpperCase(),
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
+        );
+      },
     );
   }
 }

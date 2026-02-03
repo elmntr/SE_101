@@ -3,6 +3,7 @@ import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'franchisee_inventory.dart';
+import 'replenish_stock_tab.dart';
 
 class InventoryPageMobile extends StatelessWidget {
   final InventoryPageState state;
@@ -70,7 +71,10 @@ class InventoryPageMobile extends StatelessWidget {
                         onPressed: state.refreshInventory,
                       ),
                       IconButton(
-                        icon: const Icon(Icons.notifications_outlined, size: 28),
+                        icon: const Icon(
+                          Icons.notifications_outlined,
+                          size: 28,
+                        ),
                         onPressed: () {},
                       ),
                     ],
@@ -132,10 +136,7 @@ class InventoryPageMobile extends StatelessWidget {
                           child: Text("Stock (Low → High)"),
                         ),
                         PopupMenuItem(
-                          value: ItemSort(
-                            ItemSortField.stock,
-                            SortOrder.desc,
-                          ),
+                          value: ItemSort(ItemSortField.stock, SortOrder.desc),
                           child: Text("Stock (High → Low)"),
                         ),
                         PopupMenuDivider(),
@@ -223,9 +224,9 @@ class InventoryPageMobile extends StatelessWidget {
                                       ],
                                     )
                                     .toList(),
-                                    
-                              smallHeaderWidth: 20,
-                              largeHeaderWidth: 120,
+
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                               ))
                       : state.selectedTab == 1
                       ? (InventoryPage.pendingChanges.isEmpty
@@ -256,18 +257,15 @@ class InventoryPageMobile extends StatelessWidget {
                                     ];
                                   },
                                 ),
-                                
-                              smallHeaderWidth: 20,
-                              largeHeaderWidth: 120,
+
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
                               ))
-                      : emptyTables(
-                          message:
-                              "You can request stock replenishment here.",
-                          onAddPressed: () {
-                            print("✅ Request Stock pressed");
-                          },
-                          buttonType: EmptyButtonType.elevated,
-                          buttonText: "Request Stock",
+                      : ReplenishStockTab(
+                          branchId: state.currentOrganizationId ?? 0,
+                          commissaryId: state.commissaryId ?? 0,
+                          userId: state.currentUserId ?? 0,
+                          items: state.items,
                         ),
                 ),
               ),
