@@ -6,6 +6,7 @@ import '../../../../database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'franchisee_inventory_mobile.dart';
 import 'franchisee_inventory_desktop.dart';
 import 'replenish_stock_tab.dart';
@@ -22,35 +23,80 @@ class InventoryPage extends StatefulWidget {
 
 class InventoryPageState extends State<InventoryPage> {
   late AppDatabase db;
-  
+
   /// Items with branch-specific stock data
   List<ItemWithBranchStock> items = [];
-  
+
   int? currentOrganizationId;
-  int? commissaryId;  // Parent commissary for master items
-  int? currentUserId;  // Current logged-in user
+  int? commissaryId; // Parent commissary for master items
+  int? currentUserId; // Current logged-in user
   bool isLoading = true;
 
   int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock
 
   ItemSort currentSort = const ItemSort(ItemSortField.name, SortOrder.asc);
 
+  // Search functionality
+  String searchQuery = '';
+  final TextEditingController searchController = TextEditingController();
+
+  /// Get filtered and sorted items based on search query
+  List<ItemWithBranchStock> get filteredItems {
+    var list = items.toList();
+
+    // Apply search filter
+    if (searchQuery.isNotEmpty) {
+      list = SearchService.filterItems(
+        list,
+        searchQuery,
+        getName: (item) => item.name,
+        getDescription: (item) => item.description,
+        getCategoryName: (item) => item.categoryName,
+      );
+    }
+
+    // Apply sorting
+    switch (currentSort.field) {
+      case ItemSortField.date:
+        list.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
+        break;
+      case ItemSortField.name:
+        list.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case ItemSortField.stock:
+        list.sort((a, b) => a.stock.compareTo(b.stock));
+        break;
+      case ItemSortField.sale:
+        list.sort((a, b) => a.sold.compareTo(b.sold));
+        break;
+      case ItemSortField.spoilage:
+        list.sort((a, b) => a.spoilage.compareTo(b.spoilage));
+        break;
+    }
+
+    if (currentSort.order == SortOrder.desc) {
+      list = list.reversed.toList();
+    }
+
+    return list;
+  }
+
   @override
   void initState() {
     super.initState();
     db = database;
     loadData();
-    
+
     // ✅ FIX: Listen to sync completion to refresh data
     syncCompleteNotifier.addListener(_onSyncComplete);
   }
-  
+
   @override
   void dispose() {
     syncCompleteNotifier.removeListener(_onSyncComplete);
     super.dispose();
   }
-  
+
   void _onSyncComplete() {
     if (mounted) {
       print('🔄 Sync completed, refreshing inventory...');
@@ -69,16 +115,18 @@ class InventoryPageState extends State<InventoryPage> {
       await loadCommissaryId();
       await loadCurrentUserId();
 
-      if (currentOrganizationId != null && currentOrganizationId! > 0 && commissaryId != null) {
+      if (currentOrganizationId != null &&
+          currentOrganizationId! > 0 &&
+          commissaryId != null) {
         // ✅ NEW: Load items with branch-specific stock
-        final loadedItems = await db.branchItemStockDao.getItemsWithStockForBranch(
-          currentOrganizationId!,
-          commissaryId!,
-        );
+        final loadedItems = await db.branchItemStockDao
+            .getItemsWithStockForBranch(currentOrganizationId!, commissaryId!);
 
         print('📦 Loaded ${loadedItems.length} items with branch stock');
         for (final item in loadedItems) {
-          print('   - ${item.name}: stock=${item.stock}, sold=${item.sold}, spoilage=${item.spoilage}, hasBranchStock=${item.hasBranchStock}');
+          print(
+            '   - ${item.name}: stock=${item.stock}, sold=${item.sold}, spoilage=${item.spoilage}, hasBranchStock=${item.hasBranchStock}',
+          );
         }
 
         if (mounted) {
@@ -88,7 +136,9 @@ class InventoryPageState extends State<InventoryPage> {
           });
         }
       } else {
-        print('⚠️ Missing org context: orgId=$currentOrganizationId, commissaryId=$commissaryId');
+        print(
+          '⚠️ Missing org context: orgId=$currentOrganizationId, commissaryId=$commissaryId',
+        );
         if (mounted) {
           setState(() {
             items = [];
@@ -106,24 +156,27 @@ class InventoryPageState extends State<InventoryPage> {
 
   Future<void> loadCurrentOrganization() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Try to get from current logged-in user session via auth service
     final currentUser = AppGlobals.instance.authService.currentUser;
     if (currentUser != null) {
       // If local ID is 0 but we have cloud ID, look up the local ID
       // This happens on first login when data is synced but UserData has ID 0
-      if (currentUser.organizationId == 0 && currentUser.organizationCloudId != null) {
+      if (currentUser.organizationId == 0 &&
+          currentUser.organizationCloudId != null) {
         final org = await db.organizationsDao.getOrganizationByCloudId(
           currentUser.organizationCloudId!,
         );
         if (org != null) {
           currentOrganizationId = org.id;
           await prefs.setInt(orgIdKey, org.id);
-          print('📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}');
+          print(
+            '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}',
+          );
           return;
         }
       }
-      
+
       await prefs.setInt(orgIdKey, currentUser.organizationId);
       currentOrganizationId = currentUser.organizationId;
     } else {
@@ -137,10 +190,13 @@ class InventoryPageState extends State<InventoryPage> {
     if (currentOrganizationId == null) return;
 
     // Get the franchisee's organization to find parent commissary
-    final organization = await db.organizationsDao.getOrganizationById(currentOrganizationId!);
-    
+    final organization = await db.organizationsDao.getOrganizationById(
+      currentOrganizationId!,
+    );
+
     if (organization != null) {
-      if (organization.type == 'franchisee' && organization.parentCommissaryId != null) {
+      if (organization.type == 'franchisee' &&
+          organization.parentCommissaryId != null) {
         // Franchisee: use parent commissary
         commissaryId = organization.parentCommissaryId;
         print('📍 Franchisee mode: commissaryId=${commissaryId}');
@@ -153,7 +209,9 @@ class InventoryPageState extends State<InventoryPage> {
 
     // Fallback: find any commissary in database
     if (commissaryId == null) {
-      final commissaries = await db.organizationsDao.getAllOrganizations(type: 'commissary');
+      final commissaries = await db.organizationsDao.getAllOrganizations(
+        type: 'commissary',
+      );
       if (commissaries.isNotEmpty) {
         commissaryId = commissaries.first.id;
         print('📍 Fallback commissary: commissaryId=${commissaryId}');
@@ -166,12 +224,18 @@ class InventoryPageState extends State<InventoryPage> {
     if (currentUser != null) {
       // Resolve local ID if it's 0 (meaning we have auth but no local mapping yet)
       if (currentUser.id == 0 && currentUser.cloudId != null) {
-        final localUser = await db.usersDao.getUserByCloudId(currentUser.cloudId!);
+        final localUser = await db.usersDao.getUserByCloudId(
+          currentUser.cloudId!,
+        );
         if (localUser != null) {
           currentUserId = localUser.id;
-          print('👤 Resolved local User ID from cloud ID: ${currentUser.cloudId} → ${localUser.id}');
+          print(
+            '👤 Resolved local User ID from cloud ID: ${currentUser.cloudId} → ${localUser.id}',
+          );
         } else {
-          print('⚠️ Could not resolve local user from cloud ID: ${currentUser.cloudId}');
+          print(
+            '⚠️ Could not resolve local user from cloud ID: ${currentUser.cloudId}',
+          );
           // Don't set to 0 - leave as null so we know it's invalid
           currentUserId = null;
         }
@@ -195,28 +259,6 @@ class InventoryPageState extends State<InventoryPage> {
   void applyItemSort(ItemSort sort) {
     setState(() {
       currentSort = sort;
-
-      switch (sort.field) {
-        case ItemSortField.date:
-          items.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
-          break;
-        case ItemSortField.name:
-          items.sort((a, b) => a.name.compareTo(b.name));
-          break;
-        case ItemSortField.stock:
-          items.sort((a, b) => a.stock.compareTo(b.stock));
-          break;
-        case ItemSortField.sale:
-          items.sort((a, b) => a.sold.compareTo(b.sold));
-          break;
-        case ItemSortField.spoilage:
-          items.sort((a, b) => a.spoilage.compareTo(b.spoilage));
-          break;
-      }
-
-      if (sort.order == SortOrder.desc) {
-        items = items.reversed.toList();
-      }
     });
   }
 

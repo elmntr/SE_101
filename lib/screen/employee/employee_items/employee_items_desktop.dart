@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'employee_items.dart';
 
 class EmployeeItemsPageDesktop extends StatelessWidget {
@@ -61,17 +62,17 @@ class EmployeeItemsPageDesktop extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Container(
+                  child: UniversalSearchBar(
+                    controller: state.searchController,
+                    hintText: state.selectedTab == 0
+                        ? "Search items..."
+                        : "Search changes...",
+                    onSearch: (value) {
+                      state.setState(() => state.searchQuery = value);
+                    },
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search...",
-                        prefixIcon: Icon(Icons.search),
-                        border: InputBorder.none,
-                      ),
                     ),
                   ),
                 ),
@@ -169,9 +170,11 @@ class EmployeeItemsPageDesktop extends StatelessWidget {
   }
 
   Widget _buildItemsTab() {
-    if (state.dbItems.isEmpty) {
+    if (state.filteredItems.isEmpty) {
       return emptyTables(
-        message: "No items available",
+        message: state.searchQuery.isNotEmpty
+            ? "No items match your search"
+            : "No items available",
         onAddPressed: null,
         buttonType: EmptyButtonType.none,
         buttonText: null,
@@ -179,7 +182,7 @@ class EmployeeItemsPageDesktop extends StatelessWidget {
     }
     return buildUniversalTable(
       headers: ["Item Name", "Stock", "Sale", "Spoilage"],
-      rows: state.dbItems
+      rows: state.filteredItems
           .map(
             (item) => [
               GestureDetector(
@@ -219,9 +222,11 @@ class EmployeeItemsPageDesktop extends StatelessWidget {
   }
 
   Widget _buildReviewChangesTab() {
-    if (state.pendingChanges.isEmpty) {
+    if (state.filteredPendingChanges.isEmpty) {
       return emptyTables(
-        message: "No pending changes",
+        message: state.searchQuery.isNotEmpty
+            ? "No changes match your search"
+            : "No pending changes",
         onAddPressed: null,
         buttonType: EmptyButtonType.none,
         buttonText: null,
