@@ -339,36 +339,46 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
   }
 
   /// ✅ Batch upsert from cloud
-Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudRoles) async {
-  try {
-    await db.transaction(() async {
-      for (final cloudRole in cloudRoles) {
-        await upsertFromCloud(
-          id: cloudRole['local_id'] ?? 0, // ✅ Default to 0
-          name: cloudRole['name'] ?? 'Unknown Role', // ✅ Default name
-          description: cloudRole['description'], // ✅ Already nullable
-          canViewInventory: cloudRole['can_view_inventory'] ?? false, // ✅ Default to false
-          canAddInventory: cloudRole['can_add_inventory'] ?? false,
-          canEditInventory: cloudRole['can_edit_inventory'] ?? false,
-          canDeleteInventory: cloudRole['can_delete_inventory'] ?? false,
-          canViewReports: cloudRole['can_view_reports'] ?? false,
-          canExportData: cloudRole['can_export_data'] ?? false,
-          canAccessSettings: cloudRole['can_access_settings'] ?? false,
-          canManageEmployees: cloudRole['can_manage_employees'] ?? false,
-          canManageRoles: cloudRole['can_manage_roles'] ?? false,
-          isSystemRole: cloudRole['is_system_role'] ?? false,
-          isActive: cloudRole['is_active'] ?? true, // ✅ Default to true
-          createdAt: DateTime.tryParse(cloudRole['created_at'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-          lastUpdated: DateTime.tryParse(cloudRole['last_updated'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-          cloudId: cloudRole['cloud_id'] ?? '', // ✅ Default to empty string
-        );
-      }
-    });
-  } catch (e) {
-    print('❌ Error batch upserting roles from cloud: $e');
-    rethrow;
+  /// Expects data from toLocalFormat (camelCase keys) or raw cloud data (snake_case)
+  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudRoles) async {
+    try {
+      await db.transaction(() async {
+        for (final cloudRole in cloudRoles) {
+          // Support both camelCase (from toLocalFormat) and snake_case (raw cloud) keys
+          await upsertFromCloud(
+            id: cloudRole['localId'] ?? cloudRole['local_id'] ?? 0,
+            name: cloudRole['name'] ?? 'Unknown Role',
+            description: cloudRole['description'],
+            canViewInventory: cloudRole['canViewInventory'] ?? cloudRole['can_view_inventory'] ?? false,
+            canAddInventory: cloudRole['canAddInventory'] ?? cloudRole['can_add_inventory'] ?? false,
+            canEditInventory: cloudRole['canEditInventory'] ?? cloudRole['can_edit_inventory'] ?? false,
+            canDeleteInventory: cloudRole['canDeleteInventory'] ?? cloudRole['can_delete_inventory'] ?? false,
+            canViewReports: cloudRole['canViewReports'] ?? cloudRole['can_view_reports'] ?? false,
+            canExportData: cloudRole['canExportData'] ?? cloudRole['can_export_data'] ?? false,
+            canAccessSettings: cloudRole['canAccessSettings'] ?? cloudRole['can_access_settings'] ?? false,
+            canManageEmployees: cloudRole['canManageEmployees'] ?? cloudRole['can_manage_employees'] ?? false,
+            canManageRoles: cloudRole['canManageRoles'] ?? cloudRole['can_manage_roles'] ?? false,
+            isSystemRole: cloudRole['isSystemRole'] ?? cloudRole['is_system_role'] ?? false,
+            isActive: cloudRole['isActive'] ?? cloudRole['is_active'] ?? true,
+            createdAt: _parseDateTime(cloudRole['createdAt'] ?? cloudRole['created_at']),
+            lastUpdated: _parseDateTime(cloudRole['lastUpdated'] ?? cloudRole['last_updated']),
+            cloudId: cloudRole['cloudId'] ?? cloudRole['cloud_id'] ?? '',
+          );
+        }
+      });
+    } catch (e) {
+      print('❌ Error batch upserting roles from cloud: $e');
+      rethrow;
+    }
   }
-}
+
+  /// Helper to parse DateTime from various formats
+  DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
+  }
 
   Future<void> upsertFromCloud({
   required int id,

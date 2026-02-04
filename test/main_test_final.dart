@@ -6,7 +6,7 @@ import 'package:mockito/annotations.dart';
 
 import 'package:chickenjoo_inventory/main.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
-import 'package:chickenjoo_inventory/services/supabase_sync_service.dart';
+import 'package:chickenjoo_inventory/services/supabase_sync_service_v2.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 
@@ -14,18 +14,18 @@ import 'main_test_final.mocks.dart';
 
 @GenerateMocks([
   AppDatabase,
-  SupabaseSyncService,
+  SupabaseSyncServiceV2,
   SupabaseAuthService,
 ])
 void main() {
   group('main.dart Tests', () {
     late MockAppDatabase mockDatabase;
-    late MockSupabaseSyncService mockSyncService;
+    late MockSupabaseSyncServiceV2 mockSyncService;
     late MockSupabaseAuthService mockAuthService;
 
     setUp(() {
       mockDatabase = MockAppDatabase();
-      mockSyncService = MockSupabaseSyncService();
+      mockSyncService = MockSupabaseSyncServiceV2();
       mockAuthService = MockSupabaseAuthService();
 
       // Setup default mock behaviors
@@ -100,7 +100,7 @@ void main() {
       // Arrange
       final globals = AppGlobals.instance;
       final newMockDatabase = MockAppDatabase();
-      final newMockSyncService = MockSupabaseSyncService();
+      final newMockSyncService = MockSupabaseSyncServiceV2();
       final newMockAuthService = MockSupabaseAuthService();
 
       when(newMockDatabase.close()).thenAnswer((_) async {});
@@ -234,7 +234,7 @@ void main() {
       // Arrange
       final globals = AppGlobals.instance;
       final mockDatabase2 = MockAppDatabase();
-      final mockSyncService2 = MockSupabaseSyncService();
+      final mockSyncService2 = MockSupabaseSyncServiceV2();
       final mockAuthService2 = MockSupabaseAuthService();
 
       when(mockDatabase2.close()).thenAnswer((_) async {});
@@ -312,7 +312,7 @@ void main() {
     test('should handle convenience getters after initialization', () {
       // Arrange
       final mockDatabase = MockAppDatabase();
-      final mockSyncService = MockSupabaseSyncService();
+      final mockSyncService = MockSupabaseSyncServiceV2();
       final mockAuthService = MockSupabaseAuthService();
 
       when(mockDatabase.close()).thenAnswer((_) async {});

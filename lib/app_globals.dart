@@ -1,7 +1,7 @@
 // lib/app_globals.dart
 import 'package:flutter/foundation.dart';
 import 'database/app_database.dart';
-import 'services/supabase_sync_service.dart';
+import 'services/supabase_sync_service_v2.dart';
 import 'services/supabase_auth_service.dart';
 
 /// Global notifier that fires when sync completes
@@ -32,8 +32,8 @@ class AppGlobals {
   }
 
   // Sync service instance
-  SupabaseSyncService? _syncService;
-  SupabaseSyncService get syncService {
+  SupabaseSyncServiceV2? _syncService;
+  SupabaseSyncServiceV2 get syncService {
     if (_syncService == null) {
       throw StateError(
         'SyncService not initialized. Call AppGlobals.initialize() first.',
@@ -59,7 +59,7 @@ class AppGlobals {
   // Initialize method
   void initialize({
     required AppDatabase database,
-    required SupabaseSyncService syncService,
+    required SupabaseSyncServiceV2 syncService,
     required SupabaseAuthService authService,
   }) {
     _database = database;
@@ -80,5 +80,5 @@ class AppGlobals {
 
 // Convenience getters for easier access throughout your app
 AppDatabase get database => AppGlobals.instance.database;
-SupabaseSyncService get syncService => AppGlobals.instance.syncService;
+SupabaseSyncServiceV2 get syncService => AppGlobals.instance.syncService;
 SupabaseAuthService get authService => AppGlobals.instance.authService;

@@ -10,7 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'config/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'services/supabase_sync_service.dart';
+import 'services/supabase_sync_service_v2.dart';
 import 'services/supabase_auth_service.dart';
 import 'app_globals.dart';
 import 'app.dart';
@@ -72,9 +72,9 @@ void main() async {
   // -------------------------------------------------------------
   // SYNC SERVICE INITIALIZATION
   // -------------------------------------------------------------
-  AppLogger.sync('Initializing sync service...');
+  AppLogger.sync('Initializing sync service v2...');
 
-  final sync = SupabaseSyncService(
+  final sync = SupabaseSyncServiceV2(
     db: db,
     supabase: Supabase.instance.client,
     onConnectivityChanged: (isOnline) {
