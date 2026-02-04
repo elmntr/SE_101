@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
@@ -9,6 +8,7 @@ import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/services/supabase_sync_service_v2.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dart';
 
 import 'main_test_final.mocks.dart';
 
@@ -16,17 +16,20 @@ import 'main_test_final.mocks.dart';
   AppDatabase,
   SupabaseSyncServiceV2,
   SupabaseAuthService,
+  RealtimeStockRequestService,
 ])
 void main() {
   group('main.dart Tests', () {
     late MockAppDatabase mockDatabase;
     late MockSupabaseSyncServiceV2 mockSyncService;
     late MockSupabaseAuthService mockAuthService;
+    late MockRealtimeStockRequestService mockRealtimeService;
 
     setUp(() {
       mockDatabase = MockAppDatabase();
       mockSyncService = MockSupabaseSyncServiceV2();
       mockAuthService = MockSupabaseAuthService();
+      mockRealtimeService = MockRealtimeStockRequestService();
 
       // Setup default mock behaviors
       when(mockDatabase.close()).thenAnswer((_) async {});
@@ -60,6 +63,7 @@ void main() {
         database: mockDatabase,
         syncService: mockSyncService,
         authService: mockAuthService,
+        realtimeStockRequestService: mockRealtimeService,
       );
 
       // Assert
@@ -86,6 +90,7 @@ void main() {
         database: mockDatabase,
         syncService: mockSyncService,
         authService: mockAuthService,
+        realtimeStockRequestService: mockRealtimeService,
       );
 
       // Act
@@ -102,6 +107,7 @@ void main() {
       final newMockDatabase = MockAppDatabase();
       final newMockSyncService = MockSupabaseSyncServiceV2();
       final newMockAuthService = MockSupabaseAuthService();
+      final newMockRealtimeService = MockRealtimeStockRequestService();
 
       when(newMockDatabase.close()).thenAnswer((_) async {});
 
@@ -109,6 +115,7 @@ void main() {
         database: mockDatabase,
         syncService: mockSyncService,
         authService: mockAuthService,
+        realtimeStockRequestService: mockRealtimeService,
       );
       globals.dispose();
 
@@ -117,6 +124,7 @@ void main() {
         database: newMockDatabase,
         syncService: newMockSyncService,
         authService: newMockAuthService,
+        realtimeStockRequestService: newMockRealtimeService,
       );
 
       // Assert
@@ -194,6 +202,7 @@ void main() {
         database: mockDatabase,
         syncService: mockSyncService,
         authService: mockAuthService,
+        realtimeStockRequestService: mockRealtimeService,
       );
 
       // Act & Assert
@@ -236,6 +245,7 @@ void main() {
       final mockDatabase2 = MockAppDatabase();
       final mockSyncService2 = MockSupabaseSyncServiceV2();
       final mockAuthService2 = MockSupabaseAuthService();
+      final mockRealtimeService2 = MockRealtimeStockRequestService();
 
       when(mockDatabase2.close()).thenAnswer((_) async {});
 
@@ -243,6 +253,7 @@ void main() {
         database: mockDatabase,
         syncService: mockSyncService,
         authService: mockAuthService,
+        realtimeStockRequestService: mockRealtimeService,
       );
 
       // Act - Initialize again with different instances
@@ -250,6 +261,7 @@ void main() {
         database: mockDatabase2,
         syncService: mockSyncService2,
         authService: mockAuthService2,
+        realtimeStockRequestService: mockRealtimeService2,
       );
 
       // Assert
@@ -314,6 +326,7 @@ void main() {
       final mockDatabase = MockAppDatabase();
       final mockSyncService = MockSupabaseSyncServiceV2();
       final mockAuthService = MockSupabaseAuthService();
+      final mockRealtimeService = MockRealtimeStockRequestService();
 
       when(mockDatabase.close()).thenAnswer((_) async {});
 
@@ -321,6 +334,7 @@ void main() {
         database: mockDatabase,
         syncService: mockSyncService,
         authService: mockAuthService,
+        realtimeStockRequestService: mockRealtimeService,
       );
 
       // Act & Assert

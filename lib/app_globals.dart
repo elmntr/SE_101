@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'database/app_database.dart';
 import 'services/supabase_sync_service_v2.dart';
 import 'services/supabase_auth_service.dart';
+import 'services/realtime_stock_request_service.dart';
 
 /// Global notifier that fires when sync completes
 /// Screens can listen to this to refresh their data
@@ -53,6 +54,17 @@ class AppGlobals {
     return _authService!;
   }
 
+  // Realtime stock request service instance
+  RealtimeStockRequestService? _realtimeStockRequestService;
+  RealtimeStockRequestService get realtimeStockRequestService {
+    if (_realtimeStockRequestService == null) {
+      throw StateError(
+        'RealtimeStockRequestService not initialized. Call AppGlobals.initialize() first.',
+      );
+    }
+    return _realtimeStockRequestService!;
+  }
+
   // Check if initialized
   bool get isInitialized => _database != null && _syncService != null && _authService != null;
 
@@ -61,20 +73,24 @@ class AppGlobals {
     required AppDatabase database,
     required SupabaseSyncServiceV2 syncService,
     required SupabaseAuthService authService,
+    required RealtimeStockRequestService realtimeStockRequestService,
   }) {
     _database = database;
     _syncService = syncService;
     _authService = authService;
+    _realtimeStockRequestService = realtimeStockRequestService;
   }
 
   // Dispose method
   void dispose() {
+    _realtimeStockRequestService?.dispose();
     _authService?.dispose();
     _syncService?.dispose();
     _database?.close();
     _database = null;
     _syncService = null;
     _authService = null;
+    _realtimeStockRequestService = null;
   }
 }
 
@@ -82,3 +98,4 @@ class AppGlobals {
 AppDatabase get database => AppGlobals.instance.database;
 SupabaseSyncServiceV2 get syncService => AppGlobals.instance.syncService;
 SupabaseAuthService get authService => AppGlobals.instance.authService;
+RealtimeStockRequestService get realtimeStockRequestService => AppGlobals.instance.realtimeStockRequestService;

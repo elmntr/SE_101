@@ -92,6 +92,16 @@ class SyncEngine {
   // Last successful sync timestamp
   DateTime? lastSuccessfulSync;
 
+  /// Reset lastSuccessfulSync to force a full pull
+  void resetLastSuccessfulSync() {
+    lastSuccessfulSync = null;
+  }
+
+  /// Set lastSuccessfulSync to a specific time
+  void setLastSuccessfulSync(DateTime? time) {
+    lastSuccessfulSync = time;
+  }
+
   SyncEngine({
     required this.db,
     required this.supabase,
@@ -383,9 +393,9 @@ class SyncEngine {
     // Retry loop
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Determine sync start time
+        // Determine sync start time (ensure UTC format for Supabase)
         final lastSync = descriptor.incrementalSync && lastSuccessfulSync != null
-            ? lastSuccessfulSync!.toIso8601String()
+            ? lastSuccessfulSync!.toUtc().toIso8601String()
             : '1970-01-01T00:00:00.000Z';
 
         if (kDebugMode) {
@@ -665,9 +675,9 @@ class SyncEngine {
 
     stopwatch.stop();
 
-    // Update last successful sync if all succeeded
+    // Update last successful sync if all succeeded (use UTC for Supabase compatibility)
     if (success) {
-      lastSuccessfulSync = DateTime.now();
+      lastSuccessfulSync = DateTime.now().toUtc();
     }
 
     return SyncResult(

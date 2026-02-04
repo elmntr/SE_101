@@ -10,6 +10,7 @@ import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/database/daos/organizations_dao.dart';
 import 'package:chickenjoo_inventory/services/supabase_sync_service_v2.dart';
 import 'package:chickenjoo_inventory/screen/login/login_screen.dart';
+import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dart';
 
 import 'app_test_simple.mocks.dart';
 
@@ -19,6 +20,7 @@ import 'app_test_simple.mocks.dart';
   AppDatabase,
   SupabaseSyncServiceV2,
   OrganizationsDao,
+  RealtimeStockRequestService,
 ])
 void main() {
   group('app.dart Tests', () {
@@ -27,6 +29,7 @@ void main() {
     late MockAppDatabase mockDatabase;
     late MockSupabaseSyncServiceV2 mockSyncService;
     late MockOrganizationsDao mockOrganizationsDao;
+    late MockRealtimeStockRequestService mockRealtimeService;
 
     setUp(() {
       mockUserData = MockUserData();
@@ -34,6 +37,7 @@ void main() {
       mockDatabase = MockAppDatabase();
       mockSyncService = MockSupabaseSyncServiceV2();
       mockOrganizationsDao = MockOrganizationsDao();
+      mockRealtimeService = MockRealtimeStockRequestService();
 
       // Setup default mock behaviors
       when(mockUserData.id).thenReturn(1);
@@ -73,6 +77,7 @@ void main() {
         database: mockDatabase,
         syncService: mockSyncService,
         authService: mockAuthService,
+        realtimeStockRequestService: mockRealtimeService,
       );
     });
 
@@ -153,6 +158,7 @@ void main() {
         database: mockDatabase,
         syncService: mockSyncService,
         authService: mockAuthService,
+        realtimeStockRequestService: mockRealtimeService,
       );
       // Act
       await tester.pumpWidget(const MyApp());

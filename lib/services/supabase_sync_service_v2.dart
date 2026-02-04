@@ -625,6 +625,25 @@ class SupabaseSyncServiceV2 {
     );
   }
 
+  /// Force a FULL sync of replenishment requests (ignores lastSuccessfulSync)
+  /// Used by realtime service when it detects pending updates
+  Future<void> forceFullSyncReplenishmentRequests() async {
+    AppLogger.sync('   📊 FORCE FULL Syncing ReplenishmentRequests...');
+    
+    // Temporarily reset lastSuccessfulSync to force full pull
+    final oldSync = _engine.lastSuccessfulSync;
+    _engine.resetLastSuccessfulSync();
+    
+    try {
+      await _syncReplenishmentRequests();
+    } finally {
+      // Restore the old sync time (don't update it)
+      if (oldSync != null) {
+        _engine.setLastSuccessfulSync(oldSync);
+      }
+    }
+  }
+
   Future<void> _syncChangeRequests() async {
     AppLogger.sync('   📊 Syncing ChangeRequests...');
     
