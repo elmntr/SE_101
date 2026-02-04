@@ -4,6 +4,7 @@ import '../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 
 /// Helper class to hold recipe ingredient with full ingredient details
 class RecipeIngredientWithDetails {
@@ -204,11 +205,14 @@ class FranchiseeProductsViewController {
 
   List<Item> get filteredProducts {
     if (searchQuery.isEmpty) return commissaryProducts;
-    return commissaryProducts
-        .where(
-          (item) => item.name.toLowerCase().contains(searchQuery.toLowerCase()),
-        )
-        .toList();
+    // Use the universal SearchService to filter products
+    return SearchService.filterItems(
+      commissaryProducts,
+      searchQuery,
+      getName: (item) => item.name,
+      getDescription: (item) => item.description,
+      getCategoryName: (item) => categoryNameForId(item.categoryId),
+    );
   }
 
   void showProductDetails(BuildContext context, Item item) {

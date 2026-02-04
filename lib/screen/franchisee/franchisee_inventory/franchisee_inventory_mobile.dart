@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'franchisee_inventory.dart';
 import 'replenish_stock_tab.dart';
 
@@ -89,20 +90,12 @@ class InventoryPageMobile extends StatelessWidget {
                 children: [
                   /// SEARCH BAR
                   Expanded(
-                    child: Container(
-                      height: 42,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: const TextField(
-                        decoration: InputDecoration(
-                          hintText: "Search...",
-                          icon: Icon(Icons.search),
-                          border: InputBorder.none,
-                        ),
-                      ),
+                    child: UniversalSearchBar(
+                      controller: state.searchController,
+                      hintText: "Search inventory...",
+                      onSearch: (value) {
+                        state.setState(() => state.searchQuery = value);
+                      },
                     ),
                   ),
 
@@ -200,9 +193,11 @@ class InventoryPageMobile extends StatelessWidget {
                   child: state.isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : state.selectedTab == 0
-                      ? (state.items.isEmpty
+                      ? (state.filteredItems.isEmpty
                             ? emptyTables(
-                                message: "You can manage your items here.",
+                                message: state.searchQuery.isNotEmpty
+                                    ? "No items match your search"
+                                    : "You can manage your items here.",
                                 onAddPressed: null,
                                 buttonType: EmptyButtonType.none,
                                 buttonText: null,
@@ -214,7 +209,7 @@ class InventoryPageMobile extends StatelessWidget {
                                   "Sale",
                                   "Spoilage",
                                 ],
-                                rows: state.items
+                                rows: state.filteredItems
                                     .map(
                                       (item) => [
                                         item.name,

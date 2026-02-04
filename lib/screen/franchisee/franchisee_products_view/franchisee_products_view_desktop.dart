@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'franchisee_products_view.dart';
 
 class FranchiseeProductsViewDesktop extends StatelessWidget {
@@ -25,21 +26,15 @@ class FranchiseeProductsViewDesktop extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Container(
+                  child: UniversalSearchBar(
+                    controller: state.searchController,
+                    hintText: "Search products...",
+                    onSearch: (value) {
+                      state.refreshState(() => state.searchQuery = value);
+                    },
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: TextField(
-                      controller: state.searchController,
-                      decoration: const InputDecoration(
-                        hintText: "Search products...",
-                        prefixIcon: Icon(Icons.search),
-                        border: InputBorder.none,
-                      ),
-                      onChanged: (value) {
-                        state.refreshState(() => state.searchQuery = value);
-                      },
                     ),
                   ),
                 ),

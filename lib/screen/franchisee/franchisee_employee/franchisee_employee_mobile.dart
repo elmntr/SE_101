@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'franchisee_employee.dart';
 
 class EmployeePageMobile extends StatelessWidget {
@@ -77,20 +78,14 @@ class EmployeePageMobile extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Container(
-                          height: 42,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          child: const TextField(
-                            decoration: InputDecoration(
-                              hintText: "Search...",
-                              icon: Icon(Icons.search),
-                              border: InputBorder.none,
-                            ),
-                          ),
+                        child: UniversalSearchBar(
+                          controller: state.searchController,
+                          hintText: state.selectedTab == 0
+                              ? "Search employees..."
+                              : "Search roles...",
+                          onSearch: (value) {
+                            state.setState(() => state.searchQuery = value);
+                          },
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -110,7 +105,8 @@ class EmployeePageMobile extends StatelessWidget {
                               tooltip: "Filter by role",
                               onSelected: (value) {
                                 state.setState(() {
-                                  state.selectedRoleFilter = value == EmployeePageState.allRolesKey
+                                  state.selectedRoleFilter =
+                                      value == EmployeePageState.allRolesKey
                                       ? null
                                       : value;
                                 });
@@ -218,10 +214,7 @@ class EmployeePageMobile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
-                  children: [
-                    buildTab("Employees", 0),
-                    buildTab("Roles", 1),
-                  ],
+                  children: [buildTab("Employees", 0), buildTab("Roles", 1)],
                 ),
               ),
               Expanded(
@@ -254,13 +247,7 @@ class EmployeePageMobile extends StatelessWidget {
                                       buttonText: null,
                                     )
                             : buildUniversalTable(
-                                headers: [
-                                  "Name",
-                                  "Email",
-                                  "Phone",
-                                  "Role",
-                                  "",
-                                ],
+                                headers: ["Name", "Email", "Phone", "Role", ""],
                                 rows: state.filteredUsers.map((user) {
                                   return [
                                     user.username,
@@ -308,19 +295,26 @@ class EmployeePageMobile extends StatelessWidget {
                                         Icons.delete,
                                         color: Colors.red,
                                       ),
-                                      onPressed: () => state.deleteEmployee(user),
+                                      onPressed: () =>
+                                          state.deleteEmployee(user),
                                     ),
                                   ];
                                 }).toList(),
-                                
-                          smallHeaderWidth: 20,
-                          largeHeaderWidth: 120,
-                          ))
-                      : (state.roles.isEmpty
+
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
+                              ))
+                      : (state.filteredRoles.isEmpty
                             ? emptyTables(
-                                message: "No roles found",
-                                onAddPressed: state.createRoleDialog,
-                                buttonType: EmptyButtonType.icon,
+                                message: state.searchQuery.isNotEmpty
+                                    ? "No roles match your search"
+                                    : "No roles found",
+                                onAddPressed: state.searchQuery.isEmpty
+                                    ? state.createRoleDialog
+                                    : null,
+                                buttonType: state.searchQuery.isEmpty
+                                    ? EmptyButtonType.icon
+                                    : EmptyButtonType.none,
                                 buttonText: null,
                               )
                             : buildUniversalTable(
@@ -330,7 +324,7 @@ class EmployeePageMobile extends StatelessWidget {
                                   "Employees",
                                   "",
                                 ],
-                                rows: state.roles.map((role) {
+                                rows: state.filteredRoles.map((role) {
                                   final accessWidgets = <Widget>[];
                                   final accessFlags = state.flagsFromRole(role);
                                   for (
@@ -351,8 +345,9 @@ class EmployeePageMobile extends StatelessWidget {
                                           ),
                                           decoration: BoxDecoration(
                                             color: Colors.red.shade100,
-                                            borderRadius:
-                                                BorderRadius.circular(6),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                           ),
                                           child: Text(
                                             state.accessTitles[j],
@@ -388,10 +383,10 @@ class EmployeePageMobile extends StatelessWidget {
                                     ),
                                   ];
                                 }).toList(),
-                                
-                          smallHeaderWidth: 20,
-                          largeHeaderWidth: 120,
-                          )),
+
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
+                              )),
                 ),
               ),
             ],
