@@ -6,6 +6,7 @@ import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:drift/drift.dart' hide Column;
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'franchisee_items_mobile.dart';
 import 'franchisee_items_desktop.dart';
 
@@ -37,22 +38,101 @@ class ItemsPageState extends State<ItemsPage> {
     SortOrder.desc,
   );
 
+  // Search functionality
+  String searchQuery = '';
+  final TextEditingController searchController = TextEditingController();
+
+  /// Get filtered and sorted items based on search query
+  List<Item> get filteredItems {
+    var list = dbItems.toList();
+
+    // Apply search filter
+    if (searchQuery.isNotEmpty) {
+      list = SearchService.filterItems(
+        list,
+        searchQuery,
+        getName: (item) => item.name,
+        getDescription: (item) => item.description,
+        getCategoryName: (item) => categoryMap[item.categoryId],
+      );
+    }
+
+    // Apply sorting
+    switch (currentSort.field) {
+      case ItemSortField.date:
+        list.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
+        break;
+      case ItemSortField.name:
+        list.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case ItemSortField.stock:
+        list.sort((a, b) => a.stock.compareTo(b.stock));
+        break;
+      case ItemSortField.sale:
+        list.sort((a, b) => a.sold.compareTo(b.sold));
+        break;
+      case ItemSortField.spoilage:
+        list.sort((a, b) => a.spoilage.compareTo(b.spoilage));
+        break;
+    }
+
+    if (currentSort.order == SortOrder.desc) {
+      list = list.reversed.toList();
+    }
+
+    return list;
+  }
+
+  /// Get filtered and sorted categories based on search query
+  List<Category> get filteredCategories {
+    var list = dbCategories.toList();
+
+    // Apply search filter
+    if (searchQuery.isNotEmpty) {
+      list = SearchService.filterCategories(
+        list,
+        searchQuery,
+        getName: (cat) => cat.name,
+        getDescription: (cat) => cat.description,
+      );
+    }
+
+    // Apply sorting
+    switch (currentCategorySort.field) {
+      case CategorySortField.date:
+        list.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
+        break;
+      case CategorySortField.name:
+        list.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case CategorySortField.items:
+        // Will be handled by category with counts
+        break;
+    }
+
+    if (currentCategorySort.order == SortOrder.desc) {
+      list = list.reversed.toList();
+    }
+
+    return list;
+  }
+
   @override
   void initState() {
     super.initState();
     db = database;
     loadData();
-    
+
     // ✅ FIX: Listen to sync completion to refresh data
     syncCompleteNotifier.addListener(_onSyncComplete);
   }
-  
+
   @override
   void dispose() {
     syncCompleteNotifier.removeListener(_onSyncComplete);
     super.dispose();
   }
-  
+
   void _onSyncComplete() {
     if (mounted) {
       print('🔄 Sync completed, refreshing items...');
@@ -84,8 +164,10 @@ class ItemsPageState extends State<ItemsPage> {
         return;
       }
 
-      final items = await db.itemsDao.getItemsByOrganization(currentOrganizationId!);
-      
+      final items = await db.itemsDao.getItemsByOrganization(
+        currentOrganizationId!,
+      );
+
       final categories = await db.categoriesDao.getAllCategories();
 
       if (mounted) {
@@ -105,24 +187,27 @@ class ItemsPageState extends State<ItemsPage> {
 
   Future<void> loadCurrentOrganization() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Try to get from current logged-in user session via auth service
     final currentUser = AppGlobals.instance.authService.currentUser;
     if (currentUser != null) {
       // If local ID is 0 but we have cloud ID, look up the local ID
       // This happens on first login when data is synced but UserData has ID 0
-      if (currentUser.organizationId == 0 && currentUser.organizationCloudId != null) {
+      if (currentUser.organizationId == 0 &&
+          currentUser.organizationCloudId != null) {
         final org = await db.organizationsDao.getOrganizationByCloudId(
           currentUser.organizationCloudId!,
         );
         if (org != null) {
           currentOrganizationId = org.id;
           await prefs.setInt(orgIdKey, org.id);
-          print('📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}');
+          print(
+            '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}',
+          );
           return;
         }
       }
-      
+
       await prefs.setInt(orgIdKey, currentUser.organizationId);
       currentOrganizationId = currentUser.organizationId;
     } else {
@@ -179,9 +264,13 @@ class ItemsPageState extends State<ItemsPage> {
                       decoration: const InputDecoration(
                         labelText: "Price (Optional)",
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}$')),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d{0,2}$'),
+                        ),
                       ],
                       controller: price,
                     ),
@@ -240,11 +329,14 @@ class ItemsPageState extends State<ItemsPage> {
 
                             try {
                               // Get user's organization ID from auth service
-                              final currentUser = AppGlobals.instance.authService.currentUser;
+                              final currentUser =
+                                  AppGlobals.instance.authService.currentUser;
                               if (currentUser == null) {
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                    content: Text('Not logged in. Please log in again.'),
+                                    content: Text(
+                                      'Not logged in. Please log in again.',
+                                    ),
                                   ),
                                 );
                                 return;
@@ -409,50 +501,12 @@ class ItemsPageState extends State<ItemsPage> {
   void applyItemSort(ItemSort sort) {
     setState(() {
       currentSort = sort;
-
-      switch (sort.field) {
-        case ItemSortField.date:
-          dbItems.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
-          break;
-        case ItemSortField.name:
-          dbItems.sort((a, b) => a.name.compareTo(b.name));
-          break;
-        case ItemSortField.stock:
-          dbItems.sort((a, b) => a.stock.compareTo(b.stock));
-          break;
-        case ItemSortField.sale:
-          dbItems.sort((a, b) => a.sold.compareTo(b.sold));
-          break;
-        case ItemSortField.spoilage:
-          dbItems.sort((a, b) => a.spoilage.compareTo(b.spoilage));
-          break;
-      }
-
-      if (sort.order == SortOrder.desc) {
-        dbItems = dbItems.reversed.toList();
-      }
     });
   }
 
   void applyCategorySort(CategorySort sort) {
     setState(() {
       currentCategorySort = sort;
-
-      switch (sort.field) {
-        case CategorySortField.date:
-          dbCategories.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
-          break;
-        case CategorySortField.name:
-          dbCategories.sort((a, b) => a.name.compareTo(b.name));
-          break;
-        case CategorySortField.items:
-          // Will be handled by category with counts
-          break;
-      }
-
-      if (sort.order == SortOrder.desc) {
-        dbCategories = dbCategories.reversed.toList();
-      }
     });
   }
 
@@ -559,10 +613,11 @@ class ItemsPageState extends State<ItemsPage> {
     final TextEditingController minStockController = TextEditingController(
       text: item.minimumStock?.toString() ?? "",
     );
-    
+
     int? selectedCategoryId = item.categoryId;
-    
-    final dateOrdered = "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
+
+    final dateOrdered =
+        "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
 
     showDialog(
       context: context,
@@ -614,7 +669,7 @@ class ItemsPageState extends State<ItemsPage> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 24),
 
                     // Row 1: Category and Unit
@@ -634,7 +689,9 @@ class ItemsPageState extends State<ItemsPage> {
                               const SizedBox(height: 4),
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   border: Border.all(color: Colors.grey[300]!),
                                   borderRadius: BorderRadius.circular(8),
@@ -689,8 +746,14 @@ class ItemsPageState extends State<ItemsPage> {
                                   });
                                 },
                                 itemBuilder: (context) => const [
-                                  PopupMenuItem(value: 'piece', child: Text('piece')),
-                                  PopupMenuItem(value: 'grams', child: Text('grams')),
+                                  PopupMenuItem(
+                                    value: 'piece',
+                                    child: Text('piece'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'grams',
+                                    child: Text('grams'),
+                                  ),
                                   PopupMenuItem(value: 'kg', child: Text('kg')),
                                   PopupMenuItem(value: 'ml', child: Text('ml')),
                                   PopupMenuItem(value: 'l', child: Text('l')),
@@ -702,11 +765,14 @@ class ItemsPageState extends State<ItemsPage> {
                                     vertical: 8,
                                   ),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey[300]!),
+                                    border: Border.all(
+                                      color: Colors.grey[300]!,
+                                    ),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         selectedUnit ?? 'Select unit',
@@ -743,7 +809,9 @@ class ItemsPageState extends State<ItemsPage> {
                               TextField(
                                 controller: minStockController,
                                 keyboardType: TextInputType.number,
-                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
                                 decoration: InputDecoration(
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -774,7 +842,9 @@ class ItemsPageState extends State<ItemsPage> {
                               TextField(
                                 controller: soldController,
                                 keyboardType: TextInputType.number,
-                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
                                 decoration: InputDecoration(
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -843,7 +913,9 @@ class ItemsPageState extends State<ItemsPage> {
                               TextField(
                                 controller: spoilageController,
                                 keyboardType: TextInputType.number,
-                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
                                 decoration: InputDecoration(
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -885,38 +957,52 @@ class ItemsPageState extends State<ItemsPage> {
                           ),
                           onPressed: () async {
                             final dialogContext = context;
-                            final messenger = ScaffoldMessenger.of(dialogContext);
+                            final messenger = ScaffoldMessenger.of(
+                              dialogContext,
+                            );
                             final navigator = Navigator.of(dialogContext);
 
                             try {
-                              final double? parsedPrice = priceController.text.isNotEmpty
+                              final double? parsedPrice =
+                                  priceController.text.isNotEmpty
                                   ? double.tryParse(priceController.text)
                                   : null;
-                              final int parsedSold = int.tryParse(soldController.text) ?? item.sold;
-                              final int parsedSpoilage = int.tryParse(spoilageController.text) ?? item.spoilage;
-                              final int? parsedMinStock = minStockController.text.isNotEmpty
+                              final int parsedSold =
+                                  int.tryParse(soldController.text) ??
+                                  item.sold;
+                              final int parsedSpoilage =
+                                  int.tryParse(spoilageController.text) ??
+                                  item.spoilage;
+                              final int? parsedMinStock =
+                                  minStockController.text.isNotEmpty
                                   ? int.tryParse(minStockController.text)
                                   : item.minimumStock;
                               final String? unitText = selectedUnit;
 
                               // Calculate the change in sold/spoilage for daily summary
                               final soldChange = parsedSold - item.sold;
-                              final spoilageChange = parsedSpoilage - item.spoilage;
+                              final spoilageChange =
+                                  parsedSpoilage - item.spoilage;
 
                               final updated = item.copyWith(
                                 price: Value(parsedPrice),
                                 sold: parsedSold,
                                 spoilage: parsedSpoilage,
-                                unit: (unitText != null && unitText.isNotEmpty) ? unitText : item.unit,
+                                unit: (unitText != null && unitText.isNotEmpty)
+                                    ? unitText
+                                    : item.unit,
                                 minimumStock: Value(parsedMinStock),
                                 categoryId: Value(selectedCategoryId),
                               );
 
-                              final success = await db.itemsDao.updateItem(updated);
+                              final success = await db.itemsDao.updateItem(
+                                updated,
+                              );
 
                               if (success) {
                                 // Record changes in daily sales summary for reports
-                                if (soldChange > 0 && currentOrganizationId != null) {
+                                if (soldChange > 0 &&
+                                    currentOrganizationId != null) {
                                   await db.dailySalesSummaryDao.recordSale(
                                     organizationId: currentOrganizationId!,
                                     itemId: item.id,
@@ -926,7 +1012,8 @@ class ItemsPageState extends State<ItemsPage> {
                                     currentStock: item.stock - soldChange,
                                   );
                                 }
-                                if (spoilageChange > 0 && currentOrganizationId != null) {
+                                if (spoilageChange > 0 &&
+                                    currentOrganizationId != null) {
                                   await db.dailySalesSummaryDao.recordSpoilage(
                                     organizationId: currentOrganizationId!,
                                     itemId: item.id,
@@ -935,22 +1022,33 @@ class ItemsPageState extends State<ItemsPage> {
                                   );
                                 }
 
-                                if (!navigator.mounted || !messenger.mounted) return;
+                                if (!navigator.mounted || !messenger.mounted)
+                                  return;
                                 navigator.pop();
                                 messenger.showSnackBar(
-                                  const SnackBar(content: Text('Item updated successfully')),
+                                  const SnackBar(
+                                    content: Text('Item updated successfully'),
+                                  ),
                                 );
                                 loadData();
                               } else {
                                 if (!messenger.mounted) return;
                                 messenger.showSnackBar(
-                                  const SnackBar(content: Text('Failed to update item')),
+                                  const SnackBar(
+                                    content: Text('Failed to update item'),
+                                  ),
                                 );
                               }
                             } catch (e) {
-                              if (!(ScaffoldMessenger.maybeOf(context)?.mounted ?? false)) return;
+                              if (!(ScaffoldMessenger.maybeOf(
+                                    context,
+                                  )?.mounted ??
+                                  false))
+                                return;
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error updating item: $e')),
+                                SnackBar(
+                                  content: Text('Error updating item: $e'),
+                                ),
                               );
                             }
                           },

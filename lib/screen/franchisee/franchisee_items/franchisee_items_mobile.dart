@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'franchisee_items.dart';
 
 class ItemsPageMobile extends StatelessWidget {
@@ -77,20 +78,14 @@ class ItemsPageMobile extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Container(
-                          height: 42,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          child: const TextField(
-                            decoration: InputDecoration(
-                              hintText: "Search...",
-                              icon: Icon(Icons.search),
-                              border: InputBorder.none,
-                            ),
-                          ),
+                        child: UniversalSearchBar(
+                          controller: state.searchController,
+                          hintText: state.selectedTab == 0
+                              ? "Search items..."
+                              : "Search categories...",
+                          onSearch: (value) {
+                            state.setState(() => state.searchQuery = value);
+                          },
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -193,10 +188,7 @@ class ItemsPageMobile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
-                  children: [
-                    buildTab("Items", 0),
-                    buildTab("Categories", 1),
-                  ],
+                  children: [buildTab("Items", 0), buildTab("Categories", 1)],
                 ),
               ),
               Expanded(
@@ -213,11 +205,17 @@ class ItemsPageMobile extends StatelessWidget {
                   child: state.isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : state.selectedTab == 0
-                      ? (state.dbItems.isEmpty
+                      ? (state.filteredItems.isEmpty
                             ? emptyTables(
-                                message: "You can manage your items here.",
-                                onAddPressed: state.createItem,
-                                buttonType: EmptyButtonType.icon,
+                                message: state.searchQuery.isNotEmpty
+                                    ? "No items match your search"
+                                    : "You can manage your items here.",
+                                onAddPressed: state.searchQuery.isEmpty
+                                    ? state.createItem
+                                    : null,
+                                buttonType: state.searchQuery.isEmpty
+                                    ? EmptyButtonType.icon
+                                    : EmptyButtonType.none,
                                 buttonText: null,
                               )
                             : buildUniversalTable(
@@ -231,56 +229,73 @@ class ItemsPageMobile extends StatelessWidget {
                                   "Spoilage",
                                   "",
                                 ],
-                                rows: state.dbItems
+                                rows: state.filteredItems
                                     .map(
                                       (item) => [
                                         GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
+                                          onTap: () =>
+                                              state.showItemDetails(item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
                                             child: Text(item.name),
                                           ),
                                         ),
                                         GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
+                                          onTap: () =>
+                                              state.showItemDetails(item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
-                                            child: Text(item.price != null ? '₱${item.price!.toStringAsFixed(2)}' : ''),
+                                            child: Text(
+                                              item.price != null
+                                                  ? '₱${item.price!.toStringAsFixed(2)}'
+                                                  : '',
+                                            ),
                                           ),
                                         ),
                                         GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
+                                          onTap: () =>
+                                              state.showItemDetails(item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
-                                            child: Text(state.categoryNameForId(item.categoryId)),
+                                            child: Text(
+                                              state.categoryNameForId(
+                                                item.categoryId,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                         GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
+                                          onTap: () =>
+                                              state.showItemDetails(item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
                                             child: Text(item.unit),
                                           ),
                                         ),
                                         GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
+                                          onTap: () =>
+                                              state.showItemDetails(item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
                                             child: Text(item.stock.toString()),
                                           ),
                                         ),
                                         GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
+                                          onTap: () =>
+                                              state.showItemDetails(item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
                                             child: Text(item.sold.toString()),
                                           ),
                                         ),
                                         GestureDetector(
-                                          onTap: () => state.showItemDetails(item),
+                                          onTap: () =>
+                                              state.showItemDetails(item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
-                                            child: Text(item.spoilage.toString()),
+                                            child: Text(
+                                              item.spoilage.toString(),
+                                            ),
                                           ),
                                         ),
                                         IconButton(
@@ -288,19 +303,26 @@ class ItemsPageMobile extends StatelessWidget {
                                             Icons.delete,
                                             color: Colors.red,
                                           ),
-                                          onPressed: () => state.deleteItem(item),
+                                          onPressed: () =>
+                                              state.deleteItem(item),
                                         ),
                                       ],
                                     )
                                     .toList(),
-                          smallHeaderWidth: 20,
-                          largeHeaderWidth: 120,
-                          ))
-                      : (state.dbCategories.isEmpty
+                                smallHeaderWidth: 20,
+                                largeHeaderWidth: 120,
+                              ))
+                      : (state.filteredCategories.isEmpty
                             ? emptyTables(
-                                message: "You can add categories here.",
-                                onAddPressed: state.createCategory,
-                                buttonType: EmptyButtonType.icon,
+                                message: state.searchQuery.isNotEmpty
+                                    ? "No categories match your search"
+                                    : "You can add categories here.",
+                                onAddPressed: state.searchQuery.isEmpty
+                                    ? state.createCategory
+                                    : null,
+                                buttonType: state.searchQuery.isEmpty
+                                    ? EmptyButtonType.icon
+                                    : EmptyButtonType.none,
                                 buttonText: null,
                               )
                             : FutureBuilder<List<Map<String, dynamic>>>(
@@ -335,9 +357,9 @@ class ItemsPageMobile extends StatelessWidget {
                                           ],
                                         )
                                         .toList(),
-                                        
-                              smallHeaderWidth: 20,
-                              largeHeaderWidth: 120,
+
+                                    smallHeaderWidth: 20,
+                                    largeHeaderWidth: 120,
                                   );
                                 },
                               )),
@@ -353,7 +375,9 @@ class ItemsPageMobile extends StatelessWidget {
                   (state.selectedTab == 1 && state.dbCategories.isNotEmpty)))
           ? FloatingActionButton(
               backgroundColor: Colors.red[700],
-              onPressed: state.selectedTab == 0 ? state.createItem : state.createCategory,
+              onPressed: state.selectedTab == 0
+                  ? state.createItem
+                  : state.createCategory,
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,

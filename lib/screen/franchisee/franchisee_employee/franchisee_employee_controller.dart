@@ -8,6 +8,7 @@ import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 
 /// Controller class that handles all the business logic for the employee page
 class FranchiseeEmployeeController {
@@ -50,12 +51,68 @@ class FranchiseeEmployeeController {
   int selectedTab = 0; // 0 = Employees, 1 = Roles
   bool isLoading = true;
 
+  // Search functionality
+  String searchQuery = '';
+  final TextEditingController searchController = TextEditingController();
+
   static const String orgIdKey = 'current_organization_id';
+
+  /// Get filtered roles based on search query and sorting
+  List<Role> get filteredRoles {
+    var list = roles.toList();
+
+    // Apply search filter
+    if (searchQuery.isNotEmpty) {
+      list = SearchService.filterCategories(
+        list,
+        searchQuery,
+        getName: (role) => role.name,
+        getDescription: (role) => role.description,
+      );
+    }
+
+    // Apply sorting
+    switch (currentRoleSort.field) {
+      case RoleSortField.name:
+        list.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case RoleSortField.employees:
+        list.sort((a, b) {
+          final countA = users.where((u) => u.roleId == a.id).length;
+          final countB = users.where((u) => u.roleId == b.id).length;
+          return countA.compareTo(countB);
+        });
+        break;
+      case RoleSortField.date:
+        list.sort((a, b) => b.id.compareTo(a.id));
+        break;
+    }
+
+    if (currentRoleSort.order == SortOrder.desc) {
+      list = list.reversed.toList();
+    }
+
+    return list;
+  }
 
   List<User> get filteredUsers {
     var list = users.toList();
 
-    // Apply role filter first
+    // Apply search filter first
+    if (searchQuery.isNotEmpty) {
+      list = SearchService.filterEmployees(
+        list,
+        searchQuery,
+        getName: (user) => user.username,
+        getEmail: (user) => user.email,
+        getRole: (user) {
+          final role = roles.where((r) => r.id == user.roleId).firstOrNull;
+          return role?.name;
+        },
+      );
+    }
+
+    // Apply role filter
     if (selectedRoleFilter != null) {
       list = list.where((user) => user.roleId == selectedRoleFilter).toList();
     }
@@ -147,26 +204,6 @@ class FranchiseeEmployeeController {
 
   void applyRoleSort(RoleSort sort) {
     currentRoleSort = sort;
-
-    switch (sort.field) {
-      case RoleSortField.name:
-        roles.sort((a, b) => a.name.compareTo(b.name));
-        break;
-      case RoleSortField.employees:
-        roles.sort((a, b) {
-          final countA = users.where((u) => u.roleId == a.id).length;
-          final countB = users.where((u) => u.roleId == b.id).length;
-          return countA.compareTo(countB);
-        });
-        break;
-      case RoleSortField.date:
-        roles.sort((a, b) => b.id.compareTo(a.id));
-        break;
-    }
-
-    if (sort.order == SortOrder.desc) {
-      roles = roles.reversed.toList();
-    }
     onStateChanged();
   }
 
