@@ -34,7 +34,7 @@ final itemsDescriptor = TableSyncDescriptor(
       cloudField: 'category_id',
       referenceTable: 'categories',
       required: false,
-      cloudUsesUuid: false, // category_id is INTEGER in cloud, not UUID
+      cloudUsesUuid: true, // category_id is UUID in Supabase (references categories.cloud_id)
     ),
     ForeignKeyMapping(
       localField: 'masterItemId',

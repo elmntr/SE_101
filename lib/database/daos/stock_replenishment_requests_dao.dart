@@ -6,6 +6,7 @@ import '../tables/stock_replenishment_requests.dart';
 import '../tables/items.dart';
 import '../tables/organizations.dart';
 import '../tables/users.dart';
+import '../../utils/app_logger.dart';
 
 part 'stock_replenishment_requests_dao.g.dart';
 
@@ -490,11 +491,11 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
           final localId = existing?.id;
           final previousStatus = existing?.status;
           
-          print('   🔍 Processing cloud request: cloudId=$cloudId, cloudStatus=$cloudStatus');
+          AppLogger.sync('Processing cloud request: cloudId=$cloudId, cloudStatus=$cloudStatus');
           if (existing != null) {
-            print('      Found local record #${existing.id}, localStatus=${existing.status}');
+            AppLogger.sync('   Found local record #${existing.id}, localStatus=${existing.status}');
           } else {
-            print('      No local record found, will insert new');
+            AppLogger.sync('   No local record found, will insert new');
           }
           
           // ✅ Check if status is changing to 'approved' - if so, we need to add stock to branch
@@ -502,7 +503,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
                                   (previousStatus == null || previousStatus != 'approved');
           
           if (isNewlyApproved) {
-            print('   🎉 Request is newly approved! Adding $quantityRequested items to branch stock...');
+            AppLogger.sync('🎉 Request is newly approved! Adding $quantityRequested items to branch stock...');
             await _addStockToBranch(franchiseeId, itemId, quantityRequested);
           }
           
@@ -527,14 +528,18 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
           );
         }
       });
-      print('   ✅ Batch upsert completed');
-    } catch (e) {
-      print('❌ Error batch upserting requests from cloud: $e');
+      AppLogger.sync('Batch upsert of replenishment requests completed');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error batch upserting requests from cloud', e, stackTrace);
       rethrow;
     }
   }
   
   /// ✅ Add stock to branch inventory when a replenishment request is approved
+  /// 
+  /// IMPORTANT: Failures here are logged but not rethrown to avoid breaking sync.
+  /// However, inventory discrepancies may occur if this fails - check logs for
+  /// 'CRITICAL: Stock update failed' messages and manually correct inventory.
   Future<void> _addStockToBranch(int franchiseeId, int itemId, int quantity) async {
     try {
       // Find or create the branch stock record for this item
@@ -544,13 +549,17 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
         // Update existing stock record
         final success = await db.branchItemStockDao.receiveItems(branchStock.id, quantity);
         if (success) {
-          print('   ✅ Added $quantity units to existing branch stock (stockId: ${branchStock.id})');
+          AppLogger.sync('Added $quantity units to existing branch stock (stockId: ${branchStock.id})');
         } else {
-          print('   ❌ Failed to update branch stock');
+          // CRITICAL: Stock update returned false - may cause inventory discrepancy
+          AppLogger.error(
+            'CRITICAL: Stock update failed - receiveItems returned false',
+            'franchiseeId=$franchiseeId, itemId=$itemId, quantity=$quantity, stockId=${branchStock.id}',
+          );
         }
       } else {
         // Create new stock record with the received quantity
-        print('   📦 No existing stock record found, creating new one...');
+        AppLogger.sync('No existing stock record found, creating new one...');
         final stockId = await db.branchItemStockDao.createStock(
           BranchItemStockCompanion(
             organizationId: Value(franchiseeId),
@@ -563,10 +572,16 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             isSynced: const Value(false),
           ),
         );
-        print('   ✅ Created new branch stock record (id: $stockId) with $quantity units');
+        AppLogger.sync('Created new branch stock record (id: $stockId) with $quantity units');
       }
-    } catch (e) {
-      print('   ❌ Error adding stock to branch: $e');
+    } catch (e, stackTrace) {
+      // CRITICAL: Log this prominently - approved request won't have stock added!
+      // This could cause inventory discrepancies where request shows approved but stock wasn't added.
+      AppLogger.error(
+        'CRITICAL: Failed to add stock to branch inventory! Manual correction required.',
+        'franchiseeId=$franchiseeId, itemId=$itemId, quantity=$quantity, error=$e',
+        stackTrace,
+      );
       // Don't rethrow - we don't want to fail the sync just because stock update failed
       // The request status will still be updated, and manual intervention can fix the stock
     }
