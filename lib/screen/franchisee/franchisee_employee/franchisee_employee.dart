@@ -34,11 +34,17 @@ class EmployeePageState extends State<EmployeePage> {
 
   List<String> get accessTitles => controller.accessTitles;
   List<User> get filteredUsers => controller.filteredUsers;
+  List<Role> get filteredRoles => controller.filteredRoles;
 
   int get selectedTab => controller.selectedTab;
   set selectedTab(int value) => controller.selectedTab = value;
 
   bool get isLoading => controller.isLoading;
+
+  // Search functionality
+  String get searchQuery => controller.searchQuery;
+  set searchQuery(String value) => controller.searchQuery = value;
+  TextEditingController get searchController => controller.searchController;
 
   @override
   void initState() {

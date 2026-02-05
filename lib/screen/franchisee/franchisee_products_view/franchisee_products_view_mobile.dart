@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'franchisee_products_view.dart';
 
 class FranchiseeProductsViewMobile extends StatelessWidget {
@@ -46,24 +47,12 @@ class FranchiseeProductsViewMobile extends StatelessWidget {
               const SizedBox(height: 10),
 
               // Search bar
-              Container(
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: TextField(
-                  controller: state.searchController,
-                  decoration: const InputDecoration(
-                    hintText: "Search products...",
-                    icon: Icon(Icons.search),
-                    border: InputBorder.none,
-                  ),
-                  onChanged: (value) {
-                    state.refreshState(() => state.searchQuery = value);
-                  },
-                ),
+              UniversalSearchBar(
+                controller: state.searchController,
+                hintText: "Search products...",
+                onSearch: (value) {
+                  state.refreshState(() => state.searchQuery = value);
+                },
               ),
               const SizedBox(height: 16),
 

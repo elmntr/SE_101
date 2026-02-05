@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'franchisee_employee.dart';
 
 class EmployeePageDesktop extends StatelessWidget {
@@ -61,17 +62,17 @@ class EmployeePageDesktop extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Container(
+                  child: UniversalSearchBar(
+                    controller: state.searchController,
+                    hintText: state.selectedTab == 0
+                        ? "Search employees..."
+                        : "Search roles...",
+                    onSearch: (value) {
+                      state.setState(() => state.searchQuery = value);
+                    },
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search...",
-                        prefixIcon: Icon(Icons.search),
-                        border: InputBorder.none,
-                      ),
                     ),
                   ),
                 ),
@@ -92,7 +93,8 @@ class EmployeePageDesktop extends StatelessWidget {
                         tooltip: "Filter by role",
                         onSelected: (value) {
                           state.setState(() {
-                            state.selectedRoleFilter = value == EmployeePageState.allRolesKey
+                            state.selectedRoleFilter =
+                                value == EmployeePageState.allRolesKey
                                 ? null
                                 : value;
                           });
@@ -118,7 +120,8 @@ class EmployeePageDesktop extends StatelessWidget {
                                   ? "All Roles"
                                   : state.roles
                                         .firstWhere(
-                                          (r) => r.id == state.selectedRoleFilter,
+                                          (r) =>
+                                              r.id == state.selectedRoleFilter,
                                         )
                                         .name,
                               style: const TextStyle(fontSize: 14),
@@ -172,10 +175,7 @@ class EmployeePageDesktop extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
-                      children: [
-                        buildTab("Employee", 0),
-                        buildTab("Roles", 1),
-                      ],
+                      children: [buildTab("Employee", 0), buildTab("Roles", 1)],
                     ),
                   ),
                   Expanded(
@@ -256,15 +256,21 @@ class EmployeePageDesktop extends StatelessWidget {
                                         ),
                                       ];
                                     }).toList(),
-                                    
-                                smallHeaderWidth: 20,
-                                largeHeaderWidth: 120,
+
+                                    smallHeaderWidth: 20,
+                                    largeHeaderWidth: 120,
                                   ))
-                          : (state.roles.isEmpty
+                          : (state.filteredRoles.isEmpty
                                 ? emptyTables(
-                                    message: "No roles found",
-                                    onAddPressed: state.createRoleDialog,
-                                    buttonType: EmptyButtonType.icon,
+                                    message: state.searchQuery.isNotEmpty
+                                        ? "No roles match your search"
+                                        : "No roles found",
+                                    onAddPressed: state.searchQuery.isEmpty
+                                        ? state.createRoleDialog
+                                        : null,
+                                    buttonType: state.searchQuery.isEmpty
+                                        ? EmptyButtonType.icon
+                                        : EmptyButtonType.none,
                                     buttonText: null,
                                   )
                                 : buildUniversalTable(
@@ -274,9 +280,11 @@ class EmployeePageDesktop extends StatelessWidget {
                                       "Employees",
                                       "",
                                     ],
-                                    rows: state.roles.map((role) {
+                                    rows: state.filteredRoles.map((role) {
                                       final accessWidgets = <Widget>[];
-                                      final accessFlags = state.flagsFromRole(role);
+                                      final accessFlags = state.flagsFromRole(
+                                        role,
+                                      );
                                       for (
                                         int j = 0;
                                         j < state.accessTitles.length;
@@ -336,9 +344,9 @@ class EmployeePageDesktop extends StatelessWidget {
                                         ),
                                       ];
                                     }).toList(),
-                                    
-                                smallHeaderWidth: 20,
-                                largeHeaderWidth: 120,
+
+                                    smallHeaderWidth: 20,
+                                    largeHeaderWidth: 120,
                                   )),
                     ),
                   ),

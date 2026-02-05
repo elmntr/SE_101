@@ -7,6 +7,7 @@ import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/screen/employee/employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/database/models/item_with_branch_stock.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'employee_items_mobile.dart';
 import 'employee_items_desktop.dart';
 
@@ -34,6 +35,78 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
     ReviewSortField.employee,
     SortOrder.asc,
   );
+
+  // Search functionality
+  String searchQuery = '';
+  final TextEditingController searchController = TextEditingController();
+
+  /// Get filtered items based on search query with sorting applied
+  List<ItemWithBranchStock> get filteredItems {
+    List<ItemWithBranchStock> items = searchQuery.isEmpty
+        ? List.from(dbItems)
+        : SearchService.filterItems(
+            dbItems,
+            searchQuery,
+            getName: (item) => item.name,
+            getDescription: (item) => item.description,
+            getCategoryName: (item) => item.categoryName,
+          );
+
+    // Apply sorting
+    switch (currentSort.field) {
+      case ItemSortField.date:
+        items.sort((a, b) => a.item.lastUpdated.compareTo(b.item.lastUpdated));
+        break;
+      case ItemSortField.name:
+        items.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case ItemSortField.stock:
+        items.sort((a, b) => a.stock.compareTo(b.stock));
+        break;
+      case ItemSortField.sale:
+        items.sort((a, b) => a.sold.compareTo(b.sold));
+        break;
+      case ItemSortField.spoilage:
+        items.sort((a, b) => a.spoilage.compareTo(b.spoilage));
+        break;
+    }
+
+    if (currentSort.order == SortOrder.desc) {
+      items = items.reversed.toList();
+    }
+
+    return items;
+  }
+
+  /// Get filtered pending changes based on search query with sorting applied
+  List<StockChangeRequest> get filteredPendingChanges {
+    List<StockChangeRequest> changes = searchQuery.isEmpty
+        ? List.from(pendingChanges)
+        : SearchService.filter(
+            pendingChanges,
+            searchQuery,
+            (change) => [change.reason, change.reviewNotes, change.changeType],
+          );
+
+    // Apply sorting
+    switch (reviewSort.field) {
+      case ReviewSortField.employee:
+        // All changes are from same employee, so no sort needed
+        break;
+      case ReviewSortField.role:
+        // All changes are from same role, so no sort needed
+        break;
+      case ReviewSortField.changes:
+        changes.sort((a, b) => b.quantity.compareTo(a.quantity));
+        break;
+    }
+
+    if (reviewSort.order == SortOrder.desc) {
+      changes = changes.reversed.toList();
+    }
+
+    return changes;
+  }
 
   @override
   void initState() {
@@ -484,52 +557,12 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
   void applyItemSort(ItemSort sort) {
     setState(() {
       currentSort = sort;
-
-      switch (sort.field) {
-        case ItemSortField.date:
-          dbItems.sort(
-            (a, b) => a.item.lastUpdated.compareTo(b.item.lastUpdated),
-          );
-          break;
-        case ItemSortField.name:
-          dbItems.sort((a, b) => a.name.compareTo(b.name));
-          break;
-        case ItemSortField.stock:
-          dbItems.sort((a, b) => a.stock.compareTo(b.stock));
-          break;
-        case ItemSortField.sale:
-          dbItems.sort((a, b) => a.sold.compareTo(b.sold));
-          break;
-        case ItemSortField.spoilage:
-          dbItems.sort((a, b) => b.spoilage.compareTo(a.spoilage));
-          break;
-      }
-
-      if (sort.order == SortOrder.desc) {
-        dbItems = dbItems.reversed.toList();
-      }
     });
   }
 
   void applyReviewSort(ReviewSort sort) {
     setState(() {
       reviewSort = sort;
-
-      switch (sort.field) {
-        case ReviewSortField.employee:
-          // All changes are from same employee, so no sort needed
-          break;
-        case ReviewSortField.role:
-          // All changes are from same role, so no sort needed
-          break;
-        case ReviewSortField.changes:
-          pendingChanges.sort((a, b) => b.quantity.compareTo(a.quantity));
-          break;
-      }
-
-      if (sort.order == SortOrder.desc) {
-        pendingChanges = pendingChanges.reversed.toList();
-      }
     });
   }
 
