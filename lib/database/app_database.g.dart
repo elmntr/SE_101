@@ -10404,6 +10404,709 @@ class DailySalesSummaryCompanion
   }
 }
 
+class $SyncConflictsTable extends SyncConflicts
+    with TableInfo<$SyncConflictsTable, SyncConflict> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncConflictsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _sourceTableMeta = const VerificationMeta(
+    'sourceTable',
+  );
+  @override
+  late final GeneratedColumn<String> sourceTable = GeneratedColumn<String>(
+    'source_table',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 100,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localDataMeta = const VerificationMeta(
+    'localData',
+  );
+  @override
+  late final GeneratedColumn<String> localData = GeneratedColumn<String>(
+    'local_data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cloudDataMeta = const VerificationMeta(
+    'cloudData',
+  );
+  @override
+  late final GeneratedColumn<String> cloudData = GeneratedColumn<String>(
+    'cloud_data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _conflictTypeMeta = const VerificationMeta(
+    'conflictType',
+  );
+  @override
+  late final GeneratedColumn<String> conflictType = GeneratedColumn<String>(
+    'conflict_type',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 50,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resolutionMeta = const VerificationMeta(
+    'resolution',
+  );
+  @override
+  late final GeneratedColumn<String> resolution = GeneratedColumn<String>(
+    'resolution',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 50),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _organizationIdMeta = const VerificationMeta(
+    'organizationId',
+  );
+  @override
+  late final GeneratedColumn<int> organizationId = GeneratedColumn<int>(
+    'organization_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _resolvedAtMeta = const VerificationMeta(
+    'resolvedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> resolvedAt = GeneratedColumn<DateTime>(
+    'resolved_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 1000),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sourceTable,
+    cloudId,
+    localData,
+    cloudData,
+    conflictType,
+    resolution,
+    organizationId,
+    createdAt,
+    resolvedAt,
+    notes,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_conflicts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncConflict> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('source_table')) {
+      context.handle(
+        _sourceTableMeta,
+        sourceTable.isAcceptableOrUnknown(
+          data['source_table']!,
+          _sourceTableMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceTableMeta);
+    }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cloudIdMeta);
+    }
+    if (data.containsKey('local_data')) {
+      context.handle(
+        _localDataMeta,
+        localData.isAcceptableOrUnknown(data['local_data']!, _localDataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_localDataMeta);
+    }
+    if (data.containsKey('cloud_data')) {
+      context.handle(
+        _cloudDataMeta,
+        cloudData.isAcceptableOrUnknown(data['cloud_data']!, _cloudDataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cloudDataMeta);
+    }
+    if (data.containsKey('conflict_type')) {
+      context.handle(
+        _conflictTypeMeta,
+        conflictType.isAcceptableOrUnknown(
+          data['conflict_type']!,
+          _conflictTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_conflictTypeMeta);
+    }
+    if (data.containsKey('resolution')) {
+      context.handle(
+        _resolutionMeta,
+        resolution.isAcceptableOrUnknown(data['resolution']!, _resolutionMeta),
+      );
+    }
+    if (data.containsKey('organization_id')) {
+      context.handle(
+        _organizationIdMeta,
+        organizationId.isAcceptableOrUnknown(
+          data['organization_id']!,
+          _organizationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('resolved_at')) {
+      context.handle(
+        _resolvedAtMeta,
+        resolvedAt.isAcceptableOrUnknown(data['resolved_at']!, _resolvedAtMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SyncConflict map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncConflict(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      sourceTable: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_table'],
+      )!,
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      )!,
+      localData: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_data'],
+      )!,
+      cloudData: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_data'],
+      )!,
+      conflictType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}conflict_type'],
+      )!,
+      resolution: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolution'],
+      ),
+      organizationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}organization_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      resolvedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}resolved_at'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+    );
+  }
+
+  @override
+  $SyncConflictsTable createAlias(String alias) {
+    return $SyncConflictsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncConflict extends DataClass implements Insertable<SyncConflict> {
+  /// Primary key
+  final int id;
+
+  /// The table where the conflict occurred (e.g., 'items', 'users')
+  /// Named 'sourceTable' to avoid conflict with Drift's Table.tableName
+  final String sourceTable;
+
+  /// The cloud_id of the conflicting record
+  final String cloudId;
+
+  /// JSON-encoded local record data at time of conflict
+  final String localData;
+
+  /// JSON-encoded cloud record data at time of conflict
+  final String cloudData;
+
+  /// Type of conflict (bothModified, localDeletedCloudModified, etc.)
+  final String conflictType;
+
+  /// Resolution applied (localWins, cloudWins, merged, manual)
+  final String? resolution;
+
+  /// Organization ID for filtering conflicts by org (franchisee sees their own)
+  final int? organizationId;
+
+  /// When the conflict was detected
+  final DateTime createdAt;
+
+  /// When the conflict was resolved (null = unresolved)
+  final DateTime? resolvedAt;
+
+  /// Additional notes from manual resolution
+  final String? notes;
+  const SyncConflict({
+    required this.id,
+    required this.sourceTable,
+    required this.cloudId,
+    required this.localData,
+    required this.cloudData,
+    required this.conflictType,
+    this.resolution,
+    this.organizationId,
+    required this.createdAt,
+    this.resolvedAt,
+    this.notes,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['source_table'] = Variable<String>(sourceTable);
+    map['cloud_id'] = Variable<String>(cloudId);
+    map['local_data'] = Variable<String>(localData);
+    map['cloud_data'] = Variable<String>(cloudData);
+    map['conflict_type'] = Variable<String>(conflictType);
+    if (!nullToAbsent || resolution != null) {
+      map['resolution'] = Variable<String>(resolution);
+    }
+    if (!nullToAbsent || organizationId != null) {
+      map['organization_id'] = Variable<int>(organizationId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || resolvedAt != null) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    return map;
+  }
+
+  SyncConflictsCompanion toCompanion(bool nullToAbsent) {
+    return SyncConflictsCompanion(
+      id: Value(id),
+      sourceTable: Value(sourceTable),
+      cloudId: Value(cloudId),
+      localData: Value(localData),
+      cloudData: Value(cloudData),
+      conflictType: Value(conflictType),
+      resolution: resolution == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolution),
+      organizationId: organizationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(organizationId),
+      createdAt: Value(createdAt),
+      resolvedAt: resolvedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolvedAt),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+    );
+  }
+
+  factory SyncConflict.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncConflict(
+      id: serializer.fromJson<int>(json['id']),
+      sourceTable: serializer.fromJson<String>(json['sourceTable']),
+      cloudId: serializer.fromJson<String>(json['cloudId']),
+      localData: serializer.fromJson<String>(json['localData']),
+      cloudData: serializer.fromJson<String>(json['cloudData']),
+      conflictType: serializer.fromJson<String>(json['conflictType']),
+      resolution: serializer.fromJson<String?>(json['resolution']),
+      organizationId: serializer.fromJson<int?>(json['organizationId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      resolvedAt: serializer.fromJson<DateTime?>(json['resolvedAt']),
+      notes: serializer.fromJson<String?>(json['notes']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'sourceTable': serializer.toJson<String>(sourceTable),
+      'cloudId': serializer.toJson<String>(cloudId),
+      'localData': serializer.toJson<String>(localData),
+      'cloudData': serializer.toJson<String>(cloudData),
+      'conflictType': serializer.toJson<String>(conflictType),
+      'resolution': serializer.toJson<String?>(resolution),
+      'organizationId': serializer.toJson<int?>(organizationId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'resolvedAt': serializer.toJson<DateTime?>(resolvedAt),
+      'notes': serializer.toJson<String?>(notes),
+    };
+  }
+
+  SyncConflict copyWith({
+    int? id,
+    String? sourceTable,
+    String? cloudId,
+    String? localData,
+    String? cloudData,
+    String? conflictType,
+    Value<String?> resolution = const Value.absent(),
+    Value<int?> organizationId = const Value.absent(),
+    DateTime? createdAt,
+    Value<DateTime?> resolvedAt = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+  }) => SyncConflict(
+    id: id ?? this.id,
+    sourceTable: sourceTable ?? this.sourceTable,
+    cloudId: cloudId ?? this.cloudId,
+    localData: localData ?? this.localData,
+    cloudData: cloudData ?? this.cloudData,
+    conflictType: conflictType ?? this.conflictType,
+    resolution: resolution.present ? resolution.value : this.resolution,
+    organizationId: organizationId.present
+        ? organizationId.value
+        : this.organizationId,
+    createdAt: createdAt ?? this.createdAt,
+    resolvedAt: resolvedAt.present ? resolvedAt.value : this.resolvedAt,
+    notes: notes.present ? notes.value : this.notes,
+  );
+  SyncConflict copyWithCompanion(SyncConflictsCompanion data) {
+    return SyncConflict(
+      id: data.id.present ? data.id.value : this.id,
+      sourceTable: data.sourceTable.present
+          ? data.sourceTable.value
+          : this.sourceTable,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
+      localData: data.localData.present ? data.localData.value : this.localData,
+      cloudData: data.cloudData.present ? data.cloudData.value : this.cloudData,
+      conflictType: data.conflictType.present
+          ? data.conflictType.value
+          : this.conflictType,
+      resolution: data.resolution.present
+          ? data.resolution.value
+          : this.resolution,
+      organizationId: data.organizationId.present
+          ? data.organizationId.value
+          : this.organizationId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      resolvedAt: data.resolvedAt.present
+          ? data.resolvedAt.value
+          : this.resolvedAt,
+      notes: data.notes.present ? data.notes.value : this.notes,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncConflict(')
+          ..write('id: $id, ')
+          ..write('sourceTable: $sourceTable, ')
+          ..write('cloudId: $cloudId, ')
+          ..write('localData: $localData, ')
+          ..write('cloudData: $cloudData, ')
+          ..write('conflictType: $conflictType, ')
+          ..write('resolution: $resolution, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sourceTable,
+    cloudId,
+    localData,
+    cloudData,
+    conflictType,
+    resolution,
+    organizationId,
+    createdAt,
+    resolvedAt,
+    notes,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncConflict &&
+          other.id == this.id &&
+          other.sourceTable == this.sourceTable &&
+          other.cloudId == this.cloudId &&
+          other.localData == this.localData &&
+          other.cloudData == this.cloudData &&
+          other.conflictType == this.conflictType &&
+          other.resolution == this.resolution &&
+          other.organizationId == this.organizationId &&
+          other.createdAt == this.createdAt &&
+          other.resolvedAt == this.resolvedAt &&
+          other.notes == this.notes);
+}
+
+class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
+  final Value<int> id;
+  final Value<String> sourceTable;
+  final Value<String> cloudId;
+  final Value<String> localData;
+  final Value<String> cloudData;
+  final Value<String> conflictType;
+  final Value<String?> resolution;
+  final Value<int?> organizationId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> resolvedAt;
+  final Value<String?> notes;
+  const SyncConflictsCompanion({
+    this.id = const Value.absent(),
+    this.sourceTable = const Value.absent(),
+    this.cloudId = const Value.absent(),
+    this.localData = const Value.absent(),
+    this.cloudData = const Value.absent(),
+    this.conflictType = const Value.absent(),
+    this.resolution = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+    this.notes = const Value.absent(),
+  });
+  SyncConflictsCompanion.insert({
+    this.id = const Value.absent(),
+    required String sourceTable,
+    required String cloudId,
+    required String localData,
+    required String cloudData,
+    required String conflictType,
+    this.resolution = const Value.absent(),
+    this.organizationId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+    this.notes = const Value.absent(),
+  }) : sourceTable = Value(sourceTable),
+       cloudId = Value(cloudId),
+       localData = Value(localData),
+       cloudData = Value(cloudData),
+       conflictType = Value(conflictType);
+  static Insertable<SyncConflict> custom({
+    Expression<int>? id,
+    Expression<String>? sourceTable,
+    Expression<String>? cloudId,
+    Expression<String>? localData,
+    Expression<String>? cloudData,
+    Expression<String>? conflictType,
+    Expression<String>? resolution,
+    Expression<int>? organizationId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? resolvedAt,
+    Expression<String>? notes,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sourceTable != null) 'source_table': sourceTable,
+      if (cloudId != null) 'cloud_id': cloudId,
+      if (localData != null) 'local_data': localData,
+      if (cloudData != null) 'cloud_data': cloudData,
+      if (conflictType != null) 'conflict_type': conflictType,
+      if (resolution != null) 'resolution': resolution,
+      if (organizationId != null) 'organization_id': organizationId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (resolvedAt != null) 'resolved_at': resolvedAt,
+      if (notes != null) 'notes': notes,
+    });
+  }
+
+  SyncConflictsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? sourceTable,
+    Value<String>? cloudId,
+    Value<String>? localData,
+    Value<String>? cloudData,
+    Value<String>? conflictType,
+    Value<String?>? resolution,
+    Value<int?>? organizationId,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? resolvedAt,
+    Value<String?>? notes,
+  }) {
+    return SyncConflictsCompanion(
+      id: id ?? this.id,
+      sourceTable: sourceTable ?? this.sourceTable,
+      cloudId: cloudId ?? this.cloudId,
+      localData: localData ?? this.localData,
+      cloudData: cloudData ?? this.cloudData,
+      conflictType: conflictType ?? this.conflictType,
+      resolution: resolution ?? this.resolution,
+      organizationId: organizationId ?? this.organizationId,
+      createdAt: createdAt ?? this.createdAt,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
+      notes: notes ?? this.notes,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (sourceTable.present) {
+      map['source_table'] = Variable<String>(sourceTable.value);
+    }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
+    if (localData.present) {
+      map['local_data'] = Variable<String>(localData.value);
+    }
+    if (cloudData.present) {
+      map['cloud_data'] = Variable<String>(cloudData.value);
+    }
+    if (conflictType.present) {
+      map['conflict_type'] = Variable<String>(conflictType.value);
+    }
+    if (resolution.present) {
+      map['resolution'] = Variable<String>(resolution.value);
+    }
+    if (organizationId.present) {
+      map['organization_id'] = Variable<int>(organizationId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (resolvedAt.present) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncConflictsCompanion(')
+          ..write('id: $id, ')
+          ..write('sourceTable: $sourceTable, ')
+          ..write('cloudId: $cloudId, ')
+          ..write('localData: $localData, ')
+          ..write('cloudData: $cloudData, ')
+          ..write('conflictType: $conflictType, ')
+          ..write('resolution: $resolution, ')
+          ..write('organizationId: $organizationId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -10426,6 +11129,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $StockChangeRequestsTable(this);
   late final $DailySalesSummaryTable dailySalesSummary =
       $DailySalesSummaryTable(this);
+  late final $SyncConflictsTable syncConflicts = $SyncConflictsTable(this);
   late final OrganizationsDao organizationsDao = OrganizationsDao(
     this as AppDatabase,
   );
@@ -10451,6 +11155,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final DailySalesSummaryDao dailySalesSummaryDao = DailySalesSummaryDao(
     this as AppDatabase,
   );
+  late final SyncConflictsDao syncConflictsDao = SyncConflictsDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10468,6 +11175,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     stockReplenishmentRequests,
     stockChangeRequests,
     dailySalesSummary,
+    syncConflicts,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -20168,6 +20876,324 @@ typedef $$DailySalesSummaryTableProcessedTableManager =
       DailySalesSummaryData,
       PrefetchHooks Function({bool organizationId, bool itemId})
     >;
+typedef $$SyncConflictsTableCreateCompanionBuilder =
+    SyncConflictsCompanion Function({
+      Value<int> id,
+      required String sourceTable,
+      required String cloudId,
+      required String localData,
+      required String cloudData,
+      required String conflictType,
+      Value<String?> resolution,
+      Value<int?> organizationId,
+      Value<DateTime> createdAt,
+      Value<DateTime?> resolvedAt,
+      Value<String?> notes,
+    });
+typedef $$SyncConflictsTableUpdateCompanionBuilder =
+    SyncConflictsCompanion Function({
+      Value<int> id,
+      Value<String> sourceTable,
+      Value<String> cloudId,
+      Value<String> localData,
+      Value<String> cloudData,
+      Value<String> conflictType,
+      Value<String?> resolution,
+      Value<int?> organizationId,
+      Value<DateTime> createdAt,
+      Value<DateTime?> resolvedAt,
+      Value<String?> notes,
+    });
+
+class $$SyncConflictsTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncConflictsTable> {
+  $$SyncConflictsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceTable => $composableBuilder(
+    column: $table.sourceTable,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localData => $composableBuilder(
+    column: $table.localData,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudData => $composableBuilder(
+    column: $table.cloudData,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conflictType => $composableBuilder(
+    column: $table.conflictType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolution => $composableBuilder(
+    column: $table.resolution,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncConflictsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncConflictsTable> {
+  $$SyncConflictsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceTable => $composableBuilder(
+    column: $table.sourceTable,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localData => $composableBuilder(
+    column: $table.localData,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudData => $composableBuilder(
+    column: $table.cloudData,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get conflictType => $composableBuilder(
+    column: $table.conflictType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resolution => $composableBuilder(
+    column: $table.resolution,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncConflictsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncConflictsTable> {
+  $$SyncConflictsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceTable => $composableBuilder(
+    column: $table.sourceTable,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
+
+  GeneratedColumn<String> get localData =>
+      $composableBuilder(column: $table.localData, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudData =>
+      $composableBuilder(column: $table.cloudData, builder: (column) => column);
+
+  GeneratedColumn<String> get conflictType => $composableBuilder(
+    column: $table.conflictType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolution => $composableBuilder(
+    column: $table.resolution,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get organizationId => $composableBuilder(
+    column: $table.organizationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+}
+
+class $$SyncConflictsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncConflictsTable,
+          SyncConflict,
+          $$SyncConflictsTableFilterComposer,
+          $$SyncConflictsTableOrderingComposer,
+          $$SyncConflictsTableAnnotationComposer,
+          $$SyncConflictsTableCreateCompanionBuilder,
+          $$SyncConflictsTableUpdateCompanionBuilder,
+          (
+            SyncConflict,
+            BaseReferences<_$AppDatabase, $SyncConflictsTable, SyncConflict>,
+          ),
+          SyncConflict,
+          PrefetchHooks Function()
+        > {
+  $$SyncConflictsTableTableManager(_$AppDatabase db, $SyncConflictsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncConflictsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncConflictsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncConflictsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> sourceTable = const Value.absent(),
+                Value<String> cloudId = const Value.absent(),
+                Value<String> localData = const Value.absent(),
+                Value<String> cloudData = const Value.absent(),
+                Value<String> conflictType = const Value.absent(),
+                Value<String?> resolution = const Value.absent(),
+                Value<int?> organizationId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> resolvedAt = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+              }) => SyncConflictsCompanion(
+                id: id,
+                sourceTable: sourceTable,
+                cloudId: cloudId,
+                localData: localData,
+                cloudData: cloudData,
+                conflictType: conflictType,
+                resolution: resolution,
+                organizationId: organizationId,
+                createdAt: createdAt,
+                resolvedAt: resolvedAt,
+                notes: notes,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String sourceTable,
+                required String cloudId,
+                required String localData,
+                required String cloudData,
+                required String conflictType,
+                Value<String?> resolution = const Value.absent(),
+                Value<int?> organizationId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> resolvedAt = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+              }) => SyncConflictsCompanion.insert(
+                id: id,
+                sourceTable: sourceTable,
+                cloudId: cloudId,
+                localData: localData,
+                cloudData: cloudData,
+                conflictType: conflictType,
+                resolution: resolution,
+                organizationId: organizationId,
+                createdAt: createdAt,
+                resolvedAt: resolvedAt,
+                notes: notes,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncConflictsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncConflictsTable,
+      SyncConflict,
+      $$SyncConflictsTableFilterComposer,
+      $$SyncConflictsTableOrderingComposer,
+      $$SyncConflictsTableAnnotationComposer,
+      $$SyncConflictsTableCreateCompanionBuilder,
+      $$SyncConflictsTableUpdateCompanionBuilder,
+      (
+        SyncConflict,
+        BaseReferences<_$AppDatabase, $SyncConflictsTable, SyncConflict>,
+      ),
+      SyncConflict,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -20200,4 +21226,6 @@ class $AppDatabaseManager {
       $$StockChangeRequestsTableTableManager(_db, _db.stockChangeRequests);
   $$DailySalesSummaryTableTableManager get dailySalesSummary =>
       $$DailySalesSummaryTableTableManager(_db, _db.dailySalesSummary);
+  $$SyncConflictsTableTableManager get syncConflicts =>
+      $$SyncConflictsTableTableManager(_db, _db.syncConflicts);
 }

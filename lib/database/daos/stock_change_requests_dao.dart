@@ -632,7 +632,23 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
+  // Helper to parse DateTime from various formats
+  DateTime _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.parse(value);
+    throw FormatException('Cannot parse DateTime from: $value');
+  }
+
+  // Helper to parse nullable DateTime
+  DateTime? _parseDateTimeNullable(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.parse(value);
+    return null;
+  }
+
   /// ✅ Batch upsert from cloud
+  /// Supports both camelCase (from toLocalFormat) and snake_case keys
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudRequests,
   ) async {
@@ -640,28 +656,24 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
           await upsertFromCloud(
-            id: cloudReq['local_id'],
-            franchiseeId: cloudReq['franchisee_id'],
-            itemId: cloudReq['item_id'],
-            changeType: cloudReq['change_type'],
+            id: cloudReq['localId'] ?? cloudReq['local_id'],
+            franchiseeId: cloudReq['franchiseeId'] ?? cloudReq['franchisee_id'],
+            itemId: cloudReq['itemId'] ?? cloudReq['item_id'],
+            changeType: cloudReq['changeType'] ?? cloudReq['change_type'],
             quantity: cloudReq['quantity'],
             status: cloudReq['status'],
-            requestedBy: cloudReq['requested_by'],
-            requestedAt: DateTime.parse(cloudReq['requested_at']),
-            submittedAt: cloudReq['submitted_at'] != null
-                ? DateTime.parse(cloudReq['submitted_at'])
-                : null,
-            reviewedBy: cloudReq['reviewed_by'],
-            reviewedAt: cloudReq['reviewed_at'] != null
-                ? DateTime.parse(cloudReq['reviewed_at'])
-                : null,
+            requestedBy: cloudReq['requestedBy'] ?? cloudReq['requested_by'],
+            requestedAt: _parseDateTime(cloudReq['requestedAt'] ?? cloudReq['requested_at']),
+            submittedAt: _parseDateTimeNullable(cloudReq['submittedAt'] ?? cloudReq['submitted_at']),
+            reviewedBy: cloudReq['reviewedBy'] ?? cloudReq['reviewed_by'],
+            reviewedAt: _parseDateTimeNullable(cloudReq['reviewedAt'] ?? cloudReq['reviewed_at']),
             reason: cloudReq['reason'],
-            reviewNotes: cloudReq['review_notes'],
-            originalStock: cloudReq['original_stock'],
-            createdAt: DateTime.parse(cloudReq['created_at']),
-            lastUpdated: DateTime.parse(cloudReq['last_updated']),
-            isDeleted: cloudReq['is_deleted'] ?? false,
-            cloudId: cloudReq['cloud_id'],
+            reviewNotes: cloudReq['reviewNotes'] ?? cloudReq['review_notes'],
+            originalStock: cloudReq['originalStock'] ?? cloudReq['original_stock'],
+            createdAt: _parseDateTime(cloudReq['createdAt'] ?? cloudReq['created_at']),
+            lastUpdated: _parseDateTime(cloudReq['lastUpdated'] ?? cloudReq['last_updated']),
+            isDeleted: cloudReq['isDeleted'] ?? cloudReq['is_deleted'] ?? false,
+            cloudId: cloudReq['cloudId'] ?? cloudReq['cloud_id'],
           );
         }
       });

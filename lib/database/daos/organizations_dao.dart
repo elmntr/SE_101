@@ -455,32 +455,41 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Batch upsert from cloud
-  /// ✅ Batch upsert from cloud
-Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations) async {
-  try {
-    await db.transaction(() async {
-      for (final cloudOrg in cloudOrganizations) {
-        await upsertFromCloud(
-          id: cloudOrg['local_id'] ?? 0,
-          name: cloudOrg['name'] ?? 'Unknown Organization',
-          type: cloudOrg['type'] ?? 'commissary',
-          parentCommissaryId: cloudOrg['parent_commissary_id'], // ✅ Can be null
-          contactPerson: cloudOrg['contact_person'], // ✅ Already nullable (String?)
-          phone: cloudOrg['phone'],
-          email: cloudOrg['email'],
-          address: cloudOrg['address'],
-          isActive: cloudOrg['is_active'] ?? true, // ✅ Default to true
-          createdAt: DateTime.tryParse(cloudOrg['created_at'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-          lastUpdated: DateTime.tryParse(cloudOrg['last_updated'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-          cloudId: cloudOrg['cloud_id'] ?? '', // ✅ Default to empty string
-        );
-      }
-    });
-  } catch (e) {
-    print('❌ Error batch upserting organizations from cloud: $e');
-    rethrow;
+  /// Expects data from toLocalFormat (camelCase keys)
+  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations) async {
+    try {
+      await db.transaction(() async {
+        for (final cloudOrg in cloudOrganizations) {
+          // Support both camelCase (from toLocalFormat) and snake_case (legacy) keys
+          await upsertFromCloud(
+            id: cloudOrg['local_id'] ?? cloudOrg['localId'] ?? 0,
+            name: cloudOrg['name'] ?? 'Unknown Organization',
+            type: cloudOrg['type'] ?? 'commissary',
+            parentCommissaryId: cloudOrg['parentCommissaryId'] ?? cloudOrg['parent_commissary_id'],
+            contactPerson: cloudOrg['contactPerson'] ?? cloudOrg['contact_person'],
+            phone: cloudOrg['phone'],
+            email: cloudOrg['email'],
+            address: cloudOrg['address'],
+            isActive: cloudOrg['isActive'] ?? cloudOrg['is_active'] ?? true,
+            createdAt: _parseDateTime(cloudOrg['createdAt'] ?? cloudOrg['created_at']),
+            lastUpdated: _parseDateTime(cloudOrg['lastUpdated'] ?? cloudOrg['last_updated']),
+            cloudId: cloudOrg['cloudId'] ?? cloudOrg['cloud_id'] ?? '',
+          );
+        }
+      });
+    } catch (e) {
+      print('❌ Error batch upserting organizations from cloud: $e');
+      rethrow;
+    }
   }
-}
+
+  /// Helper to parse DateTime from various formats
+  DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
+  }
 
   /// ✅ Upsert from cloud (individual)
   /// If id > 0, updates existing record. If id == 0, checks by cloudId first.

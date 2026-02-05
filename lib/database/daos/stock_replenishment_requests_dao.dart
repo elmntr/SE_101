@@ -6,6 +6,7 @@ import '../tables/stock_replenishment_requests.dart';
 import '../tables/items.dart';
 import '../tables/organizations.dart';
 import '../tables/users.dart';
+import '../../utils/app_logger.dart';
 
 part 'stock_replenishment_requests_dao.g.dart';
 
@@ -468,56 +469,138 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Batch upsert from cloud
+  /// Expects data from toLocalFormat (camelCase keys) or raw cloud data (snake_case)
+  /// 
+  /// **IMPORTANT**: When a request is newly approved (status changes from non-approved to approved),
+  /// this method automatically adds the requested quantity to the branch's inventory.
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudRequests,
   ) async {
     try {
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
-          final cloudId = cloudReq['cloud_id'] as String;
-          final cloudStatus = cloudReq['status'] as String;
+          // Support both camelCase (from toLocalFormat) and snake_case (raw cloud) keys
+          final cloudId = (cloudReq['cloudId'] ?? cloudReq['cloud_id'])?.toString() ?? '';
+          final cloudStatus = (cloudReq['status'] as String?) ?? 'pending';
+          final franchiseeId = cloudReq['franchiseeId'] ?? cloudReq['franchisee_id'] ?? 0;
+          final itemId = cloudReq['itemId'] ?? cloudReq['item_id'] ?? 0;
+          final quantityRequested = cloudReq['quantityRequested'] ?? cloudReq['quantity_requested'] ?? 0;
           
           // First, check if we already have this record locally by cloud_id
-          final existing = await getRequestByCloudId(cloudId);
+          final existing = cloudId.isNotEmpty ? await getRequestByCloudId(cloudId) : null;
           final localId = existing?.id;
+          final previousStatus = existing?.status;
           
-          print('   🔍 Processing cloud request: cloudId=$cloudId, cloudStatus=$cloudStatus');
+          AppLogger.sync('Processing cloud request: cloudId=$cloudId, cloudStatus=$cloudStatus');
           if (existing != null) {
-            print('      Found local record #${existing.id}, localStatus=${existing.status}');
+            AppLogger.sync('   Found local record #${existing.id}, localStatus=${existing.status}');
           } else {
-            print('      No local record found, will insert new');
+            AppLogger.sync('   No local record found, will insert new');
+          }
+          
+          // ✅ Check if status is changing to 'approved' - if so, we need to add stock to branch
+          final isNewlyApproved = cloudStatus == 'approved' && 
+                                  (previousStatus == null || previousStatus != 'approved');
+          
+          if (isNewlyApproved) {
+            AppLogger.sync('🎉 Request is newly approved! Adding $quantityRequested items to branch stock...');
+            await _addStockToBranch(franchiseeId, itemId, quantityRequested);
           }
           
           await upsertFromCloud(
             id: localId,
-            franchiseeId: cloudReq['franchisee_id'],
-            commissaryId: cloudReq['commissary_id'],
-            itemId: cloudReq['item_id'],
-            quantityRequested: cloudReq['quantity_requested'],
+            franchiseeId: franchiseeId,
+            commissaryId: cloudReq['commissaryId'] ?? cloudReq['commissary_id'] ?? 0,
+            itemId: itemId,
+            quantityRequested: quantityRequested,
             status: cloudStatus,
-            requestedBy: cloudReq['requested_by'],
-            requestedAt: DateTime.parse(cloudReq['requested_at']),
-            reviewedBy: cloudReq['reviewed_by'],
-            reviewedAt: cloudReq['reviewed_at'] != null
-                ? DateTime.parse(cloudReq['reviewed_at'])
-                : null,
-            deliveryDate: cloudReq['delivery_date'] != null
-                ? DateTime.parse(cloudReq['delivery_date'])
-                : null,
-            franchiseeNotes: cloudReq['franchisee_notes'],
-            commissaryNotes: cloudReq['commissary_notes'],
-            createdAt: DateTime.parse(cloudReq['created_at']),
-            lastUpdated: DateTime.parse(cloudReq['last_updated']),
-            isDeleted: cloudReq['is_deleted'] ?? false,
+            requestedBy: cloudReq['requestedBy'] ?? cloudReq['requested_by'] ?? 0,
+            requestedAt: _parseDateTime(cloudReq['requestedAt'] ?? cloudReq['requested_at']),
+            reviewedBy: cloudReq['reviewedBy'] ?? cloudReq['reviewed_by'],
+            reviewedAt: _parseDateTimeNullable(cloudReq['reviewedAt'] ?? cloudReq['reviewed_at']),
+            deliveryDate: _parseDateTimeNullable(cloudReq['deliveryDate'] ?? cloudReq['delivery_date']),
+            franchiseeNotes: cloudReq['franchiseeNotes'] ?? cloudReq['franchisee_notes'],
+            commissaryNotes: cloudReq['commissaryNotes'] ?? cloudReq['commissary_notes'],
+            createdAt: _parseDateTime(cloudReq['createdAt'] ?? cloudReq['created_at']),
+            lastUpdated: _parseDateTime(cloudReq['lastUpdated'] ?? cloudReq['last_updated']),
+            isDeleted: cloudReq['isDeleted'] ?? cloudReq['is_deleted'] ?? false,
             cloudId: cloudId,
           );
         }
       });
-      print('   ✅ Batch upsert completed');
-    } catch (e) {
-      print('❌ Error batch upserting requests from cloud: $e');
+      AppLogger.sync('Batch upsert of replenishment requests completed');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error batch upserting requests from cloud', e, stackTrace);
       rethrow;
     }
+  }
+  
+  /// ✅ Add stock to branch inventory when a replenishment request is approved
+  /// 
+  /// IMPORTANT: Failures here are logged but not rethrown to avoid breaking sync.
+  /// However, inventory discrepancies may occur if this fails - check logs for
+  /// 'CRITICAL: Stock update failed' messages and manually correct inventory.
+  Future<void> _addStockToBranch(int franchiseeId, int itemId, int quantity) async {
+    try {
+      // Find or create the branch stock record for this item
+      var branchStock = await db.branchItemStockDao.getStockForItem(franchiseeId, itemId);
+      
+      if (branchStock != null) {
+        // Update existing stock record
+        final success = await db.branchItemStockDao.receiveItems(branchStock.id, quantity);
+        if (success) {
+          AppLogger.sync('Added $quantity units to existing branch stock (stockId: ${branchStock.id})');
+        } else {
+          // CRITICAL: Stock update returned false - may cause inventory discrepancy
+          AppLogger.error(
+            'CRITICAL: Stock update failed - receiveItems returned false',
+            'franchiseeId=$franchiseeId, itemId=$itemId, quantity=$quantity, stockId=${branchStock.id}',
+          );
+        }
+      } else {
+        // Create new stock record with the received quantity
+        AppLogger.sync('No existing stock record found, creating new one...');
+        final stockId = await db.branchItemStockDao.createStock(
+          BranchItemStockCompanion(
+            organizationId: Value(franchiseeId),
+            itemId: Value(itemId),
+            stock: Value(quantity),
+            sold: const Value(0),
+            spoilage: const Value(0),
+            lastReceivedAt: Value(DateTime.now()),
+            lastReceivedQuantity: Value(quantity),
+            isSynced: const Value(false),
+          ),
+        );
+        AppLogger.sync('Created new branch stock record (id: $stockId) with $quantity units');
+      }
+    } catch (e, stackTrace) {
+      // CRITICAL: Log this prominently - approved request won't have stock added!
+      // This could cause inventory discrepancies where request shows approved but stock wasn't added.
+      AppLogger.error(
+        'CRITICAL: Failed to add stock to branch inventory! Manual correction required.',
+        'franchiseeId=$franchiseeId, itemId=$itemId, quantity=$quantity, error=$e',
+        stackTrace,
+      );
+      // Don't rethrow - we don't want to fail the sync just because stock update failed
+      // The request status will still be updated, and manual intervention can fix the stock
+    }
+  }
+
+  /// Helper to parse DateTime from various formats
+  DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
+  }
+
+  /// Helper to parse nullable DateTime
+  DateTime? _parseDateTimeNullable(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 
   /// ✅ Upsert from cloud (individual)

@@ -22,6 +22,7 @@ import 'tables/stock_change_requests.dart';
 import 'tables/daily_sales_summary.dart';
 import 'tables/branch_ingredient_stock.dart';
 import 'tables/branch_item_stock.dart';
+import 'tables/sync_conflicts.dart';
 
 // ✅ Import MODIFIED tables
 import 'tables/items.dart';
@@ -44,6 +45,7 @@ import 'daos/stock_change_requests_dao.dart';
 import 'daos/daily_sales_summary_dao.dart';
 import 'daos/branch_ingredient_stock_dao.dart';
 import 'daos/branch_item_stock_dao.dart';
+import 'daos/sync_conflicts_dao.dart';
 
 import 'package:flutter/foundation.dart';
 
@@ -71,6 +73,9 @@ part 'app_database.g.dart';
 
     // Reporting tables
     DailySalesSummary,
+
+    // Sync management tables
+    SyncConflicts,
   ],
   daos: [
     // Core DAOs
@@ -92,6 +97,9 @@ part 'app_database.g.dart';
 
     // Reporting DAOs
     DailySalesSummaryDao,
+
+    // Sync management DAOs
+    SyncConflictsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {

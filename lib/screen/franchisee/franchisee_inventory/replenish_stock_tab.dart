@@ -1,10 +1,13 @@
 // lib/screen/franchisee/franchisee_inventory/replenish_stock_tab.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dart';
+import 'package:chickenjoo_inventory/widgets/realtime_status_indicator.dart';
 
 /// Widget for requesting stock replenishment from commissary
 class ReplenishStockTab extends StatefulWidget {
@@ -25,22 +28,85 @@ class ReplenishStockTab extends StatefulWidget {
   State<ReplenishStockTab> createState() => _ReplenishStockTabState();
 }
 
-class _ReplenishStockTabState extends State<ReplenishStockTab> {
+class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindingObserver {
   late AppDatabase db;
   late List<TextEditingController> qtyControllers;
   List<StockReplenishmentRequest> existingRequests = [];
   bool isLoading = true;
   bool isSubmitting = false;
+  
+  // Realtime service
+  StreamSubscription<StockRequestEvent>? _eventSubscription;
+  String? _franchiseeCloudId;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     db = database;
     qtyControllers = List.generate(
       widget.items.length,
       (_) => TextEditingController(),
     );
+    _initializeRealtime();
     _syncAndLoadRequests();
+  }
+
+  Future<void> _initializeRealtime() async {
+    // Get the franchisee's cloud ID for filtering
+    try {
+      final org = await db.organizationsDao.getOrganizationById(widget.branchId);
+      print('🔍 Looking up org for branchId: ${widget.branchId}');
+      print('🔍 Found org: ${org?.name}, cloudId: ${org?.cloudId}');
+      
+      if (org?.cloudId != null) {
+        _franchiseeCloudId = org!.cloudId;
+        
+        // Attach to realtime service
+        await realtimeStockRequestService.attach(_franchiseeCloudId!);
+        print('✅ Attached to realtime with franchiseeCloudId: $_franchiseeCloudId');
+        print('📡 Realtime status: ${realtimeStockRequestService.status}');
+        
+        // Listen for approval/rejection events
+        _eventSubscription = realtimeStockRequestService.eventStream.listen((event) {
+          print('📬 EVENT RECEIVED: ${event.cloudId} → ${event.newStatus}');
+          if (event.isApproved || event.isRejected || event.isDelivered) {
+            print('📬 Triggering sync and reload for: ${event.newStatus}');
+            // Sync from cloud first, then reload from local DB
+            _syncAndLoadRequests();
+          }
+        });
+        
+        // Also listen to status changes for debugging
+        realtimeStockRequestService.statusStream.listen((status) {
+          print('📡 Realtime connection status changed: $status');
+        });
+      } else {
+        print('⚠️ No cloudId found for org with branchId: ${widget.branchId}');
+      }
+    } catch (e) {
+      print('⚠️ Failed to initialize realtime: $e');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    print('📱 App lifecycle state changed: $state');
+    switch (state) {
+      case AppLifecycleState.paused:
+        // Only pause when app truly goes to background
+        realtimeStockRequestService.pause();
+        break;
+      case AppLifecycleState.resumed:
+        realtimeStockRequestService.resume();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // Don't pause on inactive - this triggers too easily
+        break;
+    }
   }
 
   Future<void> _syncAndLoadRequests() async {
@@ -57,6 +123,9 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _eventSubscription?.cancel();
+    realtimeStockRequestService.detach();
     for (var c in qtyControllers) {
       c.dispose();
     }
@@ -457,17 +526,26 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
 
                 const SizedBox(height: 20),
 
-                // Existing requests section with refresh button
+                // Existing requests section with refresh button and realtime indicator
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Recent Requests',
-                      style: TextStyle(
-                        fontSize: isMobile ? 16 : 18,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: fontAll,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          'Recent Requests',
+                          style: TextStyle(
+                            fontSize: isMobile ? 16 : 18,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: fontAll,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        RealtimeStatusIndicator(
+                          service: realtimeStockRequestService,
+                          compact: isMobile,
+                        ),
+                      ],
                     ),
                     IconButton(
                       icon: const Icon(Icons.refresh),
