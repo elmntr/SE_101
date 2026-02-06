@@ -29,6 +29,11 @@ class FranchiseeEmployeeController {
   List<Role> roles = [];
   int? currentOrganizationId;
 
+  /// Get roles available for franchisees (excludes commissary-specific roles)
+  List<Role> get franchiseeRoles => roles.where((role) => 
+    !role.name.toLowerCase().contains('commissary')
+  ).toList();
+
   EmployeeSort currentEmployeeSort = EmployeeSort(
     EmployeeSortField.name,
     SortOrder.desc,
@@ -60,6 +65,11 @@ class FranchiseeEmployeeController {
   /// Get filtered roles based on search query and sorting
   List<Role> get filteredRoles {
     var list = roles.toList();
+
+    // Filter out commissary-specific roles for franchisee view
+    list = list.where((role) => 
+      !role.name.toLowerCase().contains('commissary')
+    ).toList();
 
     // Apply search filter
     if (searchQuery.isNotEmpty) {
@@ -250,7 +260,7 @@ class FranchiseeEmployeeController {
 
   // Dialog methods
   void createEmployee(BuildContext context) {
-    if (roles.isEmpty) {
+    if (franchiseeRoles.isEmpty) {
       showSnackBar('Please create a role before adding employees.');
       return;
     }
@@ -264,7 +274,7 @@ class FranchiseeEmployeeController {
     final TextEditingController employeeEmail = TextEditingController();
     final TextEditingController employeePN = TextEditingController();
     final TextEditingController employeePassword = TextEditingController();
-    int? selectedRoleId = roles.first.id;
+    int? selectedRoleId = franchiseeRoles.first.id;
 
     showDialog(
       context: context,
@@ -311,7 +321,7 @@ class FranchiseeEmployeeController {
                 DropdownButtonFormField<int>(
                   value: selectedRoleId,
                   decoration: const InputDecoration(labelText: 'Role'),
-                  items: roles
+                  items: franchiseeRoles
                       .map(
                         (role) => DropdownMenuItem<int>(
                           value: role.id,

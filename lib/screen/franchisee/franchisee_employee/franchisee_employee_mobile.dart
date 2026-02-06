@@ -117,7 +117,7 @@ class EmployeePageMobile extends StatelessWidget {
                                   child: Text("All Roles"),
                                 ),
                                 const PopupMenuDivider(),
-                                ...state.roles.map(
+                                ...state.franchiseeRoles.map(
                                   (role) => PopupMenuItem<int>(
                                     value: role.id,
                                     child: Text(role.name),
@@ -130,11 +130,12 @@ class EmployeePageMobile extends StatelessWidget {
                                   Text(
                                     state.selectedRoleFilter == null
                                         ? "All Roles"
-                                        : state.roles
+                                        : state.franchiseeRoles
                                               .firstWhere(
                                                 (r) =>
                                                     r.id ==
                                                     state.selectedRoleFilter,
+                                                orElse: () => state.franchiseeRoles.first,
                                               )
                                               .name,
                                     style: const TextStyle(fontSize: 14),
@@ -254,7 +255,7 @@ class EmployeePageMobile extends StatelessWidget {
                                     user.email,
                                     user.phone ?? '-',
                                     SizedBox(
-                                      child: state.roles.isEmpty
+                                      child: state.franchiseeRoles.isEmpty
                                           ? const Text(
                                               'No roles',
                                               style: TextStyle(
@@ -264,8 +265,8 @@ class EmployeePageMobile extends StatelessWidget {
                                           : DropdownButton<int>(
                                               isDense: true,
                                               isExpanded: true,
-                                              value: user.roleId,
-                                              items: state.roles
+                                              value: state.franchiseeRoles.any((r) => r.id == user.roleId) ? user.roleId : null,
+                                              items: state.franchiseeRoles
                                                   .map(
                                                     (role) =>
                                                         DropdownMenuItem<int>(
@@ -396,7 +397,7 @@ class EmployeePageMobile extends StatelessWidget {
       floatingActionButton:
           (!state.isLoading &&
               ((state.selectedTab == 0 && state.filteredUsers.isNotEmpty) ||
-                  (state.selectedTab == 1 && state.roles.isNotEmpty)))
+                  (state.selectedTab == 1 && state.franchiseeRoles.isNotEmpty)))
           ? Container(
               margin: const EdgeInsets.only(bottom: 20),
               child: FloatingActionButton(
