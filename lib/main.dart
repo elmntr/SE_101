@@ -120,6 +120,7 @@ void main() async {
   // Wire up sync callback for realtime service - use FORCE FULL sync
   realtimeStockRequestService.syncCallback = () async {
     await sync.forceFullSyncReplenishmentRequests();
+    await sync.syncBranchItemStock();
     notifySyncComplete();
   };
   

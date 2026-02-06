@@ -114,6 +114,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
     try {
       print('🔄 Syncing replenishment requests...');
       await AppGlobals.instance.syncService.syncStockReplenishmentRequests();
+      await AppGlobals.instance.syncService.syncBranchItemStock();
     } catch (e) {
       print('⚠️ Sync failed: $e');
     }
@@ -205,6 +206,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
       try {
         print('🔄 Auto-syncing replenishment requests...');
         await AppGlobals.instance.syncService.syncStockReplenishmentRequests();
+      await AppGlobals.instance.syncService.syncBranchItemStock();
         print('✅ Requests synced to cloud');
       } catch (syncError) {
         print('⚠️ Sync failed (will retry later): $syncError');
