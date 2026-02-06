@@ -292,7 +292,7 @@ class ItemsPageMobile extends StatelessWidget {
                                       ],
                                     )
                                     .toList(),
-                                smallHeaderWidth: 20,
+                                smallHeaderWidth: 60,
                                 largeHeaderWidth: 120,
                               ))
                       : (state.filteredCategories.isEmpty
@@ -341,7 +341,7 @@ class ItemsPageMobile extends StatelessWidget {
                                         )
                                         .toList(),
 
-                                    smallHeaderWidth: 20,
+                                    smallHeaderWidth: 60,
                                     largeHeaderWidth: 120,
                                   );
                                 },

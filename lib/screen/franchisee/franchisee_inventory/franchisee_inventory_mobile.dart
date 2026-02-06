@@ -220,7 +220,7 @@ class InventoryPageMobile extends StatelessWidget {
                                     )
                                     .toList(),
 
-                                smallHeaderWidth: 20,
+                                smallHeaderWidth: 60,
                                 largeHeaderWidth: 120,
                               ))
                       : state.selectedTab == 1
@@ -253,7 +253,7 @@ class InventoryPageMobile extends StatelessWidget {
                                   },
                                 ),
 
-                                smallHeaderWidth: 20,
+                                smallHeaderWidth: 60,
                                 largeHeaderWidth: 120,
                               ))
                       : ReplenishStockTab(

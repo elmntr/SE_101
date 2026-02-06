@@ -302,7 +302,7 @@ class EmployeePageMobile extends StatelessWidget {
                                   ];
                                 }).toList(),
 
-                                smallHeaderWidth: 20,
+                                smallHeaderWidth: 100,
                                 largeHeaderWidth: 120,
                               ))
                       : (state.filteredRoles.isEmpty
@@ -385,7 +385,7 @@ class EmployeePageMobile extends StatelessWidget {
                                   ];
                                 }).toList(),
 
-                                smallHeaderWidth: 20,
+                                smallHeaderWidth: 100,
                                 largeHeaderWidth: 120,
                               )),
                 ),
