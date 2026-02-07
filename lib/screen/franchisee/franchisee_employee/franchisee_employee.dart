@@ -22,6 +22,7 @@ class EmployeePageState extends State<EmployeePage> {
   // Expose controller properties for UI access
   List<User> get users => controller.users;
   List<Role> get roles => controller.roles;
+  List<Role> get franchiseeRoles => controller.franchiseeRoles;
   int? get currentOrganizationId => controller.currentOrganizationId;
 
   EmployeeSort get currentEmployeeSort => controller.currentEmployeeSort;

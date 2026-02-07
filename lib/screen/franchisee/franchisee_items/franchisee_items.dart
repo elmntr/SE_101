@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../database/app_database.dart';
+import '../../../database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,9 +21,10 @@ class ItemsPage extends StatefulWidget {
 class ItemsPageState extends State<ItemsPage> {
   late AppDatabase db;
 
-  List<Item> dbItems = [];
+  List<ItemWithBranchStock> dbItems = [];
   List<Category> dbCategories = [];
   int? currentOrganizationId;
+  int? commissaryId; // Parent commissary for master items
 
   int categoryCount = 0;
   int selectedTab = 0; // 0 = Items, 1 = Categories
@@ -43,7 +45,7 @@ class ItemsPageState extends State<ItemsPage> {
   final TextEditingController searchController = TextEditingController();
 
   /// Get filtered and sorted items based on search query
-  List<Item> get filteredItems {
+  List<ItemWithBranchStock> get filteredItems {
     var list = dbItems.toList();
 
     // Apply search filter
@@ -53,7 +55,7 @@ class ItemsPageState extends State<ItemsPage> {
         searchQuery,
         getName: (item) => item.name,
         getDescription: (item) => item.description,
-        getCategoryName: (item) => categoryMap[item.categoryId],
+        getCategoryName: (item) => item.categoryName,
       );
     }
 
@@ -144,11 +146,12 @@ class ItemsPageState extends State<ItemsPage> {
     setState(() => isLoading = true);
 
     try {
-      // Get current organization from auth service or local storage
+      // Get current organization and commissary IDs
       await loadCurrentOrganization();
+      await loadCommissaryId();
 
       // Only load items if we have a valid organization context
-      if (currentOrganizationId == null) {
+      if (currentOrganizationId == null || commissaryId == null) {
         if (mounted) {
           setState(() {
             dbItems = [];
@@ -164,11 +167,13 @@ class ItemsPageState extends State<ItemsPage> {
         return;
       }
 
-      final items = await db.itemsDao.getItemsByOrganization(
-        currentOrganizationId!,
-      );
+      // Load items with branch-specific stock (same as inventory)
+      final items = await db.branchItemStockDao
+          .getItemsWithStockForBranch(currentOrganizationId!, commissaryId!);
 
       final categories = await db.categoriesDao.getAllCategories();
+
+      print('📦 Loaded ${items.length} items with branch stock for Items page');
 
       if (mounted) {
         setState(() {
@@ -181,6 +186,40 @@ class ItemsPageState extends State<ItemsPage> {
       print('Error loading data: $e');
       if (mounted) {
         setState(() => isLoading = false);
+      }
+    }
+  }
+
+  /// Load the parent commissary ID for this franchisee
+  Future<void> loadCommissaryId() async {
+    if (currentOrganizationId == null) return;
+
+    // Get the franchisee's organization to find parent commissary
+    final organization = await db.organizationsDao.getOrganizationById(
+      currentOrganizationId!,
+    );
+
+    if (organization != null) {
+      if (organization.type == 'franchisee' &&
+          organization.parentCommissaryId != null) {
+        // Franchisee: use parent commissary
+        commissaryId = organization.parentCommissaryId;
+        print('📍 Franchisee mode: commissaryId=$commissaryId');
+      } else if (organization.type == 'commissary') {
+        // Commissary viewing own inventory
+        commissaryId = organization.id;
+        print('📍 Commissary mode: commissaryId=$commissaryId');
+      }
+    }
+
+    // Fallback: find any commissary in database
+    if (commissaryId == null) {
+      final commissaries = await db.organizationsDao.getAllOrganizations(
+        type: 'commissary',
+      );
+      if (commissaries.isNotEmpty) {
+        commissaryId = commissaries.first.id;
+        print('📍 Fallback commissary: commissaryId=$commissaryId');
       }
     }
   }
@@ -651,12 +690,15 @@ class ItemsPageState extends State<ItemsPage> {
                           width: 120,
                           child: TextField(
                             controller: priceController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
+                            readOnly: true,
+                            enabled: false,
+                            decoration: InputDecoration(
                               labelText: "Price",
                               prefixText: "₱",
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(
+                              border: const OutlineInputBorder(),
+                              filled: true,
+                              fillColor: Colors.grey[100],
+                              contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 8,
                               ),
