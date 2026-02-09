@@ -1,6 +1,0 @@
-{
-  "elements": {},
-  "imports": [
-    "package:chickenjoo_inventory/services/sync/sync_conflict.dart"
-  ]
-}

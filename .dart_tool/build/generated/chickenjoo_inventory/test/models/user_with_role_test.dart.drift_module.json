@@ -1,8 +1,0 @@
-{
-  "elements": {},
-  "imports": [
-    "package:flutter_test/flutter_test.dart",
-    "package:chickenjoo_inventory/database/app_database.dart",
-    "package:chickenjoo_inventory/database/models/user_with_role.dart"
-  ]
-}
