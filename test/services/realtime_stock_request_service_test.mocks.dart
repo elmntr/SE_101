@@ -1218,6 +1218,55 @@ class MockAppDatabase extends _i1.Mock implements _i4.AppDatabase {
           as _i19.Future<void>);
 
   @override
+  _i19.Future<Ret> computeWithDatabase<Ret, DB extends _i3.GeneratedDatabase>({
+    required _i19.FutureOr<Ret> Function(DB)? computation,
+    required DB Function(_i3.DatabaseConnection)? connect,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#computeWithDatabase, [], {
+              #computation: computation,
+              #connect: connect,
+            }),
+            returnValue:
+                _i20.ifNotNull(
+                  _i20.dummyValueOrNull<Ret>(
+                    this,
+                    Invocation.method(#computeWithDatabase, [], {
+                      #computation: computation,
+                      #connect: connect,
+                    }),
+                  ),
+                  (Ret v) => _i19.Future<Ret>.value(v),
+                ) ??
+                _FakeFuture_44<Ret>(
+                  this,
+                  Invocation.method(#computeWithDatabase, [], {
+                    #computation: computation,
+                    #connect: connect,
+                  }),
+                ),
+            returnValueForMissingStub:
+                _i20.ifNotNull(
+                  _i20.dummyValueOrNull<Ret>(
+                    this,
+                    Invocation.method(#computeWithDatabase, [], {
+                      #computation: computation,
+                      #connect: connect,
+                    }),
+                  ),
+                  (Ret v) => _i19.Future<Ret>.value(v),
+                ) ??
+                _FakeFuture_44<Ret>(
+                  this,
+                  Invocation.method(#computeWithDatabase, [], {
+                    #computation: computation,
+                    #connect: connect,
+                  }),
+                ),
+          )
+          as _i19.Future<Ret>);
+
+  @override
   _i19.Stream<T> createStream<T extends Object>(
     _i18.QueryStreamFetcher<T>? stmt,
   ) =>

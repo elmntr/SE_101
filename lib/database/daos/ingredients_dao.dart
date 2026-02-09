@@ -150,6 +150,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Insert a new ingredient
+  /// Throws an exception if an ingredient with the same name already exists
   Future<int> insertIngredient({
     required String name,
     required int commissaryId,
@@ -161,6 +162,15 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
     String? cloudId,
   }) async {
     try {
+      // Check for duplicate ingredient name
+      final existingIngredient = await getIngredientByName(
+        name,
+        commissaryId: commissaryId,
+      );
+      if (existingIngredient != null) {
+        throw Exception('An ingredient with the name "$name" already exists');
+      }
+
       return await into(ingredients).insert(
         IngredientsCompanion.insert(
           name: name,
@@ -220,14 +230,14 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
-  /// ✅ Get ingredient by name
+  /// ✅ Get ingredient by name (case-insensitive)
   Future<Ingredient?> getIngredientByName(
     String name, {
     int? commissaryId,
   }) async {
     try {
       final query = select(ingredients)
-        ..where((t) => t.name.equals(name) & t.isDeleted.equals(false));
+        ..where((t) => t.name.lower().equals(name.toLowerCase()) & t.isDeleted.equals(false));
 
       if (commissaryId != null) {
         query.where((t) => t.commissaryId.equals(commissaryId));

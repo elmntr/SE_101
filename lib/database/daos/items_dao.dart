@@ -213,7 +213,28 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     }
   }
 
+  /// ✅ Get item by name (case-insensitive)
+  Future<Item?> getItemByName(
+    String name, {
+    int? organizationId,
+  }) async {
+    try {
+      final query = select(items)
+        ..where((t) => t.name.lower().equals(name.toLowerCase()) & t.isDeleted.equals(false));
+
+      if (organizationId != null) {
+        query.where((t) => t.organizationId.equals(organizationId));
+      }
+
+      return await query.getSingleOrNull();
+    } catch (e) {
+      print('❌ Error fetching item by name: $e');
+      return null;
+    }
+  }
+
   /// ✅ Insert a new item with error handling
+  /// Throws an exception if an item with the same name already exists in the organization
   Future<int> insertItem({
     required String name,
     required int organizationId, // ✅ NEW - Required
@@ -228,6 +249,15 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     String? cloudId,
   }) async {
     try {
+      // Check for duplicate item name within the organization
+      final existingItem = await getItemByName(
+        name,
+        organizationId: organizationId,
+      );
+      if (existingItem != null) {
+        throw Exception('A product with the name "$name" already exists');
+      }
+
       return await into(items).insert(
         ItemsCompanion.insert(
           name: name,
@@ -552,39 +582,38 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
 
   /// ✅ Batch upsert from cloud
   /// ✅ FIXED: Batch upsert from cloud with ALL new columns
-  /// Uses cloud_id for conflict resolution, not local_id
+  /// Expects data from toLocalFormat (camelCase keys) or raw cloud data (snake_case)
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudItems,
   ) async {
     try {
       await db.transaction(() async {
         for (final cloudItem in cloudItems) {
-          // Map Supabase column names to local column names
+          // Support both camelCase (from toLocalFormat) and snake_case (raw cloud) keys
           final stockValue = cloudItem['stock'];
-          final criticalLevel = cloudItem['critical_level'] ?? cloudItem['minimum_stock'];
-          final costValue = cloudItem['cost'] ?? cloudItem['cost_price'];
+          final criticalLevel = cloudItem['criticalLevel'] ?? cloudItem['critical_level'] ?? 
+                                cloudItem['minimumStock'] ?? cloudItem['minimum_stock'];
+          final costValue = cloudItem['costPrice'] ?? cloudItem['cost_price'] ?? 
+                           cloudItem['cost'];
           
           await upsertFromCloud(
-            cloudId: cloudItem['cloud_id'],
-            name: cloudItem['name'],
-            organizationId: cloudItem['organization_id'],
+            cloudId: (cloudItem['cloudId'] ?? cloudItem['cloud_id'])?.toString() ?? '',
+            name: (cloudItem['name'] as String?) ?? 'Unknown Item',
+            organizationId: cloudItem['organizationId'] ?? cloudItem['organization_id'] ?? 0,
             stock: stockValue is num ? stockValue.toInt() : 0,
             sold: (cloudItem['sold'] as num?)?.toInt() ?? 0,
             spoilage: (cloudItem['spoilage'] as num?)?.toInt() ?? 0,
-            categoryId: cloudItem['category_id'],
-            masterItemId: cloudItem['master_item_id'],
-            price: cloudItem['price'] is String 
-                ? double.tryParse(cloudItem['price']) 
-                : (cloudItem['price'] as num?)?.toDouble(),
-            costPrice: costValue is String
-                ? double.tryParse(costValue)
-                : (costValue as num?)?.toDouble(),
-            unit: cloudItem['unit'],
-            minimumStock: criticalLevel is num ? criticalLevel.toInt() : null,  // Map critical_level
-            description: cloudItem['description'],
-            createdAt: DateTime.parse(cloudItem['created_at']),
-            lastUpdated: DateTime.parse(cloudItem['last_updated']),
-            isDeleted: cloudItem['is_deleted'] ?? (cloudItem['is_active'] == false),
+            categoryId: cloudItem['categoryId'] ?? cloudItem['category_id'],
+            masterItemId: cloudItem['masterItemId'] ?? cloudItem['master_item_id'],
+            price: _parseDouble(cloudItem['price']),
+            costPrice: _parseDouble(costValue),
+            unit: (cloudItem['unit'] as String?) ?? 'piece',
+            minimumStock: criticalLevel is num ? criticalLevel.toInt() : null,
+            description: cloudItem['description'] as String?,
+            createdAt: _parseDateTime(cloudItem['createdAt'] ?? cloudItem['created_at']),
+            lastUpdated: _parseDateTime(cloudItem['lastUpdated'] ?? cloudItem['last_updated']),
+            isDeleted: cloudItem['isDeleted'] ?? cloudItem['is_deleted'] ?? 
+                      (cloudItem['isActive'] == false) ?? (cloudItem['is_active'] == false) ?? false,
           );
         }
       });
@@ -592,6 +621,24 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       print('❌ Error batch upserting from cloud: $e');
       rethrow;
     }
+  }
+
+  /// Helper to parse DateTime from various formats
+  DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
+  }
+
+  /// Helper to parse double from various formats
+  double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   /// Upsert a single item from cloud using cloud_id for conflict resolution

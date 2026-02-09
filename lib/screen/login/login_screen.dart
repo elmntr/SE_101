@@ -1,10 +1,12 @@
 // lib/screens/login/login_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/screen/login/widgets/login_form.dart';
-import 'package:chickenjoo_inventory/screen/login/widgets/login_header.dart';
+import 'package:chickenjoo_inventory/screen/login/widgets/login_scaffold_mobile.dart';
+import 'package:chickenjoo_inventory/screen/login/widgets/login_scaffold_desktop.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -55,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
           _isOfflineMode = result.isOffline;
           _isLoadingBranches = false;
           if (result.branches.isEmpty) {
-            _branchLoadError = result.isOffline 
+            _branchLoadError = result.isOffline
                 ? 'No branches cached. Please connect to internet for first login.'
                 : 'No branches available';
           }
@@ -74,7 +76,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _checkExistingSession() async {
     final result = await _authService.restoreSession();
     if (result.success && result.localUser != null && mounted) {
-      Navigator.pushReplacementNamed(context, '/home', arguments: result.localUser);
+      Navigator.pushReplacementNamed(
+        context,
+        '/home',
+        arguments: result.localUser,
+      );
     }
   }
 
@@ -130,7 +136,11 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       // Navigate to home with authenticated user data
-      Navigator.pushReplacementNamed(context, '/home', arguments: result.localUser);
+      Navigator.pushReplacementNamed(
+        context,
+        '/home',
+        arguments: result.localUser,
+      );
     } catch (e, stackTrace) {
       if (!mounted) return;
       print('❌ Login error: $e');
@@ -145,51 +155,47 @@ class _LoginScreenState extends State<LoginScreen> {
     final fieldPadding = AppLayout.fieldPadding(context);
     final loginButtonWidth = AppLayout.loginButtonWidth(context);
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Container(
-        decoration: const BoxDecoration(color: Color(0xFFEF4848)),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: fieldPadding),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const LoginHeader(),
-                  const SizedBox(height: 40),
-                  // Branch Selector
-                  _buildBranchSelector(loginButtonWidth),
-                  const SizedBox(height: 20),
-                  Focus(
-                    onKey: (node, event) {
-                      if (event.logicalKey.keyLabel == 'Enter') {
-                        _handleLogin();
-                        return KeyEventResult.handled;
-                      }
-                      return KeyEventResult.ignored;
-                    },
-                    child: LoginForm(
-                      emailController: _emailController,
-                      passwordController: _passwordController,
-                      isPasswordVisible: _isPasswordVisible,
-                      isSubmitting: _isSubmitting,
-                      onPasswordVisibilityToggle: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
-                      onLogin: _handleLogin,
-                      loginButtonWidth: loginButtonWidth,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+    // Determine if we're on mobile based on screen width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600 && !kIsWeb;
+
+    final branchSelector = _buildBranchSelector(loginButtonWidth);
+    final loginForm = Focus(
+      onKey: (node, event) {
+        if (event.logicalKey.keyLabel == 'Enter') {
+          _handleLogin();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: LoginForm(
+        emailController: _emailController,
+        passwordController: _passwordController,
+        isPasswordVisible: _isPasswordVisible,
+        isSubmitting: _isSubmitting,
+        onPasswordVisibilityToggle: () {
+          setState(() {
+            _isPasswordVisible = !_isPasswordVisible;
+          });
+        },
+        onLogin: _handleLogin,
+        loginButtonWidth: loginButtonWidth,
       ),
     );
+
+    // Use mobile scaffold for mobile devices (no header)
+    // Use desktop scaffold for desktop/web (with header)
+    if (isMobile) {
+      return LoginScaffoldMobile(
+        branchSelector: branchSelector,
+        loginForm: loginForm,
+      );
+    } else {
+      return LoginScaffoldDesktop(
+        branchSelector: branchSelector,
+        loginForm: loginForm,
+      );
+    }
   }
 
   Widget _buildBranchSelector(double width) {
@@ -297,7 +303,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             children: [
                               Text(
                                 branch['name'] as String? ?? 'Unknown',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               if (branch['address'] != null)
                                 Text(
@@ -336,7 +344,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      _selectedBranch!['name'] as String? ?? 'Unknown',
+                                      _selectedBranch!['name'] as String? ??
+                                          'Unknown',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,

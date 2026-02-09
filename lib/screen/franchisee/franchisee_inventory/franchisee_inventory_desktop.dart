@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'franchisee_inventory.dart';
+import 'replenish_stock_tab.dart';
 
 class InventoryPageDesktop extends StatelessWidget {
   final InventoryPageState state;
@@ -64,17 +66,15 @@ class InventoryPageDesktop extends StatelessWidget {
 
                 // Search Bar
                 Expanded(
-                  child: Container(
+                  child: UniversalSearchBar(
+                    controller: state.searchController,
+                    hintText: "Search inventory...",
+                    onSearch: (value) {
+                      state.setState(() => state.searchQuery = value);
+                    },
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search...",
-                        prefixIcon: Icon(Icons.search),
-                        border: InputBorder.none,
-                      ),
                     ),
                   ),
                 ),
@@ -132,6 +132,12 @@ class InventoryPageDesktop extends StatelessWidget {
                   ),
 
                 IconButton(
+                  icon: const Icon(Icons.refresh, size: 28),
+                  tooltip: 'Refresh inventory from cloud',
+                  onPressed: state.refreshInventory,
+                ),
+
+                IconButton(
                   icon: const Icon(Icons.notifications_outlined, size: 35),
                   onPressed: () {},
                 ),
@@ -172,9 +178,11 @@ class InventoryPageDesktop extends StatelessWidget {
                       child: state.isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : state.selectedTab == 0
-                          ? (state.items.isEmpty
+                          ? (state.filteredItems.isEmpty
                                 ? emptyTables(
-                                    message: "You can manage your items here.",
+                                    message: state.searchQuery.isNotEmpty
+                                        ? "No items match your search"
+                                        : "You can manage your items here.",
                                     onAddPressed: null,
                                     buttonType: EmptyButtonType.none,
                                     buttonText: null,
@@ -186,7 +194,7 @@ class InventoryPageDesktop extends StatelessWidget {
                                       "Sale",
                                       "Spoilage",
                                     ],
-                                    rows: state.items
+                                    rows: state.filteredItems
                                         .map(
                                           (item) => [
                                             item.name,
@@ -196,9 +204,9 @@ class InventoryPageDesktop extends StatelessWidget {
                                           ],
                                         )
                                         .toList(),
-                                        
-                                smallHeaderWidth: 20,
-                                largeHeaderWidth: 120,
+
+                                    smallHeaderWidth: 20,
+                                    largeHeaderWidth: 120,
                                   ))
                           : state.selectedTab == 1
                           ? (InventoryPage.pendingChanges.isEmpty
@@ -229,18 +237,15 @@ class InventoryPageDesktop extends StatelessWidget {
                                         ];
                                       },
                                     ),
-                                    
-                                smallHeaderWidth: 20,
-                                largeHeaderWidth: 120,
+
+                                    smallHeaderWidth: 20,
+                                    largeHeaderWidth: 120,
                                   ))
-                          : emptyTables(
-                              message:
-                                  "You can request stock replenishment here.",
-                              onAddPressed: () {
-                                print("✅ Request Stock pressed");
-                              },
-                              buttonType: EmptyButtonType.elevated,
-                              buttonText: "Request Stock",
+                          : ReplenishStockTab(
+                              branchId: state.currentOrganizationId ?? 0,
+                              commissaryId: state.commissaryId ?? 0,
+                              userId: state.currentUserId ?? 0,
+                              items: state.items,
                             ),
                     ),
                   ),

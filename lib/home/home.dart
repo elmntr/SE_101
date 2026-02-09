@@ -14,7 +14,6 @@ import '../screen/franchisee/franchisee_reports/franchisee_reports.dart';
 import '../screen/franchisee/franchisee_inventory/franchisee_inventory.dart';
 import '../screen/franchisee/franchisee_items/franchisee_items.dart';
 import '../screen/franchisee/franchisee_employee/franchisee_employee.dart';
-import '../screen/franchisee/franchisee_products_view.dart';
 import '../screen/employee/employee_account.dart';
 
 // Import the separated UI files
@@ -203,36 +202,36 @@ class HomeScreenState extends State<HomeScreen> {
     );
 
     // Items / Inventory
-    if (permissions.canViewInventory || hasFullAccess) {
-      // For franchisees, show read-only products view from commissary
-      if (userData.isFranchisee) {
+    // Check if user is a restricted employee (can't add/edit/delete inventory)
+    final isRestrictedEmployee = !(permissions.canAddInventory ||
+        permissions.canEditInventory ||
+        permissions.canDeleteInventory);
+
+    if (permissions.canViewInventory || hasFullAccess || isRestrictedEmployee) {
+      // For restricted employees (regardless of org type), show read-only items page
+      if (isRestrictedEmployee && !hasFullAccess) {
         addItemIf(
           true,
           Icons.shopping_cart,
-          "Products",
-          const FranchiseeProductsView(),
+          "Items",
+          EmployeeItemsPage(userData: userData),
+        );
+      } else if (userData.isFranchisee) {
+        // For franchisees with full access, show items page
+        addItemIf(
+          true,
+          Icons.shopping_cart,
+          "Items",
+          const ItemsPage(),
         );
       } else {
-        final isRestrictedEmployee = !(permissions.canAddInventory ||
-            permissions.canEditInventory ||
-            permissions.canDeleteInventory);
-        
-        // For restricted employees, show read-only items page
-        if (isRestrictedEmployee && !hasFullAccess) {
-          addItemIf(
-            true,
-            Icons.shopping_cart,
-            "Items",
-            EmployeeItemsPage(userData: userData),
-          );
-        } else {
-          addItemIf(
-            true,
-            Icons.shopping_cart,
-            "Items",
-            const ItemsPage(),
-          );
-        }
+        // For commissary users with full access, show full items page
+        addItemIf(
+          true,
+          Icons.shopping_cart,
+          "Items",
+          const ItemsPage(),
+        );
       }
     }
 

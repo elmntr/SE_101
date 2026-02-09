@@ -1,1 +1,0 @@
-{"valid_import":true,"imports":[{"uri":"package:drift/drift.dart","transitive":false},{"uri":"package:chickenjoo_inventory/database/app_database.dart","transitive":false},{"uri":"package:chickenjoo_inventory/database/tables/organizations.dart","transitive":false}],"elements":[{"kind":"databaseAccessor","name":"OrganizationsDao","dart_name":"OrganizationsDao"}]}

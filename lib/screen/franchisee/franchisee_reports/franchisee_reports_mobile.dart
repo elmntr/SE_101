@@ -10,7 +10,9 @@ class ReportsPageMobile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Get current data for the selected metric
-    final data = state.chartData[state.selectedMetric] ?? List.filled(7, 0.0);
+    final labels = state.getChartLabels();
+    final data = state.chartData[state.selectedMetric] ??
+        List<double>.filled(labels.isEmpty ? 1 : labels.length, 0.0);
     final maxValue = data.isEmpty ? 1.0 : data.reduce((a, b) => a > b ? a : b);
 
     return Scaffold(
@@ -65,10 +67,13 @@ class ReportsPageMobile extends StatelessWidget {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      state.getSelectedItemName(),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.normal,
+                                    Flexible(
+                                      child: Text(
+                                        state.getSelectedItemName(),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.normal,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     const Icon(Icons.keyboard_arrow_down),
@@ -100,9 +105,8 @@ class ReportsPageMobile extends StatelessWidget {
                               onSelected: (value) {
                                 state.setState(() {
                                   state.selectedItemId = value;
-                                  state.calculateChartData();
-                                  state.calculateTotals();
                                 });
+                                state.calculateChartData();
                               },
                             );
                           },
@@ -158,8 +162,8 @@ class ReportsPageMobile extends StatelessWidget {
                               onSelected: (value) {
                                 state.setState(() {
                                   state.selectedPeriod = value;
-                                  state.calculateChartData();
                                 });
+                                state.calculateChartData();
                               },
                             );
                           },
@@ -187,17 +191,37 @@ class ReportsPageMobile extends StatelessWidget {
                           ),
                           onPressed: () => state.navigateDate(false),
                         ),
-                        Text(
-                          state.getDateRangeText(),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.chevron_right,
-                            color: Colors.red,
+                        Expanded(
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => state.openPeriodPicker(context),
+                              child: Text(
+                                state.getDateRangeText(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
                           ),
-                          onPressed: () => state.navigateDate(true),
                         ),
+                        if (state.hasSpecificDateSelected)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close,
+                              color: Colors.grey,
+                              size: 20,
+                            ),
+                            onPressed: () => state.clearDateSelection(),
+                          )
+                        else
+                          IconButton(
+                            icon: const Icon(
+                              Icons.chevron_right,
+                              color: Colors.red,
+                            ),
+                            onPressed: () => state.navigateDate(true),
+                          ),
                       ],
                     ),
                   ),
@@ -239,7 +263,7 @@ class ReportsPageMobile extends StatelessWidget {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                state.totalSold.toStringAsFixed(0),
+                                state.displayTotalSold.toStringAsFixed(0),
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -275,7 +299,7 @@ class ReportsPageMobile extends StatelessWidget {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                state.totalSpoilage.toStringAsFixed(0),
+                                state.displayTotalSpoilage.toStringAsFixed(0),
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -307,60 +331,63 @@ class ReportsPageMobile extends StatelessWidget {
                   ],
                 ),
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: List.generate(data.length, (index) {
-                          final value = data[index];
-                          final heightPercent = maxValue > 0
-                              ? (value / maxValue).clamp(0.0, 1.0)
-                              : 0.01;
+                child: data.isEmpty || labels.isEmpty
+                    ? const Center(child: Text('No data available'))
+                    : Column(
+                        children: [
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: List.generate(data.length, (index) {
+                                final value = data[index];
+                                final heightPercent = maxValue > 0
+                                    ? (value / maxValue).clamp(0.0, 1.0)
+                                    : 0.01;
 
-                          return Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: FractionallySizedBox(
-                                heightFactor: heightPercent.clamp(0.0, 1.0),
-                                alignment: Alignment.bottomCenter,
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(4),
+                                return Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    child: FractionallySizedBox(
+                                      heightFactor: heightPercent.clamp(0.0, 1.0),
+                                      alignment: Alignment.bottomCenter,
+                                      child: Container(
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(4),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
+                                );
+                              }),
                             ),
-                          );
-                        }),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: labels
+                                .map(
+                                  (label) => Expanded(
+                                    child: Text(
+                                      label,
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: state.getChartLabels()
-                          .map(
-                            (label) => Expanded(
-                              child: Text(
-                                label,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),

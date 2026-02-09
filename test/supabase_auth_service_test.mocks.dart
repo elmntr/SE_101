@@ -414,8 +414,32 @@ class _FakeObject_61 extends _i1.SmartFake implements Object {
     : super(parent, parentInvocation);
 }
 
-class _FakeAppDatabase_62 extends _i1.SmartFake implements _i4.AppDatabase {
-  _FakeAppDatabase_62(Object parent, Invocation parentInvocation)
+class _FakeGetClaimsResponse_62 extends _i1.SmartFake
+    implements _i2.GetClaimsResponse {
+  _FakeGetClaimsResponse_62(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeAppDatabase_63 extends _i1.SmartFake implements _i4.AppDatabase {
+  _FakeAppDatabase_63(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeUsersDaoManager_64 extends _i1.SmartFake
+    implements _i8.UsersDaoManager {
+  _FakeUsersDaoManager_64(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOrganizationsDaoManager_65 extends _i1.SmartFake
+    implements _i5.OrganizationsDaoManager {
+  _FakeOrganizationsDaoManager_65(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeRolesDaoManager_66 extends _i1.SmartFake
+    implements _i7.RolesDaoManager {
+  _FakeRolesDaoManager_66(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -1266,6 +1290,55 @@ class MockAppDatabase extends _i1.Mock implements _i4.AppDatabase {
             returnValueForMissingStub: _i19.Future<void>.value(),
           )
           as _i19.Future<void>);
+
+  @override
+  _i19.Future<Ret> computeWithDatabase<Ret, DB extends _i3.GeneratedDatabase>({
+    required _i19.FutureOr<Ret> Function(DB)? computation,
+    required DB Function(_i3.DatabaseConnection)? connect,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#computeWithDatabase, [], {
+              #computation: computation,
+              #connect: connect,
+            }),
+            returnValue:
+                _i20.ifNotNull(
+                  _i20.dummyValueOrNull<Ret>(
+                    this,
+                    Invocation.method(#computeWithDatabase, [], {
+                      #computation: computation,
+                      #connect: connect,
+                    }),
+                  ),
+                  (Ret v) => _i19.Future<Ret>.value(v),
+                ) ??
+                _FakeFuture_44<Ret>(
+                  this,
+                  Invocation.method(#computeWithDatabase, [], {
+                    #computation: computation,
+                    #connect: connect,
+                  }),
+                ),
+            returnValueForMissingStub:
+                _i20.ifNotNull(
+                  _i20.dummyValueOrNull<Ret>(
+                    this,
+                    Invocation.method(#computeWithDatabase, [], {
+                      #computation: computation,
+                      #connect: connect,
+                    }),
+                  ),
+                  (Ret v) => _i19.Future<Ret>.value(v),
+                ) ??
+                _FakeFuture_44<Ret>(
+                  this,
+                  Invocation.method(#computeWithDatabase, [], {
+                    #computation: computation,
+                    #connect: connect,
+                  }),
+                ),
+          )
+          as _i19.Future<Ret>);
 
   @override
   _i19.Stream<T> createStream<T extends Object>(
@@ -2616,6 +2689,28 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
             ),
           )
           as Object);
+
+  @override
+  _i19.Future<_i2.GetClaimsResponse> getClaims([
+    String? jwt,
+    _i2.GetClaimsOptions? options,
+  ]) =>
+      (super.noSuchMethod(
+            Invocation.method(#getClaims, [jwt, options]),
+            returnValue: _i19.Future<_i2.GetClaimsResponse>.value(
+              _FakeGetClaimsResponse_62(
+                this,
+                Invocation.method(#getClaims, [jwt, options]),
+              ),
+            ),
+            returnValueForMissingStub: _i19.Future<_i2.GetClaimsResponse>.value(
+              _FakeGetClaimsResponse_62(
+                this,
+                Invocation.method(#getClaims, [jwt, options]),
+              ),
+            ),
+          )
+          as _i19.Future<_i2.GetClaimsResponse>);
 }
 
 /// A class which mocks [UsersDao].
@@ -2626,11 +2721,11 @@ class MockUsersDao extends _i1.Mock implements _i8.UsersDao {
   _i4.AppDatabase get attachedDatabase =>
       (super.noSuchMethod(
             Invocation.getter(#attachedDatabase),
-            returnValue: _FakeAppDatabase_62(
+            returnValue: _FakeAppDatabase_63(
               this,
               Invocation.getter(#attachedDatabase),
             ),
-            returnValueForMissingStub: _FakeAppDatabase_62(
+            returnValueForMissingStub: _FakeAppDatabase_63(
               this,
               Invocation.getter(#attachedDatabase),
             ),
@@ -2765,6 +2860,21 @@ class MockUsersDao extends _i1.Mock implements _i8.UsersDao {
             ),
           )
           as _i4.$UsersTable);
+
+  @override
+  _i8.UsersDaoManager get managers =>
+      (super.noSuchMethod(
+            Invocation.getter(#managers),
+            returnValue: _FakeUsersDaoManager_64(
+              this,
+              Invocation.getter(#managers),
+            ),
+            returnValueForMissingStub: _FakeUsersDaoManager_64(
+              this,
+              Invocation.getter(#managers),
+            ),
+          )
+          as _i8.UsersDaoManager);
 
   @override
   _i19.Future<List<_i4.User>> getAllUsers({
@@ -3713,11 +3823,11 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
   _i4.AppDatabase get attachedDatabase =>
       (super.noSuchMethod(
             Invocation.getter(#attachedDatabase),
-            returnValue: _FakeAppDatabase_62(
+            returnValue: _FakeAppDatabase_63(
               this,
               Invocation.getter(#attachedDatabase),
             ),
-            returnValueForMissingStub: _FakeAppDatabase_62(
+            returnValueForMissingStub: _FakeAppDatabase_63(
               this,
               Invocation.getter(#attachedDatabase),
             ),
@@ -3828,6 +3938,21 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
             ),
           )
           as _i4.$OrganizationsTable);
+
+  @override
+  _i5.OrganizationsDaoManager get managers =>
+      (super.noSuchMethod(
+            Invocation.getter(#managers),
+            returnValue: _FakeOrganizationsDaoManager_65(
+              this,
+              Invocation.getter(#managers),
+            ),
+            returnValueForMissingStub: _FakeOrganizationsDaoManager_65(
+              this,
+              Invocation.getter(#managers),
+            ),
+          )
+          as _i5.OrganizationsDaoManager);
 
   @override
   _i19.Future<List<_i4.Organization>> getAllOrganizations({
@@ -4703,11 +4828,11 @@ class MockRolesDao extends _i1.Mock implements _i7.RolesDao {
   _i4.AppDatabase get attachedDatabase =>
       (super.noSuchMethod(
             Invocation.getter(#attachedDatabase),
-            returnValue: _FakeAppDatabase_62(
+            returnValue: _FakeAppDatabase_63(
               this,
               Invocation.getter(#attachedDatabase),
             ),
-            returnValueForMissingStub: _FakeAppDatabase_62(
+            returnValueForMissingStub: _FakeAppDatabase_63(
               this,
               Invocation.getter(#attachedDatabase),
             ),
@@ -4815,6 +4940,21 @@ class MockRolesDao extends _i1.Mock implements _i7.RolesDao {
             ),
           )
           as _i4.$RolesTable);
+
+  @override
+  _i7.RolesDaoManager get managers =>
+      (super.noSuchMethod(
+            Invocation.getter(#managers),
+            returnValue: _FakeRolesDaoManager_66(
+              this,
+              Invocation.getter(#managers),
+            ),
+            returnValueForMissingStub: _FakeRolesDaoManager_66(
+              this,
+              Invocation.getter(#managers),
+            ),
+          )
+          as _i7.RolesDaoManager);
 
   @override
   _i19.Future<List<_i4.Role>> getAllRoles({

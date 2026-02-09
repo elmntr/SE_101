@@ -27,9 +27,11 @@ import 'package:chickenjoo_inventory/database/daos/stock_replenishment_requests_
 import 'package:chickenjoo_inventory/database/daos/sync_conflicts_dao.dart'
     as _i16;
 import 'package:chickenjoo_inventory/database/daos/users_dao.dart' as _i7;
+import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dart'
+    as _i23;
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart'
     as _i20;
-import 'package:chickenjoo_inventory/services/supabase_sync_service.dart'
+import 'package:chickenjoo_inventory/services/supabase_sync_service_v2.dart'
     as _i22;
 import 'package:drift/drift.dart' as _i2;
 import 'package:drift/src/runtime/executor/stream_queries.dart' as _i17;
@@ -792,6 +794,37 @@ class MockAppDatabase extends _i1.Mock implements _i3.AppDatabase {
           as _i18.Future<void>);
 
   @override
+  _i18.Future<Ret> computeWithDatabase<Ret, DB extends _i2.GeneratedDatabase>({
+    required _i18.FutureOr<Ret> Function(DB)? computation,
+    required DB Function(_i2.DatabaseConnection)? connect,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#computeWithDatabase, [], {
+              #computation: computation,
+              #connect: connect,
+            }),
+            returnValue:
+                _i21.ifNotNull(
+                  _i21.dummyValueOrNull<Ret>(
+                    this,
+                    Invocation.method(#computeWithDatabase, [], {
+                      #computation: computation,
+                      #connect: connect,
+                    }),
+                  ),
+                  (Ret v) => _i18.Future<Ret>.value(v),
+                ) ??
+                _FakeFuture_35<Ret>(
+                  this,
+                  Invocation.method(#computeWithDatabase, [], {
+                    #computation: computation,
+                    #connect: connect,
+                  }),
+                ),
+          )
+          as _i18.Future<Ret>);
+
+  @override
   _i18.Stream<T> createStream<T extends Object>(
     _i17.QueryStreamFetcher<T>? stmt,
   ) =>
@@ -1207,12 +1240,12 @@ class MockAppDatabase extends _i1.Mock implements _i3.AppDatabase {
           as String);
 }
 
-/// A class which mocks [SupabaseSyncService].
+/// A class which mocks [SupabaseSyncServiceV2].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockSupabaseSyncService extends _i1.Mock
-    implements _i22.SupabaseSyncService {
-  MockSupabaseSyncService() {
+class MockSupabaseSyncServiceV2 extends _i1.Mock
+    implements _i22.SupabaseSyncServiceV2 {
+  MockSupabaseSyncServiceV2() {
     _i1.throwOnMissingStub(this);
   }
 
@@ -1274,6 +1307,13 @@ class MockSupabaseSyncService extends _i1.Mock
   );
 
   @override
+  set onConflictDetected(dynamic Function(String, String)? value) =>
+      super.noSuchMethod(
+        Invocation.setter(#onConflictDetected, value),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   _i18.Future<void> initialize({
     int? organizationId,
     String? organizationCloudId,
@@ -1310,6 +1350,24 @@ class MockSupabaseSyncService extends _i1.Mock
   _i18.Future<void> syncAll() =>
       (super.noSuchMethod(
             Invocation.method(#syncAll, []),
+            returnValue: _i18.Future<void>.value(),
+            returnValueForMissingStub: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
+
+  @override
+  _i18.Future<void> syncImmediate() =>
+      (super.noSuchMethod(
+            Invocation.method(#syncImmediate, []),
+            returnValue: _i18.Future<void>.value(),
+            returnValueForMissingStub: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
+
+  @override
+  _i18.Future<void> syncItemsOnly() =>
+      (super.noSuchMethod(
+            Invocation.method(#syncItemsOnly, []),
             returnValue: _i18.Future<void>.value(),
             returnValueForMissingStub: _i18.Future<void>.value(),
           )
@@ -1388,9 +1446,9 @@ class MockSupabaseSyncService extends _i1.Mock
           as _i18.Future<void>);
 
   @override
-  _i18.Future<void> syncDailySalesSummary() =>
+  _i18.Future<void> syncBranchItemStock() =>
       (super.noSuchMethod(
-            Invocation.method(#syncDailySalesSummary, []),
+            Invocation.method(#syncBranchItemStock, []),
             returnValue: _i18.Future<void>.value(),
             returnValueForMissingStub: _i18.Future<void>.value(),
           )
@@ -1406,17 +1464,9 @@ class MockSupabaseSyncService extends _i1.Mock
           as _i18.Future<void>);
 
   @override
-  _i18.Future<bool> pushSaleImmediate(int? stockChangeRequestId) =>
+  _i18.Future<void> syncDailySalesSummary() =>
       (super.noSuchMethod(
-            Invocation.method(#pushSaleImmediate, [stockChangeRequestId]),
-            returnValue: _i18.Future<bool>.value(false),
-          )
-          as _i18.Future<bool>);
-
-  @override
-  _i18.Future<void> syncImmediate() =>
-      (super.noSuchMethod(
-            Invocation.method(#syncImmediate, []),
+            Invocation.method(#syncDailySalesSummary, []),
             returnValue: _i18.Future<void>.value(),
             returnValueForMissingStub: _i18.Future<void>.value(),
           )
@@ -1684,6 +1734,138 @@ class MockSupabaseAuthService extends _i1.Mock
             ),
           )
           as _i18.Future<_i20.AuthResult>);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
+}
+
+/// A class which mocks [RealtimeStockRequestService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockRealtimeStockRequestService extends _i1.Mock
+    implements _i23.RealtimeStockRequestService {
+  MockRealtimeStockRequestService() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i19.SupabaseClient get supabase =>
+      (super.noSuchMethod(
+            Invocation.getter(#supabase),
+            returnValue: _FakeSupabaseClient_46(
+              this,
+              Invocation.getter(#supabase),
+            ),
+          )
+          as _i19.SupabaseClient);
+
+  @override
+  _i3.AppDatabase get db =>
+      (super.noSuchMethod(
+            Invocation.getter(#db),
+            returnValue: _FakeAppDatabase_45(this, Invocation.getter(#db)),
+          )
+          as _i3.AppDatabase);
+
+  @override
+  _i18.Stream<_i23.RealtimeConnectionStatus> get statusStream =>
+      (super.noSuchMethod(
+            Invocation.getter(#statusStream),
+            returnValue: _i18.Stream<_i23.RealtimeConnectionStatus>.empty(),
+          )
+          as _i18.Stream<_i23.RealtimeConnectionStatus>);
+
+  @override
+  _i18.Stream<_i23.StockRequestEvent> get eventStream =>
+      (super.noSuchMethod(
+            Invocation.getter(#eventStream),
+            returnValue: _i18.Stream<_i23.StockRequestEvent>.empty(),
+          )
+          as _i18.Stream<_i23.StockRequestEvent>);
+
+  @override
+  _i23.RealtimeConnectionStatus get status =>
+      (super.noSuchMethod(
+            Invocation.getter(#status),
+            returnValue: _i23.RealtimeConnectionStatus.disconnected,
+          )
+          as _i23.RealtimeConnectionStatus);
+
+  @override
+  bool get isListening =>
+      (super.noSuchMethod(Invocation.getter(#isListening), returnValue: false)
+          as bool);
+
+  @override
+  int get activeScreenCount =>
+      (super.noSuchMethod(Invocation.getter(#activeScreenCount), returnValue: 0)
+          as int);
+
+  @override
+  set onRequestStatusChanged(dynamic Function(_i23.StockRequestEvent)? value) =>
+      super.noSuchMethod(
+        Invocation.setter(#onRequestStatusChanged, value),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  set onConnectionStatusChanged(
+    dynamic Function(_i23.RealtimeConnectionStatus)? value,
+  ) => super.noSuchMethod(
+    Invocation.setter(#onConnectionStatusChanged, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set onError(dynamic Function(String)? value) => super.noSuchMethod(
+    Invocation.setter(#onError, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set syncCallback(_i18.Future<void> Function()? value) => super.noSuchMethod(
+    Invocation.setter(#syncCallback, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i18.Future<void> attach(String? franchiseeCloudId) =>
+      (super.noSuchMethod(
+            Invocation.method(#attach, [franchiseeCloudId]),
+            returnValue: _i18.Future<void>.value(),
+            returnValueForMissingStub: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
+
+  @override
+  _i18.Future<void> detach() =>
+      (super.noSuchMethod(
+            Invocation.method(#detach, []),
+            returnValue: _i18.Future<void>.value(),
+            returnValueForMissingStub: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
+
+  @override
+  _i18.Future<void> pause() =>
+      (super.noSuchMethod(
+            Invocation.method(#pause, []),
+            returnValue: _i18.Future<void>.value(),
+            returnValueForMissingStub: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
+
+  @override
+  _i18.Future<void> resume() =>
+      (super.noSuchMethod(
+            Invocation.method(#resume, []),
+            returnValue: _i18.Future<void>.value(),
+            returnValueForMissingStub: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
 
   @override
   void dispose() => super.noSuchMethod(

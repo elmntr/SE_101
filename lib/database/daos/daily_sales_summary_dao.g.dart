@@ -9,4 +9,21 @@ mixin _$DailySalesSummaryDaoMixin on DatabaseAccessor<AppDatabase> {
   $ItemsTable get items => attachedDatabase.items;
   $DailySalesSummaryTable get dailySalesSummary =>
       attachedDatabase.dailySalesSummary;
+  DailySalesSummaryDaoManager get managers => DailySalesSummaryDaoManager(this);
+}
+
+class DailySalesSummaryDaoManager {
+  final _$DailySalesSummaryDaoMixin _db;
+  DailySalesSummaryDaoManager(this._db);
+  $$OrganizationsTableTableManager get organizations =>
+      $$OrganizationsTableTableManager(_db.attachedDatabase, _db.organizations);
+  $$CategoriesTableTableManager get categories =>
+      $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
+  $$ItemsTableTableManager get items =>
+      $$ItemsTableTableManager(_db.attachedDatabase, _db.items);
+  $$DailySalesSummaryTableTableManager get dailySalesSummary =>
+      $$DailySalesSummaryTableTableManager(
+        _db.attachedDatabase,
+        _db.dailySalesSummary,
+      );
 }

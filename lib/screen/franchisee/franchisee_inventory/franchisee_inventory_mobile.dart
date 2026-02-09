@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'franchisee_inventory.dart';
+import 'replenish_stock_tab.dart';
 
 class InventoryPageMobile extends StatelessWidget {
   final InventoryPageState state;
@@ -62,9 +64,21 @@ class InventoryPageMobile extends StatelessWidget {
                     "Inventory",
                     style: TextStyle(fontSize: 26, fontFamily: fontAll),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.notifications_outlined, size: 28),
-                    onPressed: () {},
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh, size: 28),
+                        tooltip: 'Refresh inventory from cloud',
+                        onPressed: state.refreshInventory,
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.notifications_outlined,
+                          size: 28,
+                        ),
+                        onPressed: () {},
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -76,20 +90,12 @@ class InventoryPageMobile extends StatelessWidget {
                 children: [
                   /// SEARCH BAR
                   Expanded(
-                    child: Container(
-                      height: 42,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: const TextField(
-                        decoration: InputDecoration(
-                          hintText: "Search...",
-                          icon: Icon(Icons.search),
-                          border: InputBorder.none,
-                        ),
-                      ),
+                    child: UniversalSearchBar(
+                      controller: state.searchController,
+                      hintText: "Search inventory...",
+                      onSearch: (value) {
+                        state.setState(() => state.searchQuery = value);
+                      },
                     ),
                   ),
 
@@ -123,10 +129,7 @@ class InventoryPageMobile extends StatelessWidget {
                           child: Text("Stock (Low → High)"),
                         ),
                         PopupMenuItem(
-                          value: ItemSort(
-                            ItemSortField.stock,
-                            SortOrder.desc,
-                          ),
+                          value: ItemSort(ItemSortField.stock, SortOrder.desc),
                           child: Text("Stock (High → Low)"),
                         ),
                         PopupMenuDivider(),
@@ -190,9 +193,11 @@ class InventoryPageMobile extends StatelessWidget {
                   child: state.isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : state.selectedTab == 0
-                      ? (state.items.isEmpty
+                      ? (state.filteredItems.isEmpty
                             ? emptyTables(
-                                message: "You can manage your items here.",
+                                message: state.searchQuery.isNotEmpty
+                                    ? "No items match your search"
+                                    : "You can manage your items here.",
                                 onAddPressed: null,
                                 buttonType: EmptyButtonType.none,
                                 buttonText: null,
@@ -204,7 +209,7 @@ class InventoryPageMobile extends StatelessWidget {
                                   "Sale",
                                   "Spoilage",
                                 ],
-                                rows: state.items
+                                rows: state.filteredItems
                                     .map(
                                       (item) => [
                                         item.name,
@@ -214,9 +219,9 @@ class InventoryPageMobile extends StatelessWidget {
                                       ],
                                     )
                                     .toList(),
-                                    
-                              smallHeaderWidth: 20,
-                              largeHeaderWidth: 120,
+
+                                smallHeaderWidth: 60,
+                                largeHeaderWidth: 120,
                               ))
                       : state.selectedTab == 1
                       ? (InventoryPage.pendingChanges.isEmpty
@@ -247,18 +252,15 @@ class InventoryPageMobile extends StatelessWidget {
                                     ];
                                   },
                                 ),
-                                
-                              smallHeaderWidth: 20,
-                              largeHeaderWidth: 120,
+
+                                smallHeaderWidth: 60,
+                                largeHeaderWidth: 120,
                               ))
-                      : emptyTables(
-                          message:
-                              "You can request stock replenishment here.",
-                          onAddPressed: () {
-                            print("✅ Request Stock pressed");
-                          },
-                          buttonType: EmptyButtonType.elevated,
-                          buttonText: "Request Stock",
+                      : ReplenishStockTab(
+                          branchId: state.currentOrganizationId ?? 0,
+                          commissaryId: state.commissaryId ?? 0,
+                          userId: state.currentUserId ?? 0,
+                          items: state.items,
                         ),
                 ),
               ),

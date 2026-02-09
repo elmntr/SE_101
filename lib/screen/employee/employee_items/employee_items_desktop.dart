@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
 import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'employee_items.dart';
 
 class EmployeeItemsPageDesktop extends StatelessWidget {
@@ -61,17 +62,17 @@ class EmployeeItemsPageDesktop extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Container(
+                  child: UniversalSearchBar(
+                    controller: state.searchController,
+                    hintText: state.selectedTab == 0
+                        ? "Search items..."
+                        : "Search changes...",
+                    onSearch: (value) {
+                      state.setState(() => state.searchQuery = value);
+                    },
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search...",
-                        prefixIcon: Icon(Icons.search),
-                        border: InputBorder.none,
-                      ),
                     ),
                   ),
                 ),
@@ -126,124 +127,8 @@ class EmployeeItemsPageDesktop extends StatelessWidget {
                       child: state.isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : state.selectedTab == 0
-                          ? (state.dbItems.isEmpty
-                                ? emptyTables(
-                                    message: "No items available",
-                                    onAddPressed: null,
-                                    buttonType: EmptyButtonType.none,
-                                    buttonText: null,
-                                  )
-                                : buildUniversalTable(
-                                    headers: [
-                                      "Item Name",
-                                      "Stock",
-                                      "Sale",
-                                      "Spoilage",
-                                    ],
-                                    rows: state.dbItems
-                                        .map(
-                                          (item) => [
-                                            GestureDetector(
-                                              onTap: () => state.showItemDetails(item),
-                                              child: MouseRegion(
-                                                cursor: SystemMouseCursors.click,
-                                                child: Text(item.name),
-                                              ),
-                                            ),
-                                            GestureDetector(
-                                              onTap: () => state.showItemDetails(item),
-                                              child: MouseRegion(
-                                                cursor: SystemMouseCursors.click,
-                                                child: Text(item.stock.toString()),
-                                              ),
-                                            ),
-                                            GestureDetector(
-                                              onTap: () => state.showItemDetails(item),
-                                              child: MouseRegion(
-                                                cursor: SystemMouseCursors.click,
-                                                child: Text(item.sold.toString()),
-                                              ),
-                                            ),
-                                            GestureDetector(
-                                              onTap: () => state.showItemDetails(item),
-                                              child: MouseRegion(
-                                                cursor: SystemMouseCursors.click,
-                                                child: Text(item.spoilage.toString()),
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                        .toList(),
-                                        
-                                smallHeaderWidth: 20,
-                                largeHeaderWidth: 120,
-                                  ))
-                          : (state.pendingChanges.isEmpty
-                                ? emptyTables(
-                                    message: "No pending changes",
-                                    onAddPressed: null,
-                                    buttonType: EmptyButtonType.none,
-                                    buttonText: null,
-                                  )
-                                : FutureBuilder<List<Map<String, dynamic>>>(
-                                    future: state.buildChangeRequestRows(),
-                                    builder: (context, snapshot) {
-                                      if (!snapshot.hasData) {
-                                        return const Center(
-                                          child: CircularProgressIndicator(),
-                                        );
-                                      }
-                                      return buildUniversalTable(
-                                        headers: [
-                                          "Item",
-                                          "Type",
-                                          "Quantity",
-                                          "Status",
-                                          "Actions",
-                                        ],
-                                        rows: snapshot.data!
-                                            .map(
-                                              (row) => [
-                                                row['itemName'],
-                                                row['changeType'],
-                                                row['quantity'],
-                                                state.buildStatusChip(row['status']),
-                                                Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    IconButton(
-                                                      icon: const Icon(
-                                                        Icons.visibility,
-                                                      ),
-                                                      onPressed: () =>
-                                                          state.viewChangeDetail(
-                                                            row['request'],
-                                                          ),
-                                                    ),
-                                                    if (row['status'] ==
-                                                        'draft')
-                                                      IconButton(
-                                                        icon: const Icon(
-                                                          Icons.delete,
-                                                          color: Colors.red,
-                                                        ),
-                                                        onPressed: () =>
-                                                            state.deleteChangeRequest(
-                                                              row['request'],
-                                                            ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ],
-                                            )
-                                            .toList(),
-                                            
-                                smallHeaderWidth: 20,
-                                largeHeaderWidth: 120,
-                                      );
-                                    },
-                                  )),
+                          ? _buildItemsTab()
+                          : _buildReviewChangesTab(),
                     ),
                   ),
                 ],
@@ -253,11 +138,13 @@ class EmployeeItemsPageDesktop extends StatelessWidget {
         ),
       ),
       floatingActionButton:
-          (state.selectedTab == 0 && state.dbItems.isNotEmpty && !state.isLoading)
+          (state.selectedTab == 0 &&
+              state.dbItems.isNotEmpty &&
+              !state.isLoading)
           ? Padding(
               padding: const EdgeInsets.only(bottom: 20),
               child: FloatingActionButton.extended(
-                onPressed: state.toggleChangeStockMode,
+                onPressed: state.showChangeStockDialog,
                 backgroundColor: const Color(0xFFE30417),
                 elevation: 8,
                 shape: RoundedRectangleBorder(
@@ -279,6 +166,109 @@ class EmployeeItemsPageDesktop extends StatelessWidget {
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildItemsTab() {
+    if (state.filteredItems.isEmpty) {
+      return emptyTables(
+        message: state.searchQuery.isNotEmpty
+            ? "No items match your search"
+            : "No items available",
+        onAddPressed: null,
+        buttonType: EmptyButtonType.none,
+        buttonText: null,
+      );
+    }
+    return buildUniversalTable(
+      headers: ["Item Name", "Stock", "Sale", "Spoilage"],
+      rows: state.filteredItems
+          .map(
+            (item) => [
+              GestureDetector(
+                onTap: () => state.showItemDetails(item),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Text(item.name),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => state.showItemDetails(item),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Text(item.stock.toString()),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => state.showItemDetails(item),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Text(item.sold.toString()),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => state.showItemDetails(item),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Text(item.spoilage.toString()),
+                ),
+              ),
+            ],
+          )
+          .toList(),
+      smallHeaderWidth: 20,
+      largeHeaderWidth: 120,
+    );
+  }
+
+  Widget _buildReviewChangesTab() {
+    if (state.filteredPendingChanges.isEmpty) {
+      return emptyTables(
+        message: state.searchQuery.isNotEmpty
+            ? "No changes match your search"
+            : "No pending changes",
+        onAddPressed: null,
+        buttonType: EmptyButtonType.none,
+        buttonText: null,
+      );
+    }
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: state.buildChangeRequestRows(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return buildUniversalTable(
+          headers: ["Item", "Type", "Quantity", "Status", "Actions"],
+          rows: snapshot.data!
+              .map(
+                (row) => [
+                  row['itemName'],
+                  row['changeType'],
+                  row['quantity'],
+                  state.buildStatusChip(row['status']),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.visibility),
+                        onPressed: () => state.viewChangeDetail(row['request']),
+                      ),
+                      if (row['status'] == 'draft')
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () =>
+                              state.deleteChangeRequest(row['request']),
+                        ),
+                    ],
+                  ),
+                ],
+              )
+              .toList(),
+          smallHeaderWidth: 20,
+          largeHeaderWidth: 120,
+        );
+      },
     );
   }
 }

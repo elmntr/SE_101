@@ -14,8 +14,6 @@ import 'realtime_sync_integration_test.mocks.dart';
   MockSpec<SupabaseClient>(),
 ])
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
   late AppDatabase db;
   late MockSupabaseClient mockSupabase;
   late RealtimeStockRequestService service;
@@ -37,11 +35,6 @@ void main() {
   });
 
   tearDown(() async {
-    // Properly detach all screens to await async cleanup
-    // before calling dispose (which doesn't await _stopListening).
-    while (service.activeScreenCount > 0) {
-      await service.detach();
-    }
     service.dispose();
     await db.close();
   });
@@ -253,7 +246,7 @@ class TestableRealtimeChannel extends Fake implements RealtimeChannel {
     PostgresChangeFilter? filter,
     required void Function(PostgresChangePayload payload) callback,
   }) {
-    if (event == PostgresChangeEvent.update || event == PostgresChangeEvent.all) {
+    if (event == PostgresChangeEvent.update) {
       _updateCallback = callback;
     }
     return this;

@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import '../../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
-import '../employee_change_item_stock.dart';
+import 'package:chickenjoo_inventory/screen/employee/employee_change_item_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
+import 'package:chickenjoo_inventory/database/models/item_with_branch_stock.dart';
+import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'employee_items_mobile.dart';
 import 'employee_items_desktop.dart';
 
@@ -18,13 +20,9 @@ class EmployeeItemsPage extends StatefulWidget {
 }
 
 class EmployeeItemsPageState extends State<EmployeeItemsPage> {
-  bool isInChangeStockMode = false;
-  bool isViewingChangeDetail = false;
-  StockChangeRequest? selectedChangeRequest;
-
   late AppDatabase db;
 
-  List<Item> dbItems = [];
+  List<ItemWithBranchStock> dbItems = [];
   List<StockChangeRequest> pendingChanges = [];
   bool isLoading = true;
 
@@ -38,17 +36,436 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
     SortOrder.asc,
   );
 
+  // Search functionality
+  String searchQuery = '';
+  final TextEditingController searchController = TextEditingController();
+
+  /// Get filtered items based on search query with sorting applied
+  List<ItemWithBranchStock> get filteredItems {
+    List<ItemWithBranchStock> items = searchQuery.isEmpty
+        ? List.from(dbItems)
+        : SearchService.filterItems(
+            dbItems,
+            searchQuery,
+            getName: (item) => item.name,
+            getDescription: (item) => item.description,
+            getCategoryName: (item) => item.categoryName,
+          );
+
+    // Apply sorting
+    switch (currentSort.field) {
+      case ItemSortField.date:
+        items.sort((a, b) => a.item.lastUpdated.compareTo(b.item.lastUpdated));
+        break;
+      case ItemSortField.name:
+        items.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case ItemSortField.stock:
+        items.sort((a, b) => a.stock.compareTo(b.stock));
+        break;
+      case ItemSortField.sale:
+        items.sort((a, b) => a.sold.compareTo(b.sold));
+        break;
+      case ItemSortField.spoilage:
+        items.sort((a, b) => a.spoilage.compareTo(b.spoilage));
+        break;
+    }
+
+    if (currentSort.order == SortOrder.desc) {
+      items = items.reversed.toList();
+    }
+
+    return items;
+  }
+
+  /// Get filtered pending changes based on search query with sorting applied
+  List<StockChangeRequest> get filteredPendingChanges {
+    List<StockChangeRequest> changes = searchQuery.isEmpty
+        ? List.from(pendingChanges)
+        : SearchService.filter(
+            pendingChanges,
+            searchQuery,
+            (change) => [change.reason, change.reviewNotes, change.changeType],
+          );
+
+    // Apply sorting
+    switch (reviewSort.field) {
+      case ReviewSortField.employee:
+        // All changes are from same employee, so no sort needed
+        break;
+      case ReviewSortField.role:
+        // All changes are from same role, so no sort needed
+        break;
+      case ReviewSortField.changes:
+        changes.sort((a, b) => b.quantity.compareTo(a.quantity));
+        break;
+    }
+
+    if (reviewSort.order == SortOrder.desc) {
+      changes = changes.reversed.toList();
+    }
+
+    return changes;
+  }
+
   @override
   void initState() {
     super.initState();
     db = database;
     loadData();
+
+    // ✅ FIX: Listen to sync completion to refresh data
+    syncCompleteNotifier.addListener(_onSyncComplete);
   }
 
-  void toggleChangeStockMode() {
-    setState(() {
-      isInChangeStockMode = !isInChangeStockMode;
-    });
+  @override
+  void dispose() {
+    syncCompleteNotifier.removeListener(_onSyncComplete);
+    super.dispose();
+  }
+
+  void _onSyncComplete() {
+    if (mounted) {
+      print('🔄 Sync completed, refreshing employee items...');
+      loadData();
+    }
+  }
+
+  /// Show Change Stock dialog
+  void showChangeStockDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 16,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Dialog Header
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE30417),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.inventory_2_outlined,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Change Item Stock',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          loadData();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                // Dialog Content
+                Flexible(
+                  child: EmployeeChangeStockPage(
+                    userData: widget.userData,
+                    onBack: () {
+                      Navigator.pop(context);
+                      loadData();
+                    },
+                    onRecordSaved: (_) async {
+                      await loadData();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Show Review Changes dialog
+  void showReviewChangesDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 16,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 700, maxHeight: 600),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Dialog Header
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE30417),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.history, color: Colors.white, size: 24),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Review Changes',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                // Dialog Content
+                Expanded(child: _buildReviewChangesContent()),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build the Review Changes content for the dialog
+  Widget _buildReviewChangesContent() {
+    if (pendingChanges.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No pending changes',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: buildChangeRequestRows(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: snapshot.data!.length,
+          itemBuilder: (context, index) {
+            final row = snapshot.data![index];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                title: Text(
+                  row['itemName'],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('${row['changeType']} - Qty: ${row['quantity']}'),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    buildStatusChip(row['status']),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.visibility),
+                      tooltip: 'View Details',
+                      onPressed: () {
+                        Navigator.pop(context);
+                        showChangeDetailDialog(row['request']);
+                      },
+                    ),
+                    if (row['status'] == 'draft')
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        tooltip: 'Delete',
+                        onPressed: () async {
+                          await deleteChangeRequest(row['request']);
+                          Navigator.pop(context);
+                          showReviewChangesDialog(); // Reopen with updated data
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Show Change Detail dialog
+  void showChangeDetailDialog(StockChangeRequest request) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: FutureBuilder<Item?>(
+            future: db.itemsDao.getItemById(request.itemId),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final item = snapshot.data;
+
+              return Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Change Request Details',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Item: ${item?.name ?? 'Unknown'}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    buildInfoRow('Change Type:', request.changeType),
+                    const SizedBox(height: 8),
+                    buildInfoRow('Quantity:', request.quantity.toString()),
+                    const SizedBox(height: 8),
+                    buildInfoRow('Status:', request.status),
+                    const SizedBox(height: 8),
+                    buildInfoRow(
+                      'Original Stock:',
+                      request.originalStock.toString(),
+                    ),
+                    if (request.reason != null) ...[
+                      const SizedBox(height: 8),
+                      buildInfoRow('Reason:', request.reason!),
+                    ],
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (request.status == 'draft')
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                            ),
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              await deleteChangeRequest(request);
+                            },
+                            child: const Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.black,
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> loadData() async {
@@ -63,12 +480,59 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
         );
         if (org != null) {
           orgId = org.id;
-          print('📍 Employee items: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}');
+          print(
+            '📍 Employee items: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
+          );
         }
       }
 
-      // Load items for the user's organization
-      final items = await db.itemsDao.getItemsByOrganization(orgId);
+      // Load items with branch-specific stock data
+      List<ItemWithBranchStock> items = [];
+
+      if (widget.userData.isFranchisee) {
+        // For franchisee employees, load items with branch stock from parent commissary
+        final organization = await db.organizationsDao.getOrganizationById(
+          orgId,
+        );
+        if (organization != null && organization.parentCommissaryId != null) {
+          items = await db.branchItemStockDao.getItemsWithStockForBranch(
+            orgId,
+            organization.parentCommissaryId!,
+          );
+          print(
+            '📍 Employee items (franchisee): Loaded ${items.length} items with branch stock from commissary ${organization.parentCommissaryId}',
+          );
+        } else {
+          // Fallback: try to get any commissary
+          final commissaries = await db.organizationsDao.getAllOrganizations(
+            type: 'commissary',
+          );
+          if (commissaries.isNotEmpty) {
+            items = await db.branchItemStockDao.getItemsWithStockForBranch(
+              orgId,
+              commissaries.first.id,
+            );
+            print(
+              '📍 Employee items (franchisee fallback): Loaded ${items.length} items with branch stock from commissary ${commissaries.first.id}',
+            );
+          }
+        }
+      } else {
+        // For commissary employees, load commissary items as ItemWithBranchStock
+        final commissaryItems = await db.itemsDao.getItemsByOrganization(orgId);
+        items = commissaryItems
+            .map(
+              (item) => ItemWithBranchStock(
+                item: item,
+                branchStock: null,
+                category: null,
+              ),
+            )
+            .toList();
+        print(
+          '📍 Employee items (commissary): Loaded ${items.length} items from org $orgId',
+        );
+      }
 
       // Load pending/draft changes for this employee
       final changes = await db.stockChangeRequestsDao.getAllChangeRequests(
@@ -93,50 +557,12 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
   void applyItemSort(ItemSort sort) {
     setState(() {
       currentSort = sort;
-
-      switch (sort.field) {
-        case ItemSortField.date:
-          dbItems.sort((a, b) => a.lastUpdated.compareTo(b.lastUpdated));
-          break;
-        case ItemSortField.name:
-          dbItems.sort((a, b) => a.name.compareTo(b.name));
-          break;
-        case ItemSortField.stock:
-          dbItems.sort((a, b) => a.stock.compareTo(b.stock));
-          break;
-        case ItemSortField.sale:
-          dbItems.sort((a, b) => a.sold.compareTo(b.sold));
-          break;
-        case ItemSortField.spoilage:
-          dbItems.sort((a, b) => b.spoilage.compareTo(a.spoilage));
-          break;
-      }
-
-      if (sort.order == SortOrder.desc) {
-        dbItems = dbItems.reversed.toList();
-      }
     });
   }
 
   void applyReviewSort(ReviewSort sort) {
     setState(() {
       reviewSort = sort;
-
-      switch (sort.field) {
-        case ReviewSortField.employee:
-          // All changes are from same employee, so no sort needed
-          break;
-        case ReviewSortField.role:
-          // All changes are from same role, so no sort needed
-          break;
-        case ReviewSortField.changes:
-          pendingChanges.sort((a, b) => b.quantity.compareTo(a.quantity));
-          break;
-      }
-
-      if (sort.order == SortOrder.desc) {
-        pendingChanges = pendingChanges.reversed.toList();
-      }
     });
   }
 
@@ -182,15 +608,17 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
     }
   }
 
-  void showItemDetails(Item item) async {
+  void showItemDetails(ItemWithBranchStock itemWithStock) async {
+    final item = itemWithStock.item;
     // Fetch category
     Category? category;
     if (item.categoryId != null) {
       category = await db.categoriesDao.getCategoryById(item.categoryId!);
     }
-    
+
     final categoryName = category?.name ?? "Uncategorized";
-    final dateOrdered = "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
+    final dateOrdered =
+        "${item.lastUpdated.month}/${item.lastUpdated.day}/${item.lastUpdated.year}";
 
     if (!mounted) return;
 
@@ -213,7 +641,7 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          item.name,
+                          itemWithStock.name,
                           style: const TextStyle(
                             fontFamily: fontAll,
                             fontWeight: FontWeight.bold,
@@ -242,7 +670,7 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
                         ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 24),
 
                   // Info Grid
@@ -250,11 +678,17 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
                   const SizedBox(height: 12),
                   buildInfoRow("Unit:", item.unit),
                   const SizedBox(height: 12),
-                  buildInfoRow("Current Stock:", item.stock.toString()),
+                  buildInfoRow(
+                    "Current Stock:",
+                    itemWithStock.stock.toString(),
+                  ),
                   const SizedBox(height: 12),
-                  buildInfoRow("Amount Sold:", item.sold.toString()),
+                  buildInfoRow("Amount Sold:", itemWithStock.sold.toString()),
                   const SizedBox(height: 12),
-                  buildInfoRow("Amount Spoiled:", item.spoilage.toString()),
+                  buildInfoRow(
+                    "Amount Spoiled:",
+                    itemWithStock.spoilage.toString(),
+                  ),
                   const SizedBox(height: 12),
                   buildInfoRow("Date Updated:", dateOrdered),
                   if (item.minimumStock != null) ...[
@@ -309,10 +743,7 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
         ),
       ],
@@ -320,10 +751,7 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
   }
 
   void viewChangeDetail(StockChangeRequest request) {
-    setState(() {
-      isViewingChangeDetail = true;
-      selectedChangeRequest = request;
-    });
+    showChangeDetailDialog(request);
   }
 
   Future<List<Map<String, dynamic>>> buildChangeRequestRows() async {
@@ -382,98 +810,6 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Change Stock Mode
-    if (isInChangeStockMode) {
-      return EmployeeChangeStockPage(
-        userData: widget.userData,
-        onBack: () async {
-          toggleChangeStockMode();
-          await loadData();
-        },
-        onRecordSaved: (_) async {
-          await loadData();
-          setState(() {
-            selectedTab = 1; // Switch to Review Changes tab
-          });
-        },
-      );
-    }
-
-    // View Change Detail
-    if (isViewingChangeDetail && selectedChangeRequest != null) {
-      return Scaffold(
-        backgroundColor: const Color.fromRGBO(238, 238, 238, 1),
-        appBar: AppBar(
-          backgroundColor: Colors.red.shade400,
-          title: const Text('Change Request Details'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              setState(() {
-                isViewingChangeDetail = false;
-                selectedChangeRequest = null;
-              });
-            },
-          ),
-        ),
-        body: FutureBuilder<Item?>(
-          future: db.itemsDao.getItemById(selectedChangeRequest!.itemId),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            final item = snapshot.data;
-            final request = selectedChangeRequest!;
-
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Item: ${item?.name ?? 'Unknown'}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text('Change Type: ${request.changeType}'),
-                      Text('Quantity: ${request.quantity}'),
-                      Text('Status: ${request.status}'),
-                      Text('Original Stock: ${request.originalStock}'),
-                      if (request.reason != null)
-                        Text('Reason: ${request.reason}'),
-                      const SizedBox(height: 20),
-                      if (request.status == 'draft')
-                        Row(
-                          children: [
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                              ),
-                              onPressed: () => deleteChangeRequest(request),
-                              child: const Text(
-                                'Delete',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      );
-    }
-
     if (AppLayout.isDesktop(context) == false) {
       return EmployeeItemsPageMobile(state: this);
     }

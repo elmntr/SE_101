@@ -532,23 +532,24 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   }
 
   /// ✅ FIXED: Batch upsert from cloud with safe defaults for nullable values
+  /// Expects data from toLocalFormat (camelCase keys) or raw cloud data (snake_case)
   Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudUsers) async {
     try {
       await db.transaction(() async {
         for (final cloudUser in cloudUsers) {
           await upsertFromCloud(
-            id: cloudUser['local_id'] ?? 0, // ✅ Default to 0
-            email: cloudUser['email'] ?? 'unknown@example.com', // ✅ Default email
-            username: cloudUser['username'] ?? 'Unknown User', // ✅ Default username
-            password: cloudUser['password'] ?? '', // Already hashed from cloud
-            phone: cloudUser['phone'], // ✅ Nullable
-            organizationId: cloudUser['organization_id'] ?? 1, // ✅ Default to 1
-            roleId: cloudUser['role_id'] ?? 1, // ✅ Default to 1
-            fullName: cloudUser['full_name'], // ✅ Nullable
-            isActive: cloudUser['is_active'] ?? true, // ✅ Default to true
-            createdAt: DateTime.tryParse(cloudUser['created_at'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-            lastUpdated: DateTime.tryParse(cloudUser['last_updated'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-            cloudId: cloudUser['cloud_id'] ?? '', // ✅ Default to empty string
+            id: cloudUser['localId'] ?? cloudUser['local_id'] ?? 0,
+            email: cloudUser['email'] ?? 'unknown@example.com',
+            username: cloudUser['username'] ?? 'Unknown User',
+            password: cloudUser['password'] ?? '',
+            phone: cloudUser['phone'],
+            organizationId: cloudUser['organizationId'] ?? cloudUser['organization_id'] ?? 1,
+            roleId: cloudUser['roleId'] ?? cloudUser['role_id'] ?? 1,
+            fullName: cloudUser['fullName'] ?? cloudUser['full_name'],
+            isActive: cloudUser['isActive'] ?? cloudUser['is_active'] ?? true,
+            createdAt: _parseDateTime(cloudUser['createdAt'] ?? cloudUser['created_at']),
+            lastUpdated: _parseDateTime(cloudUser['lastUpdated'] ?? cloudUser['last_updated']),
+            cloudId: cloudUser['cloudId'] ?? cloudUser['cloud_id'] ?? '',
           );
         }
       });
@@ -556,6 +557,14 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       print('❌ Error batch upserting users from cloud: $e');
       rethrow;
     }
+  }
+
+  /// Helper to parse DateTime from various formats
+  DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
   }
 
   /// ✅ FIXED: Upsert from cloud with better error handling (check for existing user first)

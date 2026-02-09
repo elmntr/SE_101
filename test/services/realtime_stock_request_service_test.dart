@@ -16,8 +16,6 @@ import 'realtime_stock_request_service_test.mocks.dart';
   MockSpec<AppDatabase>(),
 ])
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
   late MockSupabaseClient mockSupabase;
   late MockAppDatabase mockDb;
   late RealtimeStockRequestService service;
@@ -31,12 +29,7 @@ void main() {
     );
   });
 
-  tearDown(() async {
-    // Properly detach all screens to await async cleanup
-    // before calling dispose (which doesn't await _stopListening).
-    while (service.activeScreenCount > 0) {
-      await service.detach();
-    }
+  tearDown(() {
     service.dispose();
   });
 
