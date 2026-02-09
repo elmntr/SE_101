@@ -14,6 +14,7 @@ import '../screen/franchisee/franchisee_reports/franchisee_reports.dart';
 import '../screen/franchisee/franchisee_inventory/franchisee_inventory.dart';
 import '../screen/franchisee/franchisee_items/franchisee_items.dart';
 import '../screen/franchisee/franchisee_employee/franchisee_employee.dart';
+import '../screen/franchisee/franchisee_products_view/franchisee_products_view.dart';
 import '../screen/employee/employee_account.dart';
 
 // Import the separated UI files
@@ -217,12 +218,12 @@ class HomeScreenState extends State<HomeScreen> {
           EmployeeItemsPage(userData: userData),
         );
       } else if (userData.isFranchisee) {
-        // For franchisees with full access, show items page
+        // For franchisees with full access, show products view from commissary
         addItemIf(
           true,
           Icons.shopping_cart,
-          "Items",
-          const ItemsPage(),
+          "Products",
+          FranchiseeProductsView(userData: userData),
         );
       } else {
         // For commissary users with full access, show full items page

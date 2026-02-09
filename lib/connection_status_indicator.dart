@@ -1,7 +1,9 @@
+// lib/widgets/connection_status_indicator.dart
 import 'package:flutter/material.dart';
 import '../utils/sync_status.dart';
 
-class ConnectionStatusIndicator extends StatefulWidget {
+/// Widget that displays the current connection and sync status
+class ConnectionStatusIndicator extends StatelessWidget {
   final bool isOnline;
   final SyncStatus syncStatus;
   final VoidCallback? onSyncPressed;
@@ -14,85 +16,67 @@ class ConnectionStatusIndicator extends StatefulWidget {
   });
 
   @override
-  State<ConnectionStatusIndicator> createState() =>
-      _ConnectionStatusIndicatorState();
-}
+  Widget build(BuildContext context) {
+    final isSyncing = syncStatus == SyncStatus.syncing;
 
-class _ConnectionStatusIndicatorState extends State<ConnectionStatusIndicator>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Tooltip(
+          message: _getTooltipMessage(),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _getBackgroundColor().withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _getBackgroundColor()),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildStatusIcon(),
+                const SizedBox(width: 4),
+                Text(
+                  _getStatusText(),
+                  style: TextStyle(
+                    color: _getBackgroundColor(),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (onSyncPressed != null && isOnline) ...[
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              iconSize: 16,
+              tooltip: isSyncing ? 'Syncing...' : 'Sync now',
+              onPressed: isSyncing ? null : onSyncPressed,
+              icon: isSyncing
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.sync),
+            ),
+          ),
+        ],
+      ],
     );
-
-    if (widget.syncStatus == SyncStatus.syncing) {
-      _controller.repeat(reverse: true);
-    }
   }
 
-  @override
-  void didUpdateWidget(ConnectionStatusIndicator oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (widget.syncStatus == SyncStatus.syncing) {
-      _controller.repeat(reverse: true);
-    } else {
-      _controller.stop();
-      _controller.value = 1;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Color _statusColor() {
-    if (!widget.isOnline) {
-      return Colors.red;
-    }
-
-    switch (widget.syncStatus) {
-      case SyncStatus.syncing:
-        return Colors.orange;
-      case SyncStatus.synced:
-        return Colors.green;
-      case SyncStatus.error:
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  String _statusText() {
-    if (!widget.isOnline) {
-      return 'OFFLINE';
-    }
-
-    switch (widget.syncStatus) {
-      case SyncStatus.syncing:
-        return 'SYNCING';
-      case SyncStatus.synced:
-        return 'SYNCED';
-      case SyncStatus.error:
-        return 'SYNC ERROR';
-      default:
-        return 'UNKNOWN';
-    }
-  }
-
-  String _tooltipMessage() {
-    if (!widget.isOnline) {
+  String _getTooltipMessage() {
+    if (!isOnline) {
       return 'You are offline. Changes will sync when online.';
     }
 
-    switch (widget.syncStatus) {
+    switch (syncStatus) {
       case SyncStatus.syncing:
         return 'Syncing data with the server...';
       case SyncStatus.synced:
@@ -104,47 +88,57 @@ class _ConnectionStatusIndicatorState extends State<ConnectionStatusIndicator>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final icon = ScaleTransition(
-      scale: widget.syncStatus == SyncStatus.syncing
-          ? Tween<double>(begin: 0.8, end: 1.0).animate(_controller)
-          : const AlwaysStoppedAnimation(1),
-      child: Icon(Icons.circle, size: 10, color: _statusColor()),
-    );
+  Widget _buildStatusIcon() {
+    if (!isOnline) {
+      return const Icon(Icons.cloud_off, size: 16, color: Colors.grey);
+    }
 
-    final isSyncing = widget.syncStatus == SyncStatus.syncing;
+    switch (syncStatus) {
+      case SyncStatus.syncing:
+        return SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: _getBackgroundColor(),
+          ),
+        );
+      case SyncStatus.synced:
+        return const Icon(Icons.cloud_done, size: 16, color: Colors.green);
+      case SyncStatus.error:
+        return const Icon(Icons.cloud_off, size: 16, color: Colors.red);
+      default:
+        return const Icon(Icons.cloud_off, size: 16, color: Colors.grey);
+    }
+  }
 
-    return Tooltip(
-      message: _tooltipMessage(),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          icon,
-          const SizedBox(width: 6),
-          Text(_statusText(), style: const TextStyle(fontSize: 12)),
-          if (widget.onSyncPressed != null && widget.isOnline) ...[
-            const SizedBox(width: 4),
-            SizedBox(
-              width: 28,
-              height: 28,
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                iconSize: 16,
-                tooltip: isSyncing ? 'Syncing...' : 'Sync now',
-                onPressed: isSyncing ? null : widget.onSyncPressed,
-                icon: isSyncing
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.sync),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+  String _getStatusText() {
+    if (!isOnline) return 'Offline';
+
+    switch (syncStatus) {
+      case SyncStatus.syncing:
+        return 'Syncing';
+      case SyncStatus.synced:
+        return 'Synced';
+      case SyncStatus.error:
+        return 'Error';
+      default:
+        return 'Idle';
+    }
+  }
+
+  Color _getBackgroundColor() {
+    if (!isOnline) return Colors.grey;
+
+    switch (syncStatus) {
+      case SyncStatus.syncing:
+        return Colors.blue;
+      case SyncStatus.synced:
+        return Colors.green;
+      case SyncStatus.error:
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 }

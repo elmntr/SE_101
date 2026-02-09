@@ -56,29 +56,6 @@ class FranchiseeProductsViewMobile extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Info banner
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[200]!),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Viewing products from commissary. Tap a product to see recipe details.',
-                        style: TextStyle(color: Colors.blue, fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
               // Products table
               Expanded(
                 child: Container(
@@ -101,73 +78,20 @@ class FranchiseeProductsViewMobile extends StatelessWidget {
                           headers: [
                             'Product Name',
                             'Category',
-                            'Stock',
-                            'Sold',
-                            'Spoilage',
-                            'Unit',
-                            '',
                           ],
                           rows: state.filteredProducts
                               .map(
                                 (item) => [
-                                  GestureDetector(
-                                    onTap: () => state.showProductDetails(item),
-                                    child: MouseRegion(
-                                      cursor: SystemMouseCursors.click,
-                                      child: Text(
-                                        item.name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => state.showProductDetails(item),
-                                    child: MouseRegion(
-                                      cursor: SystemMouseCursors.click,
-                                      child: Text(
-                                        state.categoryNameForId(
-                                          item.categoryId,
-                                        ),
-                                      ),
+                                  Text(
+                                    item.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   Text(
-                                    '${item.stock}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color:
-                                          item.stock <=
-                                              (item.minimumStock ?? 10)
-                                          ? Colors.red
-                                          : Colors.black,
+                                    state.categoryNameForId(
+                                      item.categoryId,
                                     ),
-                                  ),
-                                  Text('${item.sold}'),
-                                  Text(
-                                    '${item.spoilage}',
-                                    style: TextStyle(
-                                      color: item.spoilage > 0
-                                          ? Colors.orange
-                                          : Colors.black,
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => state.showProductDetails(item),
-                                    child: MouseRegion(
-                                      cursor: SystemMouseCursors.click,
-                                      child: Text(item.unit),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.visibility,
-                                      color: Colors.blue,
-                                    ),
-                                    tooltip: 'View Details',
-                                    onPressed: () =>
-                                        state.showProductDetails(item),
                                   ),
                                 ],
                               )

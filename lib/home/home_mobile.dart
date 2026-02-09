@@ -15,8 +15,13 @@ class HomeScreenMobile extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.red.shade400,
         elevation: 3,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
+        automaticallyImplyLeading: false,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(imageAll, height: 25),
+          ],
+        ),
         actions: [
           // Connection Status Indicator
           Padding(
@@ -81,71 +86,22 @@ class HomeScreenMobile extends StatelessWidget {
         ],
       ),
       body: state.currentPage ?? const SizedBox.shrink(),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Colors.red.shade400),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(imageAll, height: 60),
-                  const SizedBox(height: 10),
-                  const Text(
-                    "Inventory System",
-                    style: TextStyle(
-                      fontFamily: fontAll,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 20,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: state.selectedIndex,
+        onTap: state.switchPage,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.red.shade400,
+        unselectedItemColor: Colors.grey,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        items: state.menuItems
+            .map(
+              (item) => BottomNavigationBarItem(
+                icon: Icon(item["icon"] as IconData),
+                label: item["label"] as String,
               ),
-            ),
-            // Menu items
-            ...List.generate(state.menuItems.length, (index) {
-              final bool isActive = state.selectedIndex == index;
-
-              return ListTile(
-                leading: Icon(
-                  state.menuItems[index]["icon"],
-                  color: isActive ? Colors.red : Colors.black,
-                ),
-                title: Text(
-                  state.menuItems[index]["label"],
-                  style: TextStyle(
-                    color: isActive ? Colors.red : Colors.black,
-                    fontFamily: fontAll,
-                    fontWeight: isActive
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                ),
-                tileColor: isActive ? Colors.red.withValues(alpha: 0.08) : null,
-                selected: isActive,
-                onTap: () {
-                  Navigator.pop(context);
-                  state.switchPage(index);
-                },
-              );
-            }),
-            // Logout button in drawer
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.red, fontFamily: fontAll),
-              ),
-              onTap: () {
-                Navigator.pop(context); // Close drawer
-                state.handleLogout();
-              },
-            ),
-          ],
-        ),
+            )
+            .toList(),
       ),
     );
   }
