@@ -1244,7 +1244,34 @@ class MockSupabaseSyncService extends _i1.Mock
           as _i16.Future<void>);
 
   @override
-  _i16.Future<void> syncOrganizations() =>
+  _i18.Future<void> forceFullSyncReplenishmentRequests() =>
+      (super.noSuchMethod(
+            Invocation.method(#forceFullSyncReplenishmentRequests, []),
+            returnValue: _i18.Future<void>.value(),
+            returnValueForMissingStub: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
+
+  @override
+  _i18.Future<void> syncImmediate() =>
+      (super.noSuchMethod(
+            Invocation.method(#syncImmediate, []),
+            returnValue: _i18.Future<void>.value(),
+            returnValueForMissingStub: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
+
+  @override
+  _i18.Future<void> syncItemsOnly() =>
+      (super.noSuchMethod(
+            Invocation.method(#syncItemsOnly, []),
+            returnValue: _i18.Future<void>.value(),
+            returnValueForMissingStub: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
+
+  @override
+  _i18.Future<void> syncOrganizations() =>
       (super.noSuchMethod(
             Invocation.method(#syncOrganizations, []),
             returnValue: _i16.Future<void>.value(),
