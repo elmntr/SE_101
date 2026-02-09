@@ -1,0 +1,71 @@
+{
+  "elements": {
+    "BranchItemStockDao": {
+      "id": {
+        "library_uri": "package:chickenjoo_inventory/database/daos/branch_item_stock_dao.dart",
+        "name": "BranchItemStockDao"
+      },
+      "declaration": {
+        "source_uri": "package:chickenjoo_inventory/database/daos/branch_item_stock_dao.dart",
+        "offset": 606,
+        "name": "BranchItemStockDao"
+      },
+      "references": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/branch_item_stock.dart",
+          "name": "branch_item_stock"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+          "name": "items"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/categories.dart",
+          "name": "categories"
+        }
+      ],
+      "type": "dao",
+      "tables": [
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/branch_item_stock.dart",
+          "name": "branch_item_stock"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/items.dart",
+          "name": "items"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/categories.dart",
+          "name": "categories"
+        }
+      ],
+      "views": [],
+      "includes": [],
+      "queries": [],
+      "dart_type": {
+        "elements": [
+          {
+            "lexeme": "BranchItemStockDao",
+            "import_uri": "package:chickenjoo_inventory/database/daos/branch_item_stock_dao.dart"
+          }
+        ]
+      },
+      "database": {
+        "elements": [
+          {
+            "lexeme": "AppDatabase",
+            "import_uri": "package:chickenjoo_inventory/database/app_database.dart"
+          }
+        ]
+      }
+    }
+  },
+  "imports": [
+    "package:drift/drift.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/database/tables/branch_item_stock.dart",
+    "package:chickenjoo_inventory/database/tables/items.dart",
+    "package:chickenjoo_inventory/database/tables/categories.dart",
+    "package:chickenjoo_inventory/database/models/item_with_branch_stock.dart"
+  ]
+}

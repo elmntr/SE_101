@@ -1,0 +1,10 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_test/flutter_test.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:drift/drift.dart",
+    "asset:chickenjoo_inventory/test/database/test_database.dart",
+    "package:chickenjoo_inventory/database/daos/sync_conflicts_dao.dart"
+  ]
+}

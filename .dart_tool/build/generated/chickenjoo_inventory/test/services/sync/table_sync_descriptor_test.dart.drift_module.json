@@ -1,0 +1,8 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter_test/flutter_test.dart",
+    "package:chickenjoo_inventory/services/sync/sync_conflict.dart",
+    "package:chickenjoo_inventory/services/sync/table_sync_descriptor.dart"
+  ]
+}

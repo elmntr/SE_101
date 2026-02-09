@@ -1,0 +1,7 @@
+{
+  "elements": {},
+  "imports": [
+    "package:flutter/material.dart",
+    "package:chickenjoo_inventory/services/realtime_stock_request_service.dart"
+  ]
+}

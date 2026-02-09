@@ -1,0 +1,17 @@
+{
+  "elements": {},
+  "imports": [
+    "package:chickenjoo_inventory/services/sync/sync_conflict.dart",
+    "package:chickenjoo_inventory/services/sync/sync_engine.dart",
+    "package:chickenjoo_inventory/services/sync/table_sync_descriptor.dart",
+    "package:chickenjoo_inventory/services/sync/descriptors/organizations_descriptor.dart",
+    "package:chickenjoo_inventory/services/sync/descriptors/roles_descriptor.dart",
+    "package:chickenjoo_inventory/services/sync/descriptors/users_descriptor.dart",
+    "package:chickenjoo_inventory/services/sync/descriptors/items_descriptor.dart",
+    "package:chickenjoo_inventory/services/sync/descriptors/ingredients_descriptor.dart",
+    "package:chickenjoo_inventory/services/sync/descriptors/recipe_ingredients_descriptor.dart",
+    "package:chickenjoo_inventory/services/sync/descriptors/stock_requests_descriptor.dart",
+    "package:chickenjoo_inventory/services/sync/descriptors/daily_sales_descriptor.dart",
+    "package:chickenjoo_inventory/services/sync/descriptors/branch_stock_descriptor.dart"
+  ]
+}

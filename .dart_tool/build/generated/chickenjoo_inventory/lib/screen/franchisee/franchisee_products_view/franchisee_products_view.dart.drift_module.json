@@ -1,0 +1,14 @@
+{
+  "elements": {},
+  "imports": [
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_products_view/franchisee_products_view_controller.dart",
+    "package:flutter/material.dart",
+    "package:chickenjoo_inventory/design_constants.dart",
+    "package:chickenjoo_inventory/app_globals.dart",
+    "package:chickenjoo_inventory/services/supabase_auth_service.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_products_view/franchisee_products_view_mobile.dart",
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_products_view/franchisee_products_view_desktop.dart",
+    "package:chickenjoo_inventory/screen/franchisee/franchisee_products_view/franchisee_products_view_controller.dart"
+  ]
+}

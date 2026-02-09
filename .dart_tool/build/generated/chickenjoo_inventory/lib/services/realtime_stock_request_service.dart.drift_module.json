@@ -1,0 +1,11 @@
+{
+  "elements": {},
+  "imports": [
+    "package:battery_plus/battery_plus.dart",
+    "package:connectivity_plus/connectivity_plus.dart",
+    "package:flutter/foundation.dart",
+    "package:supabase_flutter/supabase_flutter.dart",
+    "package:chickenjoo_inventory/database/app_database.dart",
+    "package:chickenjoo_inventory/utils/app_logger.dart"
+  ]
+}
