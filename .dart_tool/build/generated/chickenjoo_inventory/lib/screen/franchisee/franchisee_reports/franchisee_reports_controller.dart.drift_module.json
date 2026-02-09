@@ -1,9 +1,0 @@
-{
-  "elements": {},
-  "imports": [
-    "package:flutter/material.dart",
-    "package:chickenjoo_inventory/database/app_database.dart",
-    "package:chickenjoo_inventory/app_globals.dart",
-    "package:shared_preferences/shared_preferences.dart"
-  ]
-}

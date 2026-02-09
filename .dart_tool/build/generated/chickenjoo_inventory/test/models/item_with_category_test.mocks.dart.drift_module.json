@@ -1,9 +1,0 @@
-{
-  "elements": {},
-  "imports": [
-    "package:chickenjoo_inventory/database/app_database.dart",
-    "package:drift/drift.dart",
-    "package:mockito/mockito.dart",
-    "package:mockito/src/dummies.dart"
-  ]
-}

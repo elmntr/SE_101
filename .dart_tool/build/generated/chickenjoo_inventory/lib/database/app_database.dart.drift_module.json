@@ -7,7 +7,7 @@
       },
       "declaration": {
         "source_uri": "package:chickenjoo_inventory/database/app_database.dart",
-        "offset": 2232,
+        "offset": 2626,
         "name": "AppDatabase"
       },
       "references": [
@@ -44,6 +44,10 @@
           "name": "branch_ingredient_stock"
         },
         {
+          "library_uri": "package:chickenjoo_inventory/database/tables/branch_item_stock.dart",
+          "name": "branch_item_stock"
+        },
+        {
           "library_uri": "package:chickenjoo_inventory/database/tables/stock_replenishment_requests.dart",
           "name": "stock_replenishment_requests"
         },
@@ -54,6 +58,10 @@
         {
           "library_uri": "package:chickenjoo_inventory/database/tables/daily_sales_summary.dart",
           "name": "daily_sales_summary"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/sync_conflicts.dart",
+          "name": "sync_conflicts"
         }
       ],
       "type": "database",
@@ -91,6 +99,10 @@
           "name": "branch_ingredient_stock"
         },
         {
+          "library_uri": "package:chickenjoo_inventory/database/tables/branch_item_stock.dart",
+          "name": "branch_item_stock"
+        },
+        {
           "library_uri": "package:chickenjoo_inventory/database/tables/stock_replenishment_requests.dart",
           "name": "stock_replenishment_requests"
         },
@@ -101,12 +113,16 @@
         {
           "library_uri": "package:chickenjoo_inventory/database/tables/daily_sales_summary.dart",
           "name": "daily_sales_summary"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/tables/sync_conflicts.dart",
+          "name": "sync_conflicts"
         }
       ],
       "views": [],
       "includes": [],
       "queries": [],
-      "schema_version": 2,
+      "schema_version": 3,
       "daos": [
         {
           "library_uri": "package:chickenjoo_inventory/database/daos/organizations_dao.dart",
@@ -141,6 +157,10 @@
           "name": "BranchIngredientStockDao"
         },
         {
+          "library_uri": "package:chickenjoo_inventory/database/daos/branch_item_stock_dao.dart",
+          "name": "BranchItemStockDao"
+        },
+        {
           "library_uri": "package:chickenjoo_inventory/database/daos/stock_replenishment_requests_dao.dart",
           "name": "StockReplenishmentRequestsDao"
         },
@@ -151,6 +171,10 @@
         {
           "library_uri": "package:chickenjoo_inventory/database/daos/daily_sales_summary_dao.dart",
           "name": "DailySalesSummaryDao"
+        },
+        {
+          "library_uri": "package:chickenjoo_inventory/database/daos/sync_conflicts_dao.dart",
+          "name": "SyncConflictsDao"
         }
       ],
       "has_constructor_arg": false
@@ -172,6 +196,8 @@
     "package:chickenjoo_inventory/database/tables/stock_change_requests.dart",
     "package:chickenjoo_inventory/database/tables/daily_sales_summary.dart",
     "package:chickenjoo_inventory/database/tables/branch_ingredient_stock.dart",
+    "package:chickenjoo_inventory/database/tables/branch_item_stock.dart",
+    "package:chickenjoo_inventory/database/tables/sync_conflicts.dart",
     "package:chickenjoo_inventory/database/tables/items.dart",
     "package:chickenjoo_inventory/database/tables/users.dart",
     "package:chickenjoo_inventory/database/daos/categories_dao.dart",
@@ -185,6 +211,8 @@
     "package:chickenjoo_inventory/database/daos/stock_change_requests_dao.dart",
     "package:chickenjoo_inventory/database/daos/daily_sales_summary_dao.dart",
     "package:chickenjoo_inventory/database/daos/branch_ingredient_stock_dao.dart",
+    "package:chickenjoo_inventory/database/daos/branch_item_stock_dao.dart",
+    "package:chickenjoo_inventory/database/daos/sync_conflicts_dao.dart",
     "package:flutter/foundation.dart"
   ]
 }

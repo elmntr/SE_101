@@ -4,21 +4,4 @@ mixin _$BranchItemStockDaoMixin on DatabaseAccessor<AppDatabase> {
   $CategoriesTable get categories => attachedDatabase.categories;
   $ItemsTable get items => attachedDatabase.items;
   $BranchItemStockTable get branchItemStock => attachedDatabase.branchItemStock;
-  BranchItemStockDaoManager get managers => BranchItemStockDaoManager(this);
-}
-
-class BranchItemStockDaoManager {
-  final _$BranchItemStockDaoMixin _db;
-  BranchItemStockDaoManager(this._db);
-  $$OrganizationsTableTableManager get organizations =>
-      $$OrganizationsTableTableManager(_db.attachedDatabase, _db.organizations);
-  $$CategoriesTableTableManager get categories =>
-      $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
-  $$ItemsTableTableManager get items =>
-      $$ItemsTableTableManager(_db.attachedDatabase, _db.items);
-  $$BranchItemStockTableTableManager get branchItemStock =>
-      $$BranchItemStockTableTableManager(
-        _db.attachedDatabase,
-        _db.branchItemStock,
-      );
 }

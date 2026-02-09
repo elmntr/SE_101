@@ -1,1 +1,0 @@
-{"valid_import":true,"imports":[{"uri":"package:flutter_test/flutter_test.dart","transitive":false},{"uri":"package:chickenjoo_inventory/services/sync/sync_conflict.dart","transitive":false},{"uri":"package:chickenjoo_inventory/services/sync/table_sync_descriptor.dart","transitive":false}],"elements":[]}

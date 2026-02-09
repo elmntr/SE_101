@@ -50,6 +50,18 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "battery_plus",
+      "rootUri": "file:///C:/Users/Bob/AppData/Local/Pub/Cache/hosted/pub.dev/battery_plus-6.2.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "battery_plus_platform_interface",
+      "rootUri": "file:///C:/Users/Bob/AppData/Local/Pub/Cache/hosted/pub.dev/battery_plus_platform_interface-2.0.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.18"
+    },
+    {
       "name": "boolean_selector",
       "rootUri": "file:///C:/Users/Bob/AppData/Local/Pub/Cache/hosted/pub.dev/boolean_selector-2.1.2",
       "packageUri": "lib/",
@@ -650,6 +662,12 @@
       "languageVersion": "3.5"
     },
     {
+      "name": "upower",
+      "rootUri": "file:///C:/Users/Bob/AppData/Local/Pub/Cache/hosted/pub.dev/upower-0.7.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.14"
+    },
+    {
       "name": "url_launcher",
       "rootUri": "file:///C:/Users/Bob/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher-6.3.2",
       "packageUri": "lib/",
@@ -741,9 +759,9 @@
     },
     {
       "name": "window_size",
-      "rootUri": "file:///C:/Users/Bob/AppData/Local/Pub/Cache/hosted/pub.dev/window_size-0.1.0",
+      "rootUri": "file:///C:/Users/Bob/AppData/Local/Pub/Cache/git/flutter-desktop-embedding-eb3964990cf19629c89ff8cb4a37640c7b3d5601/plugins/window_size",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
+      "languageVersion": "2.12"
     },
     {
       "name": "xdg_directories",
