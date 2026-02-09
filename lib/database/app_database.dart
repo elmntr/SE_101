@@ -21,6 +21,8 @@ import 'tables/stock_replenishment_requests.dart';
 import 'tables/stock_change_requests.dart';
 import 'tables/daily_sales_summary.dart';
 import 'tables/branch_ingredient_stock.dart';
+import 'tables/branch_item_stock.dart';
+import 'tables/sync_conflicts.dart';
 
 // ✅ Import MODIFIED tables
 import 'tables/items.dart';
@@ -42,12 +44,14 @@ import 'daos/stock_replenishment_requests_dao.dart';
 import 'daos/stock_change_requests_dao.dart';
 import 'daos/daily_sales_summary_dao.dart';
 import 'daos/branch_ingredient_stock_dao.dart';
+import 'daos/branch_item_stock_dao.dart';
+import 'daos/sync_conflicts_dao.dart';
 
 import 'package:flutter/foundation.dart';
 
 part 'app_database.g.dart';
 
-/// ✅ Complete database with all 11 tables
+/// ✅ Complete database with all 12 tables
 @DriftDatabase(
   tables: [
     // Core tables
@@ -61,6 +65,7 @@ part 'app_database.g.dart';
     Ingredients,
     RecipeIngredients,
     BranchIngredientStock,
+    BranchItemStock,  // ✅ NEW: Per-branch item inventory
 
     // Request tables
     StockReplenishmentRequests,
@@ -68,6 +73,9 @@ part 'app_database.g.dart';
 
     // Reporting tables
     DailySalesSummary,
+
+    // Sync management tables
+    SyncConflicts,
   ],
   daos: [
     // Core DAOs
@@ -81,6 +89,7 @@ part 'app_database.g.dart';
     IngredientsDao,
     RecipeIngredientsDao,
     BranchIngredientStockDao,
+    BranchItemStockDao,  // ✅ NEW: Per-branch item inventory DAO
 
     // Request DAOs
     StockReplenishmentRequestsDao,
@@ -88,6 +97,9 @@ part 'app_database.g.dart';
 
     // Reporting DAOs
     DailySalesSummaryDao,
+
+    // Sync management DAOs
+    SyncConflictsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -101,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(super.executor) : _seedData = false;
 
   @override
-  int get schemaVersion => 2; // Incremented for new tables
+  int get schemaVersion => 3; // Incremented for BranchItemStock table
 
   @override
   MigrationStrategy get migration {
@@ -145,6 +157,24 @@ class AppDatabase extends _$AppDatabase {
           );
           
           AppLogger.database('Added DailySalesSummary and BranchIngredientStock tables');
+        }
+        
+        if (from < 3) {
+          // Add new table for v3: BranchItemStock (per-branch item inventory)
+          await m.createTable(branchItemStock);
+          
+          // Create indexes for new table
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_branch_item_stock_org ON branch_item_stock(organization_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_branch_item_stock_item ON branch_item_stock(item_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_branch_item_stock_cloud_id ON branch_item_stock(cloud_id)',
+          );
+          
+          AppLogger.database('Added BranchItemStock table for multi-branch inventory');
         }
         
         AppLogger.database('Database upgrade complete!');
