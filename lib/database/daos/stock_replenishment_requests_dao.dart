@@ -217,10 +217,10 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             StockReplenishmentRequestsCompanion(
               status: Value('approved'),
               reviewedBy: Value(reviewedBy),
-              reviewedAt: Value(DateTime.now()),
+              reviewedAt: Value(DateTime.now().toUtc()),
               commissaryNotes: Value(commissaryNotes),
               deliveryDate: Value(deliveryDate),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
@@ -246,9 +246,9 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             StockReplenishmentRequestsCompanion(
               status: Value('rejected'),
               reviewedBy: Value(reviewedBy),
-              reviewedAt: Value(DateTime.now()),
+              reviewedAt: Value(DateTime.now().toUtc()),
               commissaryNotes: Value(reason),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
@@ -269,7 +269,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
           )..where((t) => t.id.equals(requestId))).write(
             StockReplenishmentRequestsCompanion(
               status: Value('delivered'),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
@@ -317,9 +317,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
                   t.status.equals('approved') &
                   t.isDeleted.equals(false),
             )
-            ..orderBy([
-              (t) => OrderingTerm(expression: t.reviewedAt),
-            ]))
+            ..orderBy([(t) => OrderingTerm(expression: t.reviewedAt)]))
           .get();
     } catch (e) {
       print('❌ Error fetching approved requests: $e');
@@ -398,7 +396,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             StockReplenishmentRequestsCompanion(
               isDeleted: Value(true),
               isSynced: Value(false),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
             ),
           );
 
@@ -470,7 +468,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
 
   /// ✅ Batch upsert from cloud
   /// Expects data from toLocalFormat (camelCase keys) or raw cloud data (snake_case)
-  /// 
+  ///
   /// **IMPORTANT**: When a request is newly approved (status changes from non-approved to approved),
   /// this method automatically adds the requested quantity to the branch's inventory.
   Future<void> upsertBatchFromCloud(
@@ -480,49 +478,77 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
           // Support both camelCase (from toLocalFormat) and snake_case (raw cloud) keys
-          final cloudId = (cloudReq['cloudId'] ?? cloudReq['cloud_id'])?.toString() ?? '';
+          final cloudId =
+              (cloudReq['cloudId'] ?? cloudReq['cloud_id'])?.toString() ?? '';
           final cloudStatus = (cloudReq['status'] as String?) ?? 'pending';
-          final franchiseeId = cloudReq['franchiseeId'] ?? cloudReq['franchisee_id'] ?? 0;
+          final franchiseeId =
+              cloudReq['franchiseeId'] ?? cloudReq['franchisee_id'] ?? 0;
           final itemId = cloudReq['itemId'] ?? cloudReq['item_id'] ?? 0;
-          final quantityRequested = cloudReq['quantityRequested'] ?? cloudReq['quantity_requested'] ?? 0;
-          
+          final quantityRequested =
+              cloudReq['quantityRequested'] ??
+              cloudReq['quantity_requested'] ??
+              0;
+
           // First, check if we already have this record locally by cloud_id
-          final existing = cloudId.isNotEmpty ? await getRequestByCloudId(cloudId) : null;
+          final existing = cloudId.isNotEmpty
+              ? await getRequestByCloudId(cloudId)
+              : null;
           final localId = existing?.id;
           final previousStatus = existing?.status;
-          
-          AppLogger.sync('Processing cloud request: cloudId=$cloudId, cloudStatus=$cloudStatus');
+
+          AppLogger.sync(
+            'Processing cloud request: cloudId=$cloudId, cloudStatus=$cloudStatus',
+          );
           if (existing != null) {
-            AppLogger.sync('   Found local record #${existing.id}, localStatus=${existing.status}');
+            AppLogger.sync(
+              '   Found local record #${existing.id}, localStatus=${existing.status}',
+            );
           } else {
             AppLogger.sync('   No local record found, will insert new');
           }
-          
+
           // ✅ Check if status is changing to 'approved' - if so, we need to add stock to branch
-          final isNewlyApproved = cloudStatus == 'approved' && 
-                                  (previousStatus == null || previousStatus != 'approved');
-          
+          final isNewlyApproved =
+              cloudStatus == 'approved' &&
+              (previousStatus == null || previousStatus != 'approved');
+
           if (isNewlyApproved) {
-            AppLogger.sync('🎉 Request is newly approved! Adding $quantityRequested items to branch stock...');
+            AppLogger.sync(
+              '🎉 Request is newly approved! Adding $quantityRequested items to branch stock...',
+            );
             await _addStockToBranch(franchiseeId, itemId, quantityRequested);
           }
-          
+
           await upsertFromCloud(
             id: localId,
             franchiseeId: franchiseeId,
-            commissaryId: cloudReq['commissaryId'] ?? cloudReq['commissary_id'] ?? 0,
+            commissaryId:
+                cloudReq['commissaryId'] ?? cloudReq['commissary_id'] ?? 0,
             itemId: itemId,
             quantityRequested: quantityRequested,
             status: cloudStatus,
-            requestedBy: cloudReq['requestedBy'] ?? cloudReq['requested_by'] ?? 0,
-            requestedAt: _parseDateTime(cloudReq['requestedAt'] ?? cloudReq['requested_at']),
+            requestedBy:
+                cloudReq['requestedBy'] ?? cloudReq['requested_by'] ?? 0,
+            requestedAt: _parseDateTime(
+              cloudReq['requestedAt'] ?? cloudReq['requested_at'],
+            ),
             reviewedBy: cloudReq['reviewedBy'] ?? cloudReq['reviewed_by'],
-            reviewedAt: _parseDateTimeNullable(cloudReq['reviewedAt'] ?? cloudReq['reviewed_at']),
-            deliveryDate: _parseDateTimeNullable(cloudReq['deliveryDate'] ?? cloudReq['delivery_date']),
-            franchiseeNotes: cloudReq['franchiseeNotes'] ?? cloudReq['franchisee_notes'],
-            commissaryNotes: cloudReq['commissaryNotes'] ?? cloudReq['commissary_notes'],
-            createdAt: _parseDateTime(cloudReq['createdAt'] ?? cloudReq['created_at']),
-            lastUpdated: _parseDateTime(cloudReq['lastUpdated'] ?? cloudReq['last_updated']),
+            reviewedAt: _parseDateTimeNullable(
+              cloudReq['reviewedAt'] ?? cloudReq['reviewed_at'],
+            ),
+            deliveryDate: _parseDateTimeNullable(
+              cloudReq['deliveryDate'] ?? cloudReq['delivery_date'],
+            ),
+            franchiseeNotes:
+                cloudReq['franchiseeNotes'] ?? cloudReq['franchisee_notes'],
+            commissaryNotes:
+                cloudReq['commissaryNotes'] ?? cloudReq['commissary_notes'],
+            createdAt: _parseDateTime(
+              cloudReq['createdAt'] ?? cloudReq['created_at'],
+            ),
+            lastUpdated: _parseDateTime(
+              cloudReq['lastUpdated'] ?? cloudReq['last_updated'],
+            ),
             isDeleted: cloudReq['isDeleted'] ?? cloudReq['is_deleted'] ?? false,
             cloudId: cloudId,
           );
@@ -530,26 +556,42 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
       });
       AppLogger.sync('Batch upsert of replenishment requests completed');
     } catch (e, stackTrace) {
-      AppLogger.error('Error batch upserting requests from cloud', e, stackTrace);
+      AppLogger.error(
+        'Error batch upserting requests from cloud',
+        e,
+        stackTrace,
+      );
       rethrow;
     }
   }
-  
+
   /// ✅ Add stock to branch inventory when a replenishment request is approved
-  /// 
+  ///
   /// IMPORTANT: Failures here are logged but not rethrown to avoid breaking sync.
   /// However, inventory discrepancies may occur if this fails - check logs for
   /// 'CRITICAL: Stock update failed' messages and manually correct inventory.
-  Future<void> _addStockToBranch(int franchiseeId, int itemId, int quantity) async {
+  Future<void> _addStockToBranch(
+    int franchiseeId,
+    int itemId,
+    int quantity,
+  ) async {
     try {
       // Find or create the branch stock record for this item
-      var branchStock = await db.branchItemStockDao.getStockForItem(franchiseeId, itemId);
-      
+      var branchStock = await db.branchItemStockDao.getStockForItem(
+        franchiseeId,
+        itemId,
+      );
+
       if (branchStock != null) {
         // Update existing stock record
-        final success = await db.branchItemStockDao.receiveItems(branchStock.id, quantity);
+        final success = await db.branchItemStockDao.receiveItems(
+          branchStock.id,
+          quantity,
+        );
         if (success) {
-          AppLogger.sync('Added $quantity units to existing branch stock (stockId: ${branchStock.id})');
+          AppLogger.sync(
+            'Added $quantity units to existing branch stock (stockId: ${branchStock.id})',
+          );
         } else {
           // CRITICAL: Stock update returned false - may cause inventory discrepancy
           AppLogger.error(
@@ -567,12 +609,14 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             stock: Value(quantity),
             sold: const Value(0),
             spoilage: const Value(0),
-            lastReceivedAt: Value(DateTime.now()),
+            lastReceivedAt: Value(DateTime.now().toUtc()),
             lastReceivedQuantity: Value(quantity),
             isSynced: const Value(false),
           ),
         );
-        AppLogger.sync('Created new branch stock record (id: $stockId) with $quantity units');
+        AppLogger.sync(
+          'Created new branch stock record (id: $stockId) with $quantity units',
+        );
       }
     } catch (e, stackTrace) {
       // CRITICAL: Log this prominently - approved request won't have stock added!
@@ -626,26 +670,29 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       if (id != null) {
         // Update existing record by ID
-        await (update(stockReplenishmentRequests)..where((t) => t.id.equals(id)))
-            .write(StockReplenishmentRequestsCompanion(
-          franchiseeId: Value(franchiseeId),
-          commissaryId: Value(commissaryId),
-          itemId: Value(itemId),
-          quantityRequested: Value(quantityRequested),
-          status: Value(status),
-          requestedBy: Value(requestedBy),
-          requestedAt: Value(requestedAt),
-          reviewedBy: Value(reviewedBy),
-          reviewedAt: Value(reviewedAt),
-          deliveryDate: Value(deliveryDate),
-          franchiseeNotes: Value(franchiseeNotes),
-          commissaryNotes: Value(commissaryNotes),
-          createdAt: Value(createdAt),
-          lastUpdated: Value(lastUpdated),
-          isDeleted: Value(isDeleted),
-          isSynced: const Value(true),
-          cloudId: Value(cloudId),
-        ));
+        await (update(
+          stockReplenishmentRequests,
+        )..where((t) => t.id.equals(id))).write(
+          StockReplenishmentRequestsCompanion(
+            franchiseeId: Value(franchiseeId),
+            commissaryId: Value(commissaryId),
+            itemId: Value(itemId),
+            quantityRequested: Value(quantityRequested),
+            status: Value(status),
+            requestedBy: Value(requestedBy),
+            requestedAt: Value(requestedAt),
+            reviewedBy: Value(reviewedBy),
+            reviewedAt: Value(reviewedAt),
+            deliveryDate: Value(deliveryDate),
+            franchiseeNotes: Value(franchiseeNotes),
+            commissaryNotes: Value(commissaryNotes),
+            createdAt: Value(createdAt),
+            lastUpdated: Value(lastUpdated),
+            isDeleted: Value(isDeleted),
+            isSynced: const Value(true),
+            cloudId: Value(cloudId),
+          ),
+        );
         print('   ✓ Updated request #$id (status: $status)');
       } else {
         // Insert new record
@@ -670,7 +717,9 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             cloudId: Value(cloudId),
           ),
         );
-        print('   ✓ Inserted new request from cloud (cloudId: $cloudId, status: $status)');
+        print(
+          '   ✓ Inserted new request from cloud (cloudId: $cloudId, status: $status)',
+        );
       }
     } catch (e) {
       print('❌ Error upserting request from cloud: $e');

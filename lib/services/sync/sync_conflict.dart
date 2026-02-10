@@ -58,7 +58,7 @@ class SyncConflictRecord {
     this.organizationId,
     DateTime? createdAt,
     this.resolvedAt,
-  }) : createdAt = createdAt ?? DateTime.now();
+  }) : createdAt = createdAt ?? DateTime.now().toUtc();
 
   /// Create from database row
   factory SyncConflictRecord.fromDb(Map<String, dynamic> row) {
@@ -123,17 +123,18 @@ class SyncConflictRecord {
   }
 
   @override
-  String toString() => 'SyncConflictRecord($tableName, $cloudId, $conflictType)';
+  String toString() =>
+      'SyncConflictRecord($tableName, $cloudId, $conflictType)';
 }
 
 /// Custom JSON encoder for sync conflict data.
-/// 
+///
 /// WHY CUSTOM IMPLEMENTATION:
 /// This custom encoder is used instead of dart:convert's jsonEncode() because:
 /// 1. Handles DateTime objects directly (converts to ISO8601 strings)
 /// 2. Provides consistent encoding for sync conflict records stored in SQLite
 /// 3. Ensures all data types used in sync records are properly serialized
-/// 
+///
 /// The standard dart:convert jsonEncode() throws on DateTime and other non-primitive types.
 /// While we could use a custom encoder function with jsonEncode(), this implementation
 /// keeps the encoding logic self-contained and consistent with fromDb() parsing.
@@ -173,14 +174,14 @@ class JsonEncoder {
 }
 
 /// Custom JSON decoder for sync conflict data.
-/// 
+///
 /// WHY CUSTOM IMPLEMENTATION:
 /// Paired with the custom JsonEncoder above. While dart:convert's jsonDecode()
 /// could be used for basic JSON parsing, this decoder:
 /// 1. Provides symmetric handling with JsonEncoder
 /// 2. Enables consistent error handling during sync conflict resolution
 /// 3. Can be extended to handle special types (like DateTime parsing) if needed
-/// 
+///
 /// TODO: Consider migrating to dart:convert if DateTime handling is moved to
 /// the fromDb()/toDbMap() layer instead.
 class JsonDecoder {

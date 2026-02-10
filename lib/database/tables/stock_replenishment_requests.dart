@@ -28,7 +28,7 @@ class StockReplenishmentRequests extends Table {
   IntColumn get requestedBy => integer().references(Users, #id)();
 
   DateTimeColumn get requestedAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   @ReferenceName('replenishmentReviewer')
   IntColumn get reviewedBy => integer().nullable().references(Users, #id)();
@@ -42,9 +42,9 @@ class StockReplenishmentRequests extends Table {
   TextColumn get commissaryNotes => text().nullable().withLength(max: 1000)();
 
   DateTimeColumn get createdAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
   DateTimeColumn get lastUpdated =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 

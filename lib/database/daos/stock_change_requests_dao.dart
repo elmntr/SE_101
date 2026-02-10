@@ -224,7 +224,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       final companion = StockChangeRequestsCompanion(
         quantity: quantity != null ? Value(quantity) : const Value.absent(),
         reason: reason != null ? Value(reason) : const Value.absent(),
-        lastUpdated: Value(DateTime.now()),
+        lastUpdated: Value(DateTime.now().toUtc()),
         isSynced: const Value(false),
       );
 
@@ -255,8 +255,8 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
           )..where((t) => t.id.equals(requestId))).write(
             StockChangeRequestsCompanion(
               status: Value('pending'),
-              submittedAt: Value(DateTime.now()),
-              lastUpdated: Value(DateTime.now()),
+              submittedAt: Value(DateTime.now().toUtc()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
@@ -332,9 +332,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
                   t.status.equals('pending') &
                   t.isDeleted.equals(false),
             )
-            ..orderBy([
-              (t) => OrderingTerm(expression: t.submittedAt),
-            ]))
+            ..orderBy([(t) => OrderingTerm(expression: t.submittedAt)]))
           .get();
     } catch (e) {
       print('❌ Error fetching pending requests for franchisee: $e');
@@ -364,9 +362,9 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
           StockChangeRequestsCompanion(
             status: Value('approved'),
             reviewedBy: Value(reviewedBy),
-            reviewedAt: Value(DateTime.now()),
+            reviewedAt: Value(DateTime.now().toUtc()),
             reviewNotes: Value(reviewNotes),
-            lastUpdated: Value(DateTime.now()),
+            lastUpdated: Value(DateTime.now().toUtc()),
             isSynced: Value(false),
           ),
         );
@@ -402,7 +400,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
               variables: [
                 Variable.withInt(request.quantity),
                 Variable.withInt(request.quantity),
-                Variable.withDateTime(DateTime.now()),
+                Variable.withDateTime(DateTime.now().toUtc()),
                 Variable.withInt(request.itemId),
               ],
             );
@@ -438,9 +436,9 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             StockChangeRequestsCompanion(
               status: Value('rejected'),
               reviewedBy: Value(reviewedBy),
-              reviewedAt: Value(DateTime.now()),
+              reviewedAt: Value(DateTime.now().toUtc()),
               reviewNotes: Value(reason),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
@@ -562,7 +560,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             StockChangeRequestsCompanion(
               isDeleted: Value(true),
               isSynced: Value(false),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
             ),
           );
 
@@ -663,15 +661,26 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             quantity: cloudReq['quantity'],
             status: cloudReq['status'],
             requestedBy: cloudReq['requestedBy'] ?? cloudReq['requested_by'],
-            requestedAt: _parseDateTime(cloudReq['requestedAt'] ?? cloudReq['requested_at']),
-            submittedAt: _parseDateTimeNullable(cloudReq['submittedAt'] ?? cloudReq['submitted_at']),
+            requestedAt: _parseDateTime(
+              cloudReq['requestedAt'] ?? cloudReq['requested_at'],
+            ),
+            submittedAt: _parseDateTimeNullable(
+              cloudReq['submittedAt'] ?? cloudReq['submitted_at'],
+            ),
             reviewedBy: cloudReq['reviewedBy'] ?? cloudReq['reviewed_by'],
-            reviewedAt: _parseDateTimeNullable(cloudReq['reviewedAt'] ?? cloudReq['reviewed_at']),
+            reviewedAt: _parseDateTimeNullable(
+              cloudReq['reviewedAt'] ?? cloudReq['reviewed_at'],
+            ),
             reason: cloudReq['reason'],
             reviewNotes: cloudReq['reviewNotes'] ?? cloudReq['review_notes'],
-            originalStock: cloudReq['originalStock'] ?? cloudReq['original_stock'],
-            createdAt: _parseDateTime(cloudReq['createdAt'] ?? cloudReq['created_at']),
-            lastUpdated: _parseDateTime(cloudReq['lastUpdated'] ?? cloudReq['last_updated']),
+            originalStock:
+                cloudReq['originalStock'] ?? cloudReq['original_stock'],
+            createdAt: _parseDateTime(
+              cloudReq['createdAt'] ?? cloudReq['created_at'],
+            ),
+            lastUpdated: _parseDateTime(
+              cloudReq['lastUpdated'] ?? cloudReq['last_updated'],
+            ),
             isDeleted: cloudReq['isDeleted'] ?? cloudReq['is_deleted'] ?? false,
             cloudId: cloudReq['cloudId'] ?? cloudReq['cloud_id'],
           );

@@ -55,9 +55,9 @@ class DailySalesSummary extends Table {
 
   /// Track when summary was created/modified
   DateTimeColumn get createdAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
   DateTimeColumn get lastUpdated =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   /// Sync fields for cloud synchronization
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
@@ -66,6 +66,6 @@ class DailySalesSummary extends Table {
   /// Ensure one summary per item per branch per day
   @override
   List<Set<Column>> get uniqueKeys => [
-        {organizationId, itemId, summaryDate},
-      ];
+    {organizationId, itemId, summaryDate},
+  ];
 }
