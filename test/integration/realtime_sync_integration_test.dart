@@ -8,12 +8,16 @@ import 'package:drift/native.dart';
 import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 
+import 'package:flutter/services.dart';
+
 import 'realtime_sync_integration_test.mocks.dart';
 
 @GenerateNiceMocks([
   MockSpec<SupabaseClient>(),
 ])
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  
   late AppDatabase db;
   late MockSupabaseClient mockSupabase;
   late RealtimeStockRequestService service;
@@ -35,6 +39,10 @@ void main() {
   });
 
   tearDown(() async {
+    // Detach all screens before disposing to avoid "Cannot add new events after calling close" error
+    while (service.activeScreenCount > 0) {
+      await service.detach();
+    }
     service.dispose();
     await db.close();
   });
@@ -246,7 +254,7 @@ class TestableRealtimeChannel extends Fake implements RealtimeChannel {
     PostgresChangeFilter? filter,
     required void Function(PostgresChangePayload payload) callback,
   }) {
-    if (event == PostgresChangeEvent.update) {
+    if (event == PostgresChangeEvent.update || event == PostgresChangeEvent.all) {
       _updateCallback = callback;
     }
     return this;
