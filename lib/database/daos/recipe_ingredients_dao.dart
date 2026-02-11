@@ -148,7 +148,7 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase>
     try {
       final updated = recipeIngredient.copyWith(
         isSynced: false,
-        lastUpdated: DateTime.now(),
+        lastUpdated: DateTime.now().toUtc(),
       );
       return await update(recipeIngredients).replace(updated);
     } catch (e) {
@@ -179,7 +179,7 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase>
             RecipeIngredientsCompanion(
               isDeleted: Value(true),
               isSynced: Value(false),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
             ),
           );
       return result > 0;
@@ -199,7 +199,7 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase>
             RecipeIngredientsCompanion(
               isDeleted: Value(true),
               isSynced: Value(false),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
             ),
           );
       return result;
@@ -419,13 +419,16 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase>
       await db.transaction(() async {
         for (final cloudRI in cloudRecipeIngredients) {
           // Map Supabase column names to local column names
-          final quantityValue = cloudRI['quantity_needed'] ?? cloudRI['quantity'];
-          
+          final quantityValue =
+              cloudRI['quantity_needed'] ?? cloudRI['quantity'];
+
           await upsertFromCloud(
-            id: cloudRI['id'] ?? cloudRI['local_id'],  // Supabase uses 'id'
+            id: cloudRI['id'] ?? cloudRI['local_id'], // Supabase uses 'id'
             itemId: cloudRI['item_id'],
             ingredientId: cloudRI['ingredient_id'],
-            quantityNeeded: quantityValue is num ? quantityValue.toDouble() : 0.0,
+            quantityNeeded: quantityValue is num
+                ? quantityValue.toDouble()
+                : 0.0,
             unit: cloudRI['unit'] ?? 'piece',
             notes: cloudRI['notes'],
             createdAt: DateTime.parse(cloudRI['created_at']),

@@ -101,7 +101,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
     try {
       final updated = role.copyWith(
         isSynced: false,
-        lastUpdated: DateTime.now(),
+        lastUpdated: DateTime.now().toUtc(),
       );
       return await update(roles).replace(updated);
     } catch (e) {
@@ -140,7 +140,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
           RolesCompanion(
             isActive: Value(false),
             isSynced: Value(false),
-            lastUpdated: Value(DateTime.now()),
+            lastUpdated: Value(DateTime.now().toUtc()),
           ),
         );
         print(
@@ -168,7 +168,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       final result = await (update(roles)..where((t) => t.id.equals(id))).write(
         RolesCompanion(
           isActive: Value(false),
-          lastUpdated: Value(DateTime.now()),
+          lastUpdated: Value(DateTime.now().toUtc()),
           isSynced: Value(false),
         ),
       );
@@ -340,7 +340,9 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
 
   /// ✅ Batch upsert from cloud
   /// Expects data from toLocalFormat (camelCase keys) or raw cloud data (snake_case)
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudRoles) async {
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudRoles,
+  ) async {
     try {
       await db.transaction(() async {
         for (final cloudRole in cloudRoles) {
@@ -349,19 +351,53 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
             id: cloudRole['localId'] ?? cloudRole['local_id'] ?? 0,
             name: cloudRole['name'] ?? 'Unknown Role',
             description: cloudRole['description'],
-            canViewInventory: cloudRole['canViewInventory'] ?? cloudRole['can_view_inventory'] ?? false,
-            canAddInventory: cloudRole['canAddInventory'] ?? cloudRole['can_add_inventory'] ?? false,
-            canEditInventory: cloudRole['canEditInventory'] ?? cloudRole['can_edit_inventory'] ?? false,
-            canDeleteInventory: cloudRole['canDeleteInventory'] ?? cloudRole['can_delete_inventory'] ?? false,
-            canViewReports: cloudRole['canViewReports'] ?? cloudRole['can_view_reports'] ?? false,
-            canExportData: cloudRole['canExportData'] ?? cloudRole['can_export_data'] ?? false,
-            canAccessSettings: cloudRole['canAccessSettings'] ?? cloudRole['can_access_settings'] ?? false,
-            canManageEmployees: cloudRole['canManageEmployees'] ?? cloudRole['can_manage_employees'] ?? false,
-            canManageRoles: cloudRole['canManageRoles'] ?? cloudRole['can_manage_roles'] ?? false,
-            isSystemRole: cloudRole['isSystemRole'] ?? cloudRole['is_system_role'] ?? false,
+            canViewInventory:
+                cloudRole['canViewInventory'] ??
+                cloudRole['can_view_inventory'] ??
+                false,
+            canAddInventory:
+                cloudRole['canAddInventory'] ??
+                cloudRole['can_add_inventory'] ??
+                false,
+            canEditInventory:
+                cloudRole['canEditInventory'] ??
+                cloudRole['can_edit_inventory'] ??
+                false,
+            canDeleteInventory:
+                cloudRole['canDeleteInventory'] ??
+                cloudRole['can_delete_inventory'] ??
+                false,
+            canViewReports:
+                cloudRole['canViewReports'] ??
+                cloudRole['can_view_reports'] ??
+                false,
+            canExportData:
+                cloudRole['canExportData'] ??
+                cloudRole['can_export_data'] ??
+                false,
+            canAccessSettings:
+                cloudRole['canAccessSettings'] ??
+                cloudRole['can_access_settings'] ??
+                false,
+            canManageEmployees:
+                cloudRole['canManageEmployees'] ??
+                cloudRole['can_manage_employees'] ??
+                false,
+            canManageRoles:
+                cloudRole['canManageRoles'] ??
+                cloudRole['can_manage_roles'] ??
+                false,
+            isSystemRole:
+                cloudRole['isSystemRole'] ??
+                cloudRole['is_system_role'] ??
+                false,
             isActive: cloudRole['isActive'] ?? cloudRole['is_active'] ?? true,
-            createdAt: _parseDateTime(cloudRole['createdAt'] ?? cloudRole['created_at']),
-            lastUpdated: _parseDateTime(cloudRole['lastUpdated'] ?? cloudRole['last_updated']),
+            createdAt: _parseDateTime(
+              cloudRole['createdAt'] ?? cloudRole['created_at'],
+            ),
+            lastUpdated: _parseDateTime(
+              cloudRole['lastUpdated'] ?? cloudRole['last_updated'],
+            ),
             cloudId: cloudRole['cloudId'] ?? cloudRole['cloud_id'] ?? '',
           );
         }
@@ -381,77 +417,78 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
   }
 
   Future<void> upsertFromCloud({
-  required int id,
-  required String name,
-  String? description,
-  required bool canViewInventory,
-  required bool canAddInventory,
-  required bool canEditInventory,
-  required bool canDeleteInventory,
-  required bool canViewReports,
-  required bool canExportData,
-  required bool canAccessSettings,
-  required bool canManageEmployees,
-  required bool canManageRoles,
-  required bool isSystemRole,
-  required bool isActive,
-  required DateTime createdAt,
-  required DateTime lastUpdated,
-  required String cloudId,
-}) async {
-  try {
-    // ✅ First, try to find existing role by name
-    final existingRole = await getRoleByName(name);
-    
-    if (existingRole != null) {
-      // ✅ Update existing role instead of inserting
-      await (update(roles)..where((t) => t.id.equals(existingRole.id)))
-        .write(RolesCompanion(
-          description: Value(description),
-          canViewInventory: Value(canViewInventory),
-          canAddInventory: Value(canAddInventory),
-          canEditInventory: Value(canEditInventory),
-          canDeleteInventory: Value(canDeleteInventory),
-          canViewReports: Value(canViewReports),
-          canExportData: Value(canExportData),
-          canAccessSettings: Value(canAccessSettings),
-          canManageEmployees: Value(canManageEmployees),
-          canManageRoles: Value(canManageRoles),
-          isSystemRole: Value(isSystemRole),
-          isActive: Value(isActive),
-          lastUpdated: Value(lastUpdated),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ));
-    } else {
-      // ✅ Insert new role
-      await into(roles).insert(
-        RolesCompanion.insert(
-          name: name,
-          description: Value(description),
-          canViewInventory: Value(canViewInventory),
-          canAddInventory: Value(canAddInventory),
-          canEditInventory: Value(canEditInventory),
-          canDeleteInventory: Value(canDeleteInventory),
-          canViewReports: Value(canViewReports),
-          canExportData: Value(canExportData),
-          canAccessSettings: Value(canAccessSettings),
-          canManageEmployees: Value(canManageEmployees),
-          canManageRoles: Value(canManageRoles),
-          isSystemRole: Value(isSystemRole),
-          isActive: Value(isActive),
-          createdAt: Value(createdAt),
-          lastUpdated: Value(lastUpdated),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ),
-      );
+    required int id,
+    required String name,
+    String? description,
+    required bool canViewInventory,
+    required bool canAddInventory,
+    required bool canEditInventory,
+    required bool canDeleteInventory,
+    required bool canViewReports,
+    required bool canExportData,
+    required bool canAccessSettings,
+    required bool canManageEmployees,
+    required bool canManageRoles,
+    required bool isSystemRole,
+    required bool isActive,
+    required DateTime createdAt,
+    required DateTime lastUpdated,
+    required String cloudId,
+  }) async {
+    try {
+      // ✅ First, try to find existing role by name
+      final existingRole = await getRoleByName(name);
+
+      if (existingRole != null) {
+        // ✅ Update existing role instead of inserting
+        await (update(roles)..where((t) => t.id.equals(existingRole.id))).write(
+          RolesCompanion(
+            description: Value(description),
+            canViewInventory: Value(canViewInventory),
+            canAddInventory: Value(canAddInventory),
+            canEditInventory: Value(canEditInventory),
+            canDeleteInventory: Value(canDeleteInventory),
+            canViewReports: Value(canViewReports),
+            canExportData: Value(canExportData),
+            canAccessSettings: Value(canAccessSettings),
+            canManageEmployees: Value(canManageEmployees),
+            canManageRoles: Value(canManageRoles),
+            isSystemRole: Value(isSystemRole),
+            isActive: Value(isActive),
+            lastUpdated: Value(lastUpdated),
+            isSynced: Value(true),
+            cloudId: Value(cloudId),
+          ),
+        );
+      } else {
+        // ✅ Insert new role
+        await into(roles).insert(
+          RolesCompanion.insert(
+            name: name,
+            description: Value(description),
+            canViewInventory: Value(canViewInventory),
+            canAddInventory: Value(canAddInventory),
+            canEditInventory: Value(canEditInventory),
+            canDeleteInventory: Value(canDeleteInventory),
+            canViewReports: Value(canViewReports),
+            canExportData: Value(canExportData),
+            canAccessSettings: Value(canAccessSettings),
+            canManageEmployees: Value(canManageEmployees),
+            canManageRoles: Value(canManageRoles),
+            isSystemRole: Value(isSystemRole),
+            isActive: Value(isActive),
+            createdAt: Value(createdAt),
+            lastUpdated: Value(lastUpdated),
+            isSynced: Value(true),
+            cloudId: Value(cloudId),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error upserting role from cloud: $e');
+      rethrow;
     }
-  } catch (e) {
-    print('❌ Error upserting role from cloud: $e');
-    rethrow;
   }
-}
 
   /// ✅ Get role by cloud ID
   Future<Role?> getRoleByCloudId(String cloudId) async {
