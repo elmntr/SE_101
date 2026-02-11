@@ -320,7 +320,7 @@ void main() {
       quantityRequested: 2,
       requestedBy: requesterId,
     );
-    final id3 = await dao.createRequest(
+    await dao.createRequest(
       franchiseeId: franchiseeId,
       commissaryId: commissaryId,
       itemId: itemId,

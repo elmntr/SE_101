@@ -33,9 +33,10 @@ class SyncConflictsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Get all unresolved conflicts (optionally filtered by organization)
-  Future<List<SyncConflict>> getUnresolvedConflicts({int? organizationId}) async {
-    final query = select(syncConflicts)
-      ..where((t) => t.resolvedAt.isNull());
+  Future<List<SyncConflict>> getUnresolvedConflicts({
+    int? organizationId,
+  }) async {
+    final query = select(syncConflicts)..where((t) => t.resolvedAt.isNull());
 
     if (organizationId != null) {
       query.where((t) => t.organizationId.equals(organizationId));
@@ -58,7 +59,7 @@ class SyncConflictsDao extends DatabaseAccessor<AppDatabase>
     if (organizationId != null) {
       query.where((t) => t.organizationId.equals(organizationId));
     }
-    
+
     if (!includeResolved) {
       query.where((t) => t.resolvedAt.isNull());
     }
@@ -86,8 +87,9 @@ class SyncConflictsDao extends DatabaseAccessor<AppDatabase>
 
   /// Get conflict by ID
   Future<SyncConflict?> getConflictById(int id) async {
-    return await (select(syncConflicts)..where((t) => t.id.equals(id)))
-        .getSingleOrNull();
+    return await (select(
+      syncConflicts,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   /// Check if a conflict already exists for this record
@@ -95,11 +97,12 @@ class SyncConflictsDao extends DatabaseAccessor<AppDatabase>
     required String sourceTable,
     required String cloudId,
   }) async {
-    return await (select(syncConflicts)
-          ..where((t) =>
+    return await (select(syncConflicts)..where(
+          (t) =>
               t.sourceTable.equals(sourceTable) &
               t.cloudId.equals(cloudId) &
-              t.resolvedAt.isNull()))
+              t.resolvedAt.isNull(),
+        ))
         .getSingleOrNull();
   }
 
@@ -109,69 +112,57 @@ class SyncConflictsDao extends DatabaseAccessor<AppDatabase>
     required String resolution,
     String? notes,
   }) async {
-    final rowsAffected = await (update(syncConflicts)
-          ..where((t) => t.id.equals(id)))
-        .write(
-      SyncConflictsCompanion(
-        resolution: Value(resolution),
-        resolvedAt: Value(DateTime.now()),
-        notes: Value(notes),
-      ),
-    );
+    final rowsAffected =
+        await (update(syncConflicts)..where((t) => t.id.equals(id))).write(
+          SyncConflictsCompanion(
+            resolution: Value(resolution),
+            resolvedAt: Value(DateTime.now().toUtc()),
+            notes: Value(notes),
+          ),
+        );
     return rowsAffected > 0;
   }
 
   /// Resolve conflict by keeping local version
-  Future<bool> resolveKeepLocal({
-    required int id,
-    String? notes,
-  }) async {
-    return await markResolved(
-      id: id,
-      resolution: 'localWins',
-      notes: notes,
-    );
+  Future<bool> resolveKeepLocal({required int id, String? notes}) async {
+    return await markResolved(id: id, resolution: 'localWins', notes: notes);
   }
 
   /// Resolve conflict by keeping cloud version
-  Future<bool> resolveKeepCloud({
-    required int id,
-    String? notes,
-  }) async {
-    return await markResolved(
-      id: id,
-      resolution: 'cloudWins',
-      notes: notes,
-    );
+  Future<bool> resolveKeepCloud({required int id, String? notes}) async {
+    return await markResolved(id: id, resolution: 'cloudWins', notes: notes);
   }
 
   /// Clean up old resolved conflicts (older than specified days)
   Future<int> cleanupOldConflicts({int days = 30}) async {
     final cutoffDate = DateTime.now().subtract(Duration(days: days));
 
-    return await (delete(syncConflicts)
-          ..where((t) =>
-              t.resolvedAt.isNotNull() & t.resolvedAt.isSmallerThanValue(cutoffDate)))
+    return await (delete(syncConflicts)..where(
+          (t) =>
+              t.resolvedAt.isNotNull() &
+              t.resolvedAt.isSmallerThanValue(cutoffDate),
+        ))
         .go();
   }
 
   /// Delete a specific conflict
   Future<bool> deleteConflict(int id) async {
-    final rowsDeleted =
-        await (delete(syncConflicts)..where((t) => t.id.equals(id))).go();
+    final rowsDeleted = await (delete(
+      syncConflicts,
+    )..where((t) => t.id.equals(id))).go();
     return rowsDeleted > 0;
   }
 
   /// Delete all resolved conflicts
   Future<int> deleteAllResolved() async {
-    return await (delete(syncConflicts)..where((t) => t.resolvedAt.isNotNull()))
-        .go();
+    return await (delete(
+      syncConflicts,
+    )..where((t) => t.resolvedAt.isNotNull())).go();
   }
 
   /// Watch unresolved conflicts (for UI)
   Stream<List<SyncConflict>> watchUnresolvedConflicts({int? organizationId}) {
-    final query = select(syncConflicts)
-      ..where((t) => t.resolvedAt.isNull());
+    final query = select(syncConflicts)..where((t) => t.resolvedAt.isNull());
 
     if (organizationId != null) {
       query.where((t) => t.organizationId.equals(organizationId));
@@ -184,15 +175,18 @@ class SyncConflictsDao extends DatabaseAccessor<AppDatabase>
 
   /// Watch unresolved conflict count (for badges)
   Stream<int> watchUnresolvedCount({int? organizationId}) {
-    return watchUnresolvedConflicts(organizationId: organizationId)
-        .map((conflicts) => conflicts.length);
+    return watchUnresolvedConflicts(
+      organizationId: organizationId,
+    ).map((conflicts) => conflicts.length);
   }
 
   /// Get conflicts grouped by table
   Future<Map<String, List<SyncConflict>>> getConflictsGroupedByTable({
     int? organizationId,
   }) async {
-    final conflicts = await getUnresolvedConflicts(organizationId: organizationId);
+    final conflicts = await getUnresolvedConflicts(
+      organizationId: organizationId,
+    );
     final grouped = <String, List<SyncConflict>>{};
 
     for (final conflict in conflicts) {

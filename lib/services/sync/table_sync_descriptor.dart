@@ -67,8 +67,10 @@ class FieldMapping {
     return FieldMapping(
       localField: localField,
       cloudField: cloudField,
-      toCloud: (v) => v is DateTime ? v.toIso8601String() : v?.toString(),
-      fromCloud: (v) => v != null ? DateTime.parse(v.toString()) : null,
+      toCloud: (v) =>
+          v is DateTime ? v.toUtc().toIso8601String() : v?.toString(),
+      fromCloud: (v) =>
+          v != null ? DateTime.parse(v.toString()).toLocal() : null,
     );
   }
 
@@ -175,9 +177,7 @@ class TableSyncDescriptor<T> {
     required String? Function(String table, int? localId) getCloudId,
     required String cloudIdValue,
   }) {
-    final cloudData = <String, dynamic>{
-      'cloud_id': cloudIdValue,
-    };
+    final cloudData = <String, dynamic>{'cloud_id': cloudIdValue};
 
     // Map regular fields
     for (final mapping in fieldMappings) {
@@ -313,9 +313,6 @@ extension CommonFieldMappings on List<FieldMapping> {
 
   /// Add soft delete field
   static List<FieldMapping> withSoftDelete(List<FieldMapping> fields) {
-    return [
-      ...fields,
-      FieldMapping.boolean('isDeleted', 'is_deleted'),
-    ];
+    return [...fields, FieldMapping.boolean('isDeleted', 'is_deleted')];
   }
 }

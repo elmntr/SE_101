@@ -141,7 +141,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
     try {
       final updated = organization.copyWith(
         isSynced: false,
-        lastUpdated: DateTime.now(),
+        lastUpdated: DateTime.now().toUtc(),
       );
       return await update(organizations).replace(updated);
     } catch (e) {
@@ -180,15 +180,14 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
     bool? isActive,
   }) async {
     try {
-      final query = select(organizations)
-        ..where((t) => t.type.equals(type));
-      
+      final query = select(organizations)..where((t) => t.type.equals(type));
+
       if (isActive != null) {
         query.where((t) => t.isActive.equals(isActive));
       }
-      
+
       query.orderBy([(t) => OrderingTerm(expression: t.name)]);
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching organizations by type: $e');
@@ -216,7 +215,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
           await (update(organizations)..where((t) => t.id.equals(id))).write(
             OrganizationsCompanion(
               isActive: Value(false),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
@@ -235,7 +234,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
           await (update(organizations)..where((t) => t.id.equals(id))).write(
             OrganizationsCompanion(
               isActive: Value(true),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
@@ -456,7 +455,9 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
 
   /// ✅ Batch upsert from cloud
   /// Expects data from toLocalFormat (camelCase keys)
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations) async {
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudOrganizations,
+  ) async {
     try {
       await db.transaction(() async {
         for (final cloudOrg in cloudOrganizations) {
@@ -465,14 +466,21 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             id: cloudOrg['local_id'] ?? cloudOrg['localId'] ?? 0,
             name: cloudOrg['name'] ?? 'Unknown Organization',
             type: cloudOrg['type'] ?? 'commissary',
-            parentCommissaryId: cloudOrg['parentCommissaryId'] ?? cloudOrg['parent_commissary_id'],
-            contactPerson: cloudOrg['contactPerson'] ?? cloudOrg['contact_person'],
+            parentCommissaryId:
+                cloudOrg['parentCommissaryId'] ??
+                cloudOrg['parent_commissary_id'],
+            contactPerson:
+                cloudOrg['contactPerson'] ?? cloudOrg['contact_person'],
             phone: cloudOrg['phone'],
             email: cloudOrg['email'],
             address: cloudOrg['address'],
             isActive: cloudOrg['isActive'] ?? cloudOrg['is_active'] ?? true,
-            createdAt: _parseDateTime(cloudOrg['createdAt'] ?? cloudOrg['created_at']),
-            lastUpdated: _parseDateTime(cloudOrg['lastUpdated'] ?? cloudOrg['last_updated']),
+            createdAt: _parseDateTime(
+              cloudOrg['createdAt'] ?? cloudOrg['created_at'],
+            ),
+            lastUpdated: _parseDateTime(
+              cloudOrg['lastUpdated'] ?? cloudOrg['last_updated'],
+            ),
             cloudId: cloudOrg['cloudId'] ?? cloudOrg['cloud_id'] ?? '',
           );
         }
@@ -519,20 +527,23 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
 
       if (existingId != null && existingId > 0) {
         // Update existing record
-        await (update(organizations)..where((t) => t.id.equals(existingId!)))
-            .write(OrganizationsCompanion(
-          name: Value(name),
-          type: Value(type),
-          parentCommissaryId: Value(parentCommissaryId),
-          contactPerson: Value(contactPerson),
-          phone: Value(phone),
-          email: Value(email),
-          address: Value(address),
-          isActive: Value(isActive),
-          lastUpdated: Value(lastUpdated),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ));
+        await (update(
+          organizations,
+        )..where((t) => t.id.equals(existingId!))).write(
+          OrganizationsCompanion(
+            name: Value(name),
+            type: Value(type),
+            parentCommissaryId: Value(parentCommissaryId),
+            contactPerson: Value(contactPerson),
+            phone: Value(phone),
+            email: Value(email),
+            address: Value(address),
+            isActive: Value(isActive),
+            lastUpdated: Value(lastUpdated),
+            isSynced: Value(true),
+            cloudId: Value(cloudId),
+          ),
+        );
       } else {
         // Insert new record (let database assign ID)
         await into(organizations).insert(

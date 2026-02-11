@@ -3,7 +3,7 @@
 import 'package:drift/drift.dart';
 
 /// Table for storing sync conflicts for audit and manual resolution
-/// 
+///
 /// When a conflict is detected during sync (both local and cloud modified),
 /// it's logged here for review. Conflicts are auto-deleted after 30 days
 /// if resolved.
@@ -36,7 +36,7 @@ class SyncConflicts extends Table {
 
   /// When the conflict was detected
   DateTimeColumn get createdAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   /// When the conflict was resolved (null = unresolved)
   DateTimeColumn get resolvedAt => dateTime().nullable()();

@@ -214,13 +214,14 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   }
 
   /// ✅ Get item by name (case-insensitive)
-  Future<Item?> getItemByName(
-    String name, {
-    int? organizationId,
-  }) async {
+  Future<Item?> getItemByName(String name, {int? organizationId}) async {
     try {
       final query = select(items)
-        ..where((t) => t.name.lower().equals(name.toLowerCase()) & t.isDeleted.equals(false));
+        ..where(
+          (t) =>
+              t.name.lower().equals(name.toLowerCase()) &
+              t.isDeleted.equals(false),
+        );
 
       if (organizationId != null) {
         query.where((t) => t.organizationId.equals(organizationId));
@@ -297,7 +298,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     try {
       final updated = item.copyWith(
         isSynced: false,
-        lastUpdated: DateTime.now(),
+        lastUpdated: DateTime.now().toUtc(),
       );
       return await update(items).replace(updated);
     } catch (e) {
@@ -386,7 +387,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
           .write(
             ItemsCompanion(
               categoryId: Value(categoryId),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
@@ -416,7 +417,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         variables: [
           Variable.withInt(quantity),
           Variable.withInt(quantity),
-          Variable.withDateTime(DateTime.now()),
+          Variable.withDateTime(DateTime.now().toUtc()),
           Variable.withInt(itemId),
           Variable.withInt(quantity),
         ],
@@ -452,7 +453,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         variables: [
           Variable.withInt(quantity),
           Variable.withInt(quantity),
-          Variable.withDateTime(DateTime.now()),
+          Variable.withDateTime(DateTime.now().toUtc()),
           Variable.withInt(itemId),
           Variable.withInt(quantity),
         ],
@@ -591,29 +592,48 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         for (final cloudItem in cloudItems) {
           // Support both camelCase (from toLocalFormat) and snake_case (raw cloud) keys
           final stockValue = cloudItem['stock'];
-          final criticalLevel = cloudItem['criticalLevel'] ?? cloudItem['critical_level'] ?? 
-                                cloudItem['minimumStock'] ?? cloudItem['minimum_stock'];
-          final costValue = cloudItem['costPrice'] ?? cloudItem['cost_price'] ?? 
-                           cloudItem['cost'];
-          
+          final criticalLevel =
+              cloudItem['criticalLevel'] ??
+              cloudItem['critical_level'] ??
+              cloudItem['minimumStock'] ??
+              cloudItem['minimum_stock'];
+          final costValue =
+              cloudItem['costPrice'] ??
+              cloudItem['cost_price'] ??
+              cloudItem['cost'];
+
           await upsertFromCloud(
-            cloudId: (cloudItem['cloudId'] ?? cloudItem['cloud_id'])?.toString() ?? '',
+            cloudId:
+                (cloudItem['cloudId'] ?? cloudItem['cloud_id'])?.toString() ??
+                '',
             name: (cloudItem['name'] as String?) ?? 'Unknown Item',
-            organizationId: cloudItem['organizationId'] ?? cloudItem['organization_id'] ?? 0,
+            organizationId:
+                cloudItem['organizationId'] ??
+                cloudItem['organization_id'] ??
+                0,
             stock: stockValue is num ? stockValue.toInt() : 0,
             sold: (cloudItem['sold'] as num?)?.toInt() ?? 0,
             spoilage: (cloudItem['spoilage'] as num?)?.toInt() ?? 0,
             categoryId: cloudItem['categoryId'] ?? cloudItem['category_id'],
-            masterItemId: cloudItem['masterItemId'] ?? cloudItem['master_item_id'],
+            masterItemId:
+                cloudItem['masterItemId'] ?? cloudItem['master_item_id'],
             price: _parseDouble(cloudItem['price']),
             costPrice: _parseDouble(costValue),
             unit: (cloudItem['unit'] as String?) ?? 'piece',
             minimumStock: criticalLevel is num ? criticalLevel.toInt() : null,
             description: cloudItem['description'] as String?,
-            createdAt: _parseDateTime(cloudItem['createdAt'] ?? cloudItem['created_at']),
-            lastUpdated: _parseDateTime(cloudItem['lastUpdated'] ?? cloudItem['last_updated']),
-            isDeleted: cloudItem['isDeleted'] ?? cloudItem['is_deleted'] ?? 
-                      (cloudItem['isActive'] == false) ?? (cloudItem['is_active'] == false) ?? false,
+            createdAt: _parseDateTime(
+              cloudItem['createdAt'] ?? cloudItem['created_at'],
+            ),
+            lastUpdated: _parseDateTime(
+              cloudItem['lastUpdated'] ?? cloudItem['last_updated'],
+            ),
+            isDeleted:
+                cloudItem['isDeleted'] ??
+                cloudItem['is_deleted'] ??
+                (cloudItem['isActive'] == false) ??
+                (cloudItem['is_active'] == false) ??
+                false,
           );
         }
       });
@@ -663,7 +683,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     try {
       // First check if item exists by cloud_id
       final existing = await getItemByCloudId(cloudId);
-      
+
       if (existing != null) {
         // Update existing item
         await (update(items)..where((t) => t.cloudId.equals(cloudId))).write(
@@ -763,7 +783,6 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     }
   }
 }
-
 
 /// ✅ Sorting options for items
 enum ItemSortOrder {

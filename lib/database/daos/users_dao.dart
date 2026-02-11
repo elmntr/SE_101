@@ -77,10 +77,10 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Stream<List<User>> watchUsersByOrganization(int organizationId) {
     try {
       return (select(users)
-        ..where((t) => t.organizationId.equals(organizationId))
-        ..where((t) => t.isActive.equals(true))
-        ..orderBy([(t) => OrderingTerm(expression: t.username)]))
-        .watch();
+            ..where((t) => t.organizationId.equals(organizationId))
+            ..where((t) => t.isActive.equals(true))
+            ..orderBy([(t) => OrderingTerm(expression: t.username)]))
+          .watch();
     } catch (e) {
       print('❌ Error watching users by organization: $e');
       return Stream.value([]);
@@ -137,7 +137,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     try {
       final updated = user.copyWith(
         isSynced: false,
-        lastUpdated: DateTime.now(),
+        lastUpdated: DateTime.now().toUtc(),
       );
       return await update(users).replace(updated);
     } catch (e) {
@@ -150,11 +150,13 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Future<bool> updateUserPassword(int userId, String hashedPassword) async {
     try {
       final result = await (update(users)..where((t) => t.id.equals(userId)))
-        .write(UsersCompanion(
-          password: Value(hashedPassword),
-          lastUpdated: Value(DateTime.now()),
-          isSynced: Value(false),
-        ));
+          .write(
+            UsersCompanion(
+              password: Value(hashedPassword),
+              lastUpdated: Value(DateTime.now().toUtc()),
+              isSynced: Value(false),
+            ),
+          );
       return result > 0;
     } catch (e) {
       print('❌ Error updating password: $e');
@@ -199,11 +201,18 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   }
 
   /// ✅ Get user by email and organization (for offline login)
-  Future<User?> getUserByEmailAndOrganization(String email, int organizationId) async {
+  Future<User?> getUserByEmailAndOrganization(
+    String email,
+    int organizationId,
+  ) async {
     try {
-      return await (select(users)
-        ..where((t) => t.email.equals(email) & t.organizationId.equals(organizationId) & t.isActive.equals(true)))
-        .getSingleOrNull();
+      return await (select(users)..where(
+            (t) =>
+                t.email.equals(email) &
+                t.organizationId.equals(organizationId) &
+                t.isActive.equals(true),
+          ))
+          .getSingleOrNull();
     } catch (e) {
       print('❌ Error fetching user by email and organization: $e');
       return null;
@@ -211,15 +220,18 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   }
 
   /// ✅ Get user by email and organization cloud ID (for offline login with cloud ID)
-  Future<User?> getUserByEmailAndOrganizationCloudId(String email, String organizationCloudId) async {
+  Future<User?> getUserByEmailAndOrganizationCloudId(
+    String email,
+    String organizationCloudId,
+  ) async {
     try {
       // First get the organization by cloud ID
-      final org = await (select(db.organizations)
-        ..where((t) => t.cloudId.equals(organizationCloudId)))
-        .getSingleOrNull();
-      
+      final org = await (select(
+        db.organizations,
+      )..where((t) => t.cloudId.equals(organizationCloudId))).getSingleOrNull();
+
       if (org == null) return null;
-      
+
       return await getUserByEmailAndOrganization(email, org.id);
     } catch (e) {
       print('❌ Error fetching user by email and org cloud ID: $e');
@@ -237,17 +249,17 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     try {
       final query = select(users)
         ..where((t) => t.organizationId.equals(organizationId));
-      
+
       if (isActive != null) {
         query.where((t) => t.isActive.equals(isActive));
       }
-      
+
       query.orderBy([(t) => OrderingTerm(expression: t.username)]);
-      
+
       if (limit != null) {
         query.limit(limit, offset: offset);
       }
-      
+
       return await query.get();
     } catch (e) {
       print('❌ Error fetching users by organization: $e');
@@ -272,7 +284,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
           UsersCompanion(
             isActive: Value(false),
             isSynced: Value(false),
-            lastUpdated: Value(DateTime.now()),
+            lastUpdated: Value(DateTime.now().toUtc()),
           ),
         );
         print(
@@ -300,7 +312,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       final result = await (update(users)..where((t) => t.id.equals(id))).write(
         UsersCompanion(
           isActive: Value(false),
-          lastUpdated: Value(DateTime.now()),
+          lastUpdated: Value(DateTime.now().toUtc()),
           isSynced: Value(false),
         ),
       );
@@ -382,12 +394,13 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Future<User?> authenticate(String email, String password) async {
     try {
       // First find user by email
-      final user = await (select(users)
-        ..where((u) => u.email.equals(email) & u.isActive.equals(true)))
-        .getSingleOrNull();
-      
+      final user =
+          await (select(users)
+                ..where((u) => u.email.equals(email) & u.isActive.equals(true)))
+              .getSingleOrNull();
+
       if (user == null) return null;
-      
+
       // Verify password using the stored hash (with per-user salt)
       if (verifyPassword(password, user.password)) {
         return user;
@@ -404,7 +417,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     try {
       final user = await getUserById(userId);
       if (user == null) return false;
-      
+
       // Use verifyPassword from app_database.dart (handles salt extraction)
       return verifyPassword(password, user.password);
     } catch (e) {
@@ -422,7 +435,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
           .write(
             UsersCompanion(
               password: Value(hashedPassword),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
@@ -439,12 +452,14 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Future<bool> updatePasswordHash(int userId, String hashedPassword) async {
     try {
       final result = await (update(users)..where((t) => t.id.equals(userId)))
-        .write(UsersCompanion(
-          password: Value(hashedPassword),
-          lastUpdated: Value(DateTime.now()),
-          // Don't mark as unsynced - this is just local cache for offline
-        ));
-      
+          .write(
+            UsersCompanion(
+              password: Value(hashedPassword),
+              lastUpdated: Value(DateTime.now().toUtc()),
+              // Don't mark as unsynced - this is just local cache for offline
+            ),
+          );
+
       return result > 0;
     } catch (e) {
       print('❌ Error updating password hash: $e');
@@ -464,7 +479,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             UsersCompanion(
               roleId: Value(roleId),
               isSynced: Value(false),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
             ),
           );
 
@@ -533,7 +548,9 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
   /// ✅ FIXED: Batch upsert from cloud with safe defaults for nullable values
   /// Expects data from toLocalFormat (camelCase keys) or raw cloud data (snake_case)
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudUsers) async {
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudUsers,
+  ) async {
     try {
       await db.transaction(() async {
         for (final cloudUser in cloudUsers) {
@@ -543,12 +560,19 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             username: cloudUser['username'] ?? 'Unknown User',
             password: cloudUser['password'] ?? '',
             phone: cloudUser['phone'],
-            organizationId: cloudUser['organizationId'] ?? cloudUser['organization_id'] ?? 1,
+            organizationId:
+                cloudUser['organizationId'] ??
+                cloudUser['organization_id'] ??
+                1,
             roleId: cloudUser['roleId'] ?? cloudUser['role_id'] ?? 1,
             fullName: cloudUser['fullName'] ?? cloudUser['full_name'],
             isActive: cloudUser['isActive'] ?? cloudUser['is_active'] ?? true,
-            createdAt: _parseDateTime(cloudUser['createdAt'] ?? cloudUser['created_at']),
-            lastUpdated: _parseDateTime(cloudUser['lastUpdated'] ?? cloudUser['last_updated']),
+            createdAt: _parseDateTime(
+              cloudUser['createdAt'] ?? cloudUser['created_at'],
+            ),
+            lastUpdated: _parseDateTime(
+              cloudUser['lastUpdated'] ?? cloudUser['last_updated'],
+            ),
             cloudId: cloudUser['cloudId'] ?? cloudUser['cloud_id'] ?? '',
           );
         }
@@ -585,11 +609,11 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     try {
       // ✅ First, try to find existing user by email
       final existingUser = await getUserByEmail(email);
-      
+
       if (existingUser != null) {
         // ✅ Update existing user instead of inserting
-        await (update(users)..where((t) => t.id.equals(existingUser.id)))
-          .write(UsersCompanion(
+        await (update(users)..where((t) => t.id.equals(existingUser.id))).write(
+          UsersCompanion(
             username: Value(username),
             password: Value(password),
             phone: Value(phone),
@@ -600,7 +624,8 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             lastUpdated: Value(lastUpdated),
             isSynced: Value(true),
             cloudId: Value(cloudId),
-          ));
+          ),
+        );
       } else {
         // ✅ Insert new user
         await into(users).insert(

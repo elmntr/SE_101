@@ -9,6 +9,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 
+import 'package:flutter/services.dart';
+
 import 'realtime_stock_request_service_test.mocks.dart';
 
 @GenerateNiceMocks([
@@ -16,6 +18,8 @@ import 'realtime_stock_request_service_test.mocks.dart';
   MockSpec<AppDatabase>(),
 ])
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  
   late MockSupabaseClient mockSupabase;
   late MockAppDatabase mockDb;
   late RealtimeStockRequestService service;
@@ -29,7 +33,11 @@ void main() {
     );
   });
 
-  tearDown(() {
+  tearDown(() async {
+    // Detach all screens before disposing to avoid "Cannot add new events after calling close" error
+    while (service.activeScreenCount > 0) {
+      await service.detach();
+    }
     service.dispose();
   });
 

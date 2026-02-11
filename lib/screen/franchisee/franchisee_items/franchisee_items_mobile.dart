@@ -210,12 +210,8 @@ class ItemsPageMobile extends StatelessWidget {
                                 message: state.searchQuery.isNotEmpty
                                     ? "No items match your search"
                                     : "You can manage your items here.",
-                                onAddPressed: state.searchQuery.isEmpty
-                                    ? state.createItem
-                                    : null,
-                                buttonType: state.searchQuery.isEmpty
-                                    ? EmptyButtonType.icon
-                                    : EmptyButtonType.none,
+                                onAddPressed: null,
+                                buttonType: EmptyButtonType.none,
                                 buttonText: null,
                               )
                             : buildUniversalTable(
@@ -227,14 +223,13 @@ class ItemsPageMobile extends StatelessWidget {
                                   "Stock",
                                   "Sale",
                                   "Spoilage",
-                                  "",
                                 ],
                                 rows: state.filteredItems
                                     .map(
                                       (item) => [
                                         GestureDetector(
                                           onTap: () =>
-                                              state.showItemDetails(item),
+                                              state.showItemDetails(item.item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
                                             child: Text(item.name),
@@ -242,7 +237,7 @@ class ItemsPageMobile extends StatelessWidget {
                                         ),
                                         GestureDetector(
                                           onTap: () =>
-                                              state.showItemDetails(item),
+                                              state.showItemDetails(item.item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
                                             child: Text(
@@ -254,19 +249,15 @@ class ItemsPageMobile extends StatelessWidget {
                                         ),
                                         GestureDetector(
                                           onTap: () =>
-                                              state.showItemDetails(item),
+                                              state.showItemDetails(item.item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
-                                            child: Text(
-                                              state.categoryNameForId(
-                                                item.categoryId,
-                                              ),
-                                            ),
+                                            child: Text(item.categoryName),
                                           ),
                                         ),
                                         GestureDetector(
                                           onTap: () =>
-                                              state.showItemDetails(item),
+                                              state.showItemDetails(item.item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
                                             child: Text(item.unit),
@@ -274,7 +265,7 @@ class ItemsPageMobile extends StatelessWidget {
                                         ),
                                         GestureDetector(
                                           onTap: () =>
-                                              state.showItemDetails(item),
+                                              state.showItemDetails(item.item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
                                             child: Text(item.stock.toString()),
@@ -282,7 +273,7 @@ class ItemsPageMobile extends StatelessWidget {
                                         ),
                                         GestureDetector(
                                           onTap: () =>
-                                              state.showItemDetails(item),
+                                              state.showItemDetails(item.item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
                                             child: Text(item.sold.toString()),
@@ -290,7 +281,7 @@ class ItemsPageMobile extends StatelessWidget {
                                         ),
                                         GestureDetector(
                                           onTap: () =>
-                                              state.showItemDetails(item),
+                                              state.showItemDetails(item.item),
                                           child: MouseRegion(
                                             cursor: SystemMouseCursors.click,
                                             child: Text(
@@ -298,18 +289,10 @@ class ItemsPageMobile extends StatelessWidget {
                                             ),
                                           ),
                                         ),
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.delete,
-                                            color: Colors.red,
-                                          ),
-                                          onPressed: () =>
-                                              state.deleteItem(item),
-                                        ),
                                       ],
                                     )
                                     .toList(),
-                                smallHeaderWidth: 20,
+                                smallHeaderWidth: 60,
                                 largeHeaderWidth: 120,
                               ))
                       : (state.filteredCategories.isEmpty
@@ -358,7 +341,7 @@ class ItemsPageMobile extends StatelessWidget {
                                         )
                                         .toList(),
 
-                                    smallHeaderWidth: 20,
+                                    smallHeaderWidth: 60,
                                     largeHeaderWidth: 120,
                                   );
                                 },
@@ -371,13 +354,10 @@ class ItemsPageMobile extends StatelessWidget {
       ),
       floatingActionButton:
           (!state.isLoading &&
-              ((state.selectedTab == 0 && state.dbItems.isNotEmpty) ||
-                  (state.selectedTab == 1 && state.dbCategories.isNotEmpty)))
+              (state.selectedTab == 1 && state.dbCategories.isNotEmpty))
           ? FloatingActionButton(
               backgroundColor: Colors.red[700],
-              onPressed: state.selectedTab == 0
-                  ? state.createItem
-                  : state.createCategory,
+              onPressed: state.createCategory,
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,

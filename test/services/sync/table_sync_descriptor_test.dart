@@ -37,10 +37,7 @@ void main() {
 
   group('FieldMapping', () {
     test('should create basic field mapping', () {
-      final mapping = FieldMapping(
-        localField: 'name',
-        cloudField: 'name',
-      );
+      final mapping = FieldMapping(localField: 'name', cloudField: 'name');
 
       expect(mapping.localField, 'name');
       expect(mapping.cloudField, 'name');
@@ -83,22 +80,39 @@ void main() {
     });
 
     group('factory FieldMapping.dateTime', () {
-      test('should convert DateTime to ISO string', () {
+      test('should convert DateTime to UTC ISO string', () {
         final mapping = FieldMapping.dateTime('createdAt', 'created_at');
-        final date = DateTime(2024, 1, 15, 10, 30);
+        // Use a UTC DateTime so the expected output is deterministic
+        final date = DateTime.utc(2024, 1, 15, 10, 30);
 
         final cloudValue = mapping.toCloud!(date);
-        expect(cloudValue, '2024-01-15T10:30:00.000');
+        expect(cloudValue, '2024-01-15T10:30:00.000Z');
       });
 
-      test('should parse ISO string to DateTime', () {
+      test(
+        'should convert local DateTime to UTC before producing ISO string',
+        () {
+          final mapping = FieldMapping.dateTime('createdAt', 'created_at');
+          final localDate = DateTime(2024, 1, 15, 10, 30);
+          final utcDate = localDate.toUtc();
+
+          final cloudValue = mapping.toCloud!(localDate) as String;
+          // The output must end with Z (UTC) and match the UTC equivalent
+          expect(cloudValue, endsWith('Z'));
+          expect(cloudValue, utcDate.toIso8601String());
+        },
+      );
+
+      test('should parse ISO string to local DateTime', () {
         final mapping = FieldMapping.dateTime('createdAt', 'created_at');
 
         final localValue = mapping.fromCloud!('2024-01-15T10:30:00.000Z');
         expect(localValue, isA<DateTime>());
-        expect((localValue as DateTime).year, 2024);
-        expect(localValue.month, 1);
-        expect(localValue.day, 15);
+        final dt = localValue as DateTime;
+        // fromCloud should return local time
+        expect(dt.isUtc, isFalse);
+        // The absolute point in time should match the input
+        expect(dt.toUtc(), DateTime.utc(2024, 1, 15, 10, 30));
       });
 
       test('should handle null values', () {
@@ -168,7 +182,10 @@ void main() {
         cloudTableName: 'test',
       );
 
-      expect(defaultDescriptor.conflictResolution, ConflictResolution.lastWriteWins);
+      expect(
+        defaultDescriptor.conflictResolution,
+        ConflictResolution.lastWriteWins,
+      );
       expect(defaultDescriptor.incrementalSync, isTrue);
       expect(defaultDescriptor.pullLimit, 500);
       expect(defaultDescriptor.pushBatchSize, 50);
@@ -234,8 +251,8 @@ void main() {
           'description': 'A test item',
           'price': 100,
           'organizationId': 5,
-          'createdAt': DateTime(2024, 1, 15),
-          'lastUpdated': DateTime(2024, 1, 16),
+          'createdAt': DateTime.utc(2024, 1, 15),
+          'lastUpdated': DateTime.utc(2024, 1, 16),
           'isDeleted': false,
         };
 
@@ -258,7 +275,7 @@ void main() {
         expect(cloudData['price'], 100);
         expect(cloudData['organization_id'], 'org-uuid-123');
         expect(cloudData['is_deleted'], isFalse);
-        expect(cloudData['created_at'], '2024-01-15T00:00:00.000');
+        expect(cloudData['created_at'], '2024-01-15T00:00:00.000Z');
       });
 
       test('should return empty map when required FK not resolved', () {
@@ -289,15 +306,10 @@ void main() {
               required: false,
             ),
           ],
-          fieldMappings: [
-            FieldMapping.simple('name', 'name'),
-          ],
+          fieldMappings: [FieldMapping.simple('name', 'name')],
         );
 
-        final localData = {
-          'name': 'Test Item',
-          'categoryId': null,
-        };
+        final localData = {'name': 'Test Item', 'categoryId': null};
 
         final cloudData = descWithOptionalFk.toCloudFormat(
           localData,
@@ -322,15 +334,10 @@ void main() {
               cloudUsesUuid: false,
             ),
           ],
-          fieldMappings: [
-            FieldMapping.simple('name', 'name'),
-          ],
+          fieldMappings: [FieldMapping.simple('name', 'name')],
         );
 
-        final localData = {
-          'name': 'Test Ingredient',
-          'commissaryId': 5,
-        };
+        final localData = {'name': 'Test Ingredient', 'commissaryId': 5};
 
         final cloudData = descWithIntFk.toCloudFormat(
           localData,
@@ -432,9 +439,7 @@ void main() {
               required: false,
             ),
           ],
-          fieldMappings: [
-            FieldMapping.simple('name', 'name'),
-          ],
+          fieldMappings: [FieldMapping.simple('name', 'name')],
         );
 
         final cloudData = {
@@ -464,9 +469,7 @@ void main() {
               cloudUsesUuid: false,
             ),
           ],
-          fieldMappings: [
-            FieldMapping.simple('name', 'name'),
-          ],
+          fieldMappings: [FieldMapping.simple('name', 'name')],
         );
 
         final cloudData = {
@@ -560,9 +563,7 @@ void main() {
 
   group('CommonFieldMappings extension', () {
     test('withSyncFields should add standard fields', () {
-      final baseFields = [
-        FieldMapping.simple('name', 'name'),
-      ];
+      final baseFields = [FieldMapping.simple('name', 'name')];
 
       final withSync = CommonFieldMappings.withSyncFields(baseFields);
 
@@ -572,9 +573,7 @@ void main() {
     });
 
     test('withSoftDelete should add is_deleted field', () {
-      final baseFields = [
-        FieldMapping.simple('name', 'name'),
-      ];
+      final baseFields = [FieldMapping.simple('name', 'name')];
 
       final withDelete = CommonFieldMappings.withSoftDelete(baseFields);
 
