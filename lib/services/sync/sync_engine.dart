@@ -133,6 +133,14 @@ class SyncEngine {
     _organizationCloudId = organizationCloudId;
   }
 
+  /// Clear organization context (e.g., on logout)
+  void clearOrganizationContext() {
+    _organizationType = null;
+    _organizationId = null;
+    _organizationCloudId = null;
+    AppLogger.sync('🧹 Sync engine organization context cleared');
+  }
+
   // ============================================================================
   // CACHE MANAGEMENT
   // ============================================================================

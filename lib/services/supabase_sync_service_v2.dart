@@ -913,6 +913,17 @@ class SupabaseSyncServiceV2 {
     AppLogger.sync('📍 Sync context updated: $organizationType org #$organizationId');
   }
 
+  /// Clear organization context on logout to prevent stale sync operations
+  void clearOrganizationContext() {
+    _currentOrganizationId = null;
+    _currentOrganizationCloudId = null;
+    _currentOrganizationType = null;
+    _parentCommissaryId = null;
+    _parentCommissaryCloudId = null;
+    _engine.clearOrganizationContext();
+    AppLogger.sync('🧹 Sync context cleared');
+  }
+
   void dispose() {
     _syncTimer?.cancel();
     _connectivitySubscription?.cancel();

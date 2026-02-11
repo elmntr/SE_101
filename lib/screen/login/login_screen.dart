@@ -8,6 +8,13 @@ import 'package:chickenjoo_inventory/screen/login/widgets/login_form.dart';
 import 'package:chickenjoo_inventory/screen/login/widgets/login_scaffold_mobile.dart';
 import 'package:chickenjoo_inventory/screen/login/widgets/login_scaffold_desktop.dart';
 
+/// Login screen focused only on explicit sign-in attempts.
+/// 
+/// Session restoration is handled by AuthGateScreen before this screen is shown.
+/// This screen only handles:
+/// 1. Displaying the login form with branch selection
+/// 2. Processing explicit sign-in attempts
+/// 3. Showing login errors
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -37,9 +44,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     // Load available branches
     _loadBranches();
-
-    // Check for existing Supabase session
-    _checkExistingSession();
+    
+    // Session restoration is handled by AuthGateScreen - no need to check here
   }
 
   Future<void> _loadBranches() async {
@@ -70,17 +76,6 @@ class _LoginScreenState extends State<LoginScreen> {
           _branchLoadError = 'Failed to load branches';
         });
       }
-    }
-  }
-
-  Future<void> _checkExistingSession() async {
-    final result = await _authService.restoreSession();
-    if (result.success && result.localUser != null && mounted) {
-      Navigator.pushReplacementNamed(
-        context,
-        '/home',
-        arguments: result.localUser,
-      );
     }
   }
 
