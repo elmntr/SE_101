@@ -132,6 +132,19 @@ void main() async {
   );
   AppLogger.info('✅ AppGlobals initialized');
 
+  // -------------------------------------------------------------
+  // AUTH STATE LISTENER - Clear sync context on logout
+  // -------------------------------------------------------------
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    final event = data.event;
+    final user = data.session?.user;
+    
+    if (event == AuthChangeEvent.signedOut || user == null) {
+      AppLogger.auth('🔒 Auth loss detected in main.dart - clearing sync context');
+      sync.clearOrganizationContext();
+    }
+  });
+
   // Non-blocking sync service start
   sync
       .initialize()

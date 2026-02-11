@@ -12,6 +12,7 @@ import '../database/app_database.dart';
 import '../utils/app_logger.dart';
 import '../app_globals.dart' show notifySyncComplete;
 import 'sync/sync.dart';
+import 'sync/descriptors/daily_sales_summary_descriptor.dart';
 
 /// Refactored Supabase Sync Service using generic SyncEngine
 /// 
@@ -661,14 +662,14 @@ class SupabaseSyncServiceV2 {
         'changeType': req.changeType,
         'quantity': req.quantity,
         'originalStock': req.originalStock,
-        'newStock': req.newStock,
+
         'status': req.status,
         'requestedBy': req.requestedBy,
         'requestedAt': req.requestedAt,
         'reviewedBy': req.reviewedBy,
         'reviewedAt': req.reviewedAt,
         'reason': req.reason,
-        'notes': req.notes,
+        'reviewerNotes': req.reviewNotes,
         'isDeleted': req.isDeleted,
         'createdAt': req.createdAt,
         'lastUpdated': req.lastUpdated,
@@ -692,7 +693,46 @@ class SupabaseSyncServiceV2 {
 
   Future<void> _syncDailySalesSummary() async {
     AppLogger.sync('   📊 Syncing DailySalesSummary...');
-    // TODO: Implement using generic pattern
+    
+    // Push
+    await _engine.pushTable(
+      descriptor: dailySalesSummaryDescriptor,
+      getUnsyncedRecords: ({int limit = 100, int offset = 0}) =>
+          db.dailySalesSummaryDao.getUnsyncedSummaries(limit: limit, offset: offset),
+      markAsSynced: (ids, {cloudIds}) =>
+          db.dailySalesSummaryDao.markAsSynced(ids, cloudIds: cloudIds),
+      toMap: (summary) => {
+        'id': summary.id,
+        'organizationId': summary.organizationId,
+        'itemId': summary.itemId,
+        'summaryDate': summary.summaryDate,
+        'quantitySold': summary.quantitySold,
+        'quantitySpoiled': summary.quantitySpoiled,
+        'revenue': summary.revenue,
+        'costOfGoodsSold': summary.costOfGoodsSold,
+        'grossProfit': summary.grossProfit,
+        'transactionCount': summary.transactionCount,
+        'openingStock': summary.openingStock,
+        'closingStock': summary.closingStock,
+        'createdAt': summary.createdAt,
+        'lastUpdated': summary.lastUpdated,
+      },
+      getId: (summary) => summary.id,
+      getCloudId: (summary) => summary.cloudId,
+      shouldSkip: (summary) => false,
+    );
+
+    // Pull
+    await _engine.pullTable(
+      descriptor: dailySalesSummaryDescriptor,
+      upsertBatchFromCloud: (records) =>
+          db.dailySalesSummaryDao.upsertBatchFromCloud(records),
+      getByCloudId: (cloudId) =>
+          db.dailySalesSummaryDao.getByCloudId(cloudId),
+      getLastUpdated: (summary) => summary.lastUpdated,
+      getOrganizationId: (summary) => summary.organizationId, 
+      // Note: org ID in drift is int (local)
+    );
   }
 
   // ============================================================================
@@ -911,6 +951,17 @@ class SupabaseSyncServiceV2 {
 
     _loadOrganizationCloudIds();
     AppLogger.sync('📍 Sync context updated: $organizationType org #$organizationId');
+  }
+
+  /// Clear organization context on logout to prevent stale sync operations
+  void clearOrganizationContext() {
+    _currentOrganizationId = null;
+    _currentOrganizationCloudId = null;
+    _currentOrganizationType = null;
+    _parentCommissaryId = null;
+    _parentCommissaryCloudId = null;
+    _engine.clearOrganizationContext();
+    AppLogger.sync('🧹 Sync context cleared');
   }
 
   void dispose() {

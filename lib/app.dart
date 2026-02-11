@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/utils/app_logger.dart';
+import 'screen/auth/auth_gate_screen.dart';
 import 'screen/login/login_screen.dart';
 import 'home/home.dart';
 
@@ -81,13 +82,16 @@ class _MyAppState extends State<MyApp> {
       ),
       debugShowCheckedModeBanner: false,
 
-      // ✅ SET INITIAL ROUTE
-      initialRoute: '/login',
+      // Start with auth gate which waits for bootstrap to complete
+      home: const AuthGateScreen(),
 
-      // ✅ DEFINE ROUTES
-      routes: {'/login': (context) => const LoginScreen()},
+      // DEFINE ROUTES
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/auth-gate': (context) => const AuthGateScreen(),
+      },
 
-      // ✅ HANDLE ROUTES WITH ARGUMENTS (for HomeScreen with UserData)
+      // HANDLE ROUTES WITH ARGUMENTS (for HomeScreen with UserData)
       onGenerateRoute: (settings) {
         if (settings.name == '/home') {
           final userData = settings.arguments as UserData?;
@@ -97,7 +101,7 @@ class _MyAppState extends State<MyApp> {
             return MaterialPageRoute(builder: (context) => const LoginScreen());
           }
 
-          // ✅ Reinitialize sync service with user's organization context
+          // Reinitialize sync service with user's organization context
           reinitializeSyncWithUserContext(userData);
 
           return MaterialPageRoute(
