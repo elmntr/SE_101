@@ -388,10 +388,13 @@ class FranchiseeReportsController {
         0.0,
       );
 
+      double calculatedRevenue = 0;
+
       for (final summary in iterable) {
         // Add to period totals
         periodSold += summary.quantitySold.toDouble();
         periodSpoilage += summary.quantitySpoiled.toDouble();
+        calculatedRevenue += summary.revenue;
 
         // Check if this matches the selected specific date
         if (selectedSpecificDate != null) {
@@ -417,6 +420,10 @@ class FranchiseeReportsController {
         soldSeries[bucketIndex] += summary.quantitySold.toDouble();
         spoilageSeries[bucketIndex] += summary.quantitySpoiled.toDouble();
       }
+
+      // \x1B[33m is ANSI yellow, \x1B[0m resets color
+      print('\x1B[33m💰 Total Sales (Revenue) for selected period: ₱${calculatedRevenue.toStringAsFixed(2)}\x1B[0m');
+      print('📊 Total Sold: $periodSold, Total Spoilage: $periodSpoilage');
 
       if (requestId != _chartRequestId) {
         return;

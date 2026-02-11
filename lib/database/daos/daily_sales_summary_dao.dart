@@ -266,26 +266,109 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
   /// Get unsynced summaries
   Future<List<DailySalesSummaryData>> getUnsyncedSummaries({
     int limit = 100,
+    int offset = 0,
   }) async {
     return await (select(dailySalesSummary)
           ..where((t) => t.isSynced.equals(false))
-          ..limit(limit))
+          ..limit(limit, offset: offset))
         .get();
   }
 
   /// Mark summaries as synced
-  Future<void> markAsSynced(List<int> ids) async {
-    await (update(dailySalesSummary)..where((t) => t.id.isIn(ids)))
-        .write(const DailySalesSummaryCompanion(isSynced: Value(true)));
+  Future<void> markAsSynced(List<int> ids, {Map<int, String>? cloudIds}) async {
+    if (cloudIds != null) {
+      await batch((batch) {
+        for (final id in ids) {
+          final cloudId = cloudIds[id];
+          if (cloudId != null) {
+            batch.update(
+              dailySalesSummary,
+              DailySalesSummaryCompanion(
+                isSynced: const Value(true),
+                cloudId: Value(cloudId),
+              ),
+              where: (t) => t.id.equals(id),
+            );
+          } else {
+             batch.update(
+              dailySalesSummary,
+              const DailySalesSummaryCompanion(isSynced: Value(true)),
+              where: (t) => t.id.equals(id),
+            );
+          }
+        }
+      });
+    } else {
+      await (update(dailySalesSummary)..where((t) => t.id.isIn(ids)))
+          .write(const DailySalesSummaryCompanion(isSynced: Value(true)));
+    }
   }
 
-  /// Update cloud ID after sync
+  /// Update cloud ID after sync (Legacy helper, prefer markAsSynced with map)
   Future<void> updateCloudId(int localId, String cloudId) async {
     await (update(dailySalesSummary)..where((t) => t.id.equals(localId)))
         .write(DailySalesSummaryCompanion(
       cloudId: Value(cloudId),
       isSynced: const Value(true),
     ));
+  }
+
+  /// Get summary by cloud ID
+  Future<DailySalesSummaryData?> getByCloudId(String cloudId) async {
+    return await (select(dailySalesSummary)
+          ..where((t) => t.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
+  /// Upsert batch from cloud
+  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
+    await batch((batch) {
+      for (final record in records) {
+        final cloudId = record['cloudId'] as String;
+        
+        // Handle potentially null fields safely
+        final organizationId = record['organizationId'] as int?;
+        final itemId = record['itemId'] as int?;
+        
+        if (organizationId == null || itemId == null) {
+            // Skip invalid records where FKs couldn't be resolved
+            continue;
+        }
+
+        final summaryDate = record['summaryDate'] as DateTime;
+        final lastUpdated = record['lastUpdated'] as DateTime?;
+
+        batch.insert(
+          dailySalesSummary,
+          DailySalesSummaryCompanion.insert(
+            organizationId: organizationId,
+            itemId: itemId,
+            summaryDate: summaryDate,
+            quantitySold: Value(record['quantitySold'] as int? ?? 0),
+            quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
+            revenue: Value(record['revenue'] as double? ?? 0.0),
+            costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
+            grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
+            transactionCount: Value(record['transactionCount'] as int? ?? 0),
+            // openingStock: Value(record['openingStock'] as int?),
+            // closingStock: Value(record['closingStock'] as int?),
+            cloudId: Value(cloudId),
+            lastUpdated: Value(lastUpdated ?? DateTime.now()),
+            isSynced: const Value(true),
+          ),
+          onConflict: DoUpdate((old) => DailySalesSummaryCompanion(
+            quantitySold: Value(record['quantitySold'] as int? ?? 0),
+            quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
+            revenue: Value(record['revenue'] as double? ?? 0.0),
+            costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
+            grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
+            transactionCount: Value(record['transactionCount'] as int? ?? 0),
+            lastUpdated: Value(lastUpdated ?? DateTime.now()),
+            isSynced: const Value(true),
+          )),
+        );
+      }
+    });
   }
 
   /// Watch today's summaries for real-time UI updates

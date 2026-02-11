@@ -7,8 +7,7 @@ import '../../../database/app_database.dart';
 import '../../database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
-
-import '../../design_constants.dart';
+import 'package:chickenjoo_inventory/services/pos_service.dart';
 
 class EmployeeChangeStockPage extends StatefulWidget {
   final UserData userData;
@@ -29,6 +28,7 @@ class EmployeeChangeStockPage extends StatefulWidget {
 
 class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   late AppDatabase db;
+  late PosService posService;
 
   /// Items with branch-specific stock data
   List<ItemWithBranchStock> items = [];
@@ -48,6 +48,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
   void initState() {
     super.initState();
     db = database;
+    posService = PosService(db: db);
     _loadItems();
   }
 
@@ -193,9 +194,6 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         final spoilageQty = pendingSpoilage[i];
 
         if (soldQty > 0 || spoilageQty > 0) {
-          // ✅ NEW: Update BRANCH-SPECIFIC stock, not the shared items table
-          // This ensures each branch has isolated inventory
-
           // Check if branch stock record exists
           if (!item.hasBranchStock) {
             // Create branch stock record first
@@ -215,68 +213,51 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             continue;
           }
 
-          final branchStockId = item.branchStockId!;
-          final currentStock = item.stock;
-          final newStock = currentStock - soldQty - spoilageQty;
+          bool anySuccess = false;
 
-          print(
-            '📝 Updating branch stock for ${item.name}: stock $currentStock → $newStock (sold: $soldQty, spoilage: $spoilageQty)',
-          );
-
-          // ✅ Use branch stock DAO methods - these only affect THIS branch's stock
-          bool success = true;
+          // ✅ Use PosService to record sales and spoilage
+          // This updates BOTH BranchItemStock AND DailySalesSummary atomically
+          
           if (soldQty > 0) {
-            success = await db.branchItemStockDao.recordSale(
-              branchStockId,
-              soldQty,
-            );
-            print(success ? '   ✅ Sale recorded' : '   ❌ Sale record failed');
-          }
-          if (spoilageQty > 0 && success) {
-            success = await db.branchItemStockDao.recordSpoilage(
-              branchStockId,
-              spoilageQty,
-            );
-            print(
-              success
-                  ? '   ✅ Spoilage recorded'
-                  : '   ❌ Spoilage record failed',
-            );
-          }
-
-          // ✅ Record the change in stock_change_requests for audit trail
-          if (soldQty > 0) {
-            final requestId = await db.stockChangeRequestsDao.createChangeRequest(
-              franchiseeId: widget.userData.organizationId,
-              itemId: item.id,
-              changeType: 'sold',
+            final result = await posService.recordSale(
+              item: item,
               quantity: soldQty,
-              requestedBy: widget.userData.id,
-              originalStock: currentStock,
-              reason:
-                  'Employee stock change - ${widget.userData.fullName ?? widget.userData.username}',
+              organizationId: widget.userData.organizationId,
+              requestedByUserId: widget.userData.id,
+              createAuditRecord: true,
             );
-            await db.stockChangeRequestsDao.submitChangeRequest(requestId);
+            
+            if (result.success) {
+              print('   ✅ Sale recorded via PosService: ${item.name} x $soldQty');
+              anySuccess = true;
+            } else {
+              print('   ❌ Sale failed: ${result.errorMessage}');
+            }
           }
 
           if (spoilageQty > 0) {
-            final requestId = await db.stockChangeRequestsDao.createChangeRequest(
-              franchiseeId: widget.userData.organizationId,
-              itemId: item.id,
-              changeType: 'spoiled',
+            final result = await posService.recordSpoilage(
+              item: item,
               quantity: spoilageQty,
-              requestedBy: widget.userData.id,
-              originalStock: currentStock,
-              reason:
-                  'Employee stock change - ${widget.userData.fullName ?? widget.userData.username}',
+              organizationId: widget.userData.organizationId,
+              requestedByUserId: widget.userData.id,
+              createAuditRecord: true,
             );
-            await db.stockChangeRequestsDao.submitChangeRequest(requestId);
+            
+            if (result.success) {
+              print('   ✅ Spoilage recorded via PosService: ${item.name} x $spoilageQty');
+              anySuccess = true;
+            } else {
+              print('   ❌ Spoilage failed: ${result.errorMessage}');
+            }
           }
 
           // Create Item for the ChangeRecord callback (backwards compatibility)
-          changedItems.add(
-            item.item.copyWith(sold: soldQty, spoilage: spoilageQty),
-          );
+          if (anySuccess) {
+            changedItems.add(
+              item.item.copyWith(sold: soldQty, spoilage: spoilageQty),
+            );
+          }
         }
       }
 
