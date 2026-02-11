@@ -5,9 +5,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     
     <application
-        android:label="chickenjoo_inventory"
+        android:label="ChickenJoo Inventory App"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launch_logo">
         <activity
             android:name=".MainActivity"
             android:exported="true"
