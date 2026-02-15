@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import '../../../../database/app_database.dart';
 import '../../../../database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
@@ -27,6 +27,11 @@ class InventoryPageState extends State<InventoryPage> {
 
   /// Items with branch-specific stock data
   List<ItemWithBranchStock> items = [];
+
+  /// Stock change history
+  List<StockChangeRequest> changeHistory = [];
+  List<User> employeeOptions = [];
+  int? selectedEmployeeId;
 
   int? currentOrganizationId;
   int? commissaryId; // Parent commissary for master items
@@ -105,6 +110,13 @@ class InventoryPageState extends State<InventoryPage> {
     }
   }
 
+  void applyEmployeeFilter(int? employeeId) {
+    setState(() {
+      selectedEmployeeId = employeeId;
+    });
+    loadData();
+  }
+
   static const String orgIdKey = 'current_organization_id';
 
   Future<void> loadData() async {
@@ -130,9 +142,21 @@ class InventoryPageState extends State<InventoryPage> {
           );
         }
 
+        final employees = await db.usersDao.getUsersByOrganization(
+          currentOrganizationId!,
+          isActive: true,
+        );
+
+        final changes = await db.stockChangeRequestsDao.getAllChangeRequests(
+          franchiseeId: currentOrganizationId!,
+          requestedBy: selectedEmployeeId,
+        );
+
         if (mounted) {
           setState(() {
             items = loadedItems;
+            changeHistory = changes;
+            employeeOptions = employees;
             isLoading = false;
           });
         }
@@ -143,6 +167,8 @@ class InventoryPageState extends State<InventoryPage> {
         if (mounted) {
           setState(() {
             items = [];
+            changeHistory = [];
+            employeeOptions = [];
             isLoading = false;
           });
         }
@@ -152,6 +178,115 @@ class InventoryPageState extends State<InventoryPage> {
       if (mounted) {
         setState(() => isLoading = false);
       }
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> buildChangeHistoryRows() async {
+    final rows = <Map<String, dynamic>>[];
+
+    for (final request in changeHistory) {
+      final item = await db.itemsDao.getItemById(request.itemId);
+      final user = await db.usersDao.getUserById(request.requestedBy);
+      rows.add({
+        'employeeName': user?.fullName ?? user?.username ?? 'Unknown',
+        'itemName': item?.name ?? 'Unknown',
+        'changeType': request.changeType,
+        'quantity': request.quantity.toString(),
+        'status': request.status,
+        'request': request,
+      });
+    }
+
+    return rows;
+  }
+
+  Widget buildStatusChip(String status) {
+    Color color;
+    switch (status) {
+      case 'draft':
+        color = Colors.grey;
+        break;
+      case 'pending':
+        color = Colors.orange;
+        break;
+      case 'approved':
+        color = Colors.green;
+        break;
+      case 'rejected':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Future<void> approveChangeRequest(
+    BuildContext context,
+    StockChangeRequest request,
+  ) async {
+    if (currentUserId == null || currentUserId! <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Unable to resolve reviewer.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (request.status != 'pending') {
+      return;
+    }
+
+    try {
+      final success = await db.stockChangeRequestsDao.approveChangeRequest(
+        requestId: request.id,
+        reviewedBy: currentUserId!,
+      );
+
+      if (success) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Change approved.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await loadData();
+      } else {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Could not approve change.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error approving change: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

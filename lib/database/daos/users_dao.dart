@@ -267,7 +267,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     }
   }
 
-  /// ✅ PERMANENT DELETE: Hard-delete user from local and mark for cloud deletion
+  /// ✅ Soft delete: mark inactive and unsynced for cloud update
   Future<bool> deleteUserById(int id) async {
     try {
       // Get user to check if it has cloudId
@@ -277,26 +277,22 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         return false;
       }
 
-      // If user has cloudId, mark as inactive and unsynced first
-      // This signals the sync service to delete from cloud
-      if (user.cloudId != null && user.isActive) {
-        await (update(users)..where((t) => t.id.equals(id))).write(
-          UsersCompanion(
-            isActive: Value(false),
-            isSynced: Value(false),
-            lastUpdated: Value(DateTime.now().toUtc()),
-          ),
-        );
-        print(
-          '📤 User $id marked for cloud deletion (cloudId: ${user.cloudId})',
-        );
+      if (!user.isActive) {
+        return true;
       }
 
-      // Then permanently delete from local database
-      final result = await (delete(users)..where((t) => t.id.equals(id))).go();
+      final result = await (update(users)..where((t) => t.id.equals(id))).write(
+        UsersCompanion(
+          isActive: Value(false),
+          isSynced: Value(false),
+          lastUpdated: Value(DateTime.now().toUtc()),
+        ),
+      );
 
       if (result > 0) {
-        print('✅ User $id permanently deleted from local database');
+        print(
+          '📤 User $id marked inactive for cloud sync (cloudId: ${user.cloudId})',
+        );
       }
 
       return result > 0;

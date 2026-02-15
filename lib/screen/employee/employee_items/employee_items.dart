@@ -24,6 +24,8 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   List<ItemWithBranchStock> dbItems = [];
   List<StockChangeRequest> pendingChanges = [];
+  List<User> employeeOptions = [];
+  int? selectedEmployeeId;
   bool isLoading = true;
 
   int selectedTab = 0; // 0 = Items, 1 = Review Changes
@@ -328,7 +330,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
                 ),
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text('${row['changeType']} - Qty: ${row['quantity']}'),
+                  child: Text(
+                    'Employee: ${row['employeeName']} • ${row['changeType']} - Qty: ${row['quantity']}',
+                  ),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -534,15 +538,24 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
         );
       }
 
-      // Load pending/draft changes for this employee
+      // Load employees for filter
+      final employees = await db.usersDao.getUsersByOrganization(
+        orgId,
+        isActive: true,
+      );
+
+      // Load change history for this organization
       final changes = await db.stockChangeRequestsDao.getAllChangeRequests(
-        requestedBy: widget.userData.id,
+        franchiseeId: orgId,
+        requestedBy: selectedEmployeeId,
+        status: 'approved',
       );
 
       if (mounted) {
         setState(() {
           dbItems = items;
           pendingChanges = changes;
+          employeeOptions = employees;
           isLoading = false;
         });
       }
@@ -564,6 +577,13 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
     setState(() {
       reviewSort = sort;
     });
+  }
+
+  void applyEmployeeFilter(int? employeeId) {
+    setState(() {
+      selectedEmployeeId = employeeId;
+    });
+    loadData();
   }
 
   Future<void> deleteChangeRequest(StockChangeRequest request) async {
@@ -759,8 +779,11 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
     for (final request in pendingChanges) {
       final item = await db.itemsDao.getItemById(request.itemId);
+      final user = await db.usersDao.getUserById(request.requestedBy);
+      final employeeName = user?.fullName ?? user?.username ?? 'Unknown';
       rows.add({
         'itemName': item?.name ?? 'Unknown',
+        'employeeName': employeeName,
         'changeType': request.changeType,
         'quantity': request.quantity.toString(),
         'status': request.status,
