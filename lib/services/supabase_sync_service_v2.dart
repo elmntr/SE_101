@@ -433,7 +433,7 @@ class SupabaseSyncServiceV2 {
       },
       getId: (user) => user.id,
       getCloudId: (user) => user.cloudId,
-      shouldSkip: (user) => !user.isActive,
+      shouldSkip: (user) => false,
     );
 
     final result = await _engine.pullTable(
