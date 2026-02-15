@@ -252,6 +252,34 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
     }
   }
 
+  DateTime _batchKey(DateTime value) {
+    return DateTime(
+      value.year,
+      value.month,
+      value.day,
+      value.hour,
+      value.minute,
+      value.second,
+    );
+  }
+
+  String _formatBatchTimestamp(DateTime value) {
+    final local = value.toLocal();
+    final mm = local.month.toString().padLeft(2, '0');
+    final dd = local.day.toString().padLeft(2, '0');
+    final hh = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    final ss = local.second.toString().padLeft(2, '0');
+    return '${local.year}-$mm-$dd $hh:$min:$ss';
+  }
+
+  String _batchStatus(List<StockReplenishmentRequest> requests) {
+    if (requests.isEmpty) return 'pending';
+    final first = requests.first.status;
+    final allSame = requests.every((r) => r.status == first);
+    return allSame ? first : 'mixed';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -575,47 +603,120 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
                     ),
                   )
                 else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: existingRequests.length,
-                    itemBuilder: (context, index) {
-                      final req = existingRequests[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          dense: isMobile,
-                          title: FutureBuilder<Item?>(
-                            future: db.itemsDao.getItemById(req.itemId),
-                            builder: (context, snapshot) {
-                              return Text(
-                                snapshot.data?.name ?? 'Item #${req.itemId}',
-                                style: TextStyle(fontSize: isMobile ? 14 : 16),
-                              );
-                            },
-                          ),
-                          subtitle: Text(
-                            'Qty: ${req.quantityRequested}',
-                            style: TextStyle(fontSize: isMobile ? 12 : 14),
-                          ),
-                          trailing: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isMobile ? 8 : 12,
-                              vertical: isMobile ? 4 : 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(req.status),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              req.status.toUpperCase(),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isMobile ? 10 : 12,
+                  Builder(
+                    builder: (context) {
+                      final batches = <DateTime, List<StockReplenishmentRequest>>{};
+                      for (final req in existingRequests) {
+                        final key = _batchKey(req.requestedAt);
+                        batches.putIfAbsent(key, () => []).add(req);
+                      }
+                      final batchKeys = batches.keys.toList()
+                        ..sort((a, b) => b.compareTo(a));
+
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: batchKeys.length,
+                        itemBuilder: (context, index) {
+                          final batchKey = batchKeys[index];
+                          final batchRequests = batches[batchKey]!;
+                          final batchStatus = _batchStatus(batchRequests);
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ExpansionTile(
+                              tilePadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
                               ),
+                              title: Text(
+                                'Request Batch - ${_formatBatchTimestamp(batchKey)}',
+                                style: TextStyle(
+                                  fontSize: isMobile ? 14 : 16,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${batchRequests.length} item(s)',
+                                style: TextStyle(fontSize: isMobile ? 12 : 14),
+                              ),
+                              trailing: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isMobile ? 8 : 12,
+                                  vertical: isMobile ? 4 : 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(batchStatus),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  batchStatus.toUpperCase(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isMobile ? 10 : 12,
+                                  ),
+                                ),
+                              ),
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    12,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      for (final req in batchRequests)
+                                        ListTile(
+                                          dense: isMobile,
+                                          contentPadding: EdgeInsets.zero,
+                                          title: FutureBuilder<Item?>(
+                                            future: db.itemsDao.getItemById(
+                                              req.itemId,
+                                            ),
+                                            builder: (context, snapshot) {
+                                              return Text(
+                                                snapshot.data?.name ??
+                                                    'Item #${req.itemId}',
+                                                style: TextStyle(
+                                                  fontSize:
+                                                      isMobile ? 13 : 15,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          subtitle: Text(
+                                            'Qty: ${req.quantityRequested}',
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 12 : 14,
+                                            ),
+                                          ),
+                                          trailing: Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: isMobile ? 6 : 10,
+                                              vertical: isMobile ? 3 : 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: _getStatusColor(req.status),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            child: Text(
+                                              req.status.toUpperCase(),
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: isMobile ? 9 : 11,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       );
                     },
                   ),
