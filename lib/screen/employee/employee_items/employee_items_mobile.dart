@@ -265,42 +265,76 @@ class EmployeeItemsPageMobile extends StatelessWidget {
   }
 
   Widget _buildReviewChangesTab() {
-    if (state.filteredPendingChanges.isEmpty) {
-      return emptyTables(
-        message: state.searchQuery.isNotEmpty
-            ? "No changes match your search"
-            : "No pending changes",
-        onAddPressed: null,
-        buttonType: EmptyButtonType.none,
-        buttonText: null,
-      );
-    }
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: state.buildChangeRequestRows(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        return buildUniversalTable(
-          headers: ["Item", "Type", "Qty", "Status", ""],
-          rows: snapshot.data!
-              .map(
-                (row) => [
-                  row['itemName'],
-                  row['changeType'],
-                  row['quantity'],
-                  state.buildStatusChip(row['status']),
-                  IconButton(
-                    icon: const Icon(Icons.visibility),
-                    onPressed: () => state.viewChangeDetail(row['request']),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Employee:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 8),
+            DropdownButton<int?>(
+              value: state.selectedEmployeeId,
+              hint: const Text('All employees'),
+              onChanged: (value) => state.applyEmployeeFilter(value),
+              items: [
+                const DropdownMenuItem<int?>(
+                  value: null,
+                  child: Text('All employees'),
+                ),
+                ...state.employeeOptions.map(
+                  (user) => DropdownMenuItem<int?>(
+                    value: user.id,
+                    child: Text(user.fullName ?? user.username),
                   ),
-                ],
-              )
-              .toList(),
-          smallHeaderWidth: 20,
-          largeHeaderWidth: 120,
-        );
-      },
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (state.filteredPendingChanges.isEmpty)
+          emptyTables(
+            message: state.searchQuery.isNotEmpty
+              ? "No changes match your search"
+              : "No review changes",
+            onAddPressed: null,
+            buttonType: EmptyButtonType.none,
+            buttonText: null,
+          )
+        else
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: state.buildChangeRequestRows(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return buildUniversalTable(
+                headers: ["Employee", "Item", "Type", "Qty", "Status", ""],
+                rows: snapshot.data!
+                    .map(
+                      (row) => [
+                        row['employeeName'],
+                        row['itemName'],
+                        row['changeType'],
+                        row['quantity'],
+                        state.buildStatusChip(row['status']),
+                        IconButton(
+                          icon: const Icon(Icons.visibility),
+                          onPressed: () =>
+                              state.viewChangeDetail(row['request']),
+                        ),
+                      ],
+                    )
+                    .toList(),
+                smallHeaderWidth: 20,
+                largeHeaderWidth: 120,
+              );
+            },
+          ),
+      ],
     );
   }
 }

@@ -224,38 +224,102 @@ class InventoryPageMobile extends StatelessWidget {
                                 largeHeaderWidth: 120,
                               ))
                       : state.selectedTab == 1
-                      ? (InventoryPage.pendingChanges.isEmpty
-                            ? emptyTables(
-                                message:
-                                    "You can view employee stock changes here.",
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Employee:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(width: 8),
+                                DropdownButton<int?>(
+                                  value: state.selectedEmployeeId,
+                                  hint: const Text('All employees'),
+                                  onChanged: (value) =>
+                                      state.applyEmployeeFilter(value),
+                                  items: [
+                                    const DropdownMenuItem<int?>(
+                                      value: null,
+                                      child: Text('All employees'),
+                                    ),
+                                    ...state.employeeOptions.map(
+                                      (user) => DropdownMenuItem<int?>(
+                                        value: user.id,
+                                        child: Text(
+                                          user.fullName ?? user.username,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            if (state.changeHistory.isEmpty)
+                              emptyTables(
+                                message: state.searchQuery.isNotEmpty
+                                    ? "No changes match your search"
+                                    : "No change history",
                                 onAddPressed: null,
                                 buttonType: EmptyButtonType.none,
                                 buttonText: null,
                               )
-                            : buildUniversalTable(
-                                headers: [
-                                  "Employee",
-                                  "Role",
-                                  "Changes",
-                                  "Status",
-                                ],
-                                rows: List.generate(
-                                  InventoryPage.pendingChanges.length,
-                                  (i) {
-                                    final record =
-                                        InventoryPage.pendingChanges[i];
-                                    return [
-                                      record.employeeName,
-                                      record.role,
-                                      record.totalChanges.toString(),
-                                      record.status,
-                                    ];
-                                  },
-                                ),
-
-                                smallHeaderWidth: 60,
-                                largeHeaderWidth: 120,
-                              ))
+                            else
+                              FutureBuilder<List<Map<String, dynamic>>>(
+                                future: state.buildChangeHistoryRows(),
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
+                                  return buildUniversalTable(
+                                    headers: [
+                                      "Employee",
+                                      "Item",
+                                      "Type",
+                                      "Quantity",
+                                      "Status",
+                                      "Actions",
+                                    ],
+                                    rows: snapshot.data!
+                                        .map(
+                                          (row) => [
+                                            row['employeeName'],
+                                            row['itemName'],
+                                            row['changeType'],
+                                            row['quantity'],
+                                            state.buildStatusChip(row['status']),
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                if (row['status'] == 'pending')
+                                                  IconButton(
+                                                    icon: const Icon(
+                                                      Icons.check_circle,
+                                                      color: Colors.green,
+                                                    ),
+                                                    tooltip: 'Approve change',
+                                                    onPressed: () =>
+                                                        state.approveChangeRequest(
+                                                      context,
+                                                      row['request'],
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ],
+                                        )
+                                        .toList(),
+                                    smallHeaderWidth: 60,
+                                    largeHeaderWidth: 120,
+                                  );
+                                },
+                              ),
+                          ],
+                        )
                       : ReplenishStockTab(
                           branchId: state.currentOrganizationId ?? 0,
                           commissaryId: state.commissaryId ?? 0,

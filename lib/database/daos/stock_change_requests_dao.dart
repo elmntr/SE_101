@@ -239,7 +239,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
-  /// Submit change request (employee submits for review)
+  /// Submit change request (auto-approved)
   Future<bool> submitChangeRequest(int requestId) async {
     try {
       // Only allow submitting drafts
@@ -254,8 +254,11 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             stockChangeRequests,
           )..where((t) => t.id.equals(requestId))).write(
             StockChangeRequestsCompanion(
-              status: Value('pending'),
+              status: Value('approved'),
               submittedAt: Value(DateTime.now().toUtc()),
+              reviewedBy: Value(request.requestedBy),
+              reviewedAt: Value(DateTime.now().toUtc()),
+              reviewNotes: const Value('Auto-approved'),
               lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
