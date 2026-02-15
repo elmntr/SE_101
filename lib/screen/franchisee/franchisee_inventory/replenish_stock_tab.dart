@@ -267,10 +267,12 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
     final local = value.toLocal();
     final mm = local.month.toString().padLeft(2, '0');
     final dd = local.day.toString().padLeft(2, '0');
-    final hh = local.hour.toString().padLeft(2, '0');
+    final hour12 = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final hh = hour12.toString().padLeft(2, '0');
     final min = local.minute.toString().padLeft(2, '0');
     final ss = local.second.toString().padLeft(2, '0');
-    return '${local.year}-$mm-$dd $hh:$min:$ss';
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+    return '${local.year}-$mm-$dd $hh:$min:$ss $period';
   }
 
   String _batchStatus(List<StockReplenishmentRequest> requests) {
