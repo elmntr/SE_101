@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'package:drift/drift.dart' show Value;
 import '../../../../database/app_database.dart';
 import '../../../../database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
@@ -38,7 +39,7 @@ class InventoryPageState extends State<InventoryPage> {
   int? currentUserId; // Current logged-in user
   bool isLoading = true;
 
-  int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock
+  int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock, 3 = Sold
 
   ItemSort currentSort = const ItemSort(ItemSortField.name, SortOrder.asc);
 
@@ -284,6 +285,162 @@ class InventoryPageState extends State<InventoryPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error approving change: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Show dialog to edit stock and spoilage values for an item
+  Future<void> showEditStockDialog(
+    BuildContext context,
+    ItemWithBranchStock item,
+  ) async {
+    final TextEditingController stockController = TextEditingController(
+      text: item.stock.toString(),
+    );
+    final TextEditingController spoilageController = TextEditingController(
+      text: item.spoilage.toString(),
+    );
+
+    final result = await showDialog<Map<String, int>?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Text(
+          'Edit: ${item.name}',
+          style: const TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: stockController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Stock Quantity',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: spoilageController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Spoilage',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              final newStock = int.tryParse(stockController.text.trim());
+              final newSpoilage = int.tryParse(spoilageController.text.trim());
+              if (newStock != null && newStock >= 0 && newSpoilage != null && newSpoilage >= 0) {
+                Navigator.pop(context, {'stock': newStock, 'spoilage': newSpoilage});
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter valid quantities.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && context.mounted) {
+      await updateItemStock(context, item, result);
+    }
+  }
+
+  /// Update the stock and spoilage values for an item
+  Future<void> updateItemStock(
+    BuildContext context,
+    ItemWithBranchStock item,
+    Map<String, int> values,
+  ) async {
+    final newStock = values['stock']!;
+    final newSpoilage = values['spoilage']!;
+    
+    if (currentOrganizationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Organization not found.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      if (item.hasBranchStock && item.branchStockId != null) {
+        // Update existing branch stock record
+        final success = await db.branchItemStockDao.updateStock(
+          item.branchStockId!,
+          BranchItemStockCompanion(
+            stock: Value(newStock),
+            spoilage: Value(newSpoilage),
+          ),
+        );
+
+        if (success) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Updated ${item.name}: Stock=$newStock, Spoilage=$newSpoilage'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          await loadData();
+        } else {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error: Could not update item.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        // Create new branch stock record
+        await db.branchItemStockDao.createStock(
+          BranchItemStockCompanion(
+            organizationId: Value(currentOrganizationId!),
+            itemId: Value(item.id),
+            stock: Value(newStock),
+            sold: const Value(0),
+            spoilage: Value(newSpoilage),
+            isSynced: const Value(false),
+          ),
+        );
+
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Set ${item.name}: Stock=$newStock, Spoilage=$newSpoilage'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await loadData();
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating item: $e'),
           backgroundColor: Colors.red,
         ),
       );

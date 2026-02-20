@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:chickenjoo_inventory/tables/tables.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
@@ -308,8 +309,15 @@ class FranchiseeEmployeeController {
                 TextField(
                   decoration: const InputDecoration(
                     labelText: "Phone (Optional)",
+                    hintText: "09XX XXX XXXX",
                   ),
                   controller: employeePN,
+                  keyboardType: TextInputType.phone,
+                  maxLength: 11,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(11),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(

@@ -112,15 +112,6 @@ class InventoryPageDesktop extends StatelessWidget {
                       ),
                       PopupMenuDivider(),
                       PopupMenuItem(
-                        value: ItemSort(ItemSortField.sale, SortOrder.asc),
-                        child: Text("Sale (Low → High)"),
-                      ),
-                      PopupMenuItem(
-                        value: ItemSort(ItemSortField.sale, SortOrder.desc),
-                        child: Text("Sale (High → Low)"),
-                      ),
-                      PopupMenuDivider(),
-                      PopupMenuItem(
                         value: ItemSort(ItemSortField.spoilage, SortOrder.asc),
                         child: Text("Spoilage (Low → High)"),
                       ),
@@ -158,8 +149,9 @@ class InventoryPageDesktop extends StatelessWidget {
                     child: Row(
                       children: [
                         buildTab("Item Stock", 0),
-                        buildTab("Stock Changes", 1),
-                        buildTab("Replenish Stock", 2),
+                        buildTab("Sold", 1),
+                        buildTab("Stock Changes", 2),
+                        buildTab("Replenish Stock", 3),
                       ],
                     ),
                   ),
@@ -191,16 +183,21 @@ class InventoryPageDesktop extends StatelessWidget {
                                     headers: [
                                       "Item Name",
                                       "Stock",
-                                      "Sale",
                                       "Spoilage",
+                                      "Edit",
                                     ],
                                     rows: state.filteredItems
                                         .map(
                                           (item) => [
                                             item.name,
                                             item.stock.toString(),
-                                            item.sold.toString(),
                                             item.spoilage.toString(),
+                                            IconButton(
+                                              icon: const Icon(Icons.edit_outlined, size: 18),
+                                              onPressed: () => state.showEditStockDialog(context, item),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(),
+                                            ),
                                           ],
                                         )
                                         .toList(),
@@ -209,6 +206,37 @@ class InventoryPageDesktop extends StatelessWidget {
                                     largeHeaderWidth: 120,
                                   ))
                           : state.selectedTab == 1
+                          // Sold tab - shows items with sales
+                          ? (state.filteredItems.where((item) => item.sold > 0).isEmpty
+                                ? emptyTables(
+                                    message: state.searchQuery.isNotEmpty
+                                        ? "No sold items match your search"
+                                        : "No items have been sold yet.",
+                                    onAddPressed: null,
+                                    buttonType: EmptyButtonType.none,
+                                    buttonText: null,
+                                  )
+                                : buildUniversalTable(
+                                    headers: [
+                                      "Item Name",
+                                      "Sold",
+                                      "Current Stock",
+                                    ],
+                                    rows: state.filteredItems
+                                        .where((item) => item.sold > 0)
+                                        .map(
+                                          (item) => [
+                                            item.name,
+                                            item.sold.toString(),
+                                            item.stock.toString(),
+                                          ],
+                                        )
+                                        .toList(),
+
+                                    smallHeaderWidth: 20,
+                                    largeHeaderWidth: 120,
+                                  ))
+                          : state.selectedTab == 2
                           ? Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
