@@ -320,10 +320,11 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
-  /// Upsert batch from cloud
+  /// Issue 3 fix: Use business key lookup instead of batch insert
+  /// to avoid "Too many elements" error on cloud_id conflict
   Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
-    await batch((batch) {
-      for (final record in records) {
+    for (final record in records) {
+      try {
         final cloudId = record['cloudId'] as String;
         
         // Handle potentially null fields safely
@@ -331,44 +332,59 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
         final itemId = record['itemId'] as int?;
         
         if (organizationId == null || itemId == null) {
-            // Skip invalid records where FKs couldn't be resolved
-            continue;
+          // Skip invalid records where FKs couldn't be resolved
+          continue;
         }
 
         final summaryDate = record['summaryDate'] as DateTime;
         final lastUpdated = record['lastUpdated'] as DateTime?;
 
-        batch.insert(
-          dailySalesSummary,
-          DailySalesSummaryCompanion.insert(
-            organizationId: organizationId,
-            itemId: itemId,
-            summaryDate: summaryDate,
+        // Business key: {organizationId, itemId, summaryDate}
+        final existing = await getSummary(
+          organizationId: organizationId,
+          itemId: itemId,
+          date: summaryDate,
+        );
+
+        if (existing != null) {
+          // UPDATE existing record
+          await (update(dailySalesSummary)
+                ..where((t) => t.id.equals(existing.id)))
+              .write(DailySalesSummaryCompanion(
             quantitySold: Value(record['quantitySold'] as int? ?? 0),
             quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
             revenue: Value(record['revenue'] as double? ?? 0.0),
             costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
             grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
             transactionCount: Value(record['transactionCount'] as int? ?? 0),
-            // openingStock: Value(record['openingStock'] as int?),
-            // closingStock: Value(record['closingStock'] as int?),
             cloudId: Value(cloudId),
             lastUpdated: Value(lastUpdated ?? DateTime.now()),
             isSynced: const Value(true),
-          ),
-          onConflict: DoUpdate((old) => DailySalesSummaryCompanion(
-            quantitySold: Value(record['quantitySold'] as int? ?? 0),
-            quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
-            revenue: Value(record['revenue'] as double? ?? 0.0),
-            costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
-            grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
-            transactionCount: Value(record['transactionCount'] as int? ?? 0),
-            lastUpdated: Value(lastUpdated ?? DateTime.now()),
-            isSynced: const Value(true),
-          )),
-        );
+          ));
+        } else {
+          // INSERT new record
+          await into(dailySalesSummary).insert(
+            DailySalesSummaryCompanion.insert(
+              organizationId: organizationId,
+              itemId: itemId,
+              summaryDate: summaryDate,
+              quantitySold: Value(record['quantitySold'] as int? ?? 0),
+              quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
+              revenue: Value(record['revenue'] as double? ?? 0.0),
+              costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
+              grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
+              transactionCount: Value(record['transactionCount'] as int? ?? 0),
+              cloudId: Value(cloudId),
+              lastUpdated: Value(lastUpdated ?? DateTime.now()),
+              isSynced: const Value(true),
+            ),
+          );
+        }
+      } catch (e) {
+        // Log error but continue with next record
+        print('❌ Error upserting daily_sales_summary: $e');
       }
-    });
+    }
   }
 
   /// Watch today's summaries for real-time UI updates

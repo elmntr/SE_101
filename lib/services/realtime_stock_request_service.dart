@@ -253,8 +253,8 @@ class RealtimeStockRequestService {
   Future<void> _createChannel() async {
     AppLogger.sync('🔧 Creating channel for franchisee: $_franchiseeCloudId');
     
-    // Use a unique channel name
-    final channelName = 'stock-requests-${DateTime.now().millisecondsSinceEpoch}';
+    // Issue 10 fix: Use stable channel name to prevent socket leak (was using DateTime which created new channels on reconnect)
+    final channelName = 'stock-requests-$_franchiseeCloudId';
     if (_stockRequestChannel != null) {
       await supabase.removeChannel(_stockRequestChannel!);
       _stockRequestChannel = null;
