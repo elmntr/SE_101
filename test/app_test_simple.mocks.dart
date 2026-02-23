@@ -484,6 +484,40 @@ class MockSupabaseAuthService extends _i1.Mock
           as _i19.Stream<_i2.UserData?>);
 
   @override
+  _i2.AuthLifecycleState get lifecycleState =>
+      (super.noSuchMethod(
+            Invocation.getter(#lifecycleState),
+            returnValue: _i2.AuthLifecycleState.bootstrapping,
+          )
+          as _i2.AuthLifecycleState);
+
+  @override
+  _i19.Stream<_i2.AuthLifecycleState> get lifecycleStateChanges =>
+      (super.noSuchMethod(
+            Invocation.getter(#lifecycleStateChanges),
+            returnValue: _i19.Stream<_i2.AuthLifecycleState>.empty(),
+          )
+          as _i19.Stream<_i2.AuthLifecycleState>);
+
+  @override
+  _i19.Future<void> get bootstrapComplete =>
+      (super.noSuchMethod(
+            Invocation.getter(#bootstrapComplete),
+            returnValue: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
+
+  @override
+  _i19.Future<_i2.AuthLifecycleState> bootstrap() =>
+      (super.noSuchMethod(
+            Invocation.method(#bootstrap, []),
+            returnValue: _i19.Future<_i2.AuthLifecycleState>.value(
+              _i2.AuthLifecycleState.bootstrapping,
+            ),
+          )
+          as _i19.Future<_i2.AuthLifecycleState>);
+
+  @override
   _i19.Future<_i2.AuthResult> signUp({
     required String? email,
     required String? password,
@@ -613,14 +647,6 @@ class MockSupabaseAuthService extends _i1.Mock
             ),
           )
           as _i19.Future<_i2.AuthResult>);
-
-  @override
-  _i19.Future<bool> isSessionValid() =>
-      (super.noSuchMethod(
-            Invocation.method(#isSessionValid, []),
-            returnValue: _i19.Future<bool>.value(false),
-          )
-          as _i19.Future<bool>);
 
   @override
   _i19.Future<_i2.AuthResult> restoreSession() =>
@@ -1708,6 +1734,15 @@ class MockSupabaseSyncServiceV2 extends _i1.Mock
           as _i19.Future<void>);
 
   @override
+  _i19.Future<void> forceFullSyncReplenishmentRequests() =>
+      (super.noSuchMethod(
+            Invocation.method(#forceFullSyncReplenishmentRequests, []),
+            returnValue: _i19.Future<void>.value(),
+            returnValueForMissingStub: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
+
+  @override
   _i19.Future<void> syncImmediate() =>
       (super.noSuchMethod(
             Invocation.method(#syncImmediate, []),
@@ -1845,6 +1880,12 @@ class MockSupabaseSyncServiceV2 extends _i1.Mock
       #organizationType: organizationType,
       #parentCommissaryId: parentCommissaryId,
     }),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void clearOrganizationContext() => super.noSuchMethod(
+    Invocation.method(#clearOrganizationContext, []),
     returnValueForMissingStub: null,
   );
 

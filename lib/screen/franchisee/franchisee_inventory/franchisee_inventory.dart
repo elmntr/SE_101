@@ -106,7 +106,7 @@ class InventoryPageState extends State<InventoryPage> {
 
   void _onSyncComplete() {
     if (mounted) {
-      print('🔄 Sync completed, refreshing inventory...');
+      //print('🔄 Sync completed, refreshing inventory...');
       loadData();
     }
   }
@@ -136,11 +136,11 @@ class InventoryPageState extends State<InventoryPage> {
         final loadedItems = await db.branchItemStockDao
             .getItemsWithStockForBranch(currentOrganizationId!, commissaryId!);
 
-        print('📦 Loaded ${loadedItems.length} items with branch stock');
+        //print('📦 Loaded ${loadedItems.length} items with branch stock');
         for (final item in loadedItems) {
-          print(
-            '   - ${item.name}: stock=${item.stock}, sold=${item.sold}, spoilage=${item.spoilage}, hasBranchStock=${item.hasBranchStock}',
-          );
+          //print(
+          //  '   - ${item.name}: stock=${item.stock}, sold=${item.sold}, spoilage=${item.spoilage}, hasBranchStock=${item.hasBranchStock}'
+          //);
         }
 
         final employees = await db.usersDao.getUsersByOrganization(
@@ -162,9 +162,9 @@ class InventoryPageState extends State<InventoryPage> {
           });
         }
       } else {
-        print(
-          '⚠️ Missing org context: orgId=$currentOrganizationId, commissaryId=$commissaryId',
-        );
+        //print(
+        //  '⚠️ Missing org context: orgId=$currentOrganizationId, commissaryId=$commissaryId'
+        //);
         if (mounted) {
           setState(() {
             items = [];
@@ -175,7 +175,7 @@ class InventoryPageState extends State<InventoryPage> {
         }
       }
     } catch (e) {
-      print('❌ Error loading inventory data: $e');
+      //print('❌ Error loading inventory data: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -463,9 +463,9 @@ class InventoryPageState extends State<InventoryPage> {
         if (org != null) {
           currentOrganizationId = org.id;
           await prefs.setInt(orgIdKey, org.id);
-          print(
-            '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}',
-          );
+          //print(
+          //  '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}'
+          //);
           return;
         }
       }
@@ -492,11 +492,11 @@ class InventoryPageState extends State<InventoryPage> {
           organization.parentCommissaryId != null) {
         // Franchisee: use parent commissary
         commissaryId = organization.parentCommissaryId;
-        print('📍 Franchisee mode: commissaryId=${commissaryId}');
+        //print('📍 Franchisee mode: commissaryId=${commissaryId}');
       } else if (organization.type == 'commissary') {
         // Commissary viewing own inventory
         commissaryId = organization.id;
-        print('📍 Commissary mode: commissaryId=${commissaryId}');
+        //print('📍 Commissary mode: commissaryId=${commissaryId}');
       }
     }
 
@@ -507,7 +507,7 @@ class InventoryPageState extends State<InventoryPage> {
       );
       if (commissaries.isNotEmpty) {
         commissaryId = commissaries.first.id;
-        print('📍 Fallback commissary: commissaryId=${commissaryId}');
+        //print('📍 Fallback commissary: commissaryId=${commissaryId}');
       }
     }
   }
@@ -522,11 +522,11 @@ class InventoryPageState extends State<InventoryPage> {
         );
         if (localUser != null) {
           currentUserId = localUser.id;
-          print(
-            '👤 Resolved local User ID from cloud ID: ${currentUser.cloudId} → ${localUser.id}',
-          );
+          //print(
+          //  '👤 Resolved local User ID from cloud ID: ${currentUser.cloudId} → ${localUser.id}'
+          //);
         } else {
-          print('⚠️ Could not resolve local user from cloud ID: ${currentUser.cloudId}');
+          //print('⚠️ Could not resolve local user from cloud ID: ${currentUser.cloudId}');
           // Try syncing users first, then retry
           await _trySyncAndResolveUser(currentUser.cloudId!);
         }
@@ -539,7 +539,7 @@ class InventoryPageState extends State<InventoryPage> {
     } else {
       // No authenticated user from auth service
       // This might happen if auth service hasn't loaded yet
-      print('⚠️ No current user from auth service, checking Supabase auth...');
+      //print('⚠️ No current user from auth service, checking Supabase auth...');
       final supabaseUser = Supabase.instance.client.auth.currentUser;
       if (supabaseUser != null) {
         await _tryResolveUserByEmail(supabaseUser.email ?? '');
@@ -547,38 +547,38 @@ class InventoryPageState extends State<InventoryPage> {
         currentUserId = null;
       }
     }
-    print('👤 Current User ID: $currentUserId');
+    //print('👤 Current User ID: $currentUserId');
   }
 
   /// Try to sync users and resolve local user ID
   Future<void> _trySyncAndResolveUser(String cloudId) async {
     try {
-      print('🔄 Syncing dependencies and users to resolve local ID...');
+      //print('🔄 Syncing dependencies and users to resolve local ID...');
       // Sync dependencies first to ensure FK resolution works
       await AppGlobals.instance.syncService.syncOrganizations();
       await AppGlobals.instance.syncService.syncRoles();
       
       // DEBUG: Verify DB State
       final roles = await db.rolesDao.getAllRoles();
-      print('🔍 DEBUG: Local Roles count: ${roles.length}');
-      for (var r in roles) print('   - Role: ${r.id} | ${r.cloudId} | ${r.name}');
+      //print('🔍 DEBUG: Local Roles count: ${roles.length}');
+      // for (var r in roles) //print('   - Role: ${r.id} | ${r.cloudId} | ${r.name}');
       
       final orgs = await db.organizationsDao.getAllOrganizations();
-      print('🔍 DEBUG: Local Orgs count: ${orgs.length}');
-      for (var o in orgs) print('   - Org: ${o.id} | ${o.cloudId} | ${o.name}');
+      //print('🔍 DEBUG: Local Orgs count: ${orgs.length}');
+      // for (var o in orgs) //print('   - Org: ${o.id} | ${o.cloudId} | ${o.name}');
 
       await AppGlobals.instance.syncService.syncUsers();
 
       final localUser = await db.usersDao.getUserByCloudId(cloudId);
       if (localUser != null) {
         currentUserId = localUser.id;
-        print('👤 Resolved local User ID after sync: $cloudId → ${localUser.id}');
+        //print('👤 Resolved local User ID after sync: $cloudId → ${localUser.id}');
       } else {
-        print('❌ User still not found after sync (Organization/Role might be missing/inactive)');
+        //print('❌ User still not found after sync (Organization/Role might be missing/inactive)');
         currentUserId = null;
       }
     } catch (e) {
-      print('⚠️ Sync failed: $e');
+      //print('⚠️ Sync failed: $e');
       currentUserId = null;
     }
   }
@@ -594,10 +594,10 @@ class InventoryPageState extends State<InventoryPage> {
       final localUser = await db.usersDao.getUserByEmail(email);
       if (localUser != null) {
         currentUserId = localUser.id;
-        print('👤 Resolved User ID by email: $email → ${localUser.id}');
+        //print('👤 Resolved User ID by email: $email → ${localUser.id}');
       } else {
         // Try syncing first
-        print('🔄 User not found locally, syncing dependencies and users...');
+        //print('🔄 User not found locally, syncing dependencies and users...');
         await AppGlobals.instance.syncService.syncOrganizations();
         await AppGlobals.instance.syncService.syncRoles();
         await AppGlobals.instance.syncService.syncUsers();
@@ -605,14 +605,14 @@ class InventoryPageState extends State<InventoryPage> {
         final syncedUser = await db.usersDao.getUserByEmail(email);
         if (syncedUser != null) {
           currentUserId = syncedUser.id;
-          print('👤 Resolved User ID after sync: $email → ${syncedUser.id}');
+          //print('👤 Resolved User ID after sync: $email → ${syncedUser.id}');
         } else {
-          print('❌ User not found even after sync: $email');
+          //print('❌ User not found even after sync: $email');
           currentUserId = null;
         }
       }
     } catch (e) {
-      print('⚠️ Error resolving user: $e');
+      //print('⚠️ Error resolving user: $e');
       currentUserId = null;
     }
   }
@@ -632,7 +632,7 @@ class InventoryPageState extends State<InventoryPage> {
       await AppGlobals.instance.syncService.syncBranchItemStock();
       // loadData will be called via _onSyncComplete
     } catch (e) {
-      print('Error refreshing inventory: $e');
+      //print('Error refreshing inventory: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }

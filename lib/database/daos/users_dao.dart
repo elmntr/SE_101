@@ -35,7 +35,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching users: $e');
+      //print('❌ Error fetching users: $e');
       return [];
     }
   }
@@ -52,7 +52,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       final result = await query.getSingle();
       return result.read(users.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting users: $e');
+      //print('❌ Error counting users: $e');
       return 0;
     }
   }
@@ -68,7 +68,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             ..limit(limit, offset: offset))
           .watch();
     } catch (e) {
-      print('❌ Error watching users: $e');
+      //print('❌ Error watching users: $e');
       return Stream.value([]);
     }
   }
@@ -82,7 +82,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             ..orderBy([(t) => OrderingTerm(expression: t.username)]))
           .watch();
     } catch (e) {
-      print('❌ Error watching users by organization: $e');
+      //print('❌ Error watching users by organization: $e');
       return Stream.value([]);
     }
   }
@@ -102,7 +102,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         ),
       );
     } catch (e) {
-      print('❌ Error inserting user: $e');
+      //print('❌ Error inserting user: $e');
       rethrow;
     }
   }
@@ -127,7 +127,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         }
       });
     } catch (e) {
-      print('❌ Error batch inserting users: $e');
+      //print('❌ Error batch inserting users: $e');
       rethrow;
     }
   }
@@ -141,7 +141,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       );
       return await update(users).replace(updated);
     } catch (e) {
-      print('❌ Error updating user: $e');
+      //print('❌ Error updating user: $e');
       return false;
     }
   }
@@ -159,7 +159,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
           );
       return result > 0;
     } catch (e) {
-      print('❌ Error updating password: $e');
+      //print('❌ Error updating password: $e');
       return false;
     }
   }
@@ -171,7 +171,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         users,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching user by ID: $e');
+      //print('❌ Error fetching user by ID: $e');
       return null;
     }
   }
@@ -183,7 +183,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         users,
       )..where((t) => t.username.equals(username))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching user by username: $e');
+      //print('❌ Error fetching user by username: $e');
       return null;
     }
   }
@@ -195,7 +195,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         users,
       )..where((t) => t.email.equals(email))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching user by email: $e');
+      //print('❌ Error fetching user by email: $e');
       return null;
     }
   }
@@ -214,7 +214,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
           ))
           .getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching user by email and organization: $e');
+      //print('❌ Error fetching user by email and organization: $e');
       return null;
     }
   }
@@ -234,7 +234,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
       return await getUserByEmailAndOrganization(email, org.id);
     } catch (e) {
-      print('❌ Error fetching user by email and org cloud ID: $e');
+      //print('❌ Error fetching user by email and org cloud ID: $e');
       return null;
     }
   }
@@ -262,7 +262,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching users by organization: $e');
+      //print('❌ Error fetching users by organization: $e');
       return [];
     }
   }
@@ -273,7 +273,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       // Get user to check if it has cloudId
       final user = await getUserById(id);
       if (user == null) {
-        print('⚠️ User $id not found');
+        //print('⚠️ User $id not found');
         return false;
       }
 
@@ -290,14 +290,14 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       );
 
       if (result > 0) {
-        print(
-          '📤 User $id marked inactive for cloud sync (cloudId: ${user.cloudId})',
-        );
+        //print(
+        //  '📤 User $id marked inactive for cloud sync (cloudId: ${user.cloudId})'
+        //);
       }
 
       return result > 0;
     } catch (e) {
-      print('❌ Error deleting user: $e');
+      //print('❌ Error deleting user: $e');
       return false;
     }
   }
@@ -314,7 +314,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       );
       return result > 0;
     } catch (e) {
-      print('❌ Error deactivating user: $e');
+      //print('❌ Error deactivating user: $e');
       return false;
     }
   }
@@ -352,7 +352,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         return UserWithRole(user: u, role: r);
       }).toList();
     } catch (e) {
-      print('❌ Error fetching users with roles: $e');
+      //print('❌ Error fetching users with roles: $e');
       return [];
     }
   }
@@ -378,7 +378,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         }).toList();
       });
     } catch (e) {
-      print('❌ Error watching users with roles: $e');
+      //print('❌ Error watching users with roles: $e');
       return Stream.value([]);
     }
   }
@@ -403,7 +403,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       }
       return null;
     } catch (e) {
-      print('❌ Authentication failed: $e');
+      //print('❌ Authentication failed: $e');
       return null;
     }
   }
@@ -417,7 +417,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       // Use verifyPassword from app_database.dart (handles salt extraction)
       return verifyPassword(password, user.password);
     } catch (e) {
-      print('❌ Password verification failed: $e');
+      //print('❌ Password verification failed: $e');
       return false;
     }
   }
@@ -438,7 +438,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
       return result > 0;
     } catch (e) {
-      print('❌ Error updating password: $e');
+      //print('❌ Error updating password: $e');
       return false;
     }
   }
@@ -458,7 +458,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
       return result > 0;
     } catch (e) {
-      print('❌ Error updating password hash: $e');
+      //print('❌ Error updating password hash: $e');
       return false;
     }
   }
@@ -481,7 +481,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
       return result > 0;
     } catch (e) {
-      print('❌ Error assigning role: $e');
+      //print('❌ Error assigning role: $e');
       return false;
     }
   }
@@ -498,7 +498,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced users: $e');
+      //print('❌ Error fetching unsynced users: $e');
       return [];
     }
   }
@@ -513,7 +513,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       final result = await query.getSingle();
       return result.read(users.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced users: $e');
+      //print('❌ Error counting unsynced users: $e');
       return 0;
     }
   }
@@ -537,7 +537,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         }
       });
     } catch (e) {
-      print('❌ Error marking users as synced: $e');
+      //print('❌ Error marking users as synced: $e');
       rethrow;
     }
   }
@@ -574,7 +574,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         }
       });
     } catch (e) {
-      print('❌ Error batch upserting users from cloud: $e');
+      //print('❌ Error batch upserting users from cloud: $e');
       rethrow;
     }
   }
@@ -642,7 +642,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         );
       }
     } catch (e) {
-      print('❌ Error upserting user from cloud: $e');
+      //print('❌ Error upserting user from cloud: $e');
       rethrow;
     }
   }
@@ -654,7 +654,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         users,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching user by cloud ID: $e');
+      //print('❌ Error fetching user by cloud ID: $e');
       return null;
     }
   }
@@ -679,7 +679,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       }
     }
 
-    print('✅ Hashed $hashedCount existing passwords');
+    //print('✅ Hashed $hashedCount existing passwords');
   }
 
   /// ✅ Clean up inactive users that are synced (after cloud deletion)
@@ -690,12 +690,12 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       )..where((t) => t.isActive.equals(false) & t.isSynced.equals(true))).go();
 
       if (result > 0) {
-        print('🧹 Cleaned up $result inactive users from local database');
+        //print('🧹 Cleaned up $result inactive users from local database');
       }
 
       return result;
     } catch (e) {
-      print('❌ Error cleaning up deleted users: $e');
+      //print('❌ Error cleaning up deleted users: $e');
       return 0;
     }
   }

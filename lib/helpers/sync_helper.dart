@@ -12,9 +12,9 @@ class SyncHelper {
   static Future<void> syncAfterOrganizationChange() async {
     try {
       await syncService.syncOrganizations();
-      print('✅ Organization synced to cloud');
+      //print('✅ Organization synced to cloud');
     } catch (e) {
-      print('⚠️ Could not sync organization: $e');
+      //print('⚠️ Could not sync organization: $e');
       // Organization will sync in the next periodic sync (10 minutes)
     }
   }
@@ -23,9 +23,9 @@ class SyncHelper {
   static Future<void> syncAfterItemChange() async {
     try {
       await syncService.syncItems();
-      print('✅ Item synced to cloud');
+      //print('✅ Item synced to cloud');
     } catch (e) {
-      print('⚠️ Could not sync item: $e');
+      //print('⚠️ Could not sync item: $e');
       // Item will sync in the next periodic sync (10 minutes)
     }
   }
@@ -34,9 +34,9 @@ class SyncHelper {
   static Future<void> syncAfterIngredientChange() async {
     try {
       await syncService.syncIngredients();
-      print('✅ Ingredient synced to cloud');
+      //print('✅ Ingredient synced to cloud');
     } catch (e) {
-      print('⚠️ Could not sync ingredient: $e');
+      //print('⚠️ Could not sync ingredient: $e');
       // Ingredient will sync in the next periodic sync (10 minutes)
     }
   }
@@ -45,9 +45,9 @@ class SyncHelper {
   static Future<void> syncAfterRecipeChange() async {
     try {
       await syncService.syncRecipeIngredients();
-      print('✅ Recipe synced to cloud');
+      //print('✅ Recipe synced to cloud');
     } catch (e) {
-      print('⚠️ Could not sync recipe: $e');
+      //print('⚠️ Could not sync recipe: $e');
       // Recipe will sync in the next periodic sync (10 minutes)
     }
   }
@@ -56,9 +56,9 @@ class SyncHelper {
   static Future<void> syncAfterReplenishmentRequest() async {
     try {
       await syncService.syncStockReplenishmentRequests();
-      print('✅ Replenishment request synced to cloud');
+      //print('✅ Replenishment request synced to cloud');
     } catch (e) {
-      print('⚠️ Could not sync replenishment request: $e');
+      //print('⚠️ Could not sync replenishment request: $e');
       // Request will sync in the next periodic sync (10 minutes)
     }
   }
@@ -67,9 +67,9 @@ class SyncHelper {
   static Future<void> syncAfterStockChange() async {
     try {
       await syncService.syncStockChangeRequests();
-      print('✅ Stock change request synced to cloud');
+      //print('✅ Stock change request synced to cloud');
     } catch (e) {
-      print('⚠️ Could not sync stock change request: $e');
+      //print('⚠️ Could not sync stock change request: $e');
       // Request will sync in the next periodic sync (10 minutes)
     }
   }
@@ -78,9 +78,9 @@ class SyncHelper {
   static Future<void> syncAfterUserChange() async {
     try {
       await syncService.syncUsers();
-      print('✅ User synced to cloud');
+      //print('✅ User synced to cloud');
     } catch (e) {
-      print('⚠️ Could not sync user: $e');
+      //print('⚠️ Could not sync user: $e');
       // User will sync in the next periodic sync (10 minutes)
     }
   }
@@ -89,9 +89,9 @@ class SyncHelper {
   static Future<void> syncAfterRoleChange() async {
     try {
       await syncService.syncRoles();
-      print('✅ Role synced to cloud');
+      //print('✅ Role synced to cloud');
     } catch (e) {
-      print('⚠️ Could not sync role: $e');
+      //print('⚠️ Could not sync role: $e');
       // Role will sync in the next periodic sync (10 minutes)
     }
   }
@@ -100,9 +100,9 @@ class SyncHelper {
   // static Future<void> syncAfterCategoryChange() async {
   //   try {
   //     await syncService.syncCategories();
-  //     print('✅ Category synced to cloud');
+  //     //print('✅ Category synced to cloud');
   //   } catch (e) {
-  //     print('⚠️ Could not sync category: $e');
+  //     //print('⚠️ Could not sync category: $e');
   //     // Category will sync in the next periodic sync (10 minutes)
   //   }
   // }
@@ -115,9 +115,9 @@ class SyncHelper {
   static Future<void> syncAll() async {
     try {
       await syncService.syncImmediate();
-      print('✅ All data synced to cloud');
+      //print('✅ All data synced to cloud');
     } catch (e) {
-      print('⚠️ Could not sync: $e');
+      //print('⚠️ Could not sync: $e');
     }
   }
 
@@ -126,7 +126,7 @@ class SyncHelper {
     try {
       return await syncService.getSyncStatus();
     } catch (e) {
-      print('⚠️ Could not get sync status: $e');
+      //print('⚠️ Could not get sync status: $e');
       return {'error': e.toString(), 'is_syncing': false};
     }
   }
@@ -135,9 +135,9 @@ class SyncHelper {
   // static Future<void> cleanupDeletedRecords() async {
   //   try {
   //     await syncService.cleanupLocalDeletedRecords();
-  //     print('✅ Deleted records cleaned up');
+  //     //print('✅ Deleted records cleaned up');
   //   } catch (e) {
-  //     print('⚠️ Could not cleanup deleted records: $e');
+  //     //print('⚠️ Could not cleanup deleted records: $e');
   //   }
   // }
   
@@ -180,9 +180,9 @@ class SyncHelper {
         await syncService.syncStockReplenishmentRequests();
       if (syncStockChangeRequests) await syncService.syncStockChangeRequests();
 
-      print('✅ Related tables synced to cloud');
+      //print('✅ Related tables synced to cloud');
     } catch (e) {
-      print('⚠️ Could not sync related tables: $e');
+      //print('⚠️ Could not sync related tables: $e');
     }
   }
 
@@ -217,7 +217,7 @@ class SyncHelper {
 
     while (await isSyncing()) {
       if (DateTime.now().difference(startTime) > timeout) {
-        print('⚠️ Sync wait timeout after ${timeout.inSeconds} seconds');
+        //print('⚠️ Sync wait timeout after ${timeout.inSeconds} seconds');
         break;
       }
       await Future.delayed(const Duration(milliseconds: 500));

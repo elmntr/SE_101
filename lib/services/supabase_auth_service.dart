@@ -220,7 +220,7 @@ class SupabaseAuthService {
   void _logAuth(String message) {
     if (kDebugMode) {
       final timestamp = DateTime.now().toIso8601String();
-      print('🔐 [$timestamp] [AUTH] $message');
+      //print('🔐 [$timestamp] [AUTH] $message');
     }
   }
   
@@ -580,10 +580,10 @@ class SupabaseAuthService {
       // until they confirm. Disable email confirmation in Supabase Dashboard:
       // Authentication → Providers → Email → Confirm email = OFF
       if (kDebugMode) {
-        print('📝 Creating Supabase Auth user...');
-        print('   Email: $email');
-        print('   Password length: ${password.length}');
-        print('   Password: $password'); // Remove this after debugging!
+        //print('📝 Creating Supabase Auth user...');
+        //print('   Email: $email');
+        //print('   Password length: ${password.length}');
+        //print('   Password: $password'); // Remove this after debugging!
       }
 
       final authResponse = await _supabase.auth.signUp(
@@ -603,20 +603,20 @@ class SupabaseAuthService {
       // Check if email confirmation is required (user exists but session is null)
       if (authResponse.session == null && authResponse.user != null) {
         if (kDebugMode) {
-          print('⚠️ Email confirmation may be required for: $email');
-          print(
-            '   Disable email confirmation in Supabase Dashboard if needed',
-          );
+          //print('⚠️ Email confirmation may be required for: $email');
+          //print(
+          //  '   Disable email confirmation in Supabase Dashboard if needed',
+          //);
         }
       }
 
       final authUserId = authResponse.user!.id;
 
       if (kDebugMode) {
-        print('✅ Created Supabase Auth user: $authUserId');
-        print(
-          '   Email confirmed: ${authResponse.user!.emailConfirmedAt != null}',
-        );
+        //print('✅ Created Supabase Auth user: $authUserId');
+        //print(
+        //  '   Email confirmed: ${authResponse.user!.emailConfirmedAt != null}',
+        //);
       }
 
       // 5. Restore original admin session BEFORE inserting to users table
@@ -628,11 +628,11 @@ class SupabaseAuthService {
           _currentUser = currentUserData;
           _authStateController?.add(_currentUser);
           if (kDebugMode) {
-            print('✅ Restored admin session');
+            //print('✅ Restored admin session');
           }
         } catch (e) {
           if (kDebugMode) {
-            print('⚠️ Could not restore session: $e');
+            //print('⚠️ Could not restore session: $e');
           }
         }
       }
@@ -651,11 +651,11 @@ class SupabaseAuthService {
 
       try {
         if (kDebugMode) {
-          print('📤 Inserting user into Supabase users table...');
-          print('   Auth user ID (cloud_id): $authUserId');
-          print('   Organization cloud ID: ${org.cloudId}');
-          print('   Role cloud ID: ${role.cloudId}');
-          print('   Current session user: ${_supabase.auth.currentUser?.id}');
+          //print('📤 Inserting user into Supabase users table...');
+          //print('   Auth user ID (cloud_id): $authUserId');
+          //print('   Organization cloud ID: ${org.cloudId}');
+          //print('   Role cloud ID: ${role.cloudId}');
+          //print('   Current session user: ${_supabase.auth.currentUser?.id}');
         }
 
         // Use cloud_id as unique identifier (matches sync service format)
@@ -679,11 +679,11 @@ class SupabaseAuthService {
         });
 
         if (kDebugMode) {
-          print('✅ Inserted user into Supabase users table');
+          //print('✅ Inserted user into Supabase users table');
         }
       } catch (e) {
         if (kDebugMode) {
-          print('❌ Failed to insert into Supabase users table: $e');
+          //print('❌ Failed to insert into Supabase users table: $e');
         }
         // Don't continue silently - return failure so user knows
         return AuthResult.failure('Failed to create user record: $e');
@@ -708,7 +708,7 @@ class SupabaseAuthService {
       );
 
       if (kDebugMode) {
-        print('✅ Created local user: $localUserId');
+        //print('✅ Created local user: $localUserId');
       }
 
       return AuthResult.success(
@@ -716,12 +716,12 @@ class SupabaseAuthService {
       );
     } on AuthException catch (e) {
       if (kDebugMode) {
-        print('❌ Auth error creating employee: ${e.message}');
+        //print('❌ Auth error creating employee: ${e.message}');
       }
       return AuthResult.failure(e.message);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error creating employee: $e');
+        //print('❌ Error creating employee: $e');
       }
       return AuthResult.failure('Failed to create employee: $e');
     }
@@ -786,7 +786,7 @@ class SupabaseAuthService {
       ]);
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ Failed to link auth user: $e');
+        //print('⚠️ Failed to link auth user: $e');
       }
     }
   }
@@ -847,7 +847,7 @@ class SupabaseAuthService {
     // Handle empty stored hash
     if (storedHash.isEmpty) {
       if (kDebugMode) {
-        print('⚠️ Empty password hash stored');
+        //print('⚠️ Empty password hash stored');
       }
       return false;
     }
@@ -856,9 +856,9 @@ class SupabaseAuthService {
     final parts = storedHash.split('\$');
     if (parts.length != 2 || parts[0].length != 32 || parts[1].length != 64) {
       if (kDebugMode) {
-        print(
-          '⚠️ Password not in secure format. User must login online first.',
-        );
+        //print(
+        //  '⚠️ Password not in secure format. User must login online first.',
+        //);
       }
       return false;
     }
@@ -891,7 +891,7 @@ class SupabaseAuthService {
       );
       if (user == null) {
         if (kDebugMode) {
-          print('⚠️ Cannot update local password - user not found locally');
+          //print('⚠️ Cannot update local password - user not found locally');
         }
         return;
       }
@@ -902,7 +902,7 @@ class SupabaseAuthService {
         // Already in secure format, verify it matches
         if (_verifyPassword(password, user.password)) {
           if (kDebugMode) {
-            print('✅ Local password already in secure format');
+            //print('✅ Local password already in secure format');
           }
           return;
         }
@@ -1013,7 +1013,7 @@ class SupabaseAuthService {
 
     // If online failed or empty, try local database
     if (kDebugMode) {
-      print('📴 Falling back to local branch list...');
+      //print('📴 Falling back to local branch list...');
     }
     final offlineBranches = await _fetchBranchesOffline();
     return (branches: offlineBranches, isOffline: true);
@@ -1024,7 +1024,7 @@ class SupabaseAuthService {
   Future<List<Map<String, dynamic>>> _fetchBranchesOnline() async {
     try {
       if (kDebugMode) {
-        print('📥 Fetching available branches from Supabase...');
+        //print('📥 Fetching available branches from Supabase...');
       }
 
       // If there's an existing session, sign out first to use anon role
@@ -1032,7 +1032,7 @@ class SupabaseAuthService {
       final hasSession = _supabase.auth.currentSession != null;
       if (hasSession) {
         if (kDebugMode) {
-          print('   ℹ️ Existing session found, using direct query...');
+          //print('   ℹ️ Existing session found, using direct query...');
         }
       }
 
@@ -1049,9 +1049,9 @@ class SupabaseAuthService {
       // try signing out temporarily to get full list
       if (response.isEmpty && hasSession) {
         if (kDebugMode) {
-          print(
-            '   ⚠️ No branches returned (RLS restricted?), trying anonymous...',
-          );
+          //print(
+          //  '   ⚠️ No branches returned (RLS restricted?), trying anonymous...',
+          //);
         }
 
         // Store session to restore later
@@ -1074,14 +1074,14 @@ class SupabaseAuthService {
             await _supabase.auth.setSession(currentSession!.refreshToken!);
           } catch (e) {
             if (kDebugMode) {
-              print('   ⚠️ Could not restore session: $e');
+              //print('   ⚠️ Could not restore session: $e');
             }
           }
         }
       }
 
       if (kDebugMode) {
-        print('   Found ${response.length} branches online');
+        //print('   Found ${response.length} branches online');
       }
 
       final branches = List<Map<String, dynamic>>.from(response);
@@ -1094,7 +1094,7 @@ class SupabaseAuthService {
       return branches;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error fetching branches online: $e');
+        //print('❌ Error fetching branches online: $e');
       }
       return [];
     }
@@ -1106,7 +1106,7 @@ class SupabaseAuthService {
   ) async {
     try {
       if (kDebugMode) {
-        print('💾 Caching ${branches.length} branches locally...');
+        //print('💾 Caching ${branches.length} branches locally...');
       }
 
       for (final branch in branches) {
@@ -1137,11 +1137,11 @@ class SupabaseAuthService {
       }
 
       if (kDebugMode) {
-        print('   ✅ Branches cached successfully');
+        //print('   ✅ Branches cached successfully');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ Failed to cache branches locally: $e');
+        //print('⚠️ Failed to cache branches locally: $e');
       }
       // Don't throw - caching failure shouldn't block login
     }
@@ -1151,7 +1151,7 @@ class SupabaseAuthService {
   Future<List<Map<String, dynamic>>> _fetchBranchesOffline() async {
     try {
       if (kDebugMode) {
-        print('📴 Fetching branches from local database...');
+        //print('📴 Fetching branches from local database...');
       }
 
       // Get franchisee organizations from local database
@@ -1161,7 +1161,7 @@ class SupabaseAuthService {
       );
 
       if (kDebugMode) {
-        print('   Found ${organizations.length} branches locally');
+        //print('   Found ${organizations.length} branches locally');
       }
 
       // Convert to the same format as online response
@@ -1180,7 +1180,7 @@ class SupabaseAuthService {
           .toList();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error fetching branches offline: $e');
+        //print('❌ Error fetching branches offline: $e');
       }
       return [];
     }
@@ -1194,8 +1194,8 @@ class SupabaseAuthService {
     required String branchCloudId,
   }) async {
     if (kDebugMode) {
-      print('🔑 Signing in to branch: $branchCloudId');
-      print('   Email: $email');
+      //print('🔑 Signing in to branch: $branchCloudId');
+      //print('   Email: $email');
     }
 
     // Try online authentication first
@@ -1223,16 +1223,16 @@ class SupabaseAuthService {
     if (!isNetworkError) {
       // It's a real auth error (invalid credentials, etc.), don't try offline
       if (kDebugMode) {
-        print(
-          '❌ Online auth failed (not a network error): ${onlineResult.message}',
-        );
+        //print(
+        //  '❌ Online auth failed (not a network error): ${onlineResult.message}',
+        //);
       }
       return onlineResult;
     }
 
     // Network error - try offline login
     if (kDebugMode) {
-      print('📴 Network error detected, trying offline login...');
+      //print('📴 Network error detected, trying offline login...');
     }
 
     return _offlineSignInToBranch(
@@ -1257,22 +1257,22 @@ class SupabaseAuthService {
 
       if (authResponse.user == null) {
         if (kDebugMode) {
-          print('❌ Auth failed: No user returned');
+          //print('❌ Auth failed: No user returned');
         }
         return AuthResult.failure('Invalid credentials');
       }
 
       if (kDebugMode) {
-        print('✅ Auth successful: ${authResponse.user!.id}');
-        print('   Auth email: ${authResponse.user!.email}');
+        //print('✅ Auth successful: ${authResponse.user!.id}');
+        //print('   Auth email: ${authResponse.user!.email}');
       }
 
       // 2. Fetch user record from Supabase with organization check
       if (kDebugMode) {
-        print('📥 Fetching user record...');
-        print(
-          '   Query: email=$email, organization_id=$branchCloudId, is_active=true',
-        );
+        //print('📥 Fetching user record...');
+        //print(
+        //  '   Query: email=$email, organization_id=$branchCloudId, is_active=true',
+        //);
       }
 
       final userRecords = await _supabase
@@ -1284,9 +1284,9 @@ class SupabaseAuthService {
           .limit(1);
 
       if (kDebugMode) {
-        print('   Result: ${userRecords.length} records found');
+        //print('   Result: ${userRecords.length} records found');
         if (userRecords.isNotEmpty) {
-          print('   User: ${userRecords.first}');
+          //print('   User: ${userRecords.first}');
         }
       }
 
@@ -1294,9 +1294,9 @@ class SupabaseAuthService {
         // Sign out since user doesn't belong to this branch
         await _supabase.auth.signOut();
         if (kDebugMode) {
-          print(
-            '❌ No user record found for this email in branch $branchCloudId',
-          );
+          //print(
+          //  '❌ No user record found for this email in branch $branchCloudId',
+          //);
         }
         return AuthResult.failure('You do not have access to this branch');
       }
@@ -1323,14 +1323,14 @@ class SupabaseAuthService {
       final localUserId = localUser?.id ?? 0;
 
       if (kDebugMode) {
-        print('   📍 Local ID resolution:');
-        print('      - Org: cloud=${branchCloudId} → local=$localOrgId');
-        print(
-          '      - Role: cloud=${roleRecord['cloud_id']} → local=$localRoleId',
-        );
-        print(
-          '      - User: cloud=${userRecord['cloud_id']} → local=$localUserId',
-        );
+        //print('   📍 Local ID resolution:');
+        //print('      - Org: cloud=${branchCloudId} → local=$localOrgId');
+        //print(
+        //  '      - Role: cloud=${roleRecord['cloud_id']} → local=$localRoleId',
+        //);
+        //print(
+        //  '      - User: cloud=${userRecord['cloud_id']} → local=$localUserId',
+        //);
       }
 
       // 4. Build UserData from Supabase response with resolved local IDs
@@ -1391,9 +1391,9 @@ class SupabaseAuthService {
   }) async {
     try {
       if (kDebugMode) {
-        print('📴 Attempting offline login...');
-        print('   Email: $email');
-        print('   Branch: $branchCloudId');
+        //print('📴 Attempting offline login...');
+        //print('   Email: $email');
+        //print('   Branch: $branchCloudId');
       }
 
       // 1. Find user in local database by email and organization cloud ID
@@ -1404,7 +1404,7 @@ class SupabaseAuthService {
 
       if (user == null) {
         if (kDebugMode) {
-          print('❌ User not found in local database');
+          //print('❌ User not found in local database');
         }
         return AuthResult.failure(
           'User not found. Please connect to internet and login once first.',
@@ -1413,7 +1413,7 @@ class SupabaseAuthService {
 
       if (!user.isActive) {
         if (kDebugMode) {
-          print('❌ User account is inactive');
+          //print('❌ User account is inactive');
         }
         return AuthResult.failure('Account is inactive');
       }
@@ -1424,9 +1424,9 @@ class SupabaseAuthService {
           passwordParts[0].length != 32 ||
           passwordParts[1].length != 64) {
         if (kDebugMode) {
-          print(
-            '⚠️ Password not in secure format - user must login online first',
-          );
+          //print(
+          //  '⚠️ Password not in secure format - user must login online first',
+          //);
         }
         return AuthResult.failure(
           'Please connect to internet for first login to enable offline access.',
@@ -1436,13 +1436,13 @@ class SupabaseAuthService {
       // 3. Verify password against stored hash
       if (!_verifyPassword(password, user.password)) {
         if (kDebugMode) {
-          print('❌ Invalid password');
+          //print('❌ Invalid password');
         }
         return AuthResult.failure('Invalid credentials');
       }
 
       if (kDebugMode) {
-        print('✅ Offline password verification successful');
+        //print('✅ Offline password verification successful');
       }
 
       // 3. Load organization and role info from local database
@@ -1453,7 +1453,7 @@ class SupabaseAuthService {
 
       if (org == null || role == null) {
         if (kDebugMode) {
-          print('❌ Could not load organization or role');
+          //print('❌ Could not load organization or role');
         }
         return AuthResult.failure(
           'User data incomplete. Please sync when online.',

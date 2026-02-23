@@ -96,6 +96,7 @@ class SupabaseSyncServiceV2 {
     String? parentCommissaryCloudId,
   }) async {
     AppLogger.sync('🚀 Initializing sync service v2...');
+    AppLogger.websocket('🔌 SYNC INIT  orgId=$organizationId  orgType=$organizationType  cloudId=$organizationCloudId');
 
     try {
       _currentOrganizationId = organizationId;
@@ -150,7 +151,7 @@ class SupabaseSyncServiceV2 {
       AppLogger.sync('✅ Sync service v2 initialized (${_currentOrganizationType ?? 'unknown'} mode)');
     } catch (e, stackTrace) {
       AppLogger.sync('❌ Failed to initialize sync service: $e');
-      if (kDebugMode) print(stackTrace);
+      //if (kDebugMode) print(stackTrace);
       onSyncError?.call('Initialization failed: $e');
     }
   }
@@ -202,12 +203,14 @@ class SupabaseSyncServiceV2 {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(syncInterval, (_) => syncAll());
     AppLogger.sync('⏰ Periodic sync started (every ${syncInterval.inMinutes} minutes)');
+    AppLogger.websocket('🔌 PERIODIC SYNC STARTED  interval=${syncInterval.inMinutes}min');
   }
 
   void stopPeriodicSync() {
     _syncTimer?.cancel();
     _syncTimer = null;
     AppLogger.sync('⏸️ Periodic sync stopped');
+    AppLogger.websocket('🔌 PERIODIC SYNC STOPPED');
   }
 
   // ============================================================================
@@ -283,7 +286,7 @@ class SupabaseSyncServiceV2 {
 
     } catch (e, stackTrace) {
       AppLogger.sync('❌ Sync failed: $e');
-      if (kDebugMode) print(stackTrace);
+      //if (kDebugMode) print(stackTrace);
       onSyncError?.call('Sync failed: $e');
       onSyncStatusChanged?.call('Sync failed');
     } finally {
@@ -730,8 +733,22 @@ class SupabaseSyncServiceV2 {
       getByCloudId: (cloudId) =>
           db.dailySalesSummaryDao.getByCloudId(cloudId),
       getLastUpdated: (summary) => summary.lastUpdated,
-      getOrganizationId: (summary) => summary.organizationId, 
-      // Note: org ID in drift is int (local)
+      getOrganizationId: (summary) => summary.organizationId,
+      // Use business key for conflict detection
+      getByBusinessKey: (localData) async {
+        final organizationId = localData['organizationId'] as int?;
+        final itemId = localData['itemId'] as int?;
+        final summaryDate = localData['summaryDate'] as DateTime?;
+        
+        if (organizationId != null && itemId != null && summaryDate != null) {
+          return await db.dailySalesSummaryDao.getByBusinessKey(
+            organizationId: organizationId,
+            itemId: itemId,
+            summaryDate: summaryDate,
+          );
+        }
+        return null;
+      },
     );
   }
 

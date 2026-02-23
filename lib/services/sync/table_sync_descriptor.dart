@@ -106,6 +106,9 @@ class TableSyncDescriptor<T> {
   /// Field mappings between local and cloud
   final List<FieldMapping> fieldMappings;
 
+  /// Business key fields for conflict resolution (alternative to cloud_id)
+  final List<String> businessKeyFields;
+
   /// Status field name for statusAware resolution (null if not applicable)
   final String? statusField;
 
@@ -134,6 +137,7 @@ class TableSyncDescriptor<T> {
     this.canPush,
     this.foreignKeys = const [],
     this.fieldMappings = const [],
+    this.businessKeyFields = const [],
     this.statusField,
     this.organizationField,
     this.softDeleteField = 'is_deleted',
@@ -243,11 +247,11 @@ class TableSyncDescriptor<T> {
         } else if (fk.required && cloudId != null) {
           // Skip this record - required FK not resolved
           // Log which FK failed for debugging
-          print('⚠️ FK resolution failed for $tableName:');
-          print('   - Reference: ${fk.referenceTable}.${fk.cloudField}');
-          print('   - Cloud ID: $cloudId');
-          print('   - Record cloud_id: ${cloudData['cloud_id']}');
-          print('   - Record name: ${cloudData['name'] ?? 'N/A'}');
+          //print('⚠️ FK resolution failed for $tableName:');
+          //print('   - Reference: ${fk.referenceTable}.${fk.cloudField}');
+          //print('   - Cloud ID: $cloudId');
+          //print('   - Record cloud_id: ${cloudData['cloud_id']}');
+          //print('   - Record name: ${cloudData['name'] ?? 'N/A'}');
           return {};
         } else if (!fk.required) {
           // Optional FK - set to null if not resolved

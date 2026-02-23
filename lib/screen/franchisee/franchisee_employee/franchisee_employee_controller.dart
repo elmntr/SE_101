@@ -198,7 +198,7 @@ class FranchiseeEmployeeController {
         currentOrganizationId = storedOrgId;
         onStateChanged();
       } else {
-        print('Warning: No logged-in user found and no stored organization');
+        //print('Warning: No logged-in user found and no stored organization');
       }
     }
   }

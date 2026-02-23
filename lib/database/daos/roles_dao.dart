@@ -36,7 +36,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching roles: $e');
+      //print('❌ Error fetching roles: $e');
       return [];
     }
   }
@@ -53,7 +53,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       final result = await query.getSingle();
       return result.read(roles.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting roles: $e');
+      //print('❌ Error counting roles: $e');
       return 0;
     }
   }
@@ -69,7 +69,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
             ..limit(limit, offset: offset))
           .watch();
     } catch (e) {
-      print('❌ Error watching roles: $e');
+      //print('❌ Error watching roles: $e');
       return Stream.value([]);
     }
   }
@@ -79,7 +79,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
     try {
       return await into(roles).insert(role.copyWith(isSynced: Value(false)));
     } catch (e) {
-      print('❌ Error inserting role: $e');
+      //print('❌ Error inserting role: $e');
       rethrow;
     }
   }
@@ -91,7 +91,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         batch.insertAll(roles, rolesList);
       });
     } catch (e) {
-      print('❌ Error batch inserting roles: $e');
+      //print('❌ Error batch inserting roles: $e');
       rethrow;
     }
   }
@@ -105,7 +105,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       );
       return await update(roles).replace(updated);
     } catch (e) {
-      print('❌ Error updating role: $e');
+      //print('❌ Error updating role: $e');
       return false;
     }
   }
@@ -116,20 +116,20 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       // Check if role is in use
       final usageCount = await _getRoleUsageCount(id);
       if (usageCount > 0) {
-        print('⚠️ Cannot delete role $id: used by $usageCount users');
+        //print('⚠️ Cannot delete role $id: used by $usageCount users');
         throw Exception('Role is currently assigned to $usageCount user(s)');
       }
 
       // Get role to check if it has cloudId
       final role = await getRoleById(id);
       if (role == null) {
-        print('⚠️ Role $id not found');
+        //print('⚠️ Role $id not found');
         return false;
       }
 
       // Check if it's a system role
       if (role.isSystemRole) {
-        print('⚠️ Cannot delete system role $id');
+        //print('⚠️ Cannot delete system role $id');
         throw Exception('System roles cannot be deleted');
       }
 
@@ -143,21 +143,21 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
             lastUpdated: Value(DateTime.now().toUtc()),
           ),
         );
-        print(
-          '📤 Role $id marked for cloud deletion (cloudId: ${role.cloudId})',
-        );
+        //print(
+        //  '📤 Role $id marked for cloud deletion (cloudId: ${role.cloudId})'
+        //);
       }
 
       // Then permanently delete from local database
       final result = await (delete(roles)..where((t) => t.id.equals(id))).go();
 
       if (result > 0) {
-        print('✅ Role $id permanently deleted from local database');
+        //print('✅ Role $id permanently deleted from local database');
       }
 
       return result > 0;
     } catch (e) {
-      print('❌ Error deleting role: $e');
+      //print('❌ Error deleting role: $e');
       rethrow;
     }
   }
@@ -174,7 +174,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       );
       return result > 0;
     } catch (e) {
-      print('❌ Error deactivating role: $e');
+      //print('❌ Error deactivating role: $e');
       return false;
     }
   }
@@ -189,7 +189,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       final result = await query.getSingle();
       return result.read(db.users.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error checking role usage: $e');
+      //print('❌ Error checking role usage: $e');
       return 0;
     }
   }
@@ -201,7 +201,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         roles,
       )..where((r) => r.name.equals(roleName))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching role by name: $e');
+      //print('❌ Error fetching role by name: $e');
       return null;
     }
   }
@@ -213,7 +213,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         roles,
       )..where((r) => r.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching role by ID: $e');
+      //print('❌ Error fetching role by ID: $e');
       return null;
     }
   }
@@ -253,7 +253,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching roles with permission: $e');
+      //print('❌ Error fetching roles with permission: $e');
       return [];
     }
   }
@@ -265,7 +265,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         roles,
       )..where((t) => t.isSystemRole.equals(true))).get();
     } catch (e) {
-      print('❌ Error fetching system roles: $e');
+      //print('❌ Error fetching system roles: $e');
       return [];
     }
   }
@@ -277,7 +277,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         roles,
       )..where((t) => t.isSystemRole.equals(false))).get();
     } catch (e) {
-      print('❌ Error fetching custom roles: $e');
+      //print('❌ Error fetching custom roles: $e');
       return [];
     }
   }
@@ -294,7 +294,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced roles: $e');
+      //print('❌ Error fetching unsynced roles: $e');
       return [];
     }
   }
@@ -309,7 +309,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       final result = await query.getSingle();
       return result.read(roles.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced roles: $e');
+      //print('❌ Error counting unsynced roles: $e');
       return 0;
     }
   }
@@ -333,7 +333,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         }
       });
     } catch (e) {
-      print('❌ Error marking roles as synced: $e');
+      //print('❌ Error marking roles as synced: $e');
       rethrow;
     }
   }
@@ -403,7 +403,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         }
       });
     } catch (e) {
-      print('❌ Error batch upserting roles from cloud: $e');
+      //print('❌ Error batch upserting roles from cloud: $e');
       rethrow;
     }
   }
@@ -485,7 +485,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         );
       }
     } catch (e) {
-      print('❌ Error upserting role from cloud: $e');
+      //print('❌ Error upserting role from cloud: $e');
       rethrow;
     }
   }
@@ -497,7 +497,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         roles,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching role by cloud ID: $e');
+      //print('❌ Error fetching role by cloud ID: $e');
       return null;
     }
   }
@@ -515,12 +515,12 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
               .go();
 
       if (result > 0) {
-        print('🧹 Cleaned up $result inactive roles from local database');
+        //print('🧹 Cleaned up $result inactive roles from local database');
       }
 
       return result;
     } catch (e) {
-      print('❌ Error cleaning up deleted roles: $e');
+      //print('❌ Error cleaning up deleted roles: $e');
       return 0;
     }
   }

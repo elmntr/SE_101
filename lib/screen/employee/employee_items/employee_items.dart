@@ -128,7 +128,7 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   void _onSyncComplete() {
     if (mounted) {
-      print('🔄 Sync completed, refreshing employee items...');
+      //print('🔄 Sync completed, refreshing employee items...');
       loadData();
     }
   }
@@ -484,9 +484,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
         );
         if (org != null) {
           orgId = org.id;
-          print(
-            '📍 Employee items: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
-          );
+          //print(
+          //  '📍 Employee items: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
+          //);
         }
       }
 
@@ -503,9 +503,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
             orgId,
             organization.parentCommissaryId!,
           );
-          print(
-            '📍 Employee items (franchisee): Loaded ${items.length} items with branch stock from commissary ${organization.parentCommissaryId}',
-          );
+          //print(
+          //  '📍 Employee items (franchisee): Loaded ${items.length} items with branch stock from commissary ${organization.parentCommissaryId}',
+          //);
         } else {
           // Fallback: try to get any commissary
           final commissaries = await db.organizationsDao.getAllOrganizations(
@@ -516,9 +516,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
               orgId,
               commissaries.first.id,
             );
-            print(
-              '📍 Employee items (franchisee fallback): Loaded ${items.length} items with branch stock from commissary ${commissaries.first.id}',
-            );
+            //print(
+            //  '📍 Employee items (franchisee fallback): Loaded ${items.length} items with branch stock from commissary ${commissaries.first.id}',
+            //);
           }
         }
       } else {
@@ -533,9 +533,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
               ),
             )
             .toList();
-        print(
-          '📍 Employee items (commissary): Loaded ${items.length} items from org $orgId',
-        );
+        //print(
+        //  '📍 Employee items (commissary): Loaded ${items.length} items from org $orgId',
+        //);
       }
 
       // Load employees for filter
@@ -560,7 +560,7 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
         });
       }
     } catch (e) {
-      print('Error loading data: $e');
+      //print('Error loading data: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
