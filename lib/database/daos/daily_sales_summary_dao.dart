@@ -336,40 +336,55 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Upsert batch from cloud
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
+Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
+  await batch((batch) {
     for (final record in records) {
       final cloudId = record['cloudId'] as String;
-      
-      // Handle potentially null fields safely
+
       final organizationId = record['organizationId'] as int?;
       final itemId = record['itemId'] as int?;
-      
+
       if (organizationId == null || itemId == null) {
-          // Skip invalid records where FKs couldn't be resolved
-          AppLogger.sync('⚠️ Skipping daily_sales_summary record: Missing required fields');
-          continue;
+        AppLogger.sync('⚠️ Skipping daily_sales_summary record: Missing required fields');
+        continue;
       }
 
       final summaryDate = record['summaryDate'] as DateTime;
-      final lastUpdated = record['lastUpdated'] as DateTime?;
+      final resolvedLastUpdated =
+          (record['lastUpdated'] as DateTime?) ?? DateTime.now();
 
-      // Use individual upsert which handles business key conflicts properly
-      await upsertDailySummary(DailySalesSummaryCompanion.insert(
-        organizationId: organizationId,
-        itemId: itemId,
-        summaryDate: summaryDate,
-        quantitySold: Value(record['quantitySold'] as int? ?? 0),
-        quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
-        revenue: Value(record['revenue'] as double? ?? 0.0),
-        costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
-        grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
-        transactionCount: Value(record['transactionCount'] as int? ?? 0),
-        lastUpdated: Value(lastUpdated ?? DateTime.now()),
-        isSynced: const Value(true),
-        cloudId: Value(cloudId),
-      ));
+      batch.insert(
+        dailySalesSummary,
+        DailySalesSummaryCompanion.insert(
+          organizationId: organizationId,
+          itemId: itemId,
+          summaryDate: summaryDate,
+          quantitySold: Value(record['quantitySold'] as int? ?? 0),
+          quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
+          revenue: Value(record['revenue'] as double? ?? 0.0),
+          costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
+          grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
+          transactionCount: Value(record['transactionCount'] as int? ?? 0),
+          cloudId: Value(cloudId),
+          lastUpdated: Value(resolvedLastUpdated),
+          isSynced: const Value(true),
+        ),
+        onConflict: DoUpdate(
+          (old) => DailySalesSummaryCompanion(
+            quantitySold: Value(record['quantitySold'] as int? ?? 0),
+            quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
+            revenue: Value(record['revenue'] as double? ?? 0.0),
+            costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
+            grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
+            transactionCount: Value(record['transactionCount'] as int? ?? 0),
+            lastUpdated: Value(resolvedLastUpdated),
+            isSynced: const Value(true),
+          ),
+        ),
+      );
     }
-  }
+  });
+}
 
   /// Watch today's summaries for real-time UI updates
   Stream<List<DailySalesSummaryData>> watchTodaySummaries(int organizationId) {
