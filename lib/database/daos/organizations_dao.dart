@@ -49,7 +49,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching organizations: $e');
+      //print('❌ Error fetching organizations: $e');
       return [];
     }
   }
@@ -71,7 +71,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(organizations.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting organizations: $e');
+      //print('❌ Error counting organizations: $e');
       return 0;
     }
   }
@@ -88,7 +88,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit, offset: offset))
           .watch();
     } catch (e) {
-      print('❌ Error watching organizations: $e');
+      //print('❌ Error watching organizations: $e');
       return Stream.value([]);
     }
   }
@@ -115,7 +115,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         organizations,
       ).insert(organization.copyWith(isSynced: Value(false)));
     } catch (e) {
-      print('❌ Error inserting organization: $e');
+      //print('❌ Error inserting organization: $e');
       rethrow;
     }
   }
@@ -131,7 +131,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         }
       });
     } catch (e) {
-      print('❌ Error batch inserting organizations: $e');
+      //print('❌ Error batch inserting organizations: $e');
       rethrow;
     }
   }
@@ -145,7 +145,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       );
       return await update(organizations).replace(updated);
     } catch (e) {
-      print('❌ Error updating organization: $e');
+      //print('❌ Error updating organization: $e');
       return false;
     }
   }
@@ -157,7 +157,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         organizations,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching organization by ID: $e');
+      //print('❌ Error fetching organization by ID: $e');
       return null;
     }
   }
@@ -169,7 +169,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             ..where((t) => t.name.equals(name) & t.isActive.equals(true)))
           .getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching organization by name: $e');
+      //print('❌ Error fetching organization by name: $e');
       return null;
     }
   }
@@ -190,7 +190,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching organizations by type: $e');
+      //print('❌ Error fetching organizations by type: $e');
       return [];
     }
   }
@@ -203,9 +203,9 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final itemCount = await _getActiveItemCount(id);
 
       if (userCount > 0 || itemCount > 0) {
-        print(
-          '⚠️ Cannot deactivate organization $id: has $userCount users and $itemCount items',
-        );
+        //print(
+        //  '⚠️ Cannot deactivate organization $id: has $userCount users and $itemCount items'
+        //);
         throw Exception(
           'Organization has $userCount active user(s) and $itemCount item(s)',
         );
@@ -222,7 +222,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error deactivating organization: $e');
+      //print('❌ Error deactivating organization: $e');
       rethrow;
     }
   }
@@ -241,7 +241,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error reactivating organization: $e');
+      //print('❌ Error reactivating organization: $e');
       return false;
     }
   }
@@ -263,7 +263,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         isActive: true,
       );
     } catch (e) {
-      print('❌ Error fetching commissaries: $e');
+      //print('❌ Error fetching commissaries: $e');
       return [];
     }
   }
@@ -279,7 +279,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             ..limit(1))
           .getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching main commissary: $e');
+      //print('❌ Error fetching main commissary: $e');
       return null;
     }
   }
@@ -310,7 +310,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching franchisees: $e');
+      //print('❌ Error fetching franchisees: $e');
       return [];
     }
   }
@@ -330,7 +330,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(t) => OrderingTerm(expression: t.name)]))
           .get();
     } catch (e) {
-      print('❌ Error fetching franchisees by commissary: $e');
+      //print('❌ Error fetching franchisees by commissary: $e');
       return [];
     }
   }
@@ -349,7 +349,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(organizations.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting franchisees: $e');
+      //print('❌ Error counting franchisees: $e');
       return 0;
     }
   }
@@ -371,7 +371,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(db.users.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error checking user count: $e');
+      //print('❌ Error checking user count: $e');
       return 0;
     }
   }
@@ -389,7 +389,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(db.items.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error checking item count: $e');
+      //print('❌ Error checking item count: $e');
       return 0;
     }
   }
@@ -409,7 +409,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced organizations: $e');
+      //print('❌ Error fetching unsynced organizations: $e');
       return [];
     }
   }
@@ -424,7 +424,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(organizations.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced organizations: $e');
+      //print('❌ Error counting unsynced organizations: $e');
       return 0;
     }
   }
@@ -448,7 +448,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         }
       });
     } catch (e) {
-      print('❌ Error marking organizations as synced: $e');
+      //print('❌ Error marking organizations as synced: $e');
       rethrow;
     }
   }
@@ -486,7 +486,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         }
       });
     } catch (e) {
-      print('❌ Error batch upserting organizations from cloud: $e');
+      //print('❌ Error batch upserting organizations from cloud: $e');
       rethrow;
     }
   }
@@ -564,7 +564,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         );
       }
     } catch (e) {
-      print('❌ Error upserting organization from cloud: $e');
+      //print('❌ Error upserting organization from cloud: $e');
       rethrow;
     }
   }
@@ -576,7 +576,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         organizations,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching organization by cloud ID: $e');
+      //print('❌ Error fetching organization by cloud ID: $e');
       return null;
     }
   }

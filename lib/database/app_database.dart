@@ -113,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(super.executor) : _seedData = false;
 
   @override
-  int get schemaVersion => 3; // Incremented for BranchItemStock table
+  int get schemaVersion => 4; // Incremented for DailySalesSummary cloud_id uniqueness fix
 
   @override
   MigrationStrategy get migration {
@@ -175,6 +175,32 @@ class AppDatabase extends _$AppDatabase {
           );
           
           AppLogger.database('Added BranchItemStock table for multi-branch inventory');
+        }
+        
+        if (from < 4) {
+          // v4: Fix DailySalesSummary cloud_id uniqueness
+          AppLogger.database('Cleaning duplicate cloud_id values in daily_sales_summary...');
+          
+          // Clean duplicates: keep the latest record (by id) for each cloud_id
+          await customStatement('''
+            DELETE FROM daily_sales_summary 
+            WHERE id NOT IN (
+              SELECT MAX(id) 
+              FROM daily_sales_summary 
+              WHERE cloud_id IS NOT NULL 
+              GROUP BY cloud_id
+            )
+            AND cloud_id IS NOT NULL
+          ''');
+          
+          // Add unique index on cloud_id for performance
+          await customStatement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_sales_cloud_id ON daily_sales_summary(cloud_id)',
+          );
+          
+          // Log the cleanup results
+          final remainingCount = await customSelect('SELECT COUNT(*) as count FROM daily_sales_summary WHERE cloud_id IS NOT NULL').getSingle();
+          AppLogger.database('DailySalesSummary cloud_id cleanup completed. Records with cloud_id: ${remainingCount.read<int>('count')}');
         }
         
         AppLogger.database('Database upgrade complete!');
@@ -309,6 +335,8 @@ class AppDatabase extends _$AppDatabase {
 
     AppLogger.database('All indexes created');
   }
+
+
 
   /// ✅ Seed initial data (commissary, roles, admin user)
   Future<void> _seedInitialData() async {

@@ -60,7 +60,7 @@ class SupabaseSyncService {
 
   /// ✅ Initialize sync service
   Future<void> initialize() async {
-    print('🚀 Initializing sync service...');
+    //print('🚀 Initializing sync service...');
     
     try {
       // Check initial connectivity
@@ -82,10 +82,10 @@ class SupabaseSyncService {
           onConnectivityChanged?.call(_isOnline);
           
           if (_isOnline) {
-            print('📡 Network restored, triggering sync...');
+            //print('📡 Network restored, triggering sync...');
             syncAll();
           } else {
-            print('🔵 Network lost');
+            //print('🔵 Network lost');
             onSyncStatusChanged?.call('Offline');
           }
         }
@@ -96,16 +96,16 @@ class SupabaseSyncService {
         await syncAll();
       }
       
-      print('✅ Sync service initialized');
+      //print('✅ Sync service initialized');
     } catch (e) {
-      print('❌ Failed to initialize sync service: $e');
+      //print('❌ Failed to initialize sync service: $e');
       onSyncError?.call('Initialization failed: $e');
     }
   }
 
   /// ✅ Build UUID cache from local database
   Future<void> _buildCloudIdCache() async {
-    print('🔧 Building cloud ID cache...');
+    //print('🔧 Building cloud ID cache...');
     
     try {
       // Cache organizations
@@ -148,9 +148,9 @@ class SupabaseSyncService {
         }
       }
       
-      print('✅ Cache built: ${_cloudIdCache.values.fold(0, (sum, map) => sum + map.length)} entries');
+      //print('✅ Cache built: ${_cloudIdCache.values.fold(0, (sum, map) => sum + map.length)} entries');
     } catch (e) {
-      print('⚠️ Error building cache: $e');
+      //print('⚠️ Error building cache: $e');
     }
   }
 
@@ -191,7 +191,7 @@ class SupabaseSyncService {
           .timeout(const Duration(seconds: 5));
       return result != ConnectivityResult.none;
     } catch (e) {
-      print('⚠️ Connectivity check failed: $e');
+      //print('⚠️ Connectivity check failed: $e');
       return false;
     }
   }
@@ -199,23 +199,23 @@ class SupabaseSyncService {
   void startPeriodicSync() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(syncInterval, (_) => syncAll());
-    print('⏰ Periodic sync started (every ${syncInterval.inMinutes} minutes)');
+    //print('⏰ Periodic sync started (every ${syncInterval.inMinutes} minutes)');
   }
 
   void stopPeriodicSync() {
     _syncTimer?.cancel();
-    print('⏸️ Periodic sync stopped');
+    //print('⏸️ Periodic sync stopped');
   }
 
   /// ✅ Main sync method with dependency-aware ordering and retry logic
   Future<void> syncAll() async {
     if (_isSyncing) {
-      print('⏳ Sync already in progress, skipping...');
+      //print('⏳ Sync already in progress, skipping...');
       return;
     }
 
     if (!_isOnline) {
-      print('🔵 Offline, sync skipped');
+      //print('🔵 Offline, sync skipped');
       onSyncStatusChanged?.call('Offline');
       return;
     }
@@ -225,7 +225,7 @@ class SupabaseSyncService {
         _isSyncing = true;
         onSyncStatusChanged?.call('Syncing...');
         
-        print('🔄 Starting sync (attempt $attempt/$maxRetries)...');
+        //print('🔄 Starting sync (attempt $attempt/$maxRetries)...');
         final startTime = DateTime.now();
         
         // ✅ Sync in dependency order to avoid foreign key conflicts
@@ -243,7 +243,7 @@ class SupabaseSyncService {
         _lastSuccessfulSync = DateTime.now();
         final duration = _lastSuccessfulSync!.difference(startTime);
         
-        print('✅ Sync completed successfully in ${duration.inSeconds}s');
+        //print('✅ Sync completed successfully in ${duration.inSeconds}s');
         onSyncStatusChanged?.call('Synced');
         
         // ✅ Rebuild cache after successful sync
@@ -255,9 +255,9 @@ class SupabaseSyncService {
         return;
         
       } catch (e, stackTrace) {
-        print('❌ Sync attempt $attempt failed: $e');
+        //print('❌ Sync attempt $attempt failed: $e');
         if (kDebugMode) {
-          print('Stack trace: $stackTrace');
+          //print('Stack trace: $stackTrace');
         }
         
         if (attempt == maxRetries) {
@@ -265,7 +265,7 @@ class SupabaseSyncService {
           onSyncStatusChanged?.call('Sync failed');
         } else {
           final delay = initialRetryDelay * pow(2, attempt - 1);
-          print('⏳ Retrying in ${delay.inSeconds} seconds...');
+          //print('⏳ Retrying in ${delay.inSeconds} seconds...');
           await Future.delayed(delay);
         }
       } finally {
@@ -277,11 +277,11 @@ class SupabaseSyncService {
   /// ✅ Sync individual table with error isolation
   Future<void> _syncTable(String tableName, Future<void> Function() syncFunction) async {
     try {
-      print('📊 Syncing $tableName...');
+      //print('📊 Syncing $tableName...');
       await syncFunction();
-      print('   ✅ $tableName sync complete');
+      //print('   ✅ $tableName sync complete');
     } catch (e) {
-      print('   ❌ $tableName sync failed: $e');
+      //print('   ❌ $tableName sync failed: $e');
       // Don't rethrow - continue with other tables
       onSyncError?.call('$tableName sync failed: $e');
     }
@@ -382,9 +382,9 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed organizations');
-    if (totalDeleted > 0) print('   🗑️ Deleted $totalDeleted organizations');
-  }
+    //if (totalPushed > 0) //print('   ↑ Pushed $totalPushed organizations');
+    //if (totalDeleted > 0) //print('   🗑️ Deleted $totalDeleted organizations');
+}
 
   Future<void> _pullOrganizations() async {
     try {
@@ -415,10 +415,10 @@ class SupabaseSyncService {
         }
         
         await db.organizationsDao.upsertBatchFromCloud(resolvedOrgs);
-        print('   ↓ Pulled ${resolvedOrgs.length} organizations');
+        //print('   ↓ Pulled ${resolvedOrgs.length} organizations');
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull organizations: $e');
+      //print('   ⚠️ Failed to pull organizations: $e');
     }
   }
 
@@ -502,8 +502,8 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed roles');
-    if (totalDeleted > 0) print('   🗑️ Deleted $totalDeleted roles');
+    //if (totalPushed > 0) //print('   ↑ Pushed $totalPushed roles');
+    //if (totalDeleted > 0) //print('   🗑️ Deleted $totalDeleted roles');
   }
 
   Future<void> _pullRoles() async {
@@ -519,10 +519,10 @@ class SupabaseSyncService {
 
       if (cloudRoles.isNotEmpty) {
         await db.rolesDao.upsertBatchFromCloud(cloudRoles);
-        print('   ↓ Pulled ${cloudRoles.length} roles');
+        //print('   ↓ Pulled ${cloudRoles.length} roles');
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull roles: $e');
+      //print('   ⚠️ Failed to pull roles: $e');
     }
   }
 
@@ -571,7 +571,7 @@ class SupabaseSyncService {
 
           // Skip if foreign keys not yet synced
           if (orgCloudId == null || roleCloudId == null) {
-            print('   ⚠️ Skipping user ${user.id}: missing foreign key UUIDs');
+            //print('   ⚠️ Skipping user ${user.id}: missing foreign key UUIDs');
             continue;
           }
 
@@ -610,8 +610,8 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed users');
-    if (totalDeleted > 0) print('   🗑️ Deleted $totalDeleted users');
+    //if (totalPushed > 0) //print('   ↑ Pushed $totalPushed users');
+    //if (totalDeleted > 0) //print('   🗑️ Deleted $totalDeleted users');
   }
 
   Future<void> _pullUsers() async {
@@ -635,7 +635,7 @@ class SupabaseSyncService {
           final roleId = _findLocalIdByCloudId('roles', cloudUser['role_id']);
           
           if (orgId == null || roleId == null) {
-            print('   ⚠️ Skipping cloud user ${cloudUser['cloud_id']}: missing local foreign keys');
+            //print('   ⚠️ Skipping cloud user ${cloudUser['cloud_id']}: missing local foreign keys');
             continue;
           }
           
@@ -648,11 +648,11 @@ class SupabaseSyncService {
         
         if (resolvedUsers.isNotEmpty) {
           await db.usersDao.upsertBatchFromCloud(resolvedUsers);
-          print('   ↓ Pulled ${resolvedUsers.length} users');
+          //print('   ↓ Pulled ${resolvedUsers.length} users');
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull users: $e');
+      //print('   ⚠️ Failed to pull users: $e');
     }
   }
 
@@ -700,7 +700,7 @@ class SupabaseSyncService {
           final masterItemCloudId = _getCloudId('items', item.masterItemId);
 
           if (orgCloudId == null) {
-            print('   ⚠️ Skipping item ${item.id}: missing organization UUID');
+            //print('   ⚠️ Skipping item ${item.id}: missing organization UUID');
             continue;
           }
 
@@ -743,8 +743,8 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed items');
-    if (totalDeleted > 0) print('   🗑️ Deleted $totalDeleted items');
+    //if (totalPushed > 0) //print('   ↑ Pushed $totalPushed items');
+    //if (totalDeleted > 0) //print('   🗑️ Deleted $totalDeleted items');
   }
 
   Future<void> _pullItems() async {
@@ -767,7 +767,7 @@ class SupabaseSyncService {
           final masterItemId = _findLocalIdByCloudId('items', cloudItem['master_item_id']);
           
           if (orgId == null) {
-            print('   ⚠️ Skipping cloud item ${cloudItem['cloud_id']}: missing local organization');
+            //print('   ⚠️ Skipping cloud item ${cloudItem['cloud_id']}: missing local organization');
             continue;
           }
           
@@ -785,11 +785,11 @@ class SupabaseSyncService {
             final batch = resolvedItems.sublist(i, end);
             await db.itemsDao.upsertBatchFromCloud(batch);
           }
-          print('   ↓ Pulled ${resolvedItems.length} items');
+          //print('   ↓ Pulled ${resolvedItems.length} items');
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull items: $e');
+      //print('   ⚠️ Failed to pull items: $e');
     }
   }
 
@@ -836,7 +836,7 @@ class SupabaseSyncService {
           final commissaryCloudId = _getCloudId('organizations', ingredient.commissaryId);
 
           if (commissaryCloudId == null) {
-            print('   ⚠️ Skipping ingredient ${ingredient.id}: missing commissary UUID');
+            //print('   ⚠️ Skipping ingredient ${ingredient.id}: missing commissary UUID');
             continue;
           }
 
@@ -875,8 +875,8 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed ingredients');
-    if (totalDeleted > 0) print('   🗑️ Deleted $totalDeleted ingredients');
+    //if (totalPushed > 0) //print('   ↑ Pushed $totalPushed ingredients');
+    //if (totalDeleted > 0) //print('   🗑️ Deleted $totalDeleted ingredients');
   }
 
   Future<void> _pullIngredients() async {
@@ -898,7 +898,7 @@ class SupabaseSyncService {
           final commissaryId = _findLocalIdByCloudId('organizations', cloudIngredient['commissary_id']);
           
           if (commissaryId == null) {
-            print('   ⚠️ Skipping cloud ingredient ${cloudIngredient['cloud_id']}: missing local commissary');
+            //print('   ⚠️ Skipping cloud ingredient ${cloudIngredient['cloud_id']}: missing local commissary');
             continue;
           }
           
@@ -910,11 +910,11 @@ class SupabaseSyncService {
         
         if (resolvedIngredients.isNotEmpty) {
           await db.ingredientsDao.upsertBatchFromCloud(resolvedIngredients);
-          print('   ↓ Pulled ${resolvedIngredients.length} ingredients');
+          //print('   ↓ Pulled ${resolvedIngredients.length} ingredients');
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull ingredients: $e');
+      //print('   ⚠️ Failed to pull ingredients: $e');
     }
   }
 
@@ -961,7 +961,7 @@ class SupabaseSyncService {
           final ingredientCloudId = _getCloudId('ingredients', recipe.ingredientId);
 
           if (itemCloudId == null || ingredientCloudId == null) {
-            print('   ⚠️ Skipping recipe ${recipe.id}: missing foreign key UUIDs');
+            //print('   ⚠️ Skipping recipe ${recipe.id}: missing foreign key UUIDs');
             continue;
           }
 
@@ -998,8 +998,8 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed recipe ingredients');
-    if (totalDeleted > 0) print('   🗑️ Deleted $totalDeleted recipe ingredients');
+    //if (totalPushed > 0) //print('   ↑ Pushed $totalPushed recipe ingredients');
+    //if (totalDeleted > 0) //print('   🗑️ Deleted $totalDeleted recipe ingredients');
   }
 
   Future<void> _pullRecipeIngredients() async {
@@ -1022,7 +1022,7 @@ class SupabaseSyncService {
           final ingredientId = _findLocalIdByCloudId('ingredients', cloudRecipe['ingredient_id']);
           
           if (itemId == null || ingredientId == null) {
-            print('   ⚠️ Skipping cloud recipe ${cloudRecipe['cloud_id']}: missing local foreign keys');
+            //print('   ⚠️ Skipping cloud recipe ${cloudRecipe['cloud_id']}: missing local foreign keys');
             continue;
           }
           
@@ -1035,11 +1035,11 @@ class SupabaseSyncService {
         
         if (resolvedRecipes.isNotEmpty) {
           await db.recipeIngredientsDao.upsertBatchFromCloud(resolvedRecipes);
-          print('   ↓ Pulled ${resolvedRecipes.length} recipe ingredients');
+          //print('   ↓ Pulled ${resolvedRecipes.length} recipe ingredients');
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull recipe ingredients: $e');
+      //print('   ⚠️ Failed to pull recipe ingredients: $e');
     }
   }
 
@@ -1090,7 +1090,7 @@ class SupabaseSyncService {
 
           if (franchiseeCloudId == null || commissaryCloudId == null || 
               itemCloudId == null || requestedByCloudId == null) {
-            print('   ⚠️ Skipping replenishment request ${request.id}: missing foreign key UUIDs');
+            //print('   ⚠️ Skipping replenishment request ${request.id}: missing foreign key UUIDs');
             continue;
           }
 
@@ -1134,8 +1134,8 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed replenishment requests');
-    if (totalDeleted > 0) print('   🗑️ Deleted $totalDeleted replenishment requests');
+    //if (totalPushed > 0) //print('   ↑ Pushed $totalPushed replenishment requests');
+    //if (totalDeleted > 0) //print('   🗑️ Deleted $totalDeleted replenishment requests');
   }
 
   Future<void> _pullReplenishmentRequests() async {
@@ -1161,7 +1161,7 @@ class SupabaseSyncService {
           final reviewedById = _findLocalIdByCloudId('users', cloudRequest['reviewed_by']);
           
           if (franchiseeId == null || commissaryId == null || itemId == null || requestedById == null) {
-            print('   ⚠️ Skipping cloud replenishment request ${cloudRequest['cloud_id']}: missing local foreign keys');
+            //print('   ⚠️ Skipping cloud replenishment request ${cloudRequest['cloud_id']}: missing local foreign keys');
             continue;
           }
           
@@ -1177,11 +1177,11 @@ class SupabaseSyncService {
         
         if (resolvedRequests.isNotEmpty) {
           await db.stockReplenishmentRequestsDao.upsertBatchFromCloud(resolvedRequests);
-          print('   ↓ Pulled ${resolvedRequests.length} replenishment requests');
+          //print('   ↓ Pulled ${resolvedRequests.length} replenishment requests');
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull replenishment requests: $e');
+      //print('   ⚠️ Failed to pull replenishment requests: $e');
     }
   }
 
@@ -1230,7 +1230,7 @@ class SupabaseSyncService {
           final reviewedByCloudId = _getCloudId('users', request.reviewedBy);
 
           if (franchiseeCloudId == null || itemCloudId == null || requestedByCloudId == null) {
-            print('   ⚠️ Skipping change request ${request.id}: missing foreign key UUIDs');
+            //print('   ⚠️ Skipping change request ${request.id}: missing foreign key UUIDs');
             continue;
           }
 
@@ -1275,8 +1275,8 @@ class SupabaseSyncService {
       offset += batchSize;
     }
 
-    if (totalPushed > 0) print('   ↑ Pushed $totalPushed change requests');
-    if (totalDeleted > 0) print('   🗑️ Deleted $totalDeleted change requests');
+    //if (totalPushed > 0) //print('   ↑ Pushed $totalPushed change requests');
+    //if (totalDeleted > 0) //print('   🗑️ Deleted $totalDeleted change requests');
   }
 
   Future<void> _pullChangeRequests() async {
@@ -1301,7 +1301,7 @@ class SupabaseSyncService {
           final reviewedById = _findLocalIdByCloudId('users', cloudRequest['reviewed_by']);
           
           if (franchiseeId == null || itemId == null || requestedById == null) {
-            print('   ⚠️ Skipping cloud change request ${cloudRequest['cloud_id']}: missing local foreign keys');
+            //print('   ⚠️ Skipping cloud change request ${cloudRequest['cloud_id']}: missing local foreign keys');
             continue;
           }
           
@@ -1316,11 +1316,11 @@ class SupabaseSyncService {
         
         if (resolvedRequests.isNotEmpty) {
           await db.stockChangeRequestsDao.upsertBatchFromCloud(resolvedRequests);
-          print('   ↓ Pulled ${resolvedRequests.length} change requests');
+          //print('   ↓ Pulled ${resolvedRequests.length} change requests');
         }
       }
     } catch (e) {
-      print('   ⚠️ Failed to pull change requests: $e');
+      //print('   ⚠️ Failed to pull change requests: $e');
     }
   }
 
@@ -1331,7 +1331,7 @@ class SupabaseSyncService {
   /// ✅ Cleanup deleted records from local database
   Future<void> _cleanupDeletedRecords() async {
     try {
-      print('🧹 Cleaning up deleted records...');
+      //print('🧹 Cleaning up deleted records...');
       
       final itemsCleanedCount = await db.itemsDao.cleanupDeletedItems();
       final usersCleanedCount = await db.usersDao.cleanupDeletedUsers();
@@ -1341,15 +1341,15 @@ class SupabaseSyncService {
       final totalCleaned = itemsCleanedCount + usersCleanedCount + rolesCleanedCount + categoriesCleanedCount;
       
       if (totalCleaned > 0) {
-        print('✅ Cleaned up $totalCleaned deleted records');
+        //print('✅ Cleaned up $totalCleaned deleted records');
       }
     } catch (e) {
-      print('❌ Error cleaning up deleted records: $e');
+      //print('❌ Error cleaning up deleted records: $e');
     }
   }
 
   Future<void> syncImmediate() async {
-    print('⚡ Immediate sync requested');
+    //print('⚡ Immediate sync requested');
     await syncAll();
   }
 
@@ -1382,7 +1382,7 @@ class SupabaseSyncService {
         'cache_size': _cloudIdCache.values.fold(0, (sum, map) => sum + map.length),
       };
     } catch (e) {
-      print('❌ Error getting sync status: $e');
+      //print('❌ Error getting sync status: $e');
       return {
         'error': e.toString(),
         'is_syncing': _isSyncing,
@@ -1393,6 +1393,6 @@ class SupabaseSyncService {
 
   void dispose() {
     _syncTimer?.cancel();
-    print('🛑 Sync service disposed');
+    //print('🛑 Sync service disposed');
   }
 }

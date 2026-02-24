@@ -237,6 +237,33 @@ class SyncEngine {
     return _cloudToLocalCache[table]?[cloudId];
   }
 
+  /// Get record by business key for conflict resolution
+  Future<T?> _getByBusinessKey<T>(
+    String tableName,
+    Map<String, dynamic> localData,
+    List<String> businessKeyFields,
+  ) async {
+    // This is a simplified implementation - in practice, you'd need to
+    // call the appropriate DAO method based on the table name
+    switch (tableName) {
+      case 'daily_sales_summary':
+        // For daily_sales_summary, use the DAO method we added
+        final organizationId = localData['organizationId'] as int?;
+        final itemId = localData['itemId'] as int?;
+        final summaryDate = localData['summaryDate'] as DateTime?;
+        
+        if (organizationId != null && itemId != null && summaryDate != null) {
+          // This would need to be injected or accessed differently
+          // For now, return null to fall back to cloud_id lookup
+          return null;
+        }
+        break;
+      default:
+        return null;
+    }
+    return null;
+  }
+
   /// Update both caches
   void updateCache(String table, int localId, String cloudId) {
     _localToCloudCache[table] ??= {};
@@ -391,6 +418,7 @@ class SyncEngine {
     required Future<T?> Function(String cloudId) getByCloudId,
     required DateTime? Function(T record) getLastUpdated,
     required int? Function(T record) getOrganizationId,
+    Future<T?> Function(Map<String, dynamic> localData)? getByBusinessKey,
     String? additionalFilter,
   }) async {
     final stopwatch = Stopwatch()..start();
@@ -453,38 +481,45 @@ class SyncEngine {
               continue;
             }
 
-            // Check for conflicts
-            final cloudId = cloudRecord['cloud_id'] as String?;
-            if (cloudId != null) {
-              final existingRecord = await getByCloudId(cloudId);
+            // Check for conflicts using business key if available, otherwise cloud_id
+            T? existingRecord;
+            if (descriptor.businessKeyFields.isNotEmpty && getByBusinessKey != null) {
+              // Use business key for conflict detection
+              existingRecord = await getByBusinessKey(localData);
+            } else {
+              // Use cloud_id for conflict detection (original behavior)
+              final cloudId = cloudRecord['cloud_id'] as String?;
+              if (cloudId != null) {
+                existingRecord = await getByCloudId(cloudId);
+              }
+            }
 
-              if (existingRecord != null) {
-                final localUpdated = getLastUpdated(existingRecord);
-                final cloudUpdatedStr = cloudRecord['last_updated'] as String?;
-                final cloudUpdated = cloudUpdatedStr != null
-                    ? DateTime.tryParse(cloudUpdatedStr)
-                    : null;
+            if (existingRecord != null) {
+              final localUpdated = getLastUpdated(existingRecord);
+              final cloudUpdatedStr = cloudRecord['last_updated'] as String?;
+              final cloudUpdated = cloudUpdatedStr != null
+                  ? DateTime.tryParse(cloudUpdatedStr)
+                  : null;
 
-                // Check if local is newer than cloud
-                if (localUpdated != null &&
-                    cloudUpdated != null &&
-                    localUpdated.isAfter(cloudUpdated)) {
-                  // Conflict detected!
-                  final resolution = await _handleConflict(
-                    descriptor: descriptor,
-                    localRecord: existingRecord,
-                    cloudRecord: cloudRecord,
-                    localUpdated: localUpdated,
-                    cloudUpdated: cloudUpdated,
-                    getOrganizationId: getOrganizationId,
-                  );
+              // Check if local is newer than cloud
+              if (localUpdated != null &&
+                  cloudUpdated != null &&
+                  localUpdated.isAfter(cloudUpdated)) {
+                // Conflict detected!
+                final resolution = await _handleConflict(
+                  descriptor: descriptor,
+                  localRecord: existingRecord,
+                  cloudRecord: cloudRecord,
+                  localUpdated: localUpdated,
+                  cloudUpdated: cloudUpdated,
+                  getOrganizationId: getOrganizationId,
+                );
 
-                  if (resolution == _ConflictAction.skipCloud) {
-                    conflictCount++;
-                    continue; // Don't upsert - keep local
-                  }
-                  // resolution == useCloud - continue to upsert
+                if (resolution == _ConflictAction.skipCloud) {
+                  conflictCount++;
+                  continue; // Don't upsert - keep local
                 }
+                // resolution == useCloud - continue to upsert
               }
             }
 

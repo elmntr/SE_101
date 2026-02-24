@@ -7,6 +7,9 @@ import 'package:logger/logger.dart';
 class AppLogger {
   AppLogger._();
 
+  // 👇 Add this — set to true to only show websocket logs
+  static const bool _websocketDebugOnly = false;
+
   static final Logger _logger = Logger(
     printer: PrettyPrinter(
       methodCount: 0,
@@ -19,59 +22,58 @@ class AppLogger {
     level: kDebugMode ? Level.debug : Level.off,
   );
 
-  /// Log debug information
   static void debug(String message) {
-    if (kDebugMode) {
+    if (kDebugMode && !_websocketDebugOnly) {
       _logger.d(message);
     }
   }
 
-  /// Log info messages
   static void info(String message) {
-    if (kDebugMode) {
+    if (kDebugMode && !_websocketDebugOnly) {
       _logger.i(message);
     }
   }
 
-  /// Log warning messages
   static void warning(String message) {
-    if (kDebugMode) {
+    if (kDebugMode && !_websocketDebugOnly) {
       _logger.w(message);
     }
   }
 
-  /// Log error messages
   static void error(String message, [Object? error, StackTrace? stackTrace]) {
-    if (kDebugMode) {
+    if (kDebugMode && !_websocketDebugOnly) {
       _logger.e(message, error: error, stackTrace: stackTrace);
     }
   }
 
-  /// Log sync-related messages with sync emoji
   static void sync(String message) {
-    if (kDebugMode) {
+    if (kDebugMode && !_websocketDebugOnly) {
       _logger.i('🔄 $message');
     }
   }
 
-  /// Log connectivity-related messages
   static void connectivity(String message) {
-    if (kDebugMode) {
+    if (kDebugMode && !_websocketDebugOnly) {
       _logger.i('📡 $message');
     }
   }
 
-  /// Log database-related messages
   static void database(String message) {
-    if (kDebugMode) {
+    if (kDebugMode && !_websocketDebugOnly) {
       _logger.i('🗄️ $message');
     }
   }
 
-  /// Log auth-related messages
   static void auth(String message) {
-    if (kDebugMode) {
+    if (kDebugMode && !_websocketDebugOnly) {
       _logger.i('🔐 $message');
+    }
+  }
+
+  // 👇 This one always shows regardless of the filter
+  static void websocket(String message) {
+    if (kDebugMode) {
+      _logger.i('🔌 $message');
     }
   }
 }

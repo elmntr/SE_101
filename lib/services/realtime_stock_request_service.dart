@@ -140,27 +140,52 @@ class RealtimeStockRequestService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// Attach a screen to this service (increments reference count)
-  /// Starts listening if this is the first screen
+  /// Starts listening if this is first screen
   Future<void> attach(String franchiseeCloudId) async {
+    AppLogger.websocket('📎 attach() called - current count: $_activeScreenCount, new cloudId: $franchiseeCloudId');
+    
+    // Guard against duplicate attachments with same cloudId
+    if (_activeScreenCount > 0 && _franchiseeCloudId == franchiseeCloudId) {
+      AppLogger.websocket('⚠️ Duplicate attach() called with same cloudId, ignoring');
+      _activeScreenCount++;
+      AppLogger.websocket('📎 Screen attached (count: $_activeScreenCount) - duplicate ignored');
+      return;
+    }
+    
+    // If different cloudId, we need to restart connection
+    if (_activeScreenCount > 0 && _franchiseeCloudId != franchiseeCloudId) {
+      AppLogger.websocket('⚠️ attach() called with different cloudId, restarting connection');
+      await _stopListening();
+      _activeScreenCount = 0;
+    }
+    
     _activeScreenCount++;
     _franchiseeCloudId = franchiseeCloudId;
     
-    AppLogger.sync('📎 Screen attached (count: $_activeScreenCount)');
+    AppLogger.websocket('📎 Screen attached (count: $_activeScreenCount)');
     
     if (_activeScreenCount == 1) {
+      AppLogger.websocket('🚀 First screen attached, starting listening...');
       await _startListening();
+    } else {
+      AppLogger.websocket('ℹ️ Additional screen attached, already listening');
     }
   }
 
   /// Detach a screen from this service (decrements reference count)
   /// Stops listening if this was the last screen
   Future<void> detach() async {
+    AppLogger.websocket('📎 detach() called - current count: $_activeScreenCount');
+    
     _activeScreenCount = (_activeScreenCount - 1).clamp(0, 999);
     
-    AppLogger.sync('📎 Screen detached (count: $_activeScreenCount)');
+    AppLogger.websocket('📎 Screen detached (count: $_activeScreenCount)');
     
     if (_activeScreenCount == 0) {
+      AppLogger.websocket('🛑 Last screen detached, stopping listening...');
       await _stopListening();
+    } else {
+      AppLogger.websocket('ℹ️ Other screens still attached, keeping connection alive');
     }
   }
 
@@ -173,10 +198,11 @@ class RealtimeStockRequestService {
     if (_isPaused) return;
     _isPaused = true;
     
-    AppLogger.sync('⏸️ Realtime stock request service paused');
+    AppLogger.websocket('⏸️ PAUSE  — removing channel (if open)');
     
     // Unsubscribe but keep state
     if (_stockRequestChannel != null) {
+      AppLogger.websocket('🔌 CLOSE  reason=app_paused  screens=$_activeScreenCount');
       await supabase.removeChannel(_stockRequestChannel!);
       _stockRequestChannel = null;
     }
@@ -193,7 +219,7 @@ class RealtimeStockRequestService {
     if (!_isPaused) return;
     _isPaused = false;
     
-    AppLogger.sync('▶️ Realtime stock request service resumed');
+    AppLogger.websocket('▶️ RESUME — restarting listener (screens: $_activeScreenCount)');
     
     if (_activeScreenCount > 0 && _franchiseeCloudId != null) {
       await _startListening();
@@ -251,15 +277,19 @@ class RealtimeStockRequestService {
   }
 
   Future<void> _createChannel() async {
-    AppLogger.sync('🔧 Creating channel for franchisee: $_franchiseeCloudId');
+    // ── DIAGNOSTIC: log every channel open with a traceable stamp ──
+    final stamp = DateTime.now().toIso8601String();
+    AppLogger.websocket('🔌 OPEN   channel [$stamp] franchisee=$_franchiseeCloudId  screens=$_activeScreenCount');
     
-    // Use a unique channel name
-    final channelName = 'stock-requests-${DateTime.now().millisecondsSinceEpoch}';
+    // Good — stable name per user session (Supabase reuses instead of opening a new socket each retry)
+    final channelName = 'stock-requests-$_franchiseeCloudId';
     if (_stockRequestChannel != null) {
+      AppLogger.websocket('🔌 CLOSE  reason=replacing_before_new_open  screens=$_activeScreenCount');
       await supabase.removeChannel(_stockRequestChannel!);
       _stockRequestChannel = null;
     }
     _stockRequestChannel = supabase.channel(channelName);
+    AppLogger.websocket('🔌 NAMED  channel → $channelName');
 
     final completer = Completer<void>();
     
@@ -289,31 +319,36 @@ class RealtimeStockRequestService {
           },
         )
         .subscribe((status, error) {
-          AppLogger.sync('📡 Subscription status: $status, error: $error');
+          AppLogger.websocket('📡 SUBSCRIBE STATUS  [$channelName] → $status  error=$error');
           if (status == RealtimeSubscribeStatus.subscribed) {
-            AppLogger.sync('✅ Successfully subscribed to stock_replenishment_requests changes (channel: $channelName)');
+            AppLogger.websocket('✅ SUBSCRIBED  [$channelName]  screens=$_activeScreenCount');
             _updateStatus(RealtimeConnectionStatus.connected);
             if (!completer.isCompleted) {
               completer.complete();
             }
+          } else if (status == RealtimeSubscribeStatus.timedOut) {
+            AppLogger.websocket('⏱️ TIMED OUT [$channelName] — will retry');
+            if (!completer.isCompleted) {
+              completer.completeError(TimeoutException('Supabase reported timeout'));
+            }
           } else if (status == RealtimeSubscribeStatus.closed) {
-            AppLogger.sync('❌ Channel closed');
+            AppLogger.websocket('🔌 CLOSE  reason=server_closed  channel=$channelName  screens=$_activeScreenCount  paused=$_isPaused');
             _handleDisconnection();
           } else if (status == RealtimeSubscribeStatus.channelError) {
-            AppLogger.sync('❌ Channel error: $error');
+            AppLogger.websocket('❌ CH_ERROR  [$channelName]  error=$error');
             if (!completer.isCompleted) {
               completer.completeError(error ?? Exception('Channel error'));
             }
           }
           if (error != null) {
-            AppLogger.error('Realtime subscription error: $error');
+            AppLogger.websocket('❌ SUB_ERROR [$channelName]  $error');
             onError?.call(error.toString());
           }
         });
 
     // Wait for subscription to complete or timeout
     await completer.future.timeout(
-      const Duration(seconds: 10),
+      const Duration(seconds: 30), // was 10
       onTimeout: () {
         throw TimeoutException('WebSocket subscription timed out');
       },
@@ -323,11 +358,10 @@ class RealtimeStockRequestService {
   void _handleDisconnection() {
     if (_isPaused || _activeScreenCount == 0) return;
     
-    AppLogger.sync('❌ WebSocket disconnected, attempting reconnection...');
+    AppLogger.websocket('🔁 DISCONNECTED — reconnecting in 5s');
     _updateStatus(RealtimeConnectionStatus.reconnecting);
     
-    // Attempt to reconnect
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 5), () { // was 2 seconds
       if (!_isPaused && _activeScreenCount > 0) {
         _connectWithRetry();
       }
@@ -345,12 +379,13 @@ class RealtimeStockRequestService {
     _connectivitySubscription = null;
     
     if (_stockRequestChannel != null) {
+      AppLogger.websocket('🔌 CLOSE  reason=all_screens_detached  screens=$_activeScreenCount');
       await supabase.removeChannel(_stockRequestChannel!);
       _stockRequestChannel = null;
     }
     
     _updateStatus(RealtimeConnectionStatus.disconnected);
-    AppLogger.sync('🔌 Disconnected from stock request feed');
+    AppLogger.websocket('🔌 STOPPED listening — all timers/channels cleared');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -369,7 +404,7 @@ class RealtimeStockRequestService {
     // Do an immediate poll
     _pollForUpdates();
     
-    AppLogger.sync('📊 Started polling fallback (interval: ${_currentPollingInterval.inSeconds}s)');
+    AppLogger.websocket('📊 POLLING FALLBACK started (interval: ${_currentPollingInterval.inSeconds}s) — WebSocket unavailable');
     _scheduleRealtimeRetry();
   }
 
@@ -575,6 +610,6 @@ class RealtimeStockRequestService {
     _stopListening();
     _statusController.close();
     _eventController.close();
-    AppLogger.sync('🛑 RealtimeStockRequestService disposed');
+    AppLogger.websocket('🛑 DISPOSE — RealtimeStockRequestService (remaining screens=$_activeScreenCount)');
   }
 }

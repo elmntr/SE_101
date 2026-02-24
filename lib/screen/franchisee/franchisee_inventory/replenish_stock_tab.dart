@@ -56,22 +56,22 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
     // Get the franchisee's cloud ID for filtering
     try {
       final org = await db.organizationsDao.getOrganizationById(widget.branchId);
-      print('🔍 Looking up org for branchId: ${widget.branchId}');
-      print('🔍 Found org: ${org?.name}, cloudId: ${org?.cloudId}');
+      //print('🔍 Looking up org for branchId: ${widget.branchId}');
+      //print('🔍 Found org: ${org?.name}, cloudId: ${org?.cloudId}');
       
       if (org?.cloudId != null) {
         _franchiseeCloudId = org!.cloudId;
         
         // Attach to realtime service
         await realtimeStockRequestService.attach(_franchiseeCloudId!);
-        print('✅ Attached to realtime with franchiseeCloudId: $_franchiseeCloudId');
-        print('📡 Realtime status: ${realtimeStockRequestService.status}');
+        //print('✅ Attached to realtime with franchiseeCloudId: $_franchiseeCloudId');
+        //print('📡 Realtime status: ${realtimeStockRequestService.status}');
         
         // Listen for approval/rejection events
         _eventSubscription = realtimeStockRequestService.eventStream.listen((event) {
-          print('📬 EVENT RECEIVED: ${event.cloudId} → ${event.newStatus}');
+          //print('📬 EVENT RECEIVED: ${event.cloudId} → ${event.newStatus}');
           if (event.isApproved || event.isRejected || event.isDelivered) {
-            print('📬 Triggering sync and reload for: ${event.newStatus}');
+            //print('📬 Triggering sync and reload for: ${event.newStatus}');
             // Sync from cloud first, then reload from local DB
             _syncAndLoadRequests();
           }
@@ -79,20 +79,20 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
         
         // Also listen to status changes for debugging
         realtimeStockRequestService.statusStream.listen((status) {
-          print('📡 Realtime connection status changed: $status');
+          //print('📡 Realtime connection status changed: $status');
         });
       } else {
-        print('⚠️ No cloudId found for org with branchId: ${widget.branchId}');
+        //print('⚠️ No cloudId found for org with branchId: ${widget.branchId}');
       }
     } catch (e) {
-      print('⚠️ Failed to initialize realtime: $e');
+      //print('⚠️ Failed to initialize realtime: $e');
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    print('📱 App lifecycle state changed: $state');
+    //print('📱 App lifecycle state changed: $state');
     switch (state) {
       case AppLifecycleState.paused:
         // Only pause when app truly goes to background
@@ -112,11 +112,11 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
   Future<void> _syncAndLoadRequests() async {
     // First sync to get latest status updates from cloud
     try {
-      print('🔄 Syncing replenishment requests...');
+      //print('🔄 Syncing replenishment requests...');
       await AppGlobals.instance.syncService.syncStockReplenishmentRequests();
       await AppGlobals.instance.syncService.syncBranchItemStock();
     } catch (e) {
-      print('⚠️ Sync failed: $e');
+      //print('⚠️ Sync failed: $e');
     }
     // Then load from local DB
     await _loadExistingRequests();
@@ -144,7 +144,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
         });
       }
     } catch (e) {
-      print('Error loading requests: $e');
+      //print('Error loading requests: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -194,7 +194,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
           requestedBy: widget.userId,
           franchiseeNotes: null,
         );
-        print('📝 Created request for ${entry.key.name}: ${entry.value} units');
+        //print('📝 Created request for ${entry.key.name}: ${entry.value} units');
       }
 
       // Clear inputs
@@ -204,12 +204,12 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
 
       // Auto-sync to push requests to commissary
       try {
-        print('🔄 Auto-syncing replenishment requests...');
+        //print('🔄 Auto-syncing replenishment requests...');
         await AppGlobals.instance.syncService.syncStockReplenishmentRequests();
       await AppGlobals.instance.syncService.syncBranchItemStock();
-        print('✅ Requests synced to cloud');
+        //print('✅ Requests synced to cloud');
       } catch (syncError) {
-        print('⚠️ Sync failed (will retry later): $syncError');
+        //print('⚠️ Sync failed (will retry later): $syncError');
       }
 
       // Reload requests
@@ -224,7 +224,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
         );
       }
     } catch (e) {
-      print('Error submitting requests: $e');
+      //print('Error submitting requests: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),

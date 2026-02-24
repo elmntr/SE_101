@@ -71,9 +71,9 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
       );
       if (org != null) {
         branchOrgId = org.id;
-        print(
-          '📍 Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
-        );
+        //print(
+        //  '📍 Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
+        //);
       }
     }
 
@@ -83,7 +83,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         : null;
 
     if (branchOrg == null) {
-      print('❌ Could not find branch organization: $branchOrgId');
+      //print('❌ Could not find branch organization: $branchOrgId');
       // Initialize empty lists to avoid late initialization error
       _initializeEmptyLists();
       setState(() => isLoading = false);
@@ -107,15 +107,15 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     }
 
     if (commissaryId == null) {
-      print('❌ Could not determine commissary ID');
+      //print('❌ Could not determine commissary ID');
       _initializeEmptyLists();
       setState(() => isLoading = false);
       return;
     }
 
-    print(
-      '📍 Loading items for branch $branchOrgId from commissary $commissaryId',
-    );
+    //print(
+    //  '📍 Loading items for branch $branchOrgId from commissary $commissaryId',
+    //);
 
     // ✅ NEW: Load items WITH branch-specific stock (not shared items table)
     final loadedItems = await db.branchItemStockDao.getItemsWithStockForBranch(
@@ -123,11 +123,11 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
       commissaryId!,
     );
 
-    print('📦 Loaded ${loadedItems.length} items with branch stock');
+    //print('📦 Loaded ${loadedItems.length} items with branch stock');
     for (final item in loadedItems) {
-      print(
-        '   - ${item.name}: stock=${item.stock}, hasBranchStock=${item.hasBranchStock}',
-      );
+      //print(
+      //  '   - ${item.name}: stock=${item.stock}, hasBranchStock=${item.hasBranchStock}',
+      //);
     }
 
     setState(() {
@@ -197,7 +197,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
           // Check if branch stock record exists
           if (!item.hasBranchStock) {
             // Create branch stock record first
-            print('📝 Creating branch stock record for ${item.name}');
+            //print('📝 Creating branch stock record for ${item.name}');
             await db.branchItemStockDao.createStock(
               BranchItemStockCompanion(
                 organizationId: Value(widget.userData.organizationId),
@@ -228,10 +228,10 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             );
             
             if (result.success) {
-              print('   ✅ Sale recorded via PosService: ${item.name} x $soldQty');
+              //print('   ✅ Sale recorded via PosService: ${item.name} x $soldQty');
               anySuccess = true;
             } else {
-              print('   ❌ Sale failed: ${result.errorMessage}');
+              //print('   ❌ Sale failed: ${result.errorMessage}');
             }
           }
 
@@ -245,10 +245,10 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             );
             
             if (result.success) {
-              print('   ✅ Spoilage recorded via PosService: ${item.name} x $spoilageQty');
+              //print('   ✅ Spoilage recorded via PosService: ${item.name} x $spoilageQty');
               anySuccess = true;
             } else {
-              print('   ❌ Spoilage failed: ${result.errorMessage}');
+              //print('   ❌ Spoilage failed: ${result.errorMessage}');
             }
           }
 
@@ -301,7 +301,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         );
       }
     } catch (e) {
-      print('❌ Error saving changes: $e');
+      //print('❌ Error saving changes: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),

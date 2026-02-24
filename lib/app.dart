@@ -9,6 +9,7 @@ import 'home/home.dart';
 
 /// Reinitialize sync service with user's organization context after login
 void reinitializeSyncWithUserContext(UserData userData) {
+  AppLogger.websocket('🔌 SYNC REINIT  called for ${userData.organizationName} (${userData.organizationType}) orgId=${userData.organizationId}');
   try {
     // Get parent commissary info for franchisees
     String? parentCommissaryCloudId;
@@ -25,6 +26,7 @@ void reinitializeSyncWithUserContext(UserData userData) {
           AppGlobals.instance.database.organizationsDao
               .getOrganizationById(org!.parentCommissaryId!)
               .then((parentOrg) {
+            AppLogger.websocket('🔌 SYNC REINIT  (franchisee + parent) orgId=${userData.organizationId} parentId=${org.parentCommissaryId}');
             // Reinitialize with parent commissary context
             AppGlobals.instance.syncService.initialize(
               organizationId: userData.organizationId,
@@ -38,6 +40,7 @@ void reinitializeSyncWithUserContext(UserData userData) {
       });
     }
 
+    AppLogger.websocket('🔌 SYNC REINIT  (initial) orgId=${userData.organizationId} cloudId=${userData.organizationCloudId}');
     // Initial sync with known context (cloud ID from UserData)
     AppGlobals.instance.syncService.initialize(
       organizationId: userData.organizationId,
@@ -102,6 +105,7 @@ class _MyAppState extends State<MyApp> {
           }
 
           // Reinitialize sync service with user's organization context
+          AppLogger.websocket('🔌 ROUTE /home  navigating → calling reinitializeSyncWithUserContext');
           reinitializeSyncWithUserContext(userData);
 
           return MaterialPageRoute(

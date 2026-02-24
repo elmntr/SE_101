@@ -1356,6 +1356,15 @@ class MockSupabaseSyncServiceV2 extends _i1.Mock
           as _i18.Future<void>);
 
   @override
+  _i18.Future<void> forceFullSyncReplenishmentRequests() =>
+      (super.noSuchMethod(
+            Invocation.method(#forceFullSyncReplenishmentRequests, []),
+            returnValue: _i18.Future<void>.value(),
+            returnValueForMissingStub: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
+
+  @override
   _i18.Future<void> syncImmediate() =>
       (super.noSuchMethod(
             Invocation.method(#syncImmediate, []),
@@ -1497,6 +1506,12 @@ class MockSupabaseSyncServiceV2 extends _i1.Mock
   );
 
   @override
+  void clearOrganizationContext() => super.noSuchMethod(
+    Invocation.method(#clearOrganizationContext, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
   void dispose() => super.noSuchMethod(
     Invocation.method(#dispose, []),
     returnValueForMissingStub: null,
@@ -1537,6 +1552,40 @@ class MockSupabaseAuthService extends _i1.Mock
             returnValue: _i18.Stream<_i20.UserData?>.empty(),
           )
           as _i18.Stream<_i20.UserData?>);
+
+  @override
+  _i20.AuthLifecycleState get lifecycleState =>
+      (super.noSuchMethod(
+            Invocation.getter(#lifecycleState),
+            returnValue: _i20.AuthLifecycleState.bootstrapping,
+          )
+          as _i20.AuthLifecycleState);
+
+  @override
+  _i18.Stream<_i20.AuthLifecycleState> get lifecycleStateChanges =>
+      (super.noSuchMethod(
+            Invocation.getter(#lifecycleStateChanges),
+            returnValue: _i18.Stream<_i20.AuthLifecycleState>.empty(),
+          )
+          as _i18.Stream<_i20.AuthLifecycleState>);
+
+  @override
+  _i18.Future<void> get bootstrapComplete =>
+      (super.noSuchMethod(
+            Invocation.getter(#bootstrapComplete),
+            returnValue: _i18.Future<void>.value(),
+          )
+          as _i18.Future<void>);
+
+  @override
+  _i18.Future<_i20.AuthLifecycleState> bootstrap() =>
+      (super.noSuchMethod(
+            Invocation.method(#bootstrap, []),
+            returnValue: _i18.Future<_i20.AuthLifecycleState>.value(
+              _i20.AuthLifecycleState.bootstrapping,
+            ),
+          )
+          as _i18.Future<_i20.AuthLifecycleState>);
 
   @override
   _i18.Future<_i20.AuthResult> signUp({
@@ -1668,14 +1717,6 @@ class MockSupabaseAuthService extends _i1.Mock
             ),
           )
           as _i18.Future<_i20.AuthResult>);
-
-  @override
-  _i18.Future<bool> isSessionValid() =>
-      (super.noSuchMethod(
-            Invocation.method(#isSessionValid, []),
-            returnValue: _i18.Future<bool>.value(false),
-          )
-          as _i18.Future<bool>);
 
   @override
   _i18.Future<_i20.AuthResult> restoreSession() =>

@@ -4,6 +4,7 @@ import '../app_database.dart';
 import '../tables/daily_sales_summary.dart';
 import '../tables/items.dart';
 import '../tables/organizations.dart';
+import '../../utils/app_logger.dart';
 
 part 'daily_sales_summary_dao.g.dart';
 
@@ -320,56 +321,70 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
+  /// Get summary by business key (organizationId, itemId, summaryDate) for conflict resolution
+  Future<DailySalesSummaryData?> getByBusinessKey({
+    required int organizationId,
+    required int itemId,
+    required DateTime summaryDate,
+  }) async {
+    final normalizedDate = DateTime(summaryDate.year, summaryDate.month, summaryDate.day);
+    return await (select(dailySalesSummary)
+          ..where((t) => t.organizationId.equals(organizationId))
+          ..where((t) => t.itemId.equals(itemId))
+          ..where((t) => t.summaryDate.equals(normalizedDate)))
+        .getSingleOrNull();
+  }
+
   /// Upsert batch from cloud
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
-    await batch((batch) {
-      for (final record in records) {
-        final cloudId = record['cloudId'] as String;
-        
-        // Handle potentially null fields safely
-        final organizationId = record['organizationId'] as int?;
-        final itemId = record['itemId'] as int?;
-        
-        if (organizationId == null || itemId == null) {
-            // Skip invalid records where FKs couldn't be resolved
-            continue;
-        }
+Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
+  await batch((batch) {
+    for (final record in records) {
+      final cloudId = record['cloudId'] as String;
 
-        final summaryDate = record['summaryDate'] as DateTime;
-        final lastUpdated = record['lastUpdated'] as DateTime?;
+      final organizationId = record['organizationId'] as int?;
+      final itemId = record['itemId'] as int?;
 
-        batch.insert(
-          dailySalesSummary,
-          DailySalesSummaryCompanion.insert(
-            organizationId: organizationId,
-            itemId: itemId,
-            summaryDate: summaryDate,
+      if (organizationId == null || itemId == null) {
+        AppLogger.sync('⚠️ Skipping daily_sales_summary record: Missing required fields');
+        continue;
+      }
+
+      final summaryDate = record['summaryDate'] as DateTime;
+      final resolvedLastUpdated =
+          (record['lastUpdated'] as DateTime?) ?? DateTime.now();
+
+      batch.insert(
+        dailySalesSummary,
+        DailySalesSummaryCompanion.insert(
+          organizationId: organizationId,
+          itemId: itemId,
+          summaryDate: summaryDate,
+          quantitySold: Value(record['quantitySold'] as int? ?? 0),
+          quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
+          revenue: Value(record['revenue'] as double? ?? 0.0),
+          costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
+          grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
+          transactionCount: Value(record['transactionCount'] as int? ?? 0),
+          cloudId: Value(cloudId),
+          lastUpdated: Value(resolvedLastUpdated),
+          isSynced: const Value(true),
+        ),
+        onConflict: DoUpdate(
+          (old) => DailySalesSummaryCompanion(
             quantitySold: Value(record['quantitySold'] as int? ?? 0),
             quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
             revenue: Value(record['revenue'] as double? ?? 0.0),
             costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
             grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
             transactionCount: Value(record['transactionCount'] as int? ?? 0),
-            // openingStock: Value(record['openingStock'] as int?),
-            // closingStock: Value(record['closingStock'] as int?),
-            cloudId: Value(cloudId),
-            lastUpdated: Value(lastUpdated ?? DateTime.now()),
+            lastUpdated: Value(resolvedLastUpdated),
             isSynced: const Value(true),
           ),
-          onConflict: DoUpdate((old) => DailySalesSummaryCompanion(
-            quantitySold: Value(record['quantitySold'] as int? ?? 0),
-            quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
-            revenue: Value(record['revenue'] as double? ?? 0.0),
-            costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
-            grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
-            transactionCount: Value(record['transactionCount'] as int? ?? 0),
-            lastUpdated: Value(lastUpdated ?? DateTime.now()),
-            isSynced: const Value(true),
-          )),
-        );
-      }
-    });
-  }
+        ),
+      );
+    }
+  });
+}
 
   /// Watch today's summaries for real-time UI updates
   Stream<List<DailySalesSummaryData>> watchTodaySummaries(int organizationId) {

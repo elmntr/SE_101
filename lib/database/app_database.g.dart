@@ -115,7 +115,7 @@ class $OrganizationsTable extends Organizations
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -127,7 +127,7 @@ class $OrganizationsTable extends Organizations
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
@@ -850,7 +850,7 @@ class $CategoriesTable extends Categories
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -862,7 +862,7 @@ class $CategoriesTable extends Categories
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
@@ -3219,7 +3219,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -3231,7 +3231,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
@@ -4224,7 +4224,7 @@ class $IngredientsTable extends Ingredients
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -4236,7 +4236,7 @@ class $IngredientsTable extends Ingredients
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
@@ -5025,7 +5025,7 @@ class $RecipeIngredientsTable extends RecipeIngredients
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -5037,7 +5037,7 @@ class $RecipeIngredientsTable extends RecipeIngredients
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
@@ -5726,7 +5726,7 @@ class $BranchIngredientStockTable extends BranchIngredientStock
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -5738,7 +5738,7 @@ class $BranchIngredientStockTable extends BranchIngredientStock
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _isSyncedMeta = const VerificationMeta(
     'isSynced',
@@ -6482,7 +6482,7 @@ class $BranchItemStockTable extends BranchItemStock
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -6494,7 +6494,7 @@ class $BranchItemStockTable extends BranchItemStock
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
@@ -7397,7 +7397,7 @@ class $StockReplenishmentRequestsTable extends StockReplenishmentRequests
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _reviewedByMeta = const VerificationMeta(
     'reviewedBy',
@@ -7469,7 +7469,7 @@ class $StockReplenishmentRequestsTable extends StockReplenishmentRequests
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -7481,7 +7481,7 @@ class $StockReplenishmentRequestsTable extends StockReplenishmentRequests
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
@@ -8461,7 +8461,7 @@ class $StockChangeRequestsTable extends StockChangeRequests
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _submittedAtMeta = const VerificationMeta(
     'submittedAt',
@@ -8542,7 +8542,7 @@ class $StockChangeRequestsTable extends StockChangeRequests
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -8554,7 +8554,7 @@ class $StockChangeRequestsTable extends StockChangeRequests
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _isDeletedMeta = const VerificationMeta(
     'isDeleted',
@@ -9602,7 +9602,7 @@ class $DailySalesSummaryTable extends DailySalesSummary
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
     'lastUpdated',
@@ -9614,7 +9614,7 @@ class $DailySalesSummaryTable extends DailySalesSummary
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _isSyncedMeta = const VerificationMeta(
     'isSynced',
@@ -10523,7 +10523,7 @@ class $SyncConflictsTable extends SyncConflicts
     false,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
-    clientDefault: () => DateTime.now(),
+    clientDefault: () => DateTime.now().toUtc(),
   );
   static const VerificationMeta _resolvedAtMeta = const VerificationMeta(
     'resolvedAt',

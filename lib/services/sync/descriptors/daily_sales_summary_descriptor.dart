@@ -19,6 +19,7 @@ final dailySalesSummaryDescriptor = TableSyncDescriptor(
   dependencyTier: 4, // Sync after items/ingredients/stock
   incrementalSync: true,
   pullLimit: 500,
+  businessKeyFields: ['organizationId', 'itemId', 'summaryDate'], // Use business key for conflicts
   
   // Franchisees can push their own summaries
   canPush: (orgType) => true,

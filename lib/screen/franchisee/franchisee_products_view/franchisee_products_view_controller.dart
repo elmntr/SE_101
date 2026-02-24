@@ -51,7 +51,7 @@ class FranchiseeProductsViewController {
       // Get commissary ID from the franchisee's parent organization
       await _loadCommissaryId();
 
-      print('🔍 DEBUG: Commissary ID resolved to: $commissaryId');
+      //print('🔍 DEBUG: Commissary ID resolved to: $commissaryId');
 
       if (commissaryId == null) {
         commissaryProducts = [];
@@ -64,15 +64,15 @@ class FranchiseeProductsViewController {
 
       // Load master items from commissary
       final items = await db.itemsDao.getCommissaryMasterItems(commissaryId!);
-      print('🔍 DEBUG: Found ${items.length} commissary master items');
+      //print('🔍 DEBUG: Found ${items.length} commissary master items');
 
       // Also check all items in the database for debugging
       final allItems = await db.itemsDao.getAllItems();
-      print('🔍 DEBUG: Total items in database: ${allItems.length}');
+      //print('🔍 DEBUG: Total items in database: ${allItems.length}');
       for (var item in allItems) {
-        print(
-          '   - Item: ${item.name}, orgId: ${item.organizationId}, masterItemId: ${item.masterItemId}, isDeleted: ${item.isDeleted}',
-        );
+        //print(
+        //  '   - Item: ${item.name}, orgId: ${item.organizationId}, masterItemId: ${item.masterItemId}, isDeleted: ${item.isDeleted}'
+        //);
       }
 
       final categories = await db.categoriesDao.getAllCategories();
@@ -85,7 +85,7 @@ class FranchiseeProductsViewController {
       isLoading = false;
       onStateChanged();
     } catch (e) {
-      print('Error loading data: $e');
+      //print('Error loading data: $e');
       isLoading = false;
       onStateChanged();
       showSnackBar('Error loading products: $e');
@@ -94,9 +94,9 @@ class FranchiseeProductsViewController {
 
   Future<void> _loadCommissaryId() async {
     final currentUser = AppGlobals.instance.authService.currentUser;
-    print(
-      '🔍 DEBUG: currentUser: ${currentUser?.username}, orgId: ${currentUser?.organizationId}, orgType: ${currentUser?.organizationType}',
-    );
+    //print(
+    //  '🔍 DEBUG: currentUser: ${currentUser?.username}, orgId: ${currentUser?.organizationId}, orgType: ${currentUser?.organizationType}'
+    //);
 
     if (currentUser != null) {
       // Get the franchisee's organization
@@ -104,15 +104,15 @@ class FranchiseeProductsViewController {
 
       // If org ID is 0, try to resolve from cloud ID
       if (orgId == 0 && currentUser.organizationCloudId != null) {
-        print(
-          '🔍 DEBUG: orgId is 0, trying to resolve from cloudId: ${currentUser.organizationCloudId}',
-        );
+        //print(
+        //  '🔍 DEBUG: orgId is 0, trying to resolve from cloudId: ${currentUser.organizationCloudId}'
+        //);
         final org = await db.organizationsDao.getOrganizationByCloudId(
           currentUser.organizationCloudId!,
         );
         if (org != null) {
           orgId = org.id;
-          print('🔍 DEBUG: Resolved orgId to: $orgId');
+          //print('🔍 DEBUG: Resolved orgId to: $orgId');
         }
       }
 
@@ -121,21 +121,21 @@ class FranchiseeProductsViewController {
         final organization = await db.organizationsDao.getOrganizationById(
           orgId,
         );
-        print(
-          '🔍 DEBUG: Organization: ${organization?.name}, type: ${organization?.type}, parentCommissaryId: ${organization?.parentCommissaryId}',
-        );
+        //print(
+        //  '🔍 DEBUG: Organization: ${organization?.name}, type: ${organization?.type}, parentCommissaryId: ${organization?.parentCommissaryId}'
+        //);
         if (organization != null) {
           // If this is a franchisee, get the parent commissary
           if (organization.type == 'franchisee' &&
               organization.parentCommissaryId != null) {
             commissaryId = organization.parentCommissaryId;
-            print('🔍 DEBUG: Set commissaryId from parent: $commissaryId');
+            //print('🔍 DEBUG: Set commissaryId from parent: $commissaryId');
           } else if (organization.type == 'commissary') {
             // If this is a commissary, use its own ID
             commissaryId = organization.id;
-            print(
-              '🔍 DEBUG: Set commissaryId from self (commissary): $commissaryId',
-            );
+            //print(
+            //  '🔍 DEBUG: Set commissaryId from self (commissary): $commissaryId'
+            //);
           }
         }
       }
@@ -143,14 +143,14 @@ class FranchiseeProductsViewController {
 
     // Fallback: Try to get any commissary from the database
     if (commissaryId == null) {
-      print('🔍 DEBUG: Commissary ID still null, trying fallback...');
+      //print('🔍 DEBUG: Commissary ID still null, trying fallback...');
       final commissaries = await db.organizationsDao.getAllOrganizations(
         type: 'commissary',
       );
-      print('🔍 DEBUG: Found ${commissaries.length} commissaries in database');
+      //print('🔍 DEBUG: Found ${commissaries.length} commissaries in database');
       if (commissaries.isNotEmpty) {
         commissaryId = commissaries.first.id;
-        print('🔍 DEBUG: Using fallback commissary ID: $commissaryId');
+        //print('🔍 DEBUG: Using fallback commissary ID: $commissaryId');
       }
     }
   }

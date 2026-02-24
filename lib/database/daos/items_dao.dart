@@ -71,7 +71,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching items: $e');
+      //print('❌ Error fetching items: $e');
       rethrow;
     }
   }
@@ -94,7 +94,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       final result = await query.getSingle();
       return result.read(items.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting items: $e');
+      //print('❌ Error counting items: $e');
       return 0;
     }
   }
@@ -112,7 +112,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
 
       return query.watch();
     } catch (e) {
-      print('❌ Error watching items: $e');
+      //print('❌ Error watching items: $e');
       return Stream.value([]);
     }
   }
@@ -125,7 +125,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
             ..limit(limit))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced items: $e');
+      //print('❌ Error fetching unsynced items: $e');
       return [];
     }
   }
@@ -140,7 +140,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       final result = await query.getSingle();
       return result.read(items.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced items: $e');
+      //print('❌ Error counting unsynced items: $e');
       return 0;
     }
   }
@@ -178,7 +178,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         return ItemWithCategory(item: item, category: category);
       }).toList();
     } catch (e) {
-      print('❌ Error fetching items with categories: $e');
+      //print('❌ Error fetching items with categories: $e');
       return [];
     }
   }
@@ -208,7 +208,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         }).toList();
       });
     } catch (e) {
-      print('❌ Error watching items with categories: $e');
+      //print('❌ Error watching items with categories: $e');
       return Stream.value([]);
     }
   }
@@ -229,7 +229,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
 
       return await query.getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching item by name: $e');
+      //print('❌ Error fetching item by name: $e');
       return null;
     }
   }
@@ -276,7 +276,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         ),
       );
     } catch (e) {
-      print('❌ Error inserting item: $e');
+      //print('❌ Error inserting item: $e');
       rethrow;
     }
   }
@@ -288,7 +288,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         batch.insertAll(items, itemsList);
       });
     } catch (e) {
-      print('❌ Error batch inserting items: $e');
+      //print('❌ Error batch inserting items: $e');
       rethrow;
     }
   }
@@ -302,7 +302,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       );
       return await update(items).replace(updated);
     } catch (e) {
-      print('❌ Error updating item: $e');
+      //print('❌ Error updating item: $e');
       return false;
     }
   }
@@ -314,7 +314,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         items,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching item by ID: $e');
+      //print('❌ Error fetching item by ID: $e');
       return null;
     }
   }
@@ -339,7 +339,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching items by organization: $e');
+      //print('❌ Error fetching items by organization: $e');
       return [];
     }
   }
@@ -357,7 +357,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
             ..orderBy([(t) => OrderingTerm(expression: t.name)]))
           .get();
     } catch (e) {
-      print('❌ Error fetching franchisee items: $e');
+      //print('❌ Error fetching franchisee items: $e');
       return [];
     }
   }
@@ -375,7 +375,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
             ..orderBy([(t) => OrderingTerm(expression: t.name)]))
           .get();
     } catch (e) {
-      print('❌ Error fetching commissary master items: $e');
+      //print('❌ Error fetching commissary master items: $e');
       return [];
     }
   }
@@ -393,7 +393,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
           );
       return result > 0;
     } catch (e) {
-      print('❌ Error assigning category: $e');
+      //print('❌ Error assigning category: $e');
       return false;
     }
   }
@@ -424,13 +424,13 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       );
 
       if (result == 0) {
-        print('⚠️ Insufficient stock for item $itemId');
+        //print('⚠️ Insufficient stock for item $itemId');
         return false;
       }
 
       return true;
     } catch (e) {
-      print('❌ Error adding sold: $e');
+      //print('❌ Error adding sold: $e');
       return false;
     }
   }
@@ -460,13 +460,13 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       );
 
       if (result == 0) {
-        print('⚠️ Insufficient stock for item $itemId');
+        //print('⚠️ Insufficient stock for item $itemId');
         return false;
       }
 
       return true;
     } catch (e) {
-      print('❌ Error adding spoilage: $e');
+      //print('❌ Error adding spoilage: $e');
       return false;
     }
   }
@@ -494,7 +494,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
 
       return result > 0;
     } catch (e) {
-      print('❌ Error adding stock: $e');
+      //print('❌ Error adding stock: $e');
       return false;
     }
   }
@@ -516,7 +516,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
           );
       return result > 0;
     } catch (e) {
-      print('❌ Error updating stock: $e');
+      //print('❌ Error updating stock: $e');
       return false;
     }
   }
@@ -533,7 +533,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       );
       return result > 0;
     } catch (e) {
-      print('❌ Error soft deleting item: $e');
+      //print('❌ Error soft deleting item: $e');
       return false;
     }
   }
@@ -552,7 +552,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
 
       return result > 0;
     } catch (e) {
-      print('❌ Error soft deleting item: $e');
+      //print('❌ Error soft deleting item: $e');
       return false;
     }
   }
@@ -576,7 +576,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         }
       });
     } catch (e) {
-      print('❌ Error marking items as synced: $e');
+      //print('❌ Error marking items as synced: $e');
       rethrow;
     }
   }
@@ -638,7 +638,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         }
       });
     } catch (e) {
-      print('❌ Error batch upserting from cloud: $e');
+      //print('❌ Error batch upserting from cloud: $e');
       rethrow;
     }
   }
@@ -731,7 +731,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         );
       }
     } catch (e) {
-      print('❌ Error upserting item from cloud: $e');
+      //print('❌ Error upserting item from cloud: $e');
       rethrow;
     }
   }
@@ -743,7 +743,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
         items,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching item by cloud ID: $e');
+      //print('❌ Error fetching item by cloud ID: $e');
       return null;
     }
   }
@@ -760,7 +760,7 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
             ..orderBy([(t) => OrderingTerm(expression: t.stock)]))
           .get();
     } catch (e) {
-      print('❌ Error fetching low stock items: $e');
+      //print('❌ Error fetching low stock items: $e');
       return [];
     }
   }
@@ -773,12 +773,12 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
       )..where((t) => t.isDeleted.equals(true) & t.isSynced.equals(true))).go();
 
       if (result > 0) {
-        print('🧹 Cleaned up $result deleted items from local database');
+        //print('🧹 Cleaned up $result deleted items from local database');
       }
 
       return result;
     } catch (e) {
-      print('❌ Error cleaning up deleted items: $e');
+      //print('❌ Error cleaning up deleted items: $e');
       return 0;
     }
   }
