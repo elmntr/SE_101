@@ -62,9 +62,9 @@ class BranchItemStock extends Table {
 
   /// Track when record was created/modified
   DateTimeColumn get createdAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
   DateTimeColumn get lastUpdated =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   /// Soft delete
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
@@ -76,6 +76,6 @@ class BranchItemStock extends Table {
   /// Ensure one stock record per item per branch
   @override
   List<Set<Column>> get uniqueKeys => [
-        {organizationId, itemId},
-      ];
+    {organizationId, itemId},
+  ];
 }

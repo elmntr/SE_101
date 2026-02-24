@@ -24,6 +24,8 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   List<ItemWithBranchStock> dbItems = [];
   List<StockChangeRequest> pendingChanges = [];
+  List<User> employeeOptions = [];
+  int? selectedEmployeeId;
   bool isLoading = true;
 
   int selectedTab = 0; // 0 = Items, 1 = Review Changes
@@ -126,7 +128,7 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   void _onSyncComplete() {
     if (mounted) {
-      print('🔄 Sync completed, refreshing employee items...');
+      //print('🔄 Sync completed, refreshing employee items...');
       loadData();
     }
   }
@@ -328,7 +330,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
                 ),
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text('${row['changeType']} - Qty: ${row['quantity']}'),
+                  child: Text(
+                    'Employee: ${row['employeeName']} • ${row['changeType']} - Qty: ${row['quantity']}',
+                  ),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -480,9 +484,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
         );
         if (org != null) {
           orgId = org.id;
-          print(
-            '📍 Employee items: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
-          );
+          //print(
+          //  '📍 Employee items: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
+          //);
         }
       }
 
@@ -499,9 +503,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
             orgId,
             organization.parentCommissaryId!,
           );
-          print(
-            '📍 Employee items (franchisee): Loaded ${items.length} items with branch stock from commissary ${organization.parentCommissaryId}',
-          );
+          //print(
+          //  '📍 Employee items (franchisee): Loaded ${items.length} items with branch stock from commissary ${organization.parentCommissaryId}',
+          //);
         } else {
           // Fallback: try to get any commissary
           final commissaries = await db.organizationsDao.getAllOrganizations(
@@ -512,9 +516,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
               orgId,
               commissaries.first.id,
             );
-            print(
-              '📍 Employee items (franchisee fallback): Loaded ${items.length} items with branch stock from commissary ${commissaries.first.id}',
-            );
+            //print(
+            //  '📍 Employee items (franchisee fallback): Loaded ${items.length} items with branch stock from commissary ${commissaries.first.id}',
+            //);
           }
         }
       } else {
@@ -529,25 +533,34 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
               ),
             )
             .toList();
-        print(
-          '📍 Employee items (commissary): Loaded ${items.length} items from org $orgId',
-        );
+        //print(
+        //  '📍 Employee items (commissary): Loaded ${items.length} items from org $orgId',
+        //);
       }
 
-      // Load pending/draft changes for this employee
+      // Load employees for filter
+      final employees = await db.usersDao.getUsersByOrganization(
+        orgId,
+        isActive: true,
+      );
+
+      // Load change history for this organization
       final changes = await db.stockChangeRequestsDao.getAllChangeRequests(
-        requestedBy: widget.userData.id,
+        franchiseeId: orgId,
+        requestedBy: selectedEmployeeId,
+        status: 'approved',
       );
 
       if (mounted) {
         setState(() {
           dbItems = items;
           pendingChanges = changes;
+          employeeOptions = employees;
           isLoading = false;
         });
       }
     } catch (e) {
-      print('Error loading data: $e');
+      //print('Error loading data: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -564,6 +577,13 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
     setState(() {
       reviewSort = sort;
     });
+  }
+
+  void applyEmployeeFilter(int? employeeId) {
+    setState(() {
+      selectedEmployeeId = employeeId;
+    });
+    loadData();
   }
 
   Future<void> deleteChangeRequest(StockChangeRequest request) async {
@@ -759,8 +779,11 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
     for (final request in pendingChanges) {
       final item = await db.itemsDao.getItemById(request.itemId);
+      final user = await db.usersDao.getUserById(request.requestedBy);
+      final employeeName = user?.fullName ?? user?.username ?? 'Unknown';
       rows.add({
         'itemName': item?.name ?? 'Unknown',
+        'employeeName': employeeName,
         'changeType': request.changeType,
         'quantity': request.quantity.toString(),
         'status': request.status,

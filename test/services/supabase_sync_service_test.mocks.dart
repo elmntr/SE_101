@@ -8524,23 +8524,23 @@ class MockStockReplenishmentRequestsDao extends _i1.Mock
 
   @override
   _i15.Future<void> upsertFromCloud({
-    required int? id,
-    required int? franchiseeId,
-    required int? commissaryId,
-    required int? itemId,
-    required int? quantityRequested,
-    required String? status,
-    required int? requestedBy,
-    required DateTime? requestedAt,
+    int? id,
+    required int franchiseeId,
+    required int commissaryId,
+    required int itemId,
+    required int quantityRequested,
+    required String status,
+    required int requestedBy,
+    required DateTime requestedAt,
     int? reviewedBy,
     DateTime? reviewedAt,
     DateTime? deliveryDate,
     String? franchiseeNotes,
     String? commissaryNotes,
-    required DateTime? createdAt,
-    required DateTime? lastUpdated,
-    required bool? isDeleted,
-    required String? cloudId,
+    required DateTime createdAt,
+    required DateTime lastUpdated,
+    required bool isDeleted,
+    required String cloudId,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#upsertFromCloud, [], {

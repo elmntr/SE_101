@@ -36,7 +36,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching roles: $e');
+      //print('❌ Error fetching roles: $e');
       return [];
     }
   }
@@ -53,7 +53,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       final result = await query.getSingle();
       return result.read(roles.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting roles: $e');
+      //print('❌ Error counting roles: $e');
       return 0;
     }
   }
@@ -69,7 +69,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
             ..limit(limit, offset: offset))
           .watch();
     } catch (e) {
-      print('❌ Error watching roles: $e');
+      //print('❌ Error watching roles: $e');
       return Stream.value([]);
     }
   }
@@ -79,7 +79,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
     try {
       return await into(roles).insert(role.copyWith(isSynced: Value(false)));
     } catch (e) {
-      print('❌ Error inserting role: $e');
+      //print('❌ Error inserting role: $e');
       rethrow;
     }
   }
@@ -91,7 +91,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         batch.insertAll(roles, rolesList);
       });
     } catch (e) {
-      print('❌ Error batch inserting roles: $e');
+      //print('❌ Error batch inserting roles: $e');
       rethrow;
     }
   }
@@ -101,11 +101,11 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
     try {
       final updated = role.copyWith(
         isSynced: false,
-        lastUpdated: DateTime.now(),
+        lastUpdated: DateTime.now().toUtc(),
       );
       return await update(roles).replace(updated);
     } catch (e) {
-      print('❌ Error updating role: $e');
+      //print('❌ Error updating role: $e');
       return false;
     }
   }
@@ -116,20 +116,20 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       // Check if role is in use
       final usageCount = await _getRoleUsageCount(id);
       if (usageCount > 0) {
-        print('⚠️ Cannot delete role $id: used by $usageCount users');
+        //print('⚠️ Cannot delete role $id: used by $usageCount users');
         throw Exception('Role is currently assigned to $usageCount user(s)');
       }
 
       // Get role to check if it has cloudId
       final role = await getRoleById(id);
       if (role == null) {
-        print('⚠️ Role $id not found');
+        //print('⚠️ Role $id not found');
         return false;
       }
 
       // Check if it's a system role
       if (role.isSystemRole) {
-        print('⚠️ Cannot delete system role $id');
+        //print('⚠️ Cannot delete system role $id');
         throw Exception('System roles cannot be deleted');
       }
 
@@ -140,24 +140,24 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
           RolesCompanion(
             isActive: Value(false),
             isSynced: Value(false),
-            lastUpdated: Value(DateTime.now()),
+            lastUpdated: Value(DateTime.now().toUtc()),
           ),
         );
-        print(
-          '📤 Role $id marked for cloud deletion (cloudId: ${role.cloudId})',
-        );
+        //print(
+        //  '📤 Role $id marked for cloud deletion (cloudId: ${role.cloudId})'
+        //);
       }
 
       // Then permanently delete from local database
       final result = await (delete(roles)..where((t) => t.id.equals(id))).go();
 
       if (result > 0) {
-        print('✅ Role $id permanently deleted from local database');
+        //print('✅ Role $id permanently deleted from local database');
       }
 
       return result > 0;
     } catch (e) {
-      print('❌ Error deleting role: $e');
+      //print('❌ Error deleting role: $e');
       rethrow;
     }
   }
@@ -168,13 +168,13 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       final result = await (update(roles)..where((t) => t.id.equals(id))).write(
         RolesCompanion(
           isActive: Value(false),
-          lastUpdated: Value(DateTime.now()),
+          lastUpdated: Value(DateTime.now().toUtc()),
           isSynced: Value(false),
         ),
       );
       return result > 0;
     } catch (e) {
-      print('❌ Error deactivating role: $e');
+      //print('❌ Error deactivating role: $e');
       return false;
     }
   }
@@ -189,7 +189,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       final result = await query.getSingle();
       return result.read(db.users.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error checking role usage: $e');
+      //print('❌ Error checking role usage: $e');
       return 0;
     }
   }
@@ -201,7 +201,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         roles,
       )..where((r) => r.name.equals(roleName))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching role by name: $e');
+      //print('❌ Error fetching role by name: $e');
       return null;
     }
   }
@@ -213,7 +213,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         roles,
       )..where((r) => r.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching role by ID: $e');
+      //print('❌ Error fetching role by ID: $e');
       return null;
     }
   }
@@ -253,7 +253,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching roles with permission: $e');
+      //print('❌ Error fetching roles with permission: $e');
       return [];
     }
   }
@@ -265,7 +265,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         roles,
       )..where((t) => t.isSystemRole.equals(true))).get();
     } catch (e) {
-      print('❌ Error fetching system roles: $e');
+      //print('❌ Error fetching system roles: $e');
       return [];
     }
   }
@@ -277,7 +277,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         roles,
       )..where((t) => t.isSystemRole.equals(false))).get();
     } catch (e) {
-      print('❌ Error fetching custom roles: $e');
+      //print('❌ Error fetching custom roles: $e');
       return [];
     }
   }
@@ -294,7 +294,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced roles: $e');
+      //print('❌ Error fetching unsynced roles: $e');
       return [];
     }
   }
@@ -309,7 +309,7 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
       final result = await query.getSingle();
       return result.read(roles.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced roles: $e');
+      //print('❌ Error counting unsynced roles: $e');
       return 0;
     }
   }
@@ -333,115 +333,162 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
         }
       });
     } catch (e) {
-      print('❌ Error marking roles as synced: $e');
+      //print('❌ Error marking roles as synced: $e');
       rethrow;
     }
   }
 
   /// ✅ Batch upsert from cloud
-Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudRoles) async {
-  try {
-    await db.transaction(() async {
-      for (final cloudRole in cloudRoles) {
-        await upsertFromCloud(
-          id: cloudRole['local_id'] ?? 0, // ✅ Default to 0
-          name: cloudRole['name'] ?? 'Unknown Role', // ✅ Default name
-          description: cloudRole['description'], // ✅ Already nullable
-          canViewInventory: cloudRole['can_view_inventory'] ?? false, // ✅ Default to false
-          canAddInventory: cloudRole['can_add_inventory'] ?? false,
-          canEditInventory: cloudRole['can_edit_inventory'] ?? false,
-          canDeleteInventory: cloudRole['can_delete_inventory'] ?? false,
-          canViewReports: cloudRole['can_view_reports'] ?? false,
-          canExportData: cloudRole['can_export_data'] ?? false,
-          canAccessSettings: cloudRole['can_access_settings'] ?? false,
-          canManageEmployees: cloudRole['can_manage_employees'] ?? false,
-          canManageRoles: cloudRole['can_manage_roles'] ?? false,
-          isSystemRole: cloudRole['is_system_role'] ?? false,
-          isActive: cloudRole['is_active'] ?? true, // ✅ Default to true
-          createdAt: DateTime.tryParse(cloudRole['created_at'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-          lastUpdated: DateTime.tryParse(cloudRole['last_updated'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-          cloudId: cloudRole['cloud_id'] ?? '', // ✅ Default to empty string
-        );
-      }
-    });
-  } catch (e) {
-    print('❌ Error batch upserting roles from cloud: $e');
-    rethrow;
+  /// Expects data from toLocalFormat (camelCase keys) or raw cloud data (snake_case)
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudRoles,
+  ) async {
+    try {
+      await db.transaction(() async {
+        for (final cloudRole in cloudRoles) {
+          // Support both camelCase (from toLocalFormat) and snake_case (raw cloud) keys
+          await upsertFromCloud(
+            id: cloudRole['localId'] ?? cloudRole['local_id'] ?? 0,
+            name: cloudRole['name'] ?? 'Unknown Role',
+            description: cloudRole['description'],
+            canViewInventory:
+                cloudRole['canViewInventory'] ??
+                cloudRole['can_view_inventory'] ??
+                false,
+            canAddInventory:
+                cloudRole['canAddInventory'] ??
+                cloudRole['can_add_inventory'] ??
+                false,
+            canEditInventory:
+                cloudRole['canEditInventory'] ??
+                cloudRole['can_edit_inventory'] ??
+                false,
+            canDeleteInventory:
+                cloudRole['canDeleteInventory'] ??
+                cloudRole['can_delete_inventory'] ??
+                false,
+            canViewReports:
+                cloudRole['canViewReports'] ??
+                cloudRole['can_view_reports'] ??
+                false,
+            canExportData:
+                cloudRole['canExportData'] ??
+                cloudRole['can_export_data'] ??
+                false,
+            canAccessSettings:
+                cloudRole['canAccessSettings'] ??
+                cloudRole['can_access_settings'] ??
+                false,
+            canManageEmployees:
+                cloudRole['canManageEmployees'] ??
+                cloudRole['can_manage_employees'] ??
+                false,
+            canManageRoles:
+                cloudRole['canManageRoles'] ??
+                cloudRole['can_manage_roles'] ??
+                false,
+            isSystemRole:
+                cloudRole['isSystemRole'] ??
+                cloudRole['is_system_role'] ??
+                false,
+            isActive: cloudRole['isActive'] ?? cloudRole['is_active'] ?? true,
+            createdAt: _parseDateTime(
+              cloudRole['createdAt'] ?? cloudRole['created_at'],
+            ),
+            lastUpdated: _parseDateTime(
+              cloudRole['lastUpdated'] ?? cloudRole['last_updated'],
+            ),
+            cloudId: cloudRole['cloudId'] ?? cloudRole['cloud_id'] ?? '',
+          );
+        }
+      });
+    } catch (e) {
+      //print('❌ Error batch upserting roles from cloud: $e');
+      rethrow;
+    }
   }
-}
+
+  /// Helper to parse DateTime from various formats
+  DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
+  }
 
   Future<void> upsertFromCloud({
-  required int id,
-  required String name,
-  String? description,
-  required bool canViewInventory,
-  required bool canAddInventory,
-  required bool canEditInventory,
-  required bool canDeleteInventory,
-  required bool canViewReports,
-  required bool canExportData,
-  required bool canAccessSettings,
-  required bool canManageEmployees,
-  required bool canManageRoles,
-  required bool isSystemRole,
-  required bool isActive,
-  required DateTime createdAt,
-  required DateTime lastUpdated,
-  required String cloudId,
-}) async {
-  try {
-    // ✅ First, try to find existing role by name
-    final existingRole = await getRoleByName(name);
-    
-    if (existingRole != null) {
-      // ✅ Update existing role instead of inserting
-      await (update(roles)..where((t) => t.id.equals(existingRole.id)))
-        .write(RolesCompanion(
-          description: Value(description),
-          canViewInventory: Value(canViewInventory),
-          canAddInventory: Value(canAddInventory),
-          canEditInventory: Value(canEditInventory),
-          canDeleteInventory: Value(canDeleteInventory),
-          canViewReports: Value(canViewReports),
-          canExportData: Value(canExportData),
-          canAccessSettings: Value(canAccessSettings),
-          canManageEmployees: Value(canManageEmployees),
-          canManageRoles: Value(canManageRoles),
-          isSystemRole: Value(isSystemRole),
-          isActive: Value(isActive),
-          lastUpdated: Value(lastUpdated),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ));
-    } else {
-      // ✅ Insert new role
-      await into(roles).insert(
-        RolesCompanion.insert(
-          name: name,
-          description: Value(description),
-          canViewInventory: Value(canViewInventory),
-          canAddInventory: Value(canAddInventory),
-          canEditInventory: Value(canEditInventory),
-          canDeleteInventory: Value(canDeleteInventory),
-          canViewReports: Value(canViewReports),
-          canExportData: Value(canExportData),
-          canAccessSettings: Value(canAccessSettings),
-          canManageEmployees: Value(canManageEmployees),
-          canManageRoles: Value(canManageRoles),
-          isSystemRole: Value(isSystemRole),
-          isActive: Value(isActive),
-          createdAt: Value(createdAt),
-          lastUpdated: Value(lastUpdated),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ),
-      );
+    required int id,
+    required String name,
+    String? description,
+    required bool canViewInventory,
+    required bool canAddInventory,
+    required bool canEditInventory,
+    required bool canDeleteInventory,
+    required bool canViewReports,
+    required bool canExportData,
+    required bool canAccessSettings,
+    required bool canManageEmployees,
+    required bool canManageRoles,
+    required bool isSystemRole,
+    required bool isActive,
+    required DateTime createdAt,
+    required DateTime lastUpdated,
+    required String cloudId,
+  }) async {
+    try {
+      // ✅ First, try to find existing role by name
+      final existingRole = await getRoleByName(name);
+
+      if (existingRole != null) {
+        // ✅ Update existing role instead of inserting
+        await (update(roles)..where((t) => t.id.equals(existingRole.id))).write(
+          RolesCompanion(
+            description: Value(description),
+            canViewInventory: Value(canViewInventory),
+            canAddInventory: Value(canAddInventory),
+            canEditInventory: Value(canEditInventory),
+            canDeleteInventory: Value(canDeleteInventory),
+            canViewReports: Value(canViewReports),
+            canExportData: Value(canExportData),
+            canAccessSettings: Value(canAccessSettings),
+            canManageEmployees: Value(canManageEmployees),
+            canManageRoles: Value(canManageRoles),
+            isSystemRole: Value(isSystemRole),
+            isActive: Value(isActive),
+            lastUpdated: Value(lastUpdated),
+            isSynced: Value(true),
+            cloudId: Value(cloudId),
+          ),
+        );
+      } else {
+        // ✅ Insert new role
+        await into(roles).insert(
+          RolesCompanion.insert(
+            name: name,
+            description: Value(description),
+            canViewInventory: Value(canViewInventory),
+            canAddInventory: Value(canAddInventory),
+            canEditInventory: Value(canEditInventory),
+            canDeleteInventory: Value(canDeleteInventory),
+            canViewReports: Value(canViewReports),
+            canExportData: Value(canExportData),
+            canAccessSettings: Value(canAccessSettings),
+            canManageEmployees: Value(canManageEmployees),
+            canManageRoles: Value(canManageRoles),
+            isSystemRole: Value(isSystemRole),
+            isActive: Value(isActive),
+            createdAt: Value(createdAt),
+            lastUpdated: Value(lastUpdated),
+            isSynced: Value(true),
+            cloudId: Value(cloudId),
+          ),
+        );
+      }
+    } catch (e) {
+      //print('❌ Error upserting role from cloud: $e');
+      rethrow;
     }
-  } catch (e) {
-    print('❌ Error upserting role from cloud: $e');
-    rethrow;
   }
-}
 
   /// ✅ Get role by cloud ID
   Future<Role?> getRoleByCloudId(String cloudId) async {
@@ -450,7 +497,7 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudRoles) async {
         roles,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching role by cloud ID: $e');
+      //print('❌ Error fetching role by cloud ID: $e');
       return null;
     }
   }
@@ -468,12 +515,12 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudRoles) async {
               .go();
 
       if (result > 0) {
-        print('🧹 Cleaned up $result inactive roles from local database');
+        //print('🧹 Cleaned up $result inactive roles from local database');
       }
 
       return result;
     } catch (e) {
-      print('❌ Error cleaning up deleted roles: $e');
+      //print('❌ Error cleaning up deleted roles: $e');
       return 0;
     }
   }

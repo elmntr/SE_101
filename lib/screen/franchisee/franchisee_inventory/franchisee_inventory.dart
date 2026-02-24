@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'package:drift/drift.dart' show Value;
 import '../../../../database/app_database.dart';
 import '../../../../database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/tables/sorting_and_filters.dart';
@@ -27,12 +29,17 @@ class InventoryPageState extends State<InventoryPage> {
   /// Items with branch-specific stock data
   List<ItemWithBranchStock> items = [];
 
+  /// Stock change history
+  List<StockChangeRequest> changeHistory = [];
+  List<User> employeeOptions = [];
+  int? selectedEmployeeId;
+
   int? currentOrganizationId;
   int? commissaryId; // Parent commissary for master items
   int? currentUserId; // Current logged-in user
   bool isLoading = true;
 
-  int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock
+  int selectedTab = 0; // 0 = Item Stock, 1 = Stock Changes, 2 = Replenish Stock, 3 = Sold
 
   ItemSort currentSort = const ItemSort(ItemSortField.name, SortOrder.asc);
 
@@ -99,9 +106,16 @@ class InventoryPageState extends State<InventoryPage> {
 
   void _onSyncComplete() {
     if (mounted) {
-      print('🔄 Sync completed, refreshing inventory...');
+      //print('🔄 Sync completed, refreshing inventory...');
       loadData();
     }
+  }
+
+  void applyEmployeeFilter(int? employeeId) {
+    setState(() {
+      selectedEmployeeId = employeeId;
+    });
+    loadData();
   }
 
   static const String orgIdKey = 'current_organization_id';
@@ -122,35 +136,314 @@ class InventoryPageState extends State<InventoryPage> {
         final loadedItems = await db.branchItemStockDao
             .getItemsWithStockForBranch(currentOrganizationId!, commissaryId!);
 
-        print('📦 Loaded ${loadedItems.length} items with branch stock');
+        //print('📦 Loaded ${loadedItems.length} items with branch stock');
         for (final item in loadedItems) {
-          print(
-            '   - ${item.name}: stock=${item.stock}, sold=${item.sold}, spoilage=${item.spoilage}, hasBranchStock=${item.hasBranchStock}',
-          );
+          //print(
+          //  '   - ${item.name}: stock=${item.stock}, sold=${item.sold}, spoilage=${item.spoilage}, hasBranchStock=${item.hasBranchStock}'
+          //);
         }
+
+        final employees = await db.usersDao.getUsersByOrganization(
+          currentOrganizationId!,
+          isActive: true,
+        );
+
+        final changes = await db.stockChangeRequestsDao.getAllChangeRequests(
+          franchiseeId: currentOrganizationId!,
+          requestedBy: selectedEmployeeId,
+        );
 
         if (mounted) {
           setState(() {
             items = loadedItems;
+            changeHistory = changes;
+            employeeOptions = employees;
             isLoading = false;
           });
         }
       } else {
-        print(
-          '⚠️ Missing org context: orgId=$currentOrganizationId, commissaryId=$commissaryId',
-        );
+        //print(
+        //  '⚠️ Missing org context: orgId=$currentOrganizationId, commissaryId=$commissaryId'
+        //);
         if (mounted) {
           setState(() {
             items = [];
+            changeHistory = [];
+            employeeOptions = [];
             isLoading = false;
           });
         }
       }
     } catch (e) {
-      print('❌ Error loading inventory data: $e');
+      //print('❌ Error loading inventory data: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> buildChangeHistoryRows() async {
+    final rows = <Map<String, dynamic>>[];
+
+    for (final request in changeHistory) {
+      final item = await db.itemsDao.getItemById(request.itemId);
+      final user = await db.usersDao.getUserById(request.requestedBy);
+      rows.add({
+        'employeeName': user?.fullName ?? user?.username ?? 'Unknown',
+        'itemName': item?.name ?? 'Unknown',
+        'changeType': request.changeType,
+        'quantity': request.quantity.toString(),
+        'status': request.status,
+        'request': request,
+      });
+    }
+
+    return rows;
+  }
+
+  Widget buildStatusChip(String status) {
+    Color color;
+    switch (status) {
+      case 'draft':
+        color = Colors.grey;
+        break;
+      case 'pending':
+        color = Colors.orange;
+        break;
+      case 'approved':
+        color = Colors.green;
+        break;
+      case 'rejected':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Future<void> approveChangeRequest(
+    BuildContext context,
+    StockChangeRequest request,
+  ) async {
+    if (currentUserId == null || currentUserId! <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Unable to resolve reviewer.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (request.status != 'pending') {
+      return;
+    }
+
+    try {
+      final success = await db.stockChangeRequestsDao.approveChangeRequest(
+        requestId: request.id,
+        reviewedBy: currentUserId!,
+      );
+
+      if (success) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Change approved.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await loadData();
+      } else {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Could not approve change.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error approving change: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Show dialog to edit stock and spoilage values for an item
+  Future<void> showEditStockDialog(
+    BuildContext context,
+    ItemWithBranchStock item,
+  ) async {
+    final TextEditingController stockController = TextEditingController(
+      text: item.stock.toString(),
+    );
+    final TextEditingController spoilageController = TextEditingController(
+      text: item.spoilage.toString(),
+    );
+
+    final result = await showDialog<Map<String, int>?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Text(
+          'Edit: ${item.name}',
+          style: const TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: stockController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Stock Quantity',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: spoilageController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Spoilage',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              final newStock = int.tryParse(stockController.text.trim());
+              final newSpoilage = int.tryParse(spoilageController.text.trim());
+              if (newStock != null && newStock >= 0 && newSpoilage != null && newSpoilage >= 0) {
+                Navigator.pop(context, {'stock': newStock, 'spoilage': newSpoilage});
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter valid quantities.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && context.mounted) {
+      await updateItemStock(context, item, result);
+    }
+  }
+
+  /// Update the stock and spoilage values for an item
+  Future<void> updateItemStock(
+    BuildContext context,
+    ItemWithBranchStock item,
+    Map<String, int> values,
+  ) async {
+    final newStock = values['stock']!;
+    final newSpoilage = values['spoilage']!;
+    
+    if (currentOrganizationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Organization not found.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      if (item.hasBranchStock && item.branchStockId != null) {
+        // Update existing branch stock record
+        final success = await db.branchItemStockDao.updateStock(
+          item.branchStockId!,
+          BranchItemStockCompanion(
+            stock: Value(newStock),
+            spoilage: Value(newSpoilage),
+          ),
+        );
+
+        if (success) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Updated ${item.name}: Stock=$newStock, Spoilage=$newSpoilage'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          await loadData();
+        } else {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error: Could not update item.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        // Create new branch stock record
+        await db.branchItemStockDao.createStock(
+          BranchItemStockCompanion(
+            organizationId: Value(currentOrganizationId!),
+            itemId: Value(item.id),
+            stock: Value(newStock),
+            sold: const Value(0),
+            spoilage: Value(newSpoilage),
+            isSynced: const Value(false),
+          ),
+        );
+
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Set ${item.name}: Stock=$newStock, Spoilage=$newSpoilage'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await loadData();
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating item: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -170,9 +463,9 @@ class InventoryPageState extends State<InventoryPage> {
         if (org != null) {
           currentOrganizationId = org.id;
           await prefs.setInt(orgIdKey, org.id);
-          print(
-            '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}',
-          );
+          //print(
+          //  '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}'
+          //);
           return;
         }
       }
@@ -199,11 +492,11 @@ class InventoryPageState extends State<InventoryPage> {
           organization.parentCommissaryId != null) {
         // Franchisee: use parent commissary
         commissaryId = organization.parentCommissaryId;
-        print('📍 Franchisee mode: commissaryId=${commissaryId}');
+        //print('📍 Franchisee mode: commissaryId=${commissaryId}');
       } else if (organization.type == 'commissary') {
         // Commissary viewing own inventory
         commissaryId = organization.id;
-        print('📍 Commissary mode: commissaryId=${commissaryId}');
+        //print('📍 Commissary mode: commissaryId=${commissaryId}');
       }
     }
 
@@ -214,7 +507,7 @@ class InventoryPageState extends State<InventoryPage> {
       );
       if (commissaries.isNotEmpty) {
         commissaryId = commissaries.first.id;
-        print('📍 Fallback commissary: commissaryId=${commissaryId}');
+        //print('📍 Fallback commissary: commissaryId=${commissaryId}');
       }
     }
   }
@@ -229,31 +522,99 @@ class InventoryPageState extends State<InventoryPage> {
         );
         if (localUser != null) {
           currentUserId = localUser.id;
-          print(
-            '👤 Resolved local User ID from cloud ID: ${currentUser.cloudId} → ${localUser.id}',
-          );
+          //print(
+          //  '👤 Resolved local User ID from cloud ID: ${currentUser.cloudId} → ${localUser.id}'
+          //);
         } else {
-          print(
-            '⚠️ Could not resolve local user from cloud ID: ${currentUser.cloudId}',
-          );
-          // Don't set to 0 - leave as null so we know it's invalid
-          currentUserId = null;
+          //print('⚠️ Could not resolve local user from cloud ID: ${currentUser.cloudId}');
+          // Try syncing users first, then retry
+          await _trySyncAndResolveUser(currentUser.cloudId!);
         }
       } else if (currentUser.id > 0) {
         currentUserId = currentUser.id;
       } else {
-        currentUserId = null;
+        // User has no ID - try to resolve by email
+        await _tryResolveUserByEmail(currentUser.email);
       }
     } else {
-      // If we don't have a user, we might need one for the request.
-      // For now, we'll try to get it from the DAO if possible, or fallback.
-      // In a real app, we should enforce login.
-      final users = await db.usersDao.getAllUsers();
-      if (users.isNotEmpty) {
-        currentUserId = users.first.id;
+      // No authenticated user from auth service
+      // This might happen if auth service hasn't loaded yet
+      //print('⚠️ No current user from auth service, checking Supabase auth...');
+      final supabaseUser = Supabase.instance.client.auth.currentUser;
+      if (supabaseUser != null) {
+        await _tryResolveUserByEmail(supabaseUser.email ?? '');
+      } else {
+        currentUserId = null;
       }
     }
-    print('👤 Current User ID: $currentUserId');
+    //print('👤 Current User ID: $currentUserId');
+  }
+
+  /// Try to sync users and resolve local user ID
+  Future<void> _trySyncAndResolveUser(String cloudId) async {
+    try {
+      //print('🔄 Syncing dependencies and users to resolve local ID...');
+      // Sync dependencies first to ensure FK resolution works
+      await AppGlobals.instance.syncService.syncOrganizations();
+      await AppGlobals.instance.syncService.syncRoles();
+      
+      // DEBUG: Verify DB State
+      final roles = await db.rolesDao.getAllRoles();
+      //print('🔍 DEBUG: Local Roles count: ${roles.length}');
+      // for (var r in roles) //print('   - Role: ${r.id} | ${r.cloudId} | ${r.name}');
+      
+      final orgs = await db.organizationsDao.getAllOrganizations();
+      //print('🔍 DEBUG: Local Orgs count: ${orgs.length}');
+      // for (var o in orgs) //print('   - Org: ${o.id} | ${o.cloudId} | ${o.name}');
+
+      await AppGlobals.instance.syncService.syncUsers();
+
+      final localUser = await db.usersDao.getUserByCloudId(cloudId);
+      if (localUser != null) {
+        currentUserId = localUser.id;
+        //print('👤 Resolved local User ID after sync: $cloudId → ${localUser.id}');
+      } else {
+        //print('❌ User still not found after sync (Organization/Role might be missing/inactive)');
+        currentUserId = null;
+      }
+    } catch (e) {
+      //print('⚠️ Sync failed: $e');
+      currentUserId = null;
+    }
+  }
+
+  /// Try to resolve user by email from local DB
+  Future<void> _tryResolveUserByEmail(String email) async {
+    if (email.isEmpty) {
+      currentUserId = null;
+      return;
+    }
+    
+    try {
+      final localUser = await db.usersDao.getUserByEmail(email);
+      if (localUser != null) {
+        currentUserId = localUser.id;
+        //print('👤 Resolved User ID by email: $email → ${localUser.id}');
+      } else {
+        // Try syncing first
+        //print('🔄 User not found locally, syncing dependencies and users...');
+        await AppGlobals.instance.syncService.syncOrganizations();
+        await AppGlobals.instance.syncService.syncRoles();
+        await AppGlobals.instance.syncService.syncUsers();
+        
+        final syncedUser = await db.usersDao.getUserByEmail(email);
+        if (syncedUser != null) {
+          currentUserId = syncedUser.id;
+          //print('👤 Resolved User ID after sync: $email → ${syncedUser.id}');
+        } else {
+          //print('❌ User not found even after sync: $email');
+          currentUserId = null;
+        }
+      }
+    } catch (e) {
+      //print('⚠️ Error resolving user: $e');
+      currentUserId = null;
+    }
   }
 
   void applyItemSort(ItemSort sort) {
@@ -271,7 +632,7 @@ class InventoryPageState extends State<InventoryPage> {
       await AppGlobals.instance.syncService.syncBranchItemStock();
       // loadData will be called via _onSyncComplete
     } catch (e) {
-      print('Error refreshing inventory: $e');
+      //print('Error refreshing inventory: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }

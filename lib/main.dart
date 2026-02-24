@@ -10,8 +10,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'config/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'services/supabase_sync_service.dart';
+import 'services/supabase_sync_service_v2.dart';
 import 'services/supabase_auth_service.dart';
+import 'services/realtime_stock_request_service.dart';
 import 'app_globals.dart';
 import 'app.dart';
 import 'package:path_provider/path_provider.dart';
@@ -59,11 +60,13 @@ void main() async {
   SupabaseConfig.printConfigStatus(); // Debug: Show config status
 
   try {
+    AppLogger.websocket('🔌 SUPABASE INIT  starting...');
     await Supabase.initialize(
       url: SupabaseConfig.url,
       anonKey: SupabaseConfig.anonKey,
     );
     AppLogger.info('✅ Supabase initialized');
+    AppLogger.websocket('🔌 SUPABASE INIT  complete');
   } catch (e) {
     AppLogger.warning('Supabase initialization failed: $e');
     AppLogger.info('📱 App will work in offline-only mode');
@@ -72,9 +75,9 @@ void main() async {
   // -------------------------------------------------------------
   // SYNC SERVICE INITIALIZATION
   // -------------------------------------------------------------
-  AppLogger.sync('Initializing sync service...');
+  AppLogger.sync('Initializing sync service v2...');
 
-  final sync = SupabaseSyncService(
+  final sync = SupabaseSyncServiceV2(
     db: db,
     supabase: Supabase.instance.client,
     onConnectivityChanged: (isOnline) {
@@ -109,19 +112,48 @@ void main() async {
     supabase: Supabase.instance.client,
     database: db,
   );
+
+  // Initialize realtime stock request service
+  AppLogger.websocket('🔌 REALTIME SERVICE  creating instance');
+  final realtimeStockRequestService = RealtimeStockRequestService(
+    supabase: Supabase.instance.client,
+    db: db,
+  );
+
+  // Wire up sync callback for realtime service - use FORCE FULL sync
+  realtimeStockRequestService.syncCallback = () async {
+    await sync.forceFullSyncReplenishmentRequests();
+    await sync.syncBranchItemStock();
+    notifySyncComplete();
+  };
   
   AppGlobals.instance.initialize(
     database: db,
     syncService: sync,
     authService: authService,
+    realtimeStockRequestService: realtimeStockRequestService,
   );
   AppLogger.info('✅ AppGlobals initialized');
+
+  // -------------------------------------------------------------
+  // AUTH STATE LISTENER - Clear sync context on logout
+  // -------------------------------------------------------------
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    final event = data.event;
+    final user = data.session?.user;
+    
+    if (event == AuthChangeEvent.signedOut || user == null) {
+      AppLogger.auth('🔒 Auth loss detected in main.dart - clearing sync context');
+      sync.clearOrganizationContext();
+    }
+  });
 
   // Non-blocking sync service start
   sync
       .initialize()
       .then((_) {
         AppLogger.info('✅ Sync service initialized');
+        AppLogger.websocket('🔌 SYNC SERVICE  initialized (from main.dart non-blocking)');
         _updateSyncStatus();
       })
       .catchError((e) {

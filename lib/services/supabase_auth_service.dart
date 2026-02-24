@@ -9,6 +9,16 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase show User;
 import '../database/app_database.dart';
 
+/// Auth lifecycle states for clear startup flow
+enum AuthLifecycleState {
+  /// Initial state - auth bootstrap not yet started
+  bootstrapping,
+  /// Auth bootstrap complete - user is authenticated
+  authenticated,
+  /// Auth bootstrap complete - user is not authenticated
+  unauthenticated,
+}
+
 /// Result type for authentication operations
 class AuthResult {
   final bool success;
@@ -23,7 +33,11 @@ class AuthResult {
     this.localUser,
   });
 
-  factory AuthResult.success({supabase.User? user, UserData? localUser, String? message}) {
+  factory AuthResult.success({
+    supabase.User? user,
+    UserData? localUser,
+    String? message,
+  }) {
     return AuthResult(
       success: true,
       user: user,
@@ -119,8 +133,9 @@ class RolePermissions {
 /// Features:
 /// - Email/Password authentication via Supabase Auth
 /// - Links Supabase Auth users to local users table
-/// - Maintains session state
+/// - Maintains session state with clear lifecycle states
 /// - Handles organization context for RLS
+/// - Refresh-token aware session recovery
 class SupabaseAuthService {
   final SupabaseClient _supabase;
   final AppDatabase _db;
@@ -128,12 +143,19 @@ class SupabaseAuthService {
   // Current session state
   UserData? _currentUser;
   StreamController<UserData?>? _authStateController;
+  
+  // Auth lifecycle state
+  AuthLifecycleState _lifecycleState = AuthLifecycleState.bootstrapping;
+  final StreamController<AuthLifecycleState> _lifecycleController = 
+      StreamController<AuthLifecycleState>.broadcast();
+  final Completer<void> _bootstrapCompleter = Completer<void>();
+  bool _bootstrapStarted = false;
 
   SupabaseAuthService({
     required SupabaseClient supabase,
     required AppDatabase database,
-  })  : _supabase = supabase,
-        _db = database {
+  }) : _supabase = supabase,
+       _db = database {
     _authStateController = StreamController<UserData?>.broadcast();
     _initAuthListener();
   }
@@ -145,6 +167,15 @@ class SupabaseAuthService {
   bool get isFranchisee => _currentUser?.isFranchisee ?? false;
   Stream<UserData?> get authStateChanges => _authStateController!.stream;
   supabase.User? get supabaseUser => _supabase.auth.currentUser;
+  
+  /// Current auth lifecycle state
+  AuthLifecycleState get lifecycleState => _lifecycleState;
+  
+  /// Stream of auth lifecycle state changes
+  Stream<AuthLifecycleState> get lifecycleStateChanges => _lifecycleController.stream;
+  
+  /// Future that completes when auth bootstrap is done
+  Future<void> get bootstrapComplete => _bootstrapCompleter.future;
 
   /// Initialize auth state listener
   void _initAuthListener() {
@@ -152,97 +183,200 @@ class SupabaseAuthService {
       final event = data.event;
       final session = data.session;
 
-      if (kDebugMode) {
-        print('🔐 Auth state changed: $event');
-      }
+      _logAuth('Auth state changed: $event');
 
-      if (event == AuthChangeEvent.signedIn && session != null) {
+      // Handle all session-providing events the same way  
+      if ((event == AuthChangeEvent.signedIn || 
+           event == AuthChangeEvent.tokenRefreshed ||
+           event == AuthChangeEvent.initialSession) && session != null) {
         await _loadCurrentUser(session.user);
+        _updateLifecycleState(_currentUser != null 
+            ? AuthLifecycleState.authenticated 
+            : AuthLifecycleState.unauthenticated);
       } else if (event == AuthChangeEvent.signedOut) {
         _currentUser = null;
         _authStateController?.add(null);
-      } else if (event == AuthChangeEvent.tokenRefreshed && session != null) {
-        // Session refreshed, user data should still be valid
-        if (_currentUser == null) {
-          await _loadCurrentUser(session.user);
-        }
+        _updateLifecycleState(AuthLifecycleState.unauthenticated);
       }
     });
+  }
+  
+  /// Update lifecycle state and notify listeners
+  void _updateLifecycleState(AuthLifecycleState newState) {
+    if (_lifecycleState != newState) {
+      _lifecycleState = newState;
+      _lifecycleController.add(newState);
+      _logAuth('Lifecycle state: $newState');
+    }
+    
+    // Complete bootstrap if we've reached a final state
+    if (!_bootstrapCompleter.isCompleted && 
+        newState != AuthLifecycleState.bootstrapping) {
+      _bootstrapCompleter.complete();
+    }
+  }
+  
+  /// Structured logging for auth events
+  void _logAuth(String message) {
+    if (kDebugMode) {
+      final timestamp = DateTime.now().toIso8601String();
+      //print('🔐 [$timestamp] [AUTH] $message');
+    }
+  }
+  
+  /// Bootstrap auth - call once on app startup to restore session
+  /// Returns the final auth state after bootstrap completes
+  Future<AuthLifecycleState> bootstrap() async {
+    if (_bootstrapStarted) {
+      await _bootstrapCompleter.future;
+      return _lifecycleState;
+    }
+    _bootstrapStarted = true;
+    
+    _logAuth('Bootstrap starting...');
+    
+    try {
+      final session = _supabase.auth.currentSession;
+      
+      if (session == null) {
+        _logAuth('Bootstrap: No session found');
+        _updateLifecycleState(AuthLifecycleState.unauthenticated);
+        return _lifecycleState;
+      }
+      
+      _logAuth('Bootstrap: Session found, checking validity...');
+      
+      // Check if access token is expired
+      final expiresAt = session.expiresAt;
+      final isExpired = expiresAt != null && 
+          DateTime.now().isAfter(DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000));
+      
+      if (isExpired) {
+        _logAuth('Bootstrap: Access token expired, attempting refresh...');
+        
+        // Try to refresh the session using refresh token
+        if (session.refreshToken != null) {
+          try {
+            final refreshResponse = await _supabase.auth.refreshSession();
+            
+            if (refreshResponse.session != null) {
+              _logAuth('Bootstrap: Token refresh successful');
+              await _loadCurrentUser(refreshResponse.session!.user);
+              
+              if (_currentUser != null) {
+                _updateLifecycleState(AuthLifecycleState.authenticated);
+                return _lifecycleState;
+              }
+            }
+          } catch (e) {
+            _logAuth('Bootstrap: Token refresh failed: $e');
+          }
+        }
+        
+        // Refresh failed - session is unrecoverable
+        _logAuth('Bootstrap: Session unrecoverable');
+        _updateLifecycleState(AuthLifecycleState.unauthenticated);
+        return _lifecycleState;
+      }
+      
+      // Access token is still valid
+      _logAuth('Bootstrap: Access token valid, loading user...');
+      await _loadCurrentUser(session.user);
+      
+      if (_currentUser != null) {
+        _updateLifecycleState(AuthLifecycleState.authenticated);
+      } else {
+        _updateLifecycleState(AuthLifecycleState.unauthenticated);
+      }
+      
+      return _lifecycleState;
+    } catch (e) {
+      _logAuth('Bootstrap: Error during bootstrap: $e');
+      _updateLifecycleState(AuthLifecycleState.unauthenticated);
+      return _lifecycleState;
+    }
   }
 
   /// Load current user data from local database
   Future<void> _loadCurrentUser(supabase.User authUser) async {
     try {
+      _logAuth('Loading local user for: ${authUser.email}');
       // Find local user by auth_user_id or email
       final localUser = await _findLocalUser(authUser);
-      
+
       if (localUser != null) {
         _currentUser = localUser;
         _authStateController?.add(localUser);
-        
-        if (kDebugMode) {
-          print('✅ User loaded: ${localUser.username} (${localUser.organizationType})');
-        }
+        _logAuth('User loaded: ${localUser.username} (${localUser.organizationType})');
       } else {
-        if (kDebugMode) {
-          print('⚠️ No local user found for auth user: ${authUser.email}');
-        }
+        _logAuth('No local user found for auth user: ${authUser.email}');
         _currentUser = null;
         _authStateController?.add(null);
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error loading user: $e');
-      }
+      _logAuth('Error loading user: $e');
       _currentUser = null;
       _authStateController?.add(null);
     }
   }
 
   /// Find local user by Supabase auth user
+  /// Uses auth user ID first, then falls back to email matching
   Future<UserData?> _findLocalUser(supabase.User authUser) async {
     try {
-      // First try by auth_user_id if linked
-      // Then fallback to email match
       final users = await _db.usersDao.getAllUsers();
-      
+
+      // Priority 1: Match by cloudId (Supabase auth user ID) first
       for (final user in users) {
         if (!user.isActive) continue;
-        
-        // Match by email (case insensitive)
-        if (user.email.toLowerCase() == authUser.email?.toLowerCase()) {
-          // Load organization and role
-          final org = await _db.organizationsDao.getOrganizationById(user.organizationId);
-          final role = await _db.rolesDao.getRoleById(user.roleId);
-          
-          if (org == null || role == null) continue;
-          
-          return UserData(
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            fullName: user.fullName,
-            phone: user.phone,
-            organizationId: user.organizationId,
-            organizationCloudId: org.cloudId,
-            organizationType: org.type,
-            organizationName: org.name,
-            roleId: user.roleId,
-            roleName: role.name,
-            permissions: RolePermissions.fromRole(role),
-            cloudId: user.cloudId,
-            authUserId: authUser.id,
-          );
+
+        if (user.cloudId != null && user.cloudId == authUser.id) {
+          _logAuth('Found user by cloudId: ${user.username}');
+          return await _buildUserData(user, authUser);
         }
       }
       
+      // Priority 2: Fall back to email match
+      for (final user in users) {
+        if (!user.isActive) continue;
+
+        // Match by email (case insensitive)
+        if (user.email.toLowerCase() == authUser.email?.toLowerCase()) {
+          _logAuth('Found user by email: ${user.username}');
+          return await _buildUserData(user, authUser);
+        }
+      }
+
       return null;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error finding local user: $e');
-      }
+      _logAuth('Error finding local user: $e');
       return null;
     }
+  }
+  
+  /// Build UserData from a local User record
+  Future<UserData?> _buildUserData(User user, supabase.User authUser) async {
+    final org = await _db.organizationsDao.getOrganizationById(user.organizationId);
+    final role = await _db.rolesDao.getRoleById(user.roleId);
+    
+    if (org == null || role == null) return null;
+    
+    return UserData(
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+      phone: user.phone,
+      organizationId: user.organizationId,
+      organizationCloudId: org.cloudId,
+      organizationType: org.type,
+      organizationName: org.name,
+      roleId: user.roleId,
+      roleName: role.name,
+      permissions: RolePermissions.fromRole(role),
+      cloudId: user.cloudId,
+      authUserId: authUser.id,
+    );
   }
 
   /// Sign up a new user
@@ -272,10 +406,7 @@ class SupabaseAuthService {
       final authResponse = await _supabase.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'username': username,
-          'full_name': fullName,
-        },
+        data: {'username': username, 'full_name': fullName},
       );
 
       if (authResponse.user == null) {
@@ -287,7 +418,9 @@ class SupabaseAuthService {
         UsersCompanion.insert(
           email: email,
           username: username,
-          password: _hashPassword(password), // Store hashed password for offline login
+          password: _hashPassword(
+            password,
+          ), // Store hashed password for offline login
           fullName: Value(fullName),
           phone: Value(phone),
           organizationId: organizationId,
@@ -336,7 +469,9 @@ class SupabaseAuthService {
       if (_currentUser == null) {
         // User authenticated but no local record found
         // This might happen if user was created in Supabase but not synced locally
-        return AuthResult.failure('User not found in local database. Please sync first.');
+        return AuthResult.failure(
+          'User not found in local database. Please sync first.',
+        );
       }
 
       return AuthResult.success(
@@ -360,7 +495,7 @@ class SupabaseAuthService {
   Future<AuthResult> _offlineSignIn(String email, String password) async {
     try {
       final user = await _db.usersDao.getUserByEmail(email);
-      
+
       if (user == null || !user.isActive) {
         return AuthResult.failure('Invalid credentials');
       }
@@ -371,7 +506,9 @@ class SupabaseAuthService {
       }
 
       // Load organization and role
-      final org = await _db.organizationsDao.getOrganizationById(user.organizationId);
+      final org = await _db.organizationsDao.getOrganizationById(
+        user.organizationId,
+      );
       final role = await _db.rolesDao.getRoleById(user.roleId);
 
       if (org == null || role == null) {
@@ -426,7 +563,9 @@ class SupabaseAuthService {
       }
 
       // 2. Get organization cloud_id for the user record
-      final org = await _db.organizationsDao.getOrganizationById(organizationId);
+      final org = await _db.organizationsDao.getOrganizationById(
+        organizationId,
+      );
       if (org == null) {
         return AuthResult.failure('Organization not found');
       }
@@ -441,12 +580,12 @@ class SupabaseAuthService {
       // until they confirm. Disable email confirmation in Supabase Dashboard:
       // Authentication → Providers → Email → Confirm email = OFF
       if (kDebugMode) {
-        print('📝 Creating Supabase Auth user...');
-        print('   Email: $email');
-        print('   Password length: ${password.length}');
-        print('   Password: $password'); // Remove this after debugging!
+        //print('📝 Creating Supabase Auth user...');
+        //print('   Email: $email');
+        //print('   Password length: ${password.length}');
+        //print('   Password: $password'); // Remove this after debugging!
       }
-      
+
       final authResponse = await _supabase.auth.signUp(
         email: email,
         password: password,
@@ -464,31 +603,36 @@ class SupabaseAuthService {
       // Check if email confirmation is required (user exists but session is null)
       if (authResponse.session == null && authResponse.user != null) {
         if (kDebugMode) {
-          print('⚠️ Email confirmation may be required for: $email');
-          print('   Disable email confirmation in Supabase Dashboard if needed');
+          //print('⚠️ Email confirmation may be required for: $email');
+          //print(
+          //  '   Disable email confirmation in Supabase Dashboard if needed',
+          //);
         }
       }
 
       final authUserId = authResponse.user!.id;
-      
+
       if (kDebugMode) {
-        print('✅ Created Supabase Auth user: $authUserId');
-        print('   Email confirmed: ${authResponse.user!.emailConfirmedAt != null}');
+        //print('✅ Created Supabase Auth user: $authUserId');
+        //print(
+        //  '   Email confirmed: ${authResponse.user!.emailConfirmedAt != null}',
+        //);
       }
 
       // 5. Restore original admin session BEFORE inserting to users table
       // The admin has permission to insert, the new user might not
-      if (currentSession != null && _supabase.auth.currentUser?.id != currentSession.user.id) {
+      if (currentSession != null &&
+          _supabase.auth.currentUser?.id != currentSession.user.id) {
         try {
           await _supabase.auth.setSession(currentSession.refreshToken!);
           _currentUser = currentUserData;
           _authStateController?.add(_currentUser);
           if (kDebugMode) {
-            print('✅ Restored admin session');
+            //print('✅ Restored admin session');
           }
         } catch (e) {
           if (kDebugMode) {
-            print('⚠️ Could not restore session: $e');
+            //print('⚠️ Could not restore session: $e');
           }
         }
       }
@@ -504,22 +648,24 @@ class SupabaseAuthService {
       // Uses admin session which has INSERT permission
       final hashedPassword = _hashPassword(password);
       final now = DateTime.now().toUtc().toIso8601String();
-      
+
       try {
         if (kDebugMode) {
-          print('📤 Inserting user into Supabase users table...');
-          print('   Auth user ID (cloud_id): $authUserId');
-          print('   Organization cloud ID: ${org.cloudId}');
-          print('   Role cloud ID: ${role.cloudId}');
-          print('   Current session user: ${_supabase.auth.currentUser?.id}');
+          //print('📤 Inserting user into Supabase users table...');
+          //print('   Auth user ID (cloud_id): $authUserId');
+          //print('   Organization cloud ID: ${org.cloudId}');
+          //print('   Role cloud ID: ${role.cloudId}');
+          //print('   Current session user: ${_supabase.auth.currentUser?.id}');
         }
-        
+
         // Use cloud_id as unique identifier (matches sync service format)
         // Auth user ID is stored in cloud_id to link auth user to data record
         // Also set auth_user_id for RLS policy to allow user to read their own record
         await _supabase.from('users').insert({
-          'cloud_id': authUserId, // Use auth user ID as cloud_id (unique identifier)
-          'auth_user_id': authUserId, // For RLS policy - allows user to read own record
+          'cloud_id':
+              authUserId, // Use auth user ID as cloud_id (unique identifier)
+          'auth_user_id':
+              authUserId, // For RLS policy - allows user to read own record
           'email': email,
           'username': username,
           'password': hashedPassword,
@@ -531,13 +677,13 @@ class SupabaseAuthService {
           'created_at': now,
           'last_updated': now,
         });
-        
+
         if (kDebugMode) {
-          print('✅ Inserted user into Supabase users table');
+          //print('✅ Inserted user into Supabase users table');
         }
       } catch (e) {
         if (kDebugMode) {
-          print('❌ Failed to insert into Supabase users table: $e');
+          //print('❌ Failed to insert into Supabase users table: $e');
         }
         // Don't continue silently - return failure so user knows
         return AuthResult.failure('Failed to create user record: $e');
@@ -562,7 +708,7 @@ class SupabaseAuthService {
       );
 
       if (kDebugMode) {
-        print('✅ Created local user: $localUserId');
+        //print('✅ Created local user: $localUserId');
       }
 
       return AuthResult.success(
@@ -570,29 +716,30 @@ class SupabaseAuthService {
       );
     } on AuthException catch (e) {
       if (kDebugMode) {
-        print('❌ Auth error creating employee: ${e.message}');
+        //print('❌ Auth error creating employee: ${e.message}');
       }
       return AuthResult.failure(e.message);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error creating employee: $e');
+        //print('❌ Error creating employee: $e');
       }
       return AuthResult.failure('Failed to create employee: $e');
     }
   }
 
-  /// Sign out
+  /// Sign out - this is the ONLY intentional path to clear persisted session
   Future<void> signOut() async {
+    _logAuth('Signing out...');
     try {
       await _supabase.auth.signOut();
     } catch (e) {
-      if (kDebugMode) {
-        print('⚠️ Error signing out from Supabase: $e');
-      }
+      _logAuth('Error signing out from Supabase: $e');
     }
-    
+
     _currentUser = null;
     _authStateController?.add(null);
+    _updateLifecycleState(AuthLifecycleState.unauthenticated);
+    _logAuth('Sign out complete');
   }
 
   /// Reset password
@@ -610,9 +757,7 @@ class SupabaseAuthService {
   /// Update password
   Future<AuthResult> updatePassword(String newPassword) async {
     try {
-      await _supabase.auth.updateUser(
-        UserAttributes(password: newPassword),
-      );
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
 
       // Also update local password hash
       if (_currentUser != null) {
@@ -635,13 +780,13 @@ class SupabaseAuthService {
     try {
       // Update local user with auth_user_id
       // This needs a corresponding method in UsersDao
-      await _db.customStatement(
-        'UPDATE users SET cloud_id = ? WHERE id = ?',
-        [authUserId, localUserId],
-      );
+      await _db.customStatement('UPDATE users SET cloud_id = ? WHERE id = ?', [
+        authUserId,
+        localUserId,
+      ]);
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ Failed to link auth user: $e');
+        //print('⚠️ Failed to link auth user: $e');
       }
     }
   }
@@ -702,7 +847,7 @@ class SupabaseAuthService {
     // Handle empty stored hash
     if (storedHash.isEmpty) {
       if (kDebugMode) {
-        print('⚠️ Empty password hash stored');
+        //print('⚠️ Empty password hash stored');
       }
       return false;
     }
@@ -711,7 +856,9 @@ class SupabaseAuthService {
     final parts = storedHash.split('\$');
     if (parts.length != 2 || parts[0].length != 32 || parts[1].length != 64) {
       if (kDebugMode) {
-        print('⚠️ Password not in secure format. User must login online first.');
+        //print(
+        //  '⚠️ Password not in secure format. User must login online first.',
+        //);
       }
       return false;
     }
@@ -721,7 +868,7 @@ class SupabaseAuthService {
 
     // Constant-time comparison to prevent timing attacks
     if (storedHash.length != expectedFullHash.length) return false;
-    
+
     int result = 0;
     for (int i = 0; i < storedHash.length; i++) {
       result |= storedHash.codeUnitAt(i) ^ expectedFullHash.codeUnitAt(i);
@@ -731,13 +878,20 @@ class SupabaseAuthService {
 
   /// Update local password hash for offline login support
   /// Called after successful online login to ensure secure password format
-  Future<void> _updateLocalPasswordForOffline(String email, String password, String branchCloudId) async {
+  Future<void> _updateLocalPasswordForOffline(
+    String email,
+    String password,
+    String branchCloudId,
+  ) async {
     try {
       // Find the local user
-      final user = await _db.usersDao.getUserByEmailAndOrganizationCloudId(email, branchCloudId);
+      final user = await _db.usersDao.getUserByEmailAndOrganizationCloudId(
+        email,
+        branchCloudId,
+      );
       if (user == null) {
         if (kDebugMode) {
-          print('⚠️ Cannot update local password - user not found locally');
+          //print('⚠️ Cannot update local password - user not found locally');
         }
         return;
       }
@@ -748,7 +902,7 @@ class SupabaseAuthService {
         // Already in secure format, verify it matches
         if (_verifyPassword(password, user.password)) {
           if (kDebugMode) {
-            print('✅ Local password already in secure format');
+            //print('✅ Local password already in secure format');
           }
           return;
         }
@@ -757,51 +911,72 @@ class SupabaseAuthService {
       // Hash password in secure format and update local database
       final secureHash = _hashPassword(password);
       await _db.usersDao.updatePasswordHash(user.id, secureHash);
-      
-      if (kDebugMode) {
-        print('✅ Updated local password to secure format for offline login');
-      }
+
+      _logAuth('Updated local password to secure format for offline login');
     } catch (e) {
-      if (kDebugMode) {
-        print('⚠️ Failed to update local password for offline: $e');
-      }
+      _logAuth('Failed to update local password for offline: $e');
       // Don't fail the login if this fails - it's not critical
     }
   }
 
-  /// Check if current session is valid
-  Future<bool> isSessionValid() async {
-    final session = _supabase.auth.currentSession;
-    if (session == null) return false;
-    
-    // Check if token is expired
-    final expiresAt = session.expiresAt;
-    if (expiresAt == null) return false;
-    
-    final expiryDate = DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000);
-    return DateTime.now().isBefore(expiryDate);
-  }
-
-  /// Restore session on app start
+  /// Restore session on app start (legacy - prefer using bootstrap() instead)
+  /// This method is refresh-token aware and will attempt to refresh expired sessions
+  @Deprecated('Use bootstrap() instead for proper lifecycle management')
   Future<AuthResult> restoreSession() async {
     try {
+      _logAuth('restoreSession() called - attempting session restore');
       final session = _supabase.auth.currentSession;
-      
-      if (session != null && await isSessionValid()) {
-        await _loadCurrentUser(session.user);
-        
-        if (_currentUser != null) {
-          return AuthResult.success(
-            user: session.user,
-            localUser: _currentUser,
-          );
-        }
+
+      if (session == null) {
+        _logAuth('restoreSession: No session found');
+        return AuthResult.failure('No active session');
       }
       
-      // No valid session, check for offline user
-      // Could restore last logged in user from SharedPreferences
+      // Check if access token is expired
+      final expiresAt = session.expiresAt;
+      final isExpired = expiresAt != null && 
+          DateTime.now().isAfter(DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000));
+      
+      if (isExpired) {
+        _logAuth('restoreSession: Access token expired, attempting refresh...');
+        
+        // Try to refresh the session using refresh token
+        if (session.refreshToken != null) {
+          try {
+            final refreshResponse = await _supabase.auth.refreshSession();
+            
+            if (refreshResponse.session != null) {
+              _logAuth('restoreSession: Token refresh successful');
+              await _loadCurrentUser(refreshResponse.session!.user);
+              
+              if (_currentUser != null) {
+                return AuthResult.success(
+                  user: refreshResponse.session!.user,
+                  localUser: _currentUser,
+                );
+              }
+            }
+          } catch (e) {
+            _logAuth('restoreSession: Token refresh failed: $e');
+          }
+        }
+        
+        return AuthResult.failure('Session expired and could not be refreshed');
+      }
+      
+      // Access token is still valid
+      await _loadCurrentUser(session.user);
+
+      if (_currentUser != null) {
+        return AuthResult.success(
+          user: session.user,
+          localUser: _currentUser,
+        );
+      }
+
       return AuthResult.failure('No active session');
     } catch (e) {
+      _logAuth('restoreSession: Error: $e');
       return AuthResult.failure('Session restore failed: $e');
     }
   }
@@ -814,9 +989,7 @@ class SupabaseAuthService {
     try {
       await _supabase.auth.refreshSession();
     } catch (e) {
-      if (kDebugMode) {
-        print('⚠️ Failed to refresh session: $e');
-      }
+      _logAuth('Failed to refresh session: $e');
     }
   }
 
@@ -830,7 +1003,8 @@ class SupabaseAuthService {
   /// Fetch available branches (franchisees)
   /// Tries online first, falls back to local database if offline
   /// Returns a record with branches list and isOffline flag
-  Future<({List<Map<String, dynamic>> branches, bool isOffline})> fetchAvailableBranches() async {
+  Future<({List<Map<String, dynamic>> branches, bool isOffline})>
+  fetchAvailableBranches() async {
     // Try online first
     final onlineBranches = await _fetchBranchesOnline();
     if (onlineBranches.isNotEmpty) {
@@ -839,7 +1013,7 @@ class SupabaseAuthService {
 
     // If online failed or empty, try local database
     if (kDebugMode) {
-      print('📴 Falling back to local branch list...');
+      //print('📴 Falling back to local branch list...');
     }
     final offlineBranches = await _fetchBranchesOffline();
     return (branches: offlineBranches, isOffline: true);
@@ -850,7 +1024,7 @@ class SupabaseAuthService {
   Future<List<Map<String, dynamic>>> _fetchBranchesOnline() async {
     try {
       if (kDebugMode) {
-        print('📥 Fetching available branches from Supabase...');
+        //print('📥 Fetching available branches from Supabase...');
       }
 
       // If there's an existing session, sign out first to use anon role
@@ -858,7 +1032,7 @@ class SupabaseAuthService {
       final hasSession = _supabase.auth.currentSession != null;
       if (hasSession) {
         if (kDebugMode) {
-          print('   ℹ️ Existing session found, using direct query...');
+          //print('   ℹ️ Existing session found, using direct query...');
         }
       }
 
@@ -871,19 +1045,21 @@ class SupabaseAuthService {
           .eq('is_active', true)
           .order('name');
 
-      // If we got limited results due to RLS and there's a session, 
+      // If we got limited results due to RLS and there's a session,
       // try signing out temporarily to get full list
       if (response.isEmpty && hasSession) {
         if (kDebugMode) {
-          print('   ⚠️ No branches returned (RLS restricted?), trying anonymous...');
+          //print(
+          //  '   ⚠️ No branches returned (RLS restricted?), trying anonymous...',
+          //);
         }
-        
+
         // Store session to restore later
         final currentSession = _supabase.auth.currentSession;
-        
+
         // Sign out to use anon role
         await _supabase.auth.signOut();
-        
+
         // Try again with anon role
         response = await _supabase
             .from('organizations')
@@ -891,21 +1067,21 @@ class SupabaseAuthService {
             .eq('type', branchTypeFranchisee)
             .eq('is_active', true)
             .order('name');
-        
+
         // Restore session if we had one
         if (currentSession?.refreshToken != null) {
           try {
             await _supabase.auth.setSession(currentSession!.refreshToken!);
           } catch (e) {
             if (kDebugMode) {
-              print('   ⚠️ Could not restore session: $e');
+              //print('   ⚠️ Could not restore session: $e');
             }
           }
         }
       }
 
       if (kDebugMode) {
-        print('   Found ${response.length} branches online');
+        //print('   Found ${response.length} branches online');
       }
 
       final branches = List<Map<String, dynamic>>.from(response);
@@ -918,17 +1094,19 @@ class SupabaseAuthService {
       return branches;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error fetching branches online: $e');
+        //print('❌ Error fetching branches online: $e');
       }
       return [];
     }
   }
 
   /// Cache fetched branches to local database for offline access
-  Future<void> _cacheBranchesLocally(List<Map<String, dynamic>> branches) async {
+  Future<void> _cacheBranchesLocally(
+    List<Map<String, dynamic>> branches,
+  ) async {
     try {
       if (kDebugMode) {
-        print('💾 Caching ${branches.length} branches locally...');
+        //print('💾 Caching ${branches.length} branches locally...');
       }
 
       for (final branch in branches) {
@@ -936,7 +1114,9 @@ class SupabaseAuthService {
         if (cloudId == null) continue;
 
         // Check if organization already exists locally
-        final existing = await _db.organizationsDao.getOrganizationByCloudId(cloudId);
+        final existing = await _db.organizationsDao.getOrganizationByCloudId(
+          cloudId,
+        );
 
         if (existing == null) {
           // Insert new organization
@@ -949,19 +1129,19 @@ class SupabaseAuthService {
             email: branch['email'] as String?,
             address: branch['address'] as String?,
             isActive: branch['is_active'] as bool? ?? true,
-            createdAt: DateTime.now(),
-            lastUpdated: DateTime.now(),
+            createdAt: DateTime.now().toUtc(),
+            lastUpdated: DateTime.now().toUtc(),
             cloudId: cloudId,
           );
         }
       }
 
       if (kDebugMode) {
-        print('   ✅ Branches cached successfully');
+        //print('   ✅ Branches cached successfully');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ Failed to cache branches locally: $e');
+        //print('⚠️ Failed to cache branches locally: $e');
       }
       // Don't throw - caching failure shouldn't block login
     }
@@ -971,7 +1151,7 @@ class SupabaseAuthService {
   Future<List<Map<String, dynamic>>> _fetchBranchesOffline() async {
     try {
       if (kDebugMode) {
-        print('📴 Fetching branches from local database...');
+        //print('📴 Fetching branches from local database...');
       }
 
       // Get franchisee organizations from local database
@@ -981,22 +1161,26 @@ class SupabaseAuthService {
       );
 
       if (kDebugMode) {
-        print('   Found ${organizations.length} branches locally');
+        //print('   Found ${organizations.length} branches locally');
       }
 
       // Convert to the same format as online response
-      return organizations.map((org) => {
-        'cloud_id': org.cloudId,
-        'name': org.name,
-        'address': org.address,
-        'phone': org.phone,
-        'email': org.email,
-        'type': org.type,
-        'is_active': org.isActive,
-      }).toList();
+      return organizations
+          .map(
+            (org) => {
+              'cloud_id': org.cloudId,
+              'name': org.name,
+              'address': org.address,
+              'phone': org.phone,
+              'email': org.email,
+              'type': org.type,
+              'is_active': org.isActive,
+            },
+          )
+          .toList();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error fetching branches offline: $e');
+        //print('❌ Error fetching branches offline: $e');
       }
       return [];
     }
@@ -1010,8 +1194,8 @@ class SupabaseAuthService {
     required String branchCloudId,
   }) async {
     if (kDebugMode) {
-      print('🔑 Signing in to branch: $branchCloudId');
-      print('   Email: $email');
+      //print('🔑 Signing in to branch: $branchCloudId');
+      //print('   Email: $email');
     }
 
     // Try online authentication first
@@ -1027,7 +1211,8 @@ class SupabaseAuthService {
 
     // Check if the error was due to network issues (not invalid credentials)
     final errorMessage = onlineResult.message?.toLowerCase() ?? '';
-    final isNetworkError = errorMessage.contains('socket') ||
+    final isNetworkError =
+        errorMessage.contains('socket') ||
         errorMessage.contains('network') ||
         errorMessage.contains('connection') ||
         errorMessage.contains('timeout') ||
@@ -1038,14 +1223,16 @@ class SupabaseAuthService {
     if (!isNetworkError) {
       // It's a real auth error (invalid credentials, etc.), don't try offline
       if (kDebugMode) {
-        print('❌ Online auth failed (not a network error): ${onlineResult.message}');
+        //print(
+        //  '❌ Online auth failed (not a network error): ${onlineResult.message}',
+        //);
       }
       return onlineResult;
     }
 
     // Network error - try offline login
     if (kDebugMode) {
-      print('📴 Network error detected, trying offline login...');
+      //print('📴 Network error detected, trying offline login...');
     }
 
     return _offlineSignInToBranch(
@@ -1070,20 +1257,22 @@ class SupabaseAuthService {
 
       if (authResponse.user == null) {
         if (kDebugMode) {
-          print('❌ Auth failed: No user returned');
+          //print('❌ Auth failed: No user returned');
         }
         return AuthResult.failure('Invalid credentials');
       }
 
       if (kDebugMode) {
-        print('✅ Auth successful: ${authResponse.user!.id}');
-        print('   Auth email: ${authResponse.user!.email}');
+        //print('✅ Auth successful: ${authResponse.user!.id}');
+        //print('   Auth email: ${authResponse.user!.email}');
       }
 
       // 2. Fetch user record from Supabase with organization check
       if (kDebugMode) {
-        print('📥 Fetching user record...');
-        print('   Query: email=$email, organization_id=$branchCloudId, is_active=true');
+        //print('📥 Fetching user record...');
+        //print(
+        //  '   Query: email=$email, organization_id=$branchCloudId, is_active=true',
+        //);
       }
 
       final userRecords = await _supabase
@@ -1095,9 +1284,9 @@ class SupabaseAuthService {
           .limit(1);
 
       if (kDebugMode) {
-        print('   Result: ${userRecords.length} records found');
+        //print('   Result: ${userRecords.length} records found');
         if (userRecords.isNotEmpty) {
-          print('   User: ${userRecords.first}');
+          //print('   User: ${userRecords.first}');
         }
       }
 
@@ -1105,7 +1294,9 @@ class SupabaseAuthService {
         // Sign out since user doesn't belong to this branch
         await _supabase.auth.signOut();
         if (kDebugMode) {
-          print('❌ No user record found for this email in branch $branchCloudId');
+          //print(
+          //  '❌ No user record found for this email in branch $branchCloudId',
+          //);
         }
         return AuthResult.failure('You do not have access to this branch');
       }
@@ -1116,9 +1307,15 @@ class SupabaseAuthService {
 
       // 3. Look up local IDs from local database using cloud IDs
       // The cloud data has local_id = null, so we need to resolve from local DB
-      final localOrg = await _db.organizationsDao.getOrganizationByCloudId(branchCloudId);
-      final localRole = await _db.rolesDao.getRoleByCloudId(roleRecord['cloud_id']);
-      final localUser = await _db.usersDao.getUserByCloudId(userRecord['cloud_id']);
+      final localOrg = await _db.organizationsDao.getOrganizationByCloudId(
+        branchCloudId,
+      );
+      final localRole = await _db.rolesDao.getRoleByCloudId(
+        roleRecord['cloud_id'],
+      );
+      final localUser = await _db.usersDao.getUserByCloudId(
+        userRecord['cloud_id'],
+      );
 
       // Use local IDs if found, otherwise use 0 (will be synced later)
       final localOrgId = localOrg?.id ?? 0;
@@ -1126,10 +1323,14 @@ class SupabaseAuthService {
       final localUserId = localUser?.id ?? 0;
 
       if (kDebugMode) {
-        print('   📍 Local ID resolution:');
-        print('      - Org: cloud=${branchCloudId} → local=$localOrgId');
-        print('      - Role: cloud=${roleRecord['cloud_id']} → local=$localRoleId');
-        print('      - User: cloud=${userRecord['cloud_id']} → local=$localUserId');
+        //print('   📍 Local ID resolution:');
+        //print('      - Org: cloud=${branchCloudId} → local=$localOrgId');
+        //print(
+        //  '      - Role: cloud=${roleRecord['cloud_id']} → local=$localRoleId',
+        //);
+        //print(
+        //  '      - User: cloud=${userRecord['cloud_id']} → local=$localUserId',
+        //);
       }
 
       // 4. Build UserData from Supabase response with resolved local IDs
@@ -1161,11 +1362,13 @@ class SupabaseAuthService {
       );
 
       _authStateController?.add(_currentUser);
+      _updateLifecycleState(AuthLifecycleState.authenticated);
 
       // 4. Update local password hash for offline login support
       // This ensures the user can login offline next time with secure hash
       await _updateLocalPasswordForOffline(email, password, branchCloudId);
 
+      _logAuth('Online sign in successful to ${_currentUser!.organizationName}');
       return AuthResult.success(
         user: authResponse.user,
         localUser: _currentUser,
@@ -1174,9 +1377,7 @@ class SupabaseAuthService {
     } on AuthException catch (e) {
       return AuthResult.failure(e.message);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Online sign in error: $e');
-      }
+      _logAuth('Online sign in error: $e');
       return AuthResult.failure('Sign in failed: $e');
     }
   }
@@ -1190,58 +1391,73 @@ class SupabaseAuthService {
   }) async {
     try {
       if (kDebugMode) {
-        print('📴 Attempting offline login...');
-        print('   Email: $email');
-        print('   Branch: $branchCloudId');
+        //print('📴 Attempting offline login...');
+        //print('   Email: $email');
+        //print('   Branch: $branchCloudId');
       }
 
       // 1. Find user in local database by email and organization cloud ID
-      final user = await _db.usersDao.getUserByEmailAndOrganizationCloudId(email, branchCloudId);
+      final user = await _db.usersDao.getUserByEmailAndOrganizationCloudId(
+        email,
+        branchCloudId,
+      );
 
       if (user == null) {
         if (kDebugMode) {
-          print('❌ User not found in local database');
+          //print('❌ User not found in local database');
         }
-        return AuthResult.failure('User not found. Please connect to internet and login once first.');
+        return AuthResult.failure(
+          'User not found. Please connect to internet and login once first.',
+        );
       }
 
       if (!user.isActive) {
         if (kDebugMode) {
-          print('❌ User account is inactive');
+          //print('❌ User account is inactive');
         }
         return AuthResult.failure('Account is inactive');
       }
 
       // 2. Check if password is in secure format (salt$hash)
       final passwordParts = user.password.split('\$');
-      if (passwordParts.length != 2 || passwordParts[0].length != 32 || passwordParts[1].length != 64) {
+      if (passwordParts.length != 2 ||
+          passwordParts[0].length != 32 ||
+          passwordParts[1].length != 64) {
         if (kDebugMode) {
-          print('⚠️ Password not in secure format - user must login online first');
+          //print(
+          //  '⚠️ Password not in secure format - user must login online first',
+          //);
         }
-        return AuthResult.failure('Please connect to internet for first login to enable offline access.');
+        return AuthResult.failure(
+          'Please connect to internet for first login to enable offline access.',
+        );
       }
 
       // 3. Verify password against stored hash
       if (!_verifyPassword(password, user.password)) {
         if (kDebugMode) {
-          print('❌ Invalid password');
+          //print('❌ Invalid password');
         }
         return AuthResult.failure('Invalid credentials');
       }
 
       if (kDebugMode) {
-        print('✅ Offline password verification successful');
+        //print('✅ Offline password verification successful');
       }
 
       // 3. Load organization and role info from local database
-      final org = await _db.organizationsDao.getOrganizationById(user.organizationId);
+      final org = await _db.organizationsDao.getOrganizationById(
+        user.organizationId,
+      );
       final role = await _db.rolesDao.getRoleById(user.roleId);
 
       if (org == null || role == null) {
         if (kDebugMode) {
-          print('❌ Could not load organization or role');
+          //print('❌ Could not load organization or role');
         }
-        return AuthResult.failure('User data incomplete. Please sync when online.');
+        return AuthResult.failure(
+          'User data incomplete. Please sync when online.',
+        );
       }
 
       // 4. Build UserData from local database
@@ -1274,20 +1490,15 @@ class SupabaseAuthService {
 
       _authStateController?.add(_currentUser);
 
-      if (kDebugMode) {
-        print('✅ Offline login successful: ${user.username}');
-        print('   Organization: ${org.name}');
-        print('   Role: ${role.name}');
-      }
+      _logAuth('Offline login successful: ${user.username} to ${org.name}');
+      _updateLifecycleState(AuthLifecycleState.authenticated);
 
       return AuthResult.success(
         localUser: _currentUser,
         message: 'Signed in offline to ${org.name}',
       );
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Offline sign in error: $e');
-      }
+      _logAuth('Offline sign in error: $e');
       return AuthResult.failure('Offline sign in failed: $e');
     }
   }
@@ -1295,5 +1506,6 @@ class SupabaseAuthService {
   /// Dispose resources
   void dispose() {
     _authStateController?.close();
+    _lifecycleController.close();
   }
 }

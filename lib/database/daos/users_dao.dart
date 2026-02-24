@@ -35,7 +35,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching users: $e');
+      //print('❌ Error fetching users: $e');
       return [];
     }
   }
@@ -52,7 +52,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       final result = await query.getSingle();
       return result.read(users.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting users: $e');
+      //print('❌ Error counting users: $e');
       return 0;
     }
   }
@@ -68,7 +68,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             ..limit(limit, offset: offset))
           .watch();
     } catch (e) {
-      print('❌ Error watching users: $e');
+      //print('❌ Error watching users: $e');
       return Stream.value([]);
     }
   }
@@ -77,12 +77,12 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Stream<List<User>> watchUsersByOrganization(int organizationId) {
     try {
       return (select(users)
-        ..where((t) => t.organizationId.equals(organizationId))
-        ..where((t) => t.isActive.equals(true))
-        ..orderBy([(t) => OrderingTerm(expression: t.username)]))
-        .watch();
+            ..where((t) => t.organizationId.equals(organizationId))
+            ..where((t) => t.isActive.equals(true))
+            ..orderBy([(t) => OrderingTerm(expression: t.username)]))
+          .watch();
     } catch (e) {
-      print('❌ Error watching users by organization: $e');
+      //print('❌ Error watching users by organization: $e');
       return Stream.value([]);
     }
   }
@@ -102,7 +102,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         ),
       );
     } catch (e) {
-      print('❌ Error inserting user: $e');
+      //print('❌ Error inserting user: $e');
       rethrow;
     }
   }
@@ -127,7 +127,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         }
       });
     } catch (e) {
-      print('❌ Error batch inserting users: $e');
+      //print('❌ Error batch inserting users: $e');
       rethrow;
     }
   }
@@ -137,11 +137,11 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     try {
       final updated = user.copyWith(
         isSynced: false,
-        lastUpdated: DateTime.now(),
+        lastUpdated: DateTime.now().toUtc(),
       );
       return await update(users).replace(updated);
     } catch (e) {
-      print('❌ Error updating user: $e');
+      //print('❌ Error updating user: $e');
       return false;
     }
   }
@@ -150,14 +150,16 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Future<bool> updateUserPassword(int userId, String hashedPassword) async {
     try {
       final result = await (update(users)..where((t) => t.id.equals(userId)))
-        .write(UsersCompanion(
-          password: Value(hashedPassword),
-          lastUpdated: Value(DateTime.now()),
-          isSynced: Value(false),
-        ));
+          .write(
+            UsersCompanion(
+              password: Value(hashedPassword),
+              lastUpdated: Value(DateTime.now().toUtc()),
+              isSynced: Value(false),
+            ),
+          );
       return result > 0;
     } catch (e) {
-      print('❌ Error updating password: $e');
+      //print('❌ Error updating password: $e');
       return false;
     }
   }
@@ -169,7 +171,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         users,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching user by ID: $e');
+      //print('❌ Error fetching user by ID: $e');
       return null;
     }
   }
@@ -181,7 +183,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         users,
       )..where((t) => t.username.equals(username))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching user by username: $e');
+      //print('❌ Error fetching user by username: $e');
       return null;
     }
   }
@@ -193,36 +195,46 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         users,
       )..where((t) => t.email.equals(email))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching user by email: $e');
+      //print('❌ Error fetching user by email: $e');
       return null;
     }
   }
 
   /// ✅ Get user by email and organization (for offline login)
-  Future<User?> getUserByEmailAndOrganization(String email, int organizationId) async {
+  Future<User?> getUserByEmailAndOrganization(
+    String email,
+    int organizationId,
+  ) async {
     try {
-      return await (select(users)
-        ..where((t) => t.email.equals(email) & t.organizationId.equals(organizationId) & t.isActive.equals(true)))
-        .getSingleOrNull();
+      return await (select(users)..where(
+            (t) =>
+                t.email.equals(email) &
+                t.organizationId.equals(organizationId) &
+                t.isActive.equals(true),
+          ))
+          .getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching user by email and organization: $e');
+      //print('❌ Error fetching user by email and organization: $e');
       return null;
     }
   }
 
   /// ✅ Get user by email and organization cloud ID (for offline login with cloud ID)
-  Future<User?> getUserByEmailAndOrganizationCloudId(String email, String organizationCloudId) async {
+  Future<User?> getUserByEmailAndOrganizationCloudId(
+    String email,
+    String organizationCloudId,
+  ) async {
     try {
       // First get the organization by cloud ID
-      final org = await (select(db.organizations)
-        ..where((t) => t.cloudId.equals(organizationCloudId)))
-        .getSingleOrNull();
-      
+      final org = await (select(
+        db.organizations,
+      )..where((t) => t.cloudId.equals(organizationCloudId))).getSingleOrNull();
+
       if (org == null) return null;
-      
+
       return await getUserByEmailAndOrganization(email, org.id);
     } catch (e) {
-      print('❌ Error fetching user by email and org cloud ID: $e');
+      //print('❌ Error fetching user by email and org cloud ID: $e');
       return null;
     }
   }
@@ -237,59 +249,55 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     try {
       final query = select(users)
         ..where((t) => t.organizationId.equals(organizationId));
-      
+
       if (isActive != null) {
         query.where((t) => t.isActive.equals(isActive));
       }
-      
+
       query.orderBy([(t) => OrderingTerm(expression: t.username)]);
-      
+
       if (limit != null) {
         query.limit(limit, offset: offset);
       }
-      
+
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching users by organization: $e');
+      //print('❌ Error fetching users by organization: $e');
       return [];
     }
   }
 
-  /// ✅ PERMANENT DELETE: Hard-delete user from local and mark for cloud deletion
+  /// ✅ Soft delete: mark inactive and unsynced for cloud update
   Future<bool> deleteUserById(int id) async {
     try {
       // Get user to check if it has cloudId
       final user = await getUserById(id);
       if (user == null) {
-        print('⚠️ User $id not found');
+        //print('⚠️ User $id not found');
         return false;
       }
 
-      // If user has cloudId, mark as inactive and unsynced first
-      // This signals the sync service to delete from cloud
-      if (user.cloudId != null && user.isActive) {
-        await (update(users)..where((t) => t.id.equals(id))).write(
-          UsersCompanion(
-            isActive: Value(false),
-            isSynced: Value(false),
-            lastUpdated: Value(DateTime.now()),
-          ),
-        );
-        print(
-          '📤 User $id marked for cloud deletion (cloudId: ${user.cloudId})',
-        );
+      if (!user.isActive) {
+        return true;
       }
 
-      // Then permanently delete from local database
-      final result = await (delete(users)..where((t) => t.id.equals(id))).go();
+      final result = await (update(users)..where((t) => t.id.equals(id))).write(
+        UsersCompanion(
+          isActive: Value(false),
+          isSynced: Value(false),
+          lastUpdated: Value(DateTime.now().toUtc()),
+        ),
+      );
 
       if (result > 0) {
-        print('✅ User $id permanently deleted from local database');
+        //print(
+        //  '📤 User $id marked inactive for cloud sync (cloudId: ${user.cloudId})'
+        //);
       }
 
       return result > 0;
     } catch (e) {
-      print('❌ Error deleting user: $e');
+      //print('❌ Error deleting user: $e');
       return false;
     }
   }
@@ -300,13 +308,13 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       final result = await (update(users)..where((t) => t.id.equals(id))).write(
         UsersCompanion(
           isActive: Value(false),
-          lastUpdated: Value(DateTime.now()),
+          lastUpdated: Value(DateTime.now().toUtc()),
           isSynced: Value(false),
         ),
       );
       return result > 0;
     } catch (e) {
-      print('❌ Error deactivating user: $e');
+      //print('❌ Error deactivating user: $e');
       return false;
     }
   }
@@ -344,7 +352,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         return UserWithRole(user: u, role: r);
       }).toList();
     } catch (e) {
-      print('❌ Error fetching users with roles: $e');
+      //print('❌ Error fetching users with roles: $e');
       return [];
     }
   }
@@ -370,7 +378,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         }).toList();
       });
     } catch (e) {
-      print('❌ Error watching users with roles: $e');
+      //print('❌ Error watching users with roles: $e');
       return Stream.value([]);
     }
   }
@@ -382,19 +390,20 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Future<User?> authenticate(String email, String password) async {
     try {
       // First find user by email
-      final user = await (select(users)
-        ..where((u) => u.email.equals(email) & u.isActive.equals(true)))
-        .getSingleOrNull();
-      
+      final user =
+          await (select(users)
+                ..where((u) => u.email.equals(email) & u.isActive.equals(true)))
+              .getSingleOrNull();
+
       if (user == null) return null;
-      
+
       // Verify password using the stored hash (with per-user salt)
       if (verifyPassword(password, user.password)) {
         return user;
       }
       return null;
     } catch (e) {
-      print('❌ Authentication failed: $e');
+      //print('❌ Authentication failed: $e');
       return null;
     }
   }
@@ -404,11 +413,11 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     try {
       final user = await getUserById(userId);
       if (user == null) return false;
-      
+
       // Use verifyPassword from app_database.dart (handles salt extraction)
       return verifyPassword(password, user.password);
     } catch (e) {
-      print('❌ Password verification failed: $e');
+      //print('❌ Password verification failed: $e');
       return false;
     }
   }
@@ -422,14 +431,14 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
           .write(
             UsersCompanion(
               password: Value(hashedPassword),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
 
       return result > 0;
     } catch (e) {
-      print('❌ Error updating password: $e');
+      //print('❌ Error updating password: $e');
       return false;
     }
   }
@@ -439,15 +448,17 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Future<bool> updatePasswordHash(int userId, String hashedPassword) async {
     try {
       final result = await (update(users)..where((t) => t.id.equals(userId)))
-        .write(UsersCompanion(
-          password: Value(hashedPassword),
-          lastUpdated: Value(DateTime.now()),
-          // Don't mark as unsynced - this is just local cache for offline
-        ));
-      
+          .write(
+            UsersCompanion(
+              password: Value(hashedPassword),
+              lastUpdated: Value(DateTime.now().toUtc()),
+              // Don't mark as unsynced - this is just local cache for offline
+            ),
+          );
+
       return result > 0;
     } catch (e) {
-      print('❌ Error updating password hash: $e');
+      //print('❌ Error updating password hash: $e');
       return false;
     }
   }
@@ -464,13 +475,13 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             UsersCompanion(
               roleId: Value(roleId),
               isSynced: Value(false),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
             ),
           );
 
       return result > 0;
     } catch (e) {
-      print('❌ Error assigning role: $e');
+      //print('❌ Error assigning role: $e');
       return false;
     }
   }
@@ -487,7 +498,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced users: $e');
+      //print('❌ Error fetching unsynced users: $e');
       return [];
     }
   }
@@ -502,7 +513,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       final result = await query.getSingle();
       return result.read(users.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced users: $e');
+      //print('❌ Error counting unsynced users: $e');
       return 0;
     }
   }
@@ -526,36 +537,54 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         }
       });
     } catch (e) {
-      print('❌ Error marking users as synced: $e');
+      //print('❌ Error marking users as synced: $e');
       rethrow;
     }
   }
 
   /// ✅ FIXED: Batch upsert from cloud with safe defaults for nullable values
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudUsers) async {
+  /// Expects data from toLocalFormat (camelCase keys) or raw cloud data (snake_case)
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudUsers,
+  ) async {
     try {
       await db.transaction(() async {
         for (final cloudUser in cloudUsers) {
           await upsertFromCloud(
-            id: cloudUser['local_id'] ?? 0, // ✅ Default to 0
-            email: cloudUser['email'] ?? 'unknown@example.com', // ✅ Default email
-            username: cloudUser['username'] ?? 'Unknown User', // ✅ Default username
-            password: cloudUser['password'] ?? '', // Already hashed from cloud
-            phone: cloudUser['phone'], // ✅ Nullable
-            organizationId: cloudUser['organization_id'] ?? 1, // ✅ Default to 1
-            roleId: cloudUser['role_id'] ?? 1, // ✅ Default to 1
-            fullName: cloudUser['full_name'], // ✅ Nullable
-            isActive: cloudUser['is_active'] ?? true, // ✅ Default to true
-            createdAt: DateTime.tryParse(cloudUser['created_at'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-            lastUpdated: DateTime.tryParse(cloudUser['last_updated'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-            cloudId: cloudUser['cloud_id'] ?? '', // ✅ Default to empty string
+            id: cloudUser['localId'] ?? cloudUser['local_id'] ?? 0,
+            email: cloudUser['email'] ?? 'unknown@example.com',
+            username: cloudUser['username'] ?? 'Unknown User',
+            password: cloudUser['password'] ?? '',
+            phone: cloudUser['phone'],
+            organizationId:
+                cloudUser['organizationId'] ??
+                cloudUser['organization_id'] ??
+                1,
+            roleId: cloudUser['roleId'] ?? cloudUser['role_id'] ?? 1,
+            fullName: cloudUser['fullName'] ?? cloudUser['full_name'],
+            isActive: cloudUser['isActive'] ?? cloudUser['is_active'] ?? true,
+            createdAt: _parseDateTime(
+              cloudUser['createdAt'] ?? cloudUser['created_at'],
+            ),
+            lastUpdated: _parseDateTime(
+              cloudUser['lastUpdated'] ?? cloudUser['last_updated'],
+            ),
+            cloudId: cloudUser['cloudId'] ?? cloudUser['cloud_id'] ?? '',
           );
         }
       });
     } catch (e) {
-      print('❌ Error batch upserting users from cloud: $e');
+      //print('❌ Error batch upserting users from cloud: $e');
       rethrow;
     }
+  }
+
+  /// Helper to parse DateTime from various formats
+  DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
   }
 
   /// ✅ FIXED: Upsert from cloud with better error handling (check for existing user first)
@@ -576,11 +605,11 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     try {
       // ✅ First, try to find existing user by email
       final existingUser = await getUserByEmail(email);
-      
+
       if (existingUser != null) {
         // ✅ Update existing user instead of inserting
-        await (update(users)..where((t) => t.id.equals(existingUser.id)))
-          .write(UsersCompanion(
+        await (update(users)..where((t) => t.id.equals(existingUser.id))).write(
+          UsersCompanion(
             username: Value(username),
             password: Value(password),
             phone: Value(phone),
@@ -591,7 +620,8 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
             lastUpdated: Value(lastUpdated),
             isSynced: Value(true),
             cloudId: Value(cloudId),
-          ));
+          ),
+        );
       } else {
         // ✅ Insert new user
         await into(users).insert(
@@ -612,7 +642,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         );
       }
     } catch (e) {
-      print('❌ Error upserting user from cloud: $e');
+      //print('❌ Error upserting user from cloud: $e');
       rethrow;
     }
   }
@@ -624,7 +654,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
         users,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching user by cloud ID: $e');
+      //print('❌ Error fetching user by cloud ID: $e');
       return null;
     }
   }
@@ -649,7 +679,7 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       }
     }
 
-    print('✅ Hashed $hashedCount existing passwords');
+    //print('✅ Hashed $hashedCount existing passwords');
   }
 
   /// ✅ Clean up inactive users that are synced (after cloud deletion)
@@ -660,12 +690,12 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
       )..where((t) => t.isActive.equals(false) & t.isSynced.equals(true))).go();
 
       if (result > 0) {
-        print('🧹 Cleaned up $result inactive users from local database');
+        //print('🧹 Cleaned up $result inactive users from local database');
       }
 
       return result;
     } catch (e) {
-      print('❌ Error cleaning up deleted users: $e');
+      //print('❌ Error cleaning up deleted users: $e');
       return 0;
     }
   }

@@ -88,7 +88,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching ingredients: $e');
+      //print('❌ Error fetching ingredients: $e');
       rethrow;
     }
   }
@@ -119,7 +119,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(ingredients.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting ingredients: $e');
+      //print('❌ Error counting ingredients: $e');
       return 0;
     }
   }
@@ -144,7 +144,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
 
       return query.watch();
     } catch (e) {
-      print('❌ Error watching ingredients: $e');
+      //print('❌ Error watching ingredients: $e');
       return Stream.value([]);
     }
   }
@@ -185,7 +185,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
     } catch (e) {
-      print('❌ Error inserting ingredient: $e');
+      //print('❌ Error inserting ingredient: $e');
       rethrow;
     }
   }
@@ -199,7 +199,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
         batch.insertAll(ingredients, ingredientsList);
       });
     } catch (e) {
-      print('❌ Error batch inserting ingredients: $e');
+      //print('❌ Error batch inserting ingredients: $e');
       rethrow;
     }
   }
@@ -213,7 +213,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
       );
       return await update(ingredients).replace(updated);
     } catch (e) {
-      print('❌ Error updating ingredient: $e');
+      //print('❌ Error updating ingredient: $e');
       return false;
     }
   }
@@ -225,7 +225,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
         ingredients,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching ingredient by ID: $e');
+      //print('❌ Error fetching ingredient by ID: $e');
       return null;
     }
   }
@@ -245,7 +245,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching ingredient by name: $e');
+      //print('❌ Error fetching ingredient by name: $e');
       return null;
     }
   }
@@ -277,7 +277,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error adding ingredient stock: $e');
+      //print('❌ Error adding ingredient stock: $e');
       return false;
     }
   }
@@ -305,13 +305,13 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
       );
 
       if (result == 0) {
-        print('⚠️ Insufficient stock for ingredient $ingredientId');
+        //print('⚠️ Insufficient stock for ingredient $ingredientId');
         return false;
       }
 
       return true;
     } catch (e) {
-      print('❌ Error deducting ingredient stock: $e');
+      //print('❌ Error deducting ingredient stock: $e');
       return false;
     }
   }
@@ -341,13 +341,13 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
       );
 
       if (result == 0) {
-        print('⚠️ Insufficient stock for ingredient $ingredientId');
+        //print('⚠️ Insufficient stock for ingredient $ingredientId');
         return false;
       }
 
       return true;
     } catch (e) {
-      print('❌ Error adding ingredient spoilage: $e');
+      //print('❌ Error adding ingredient spoilage: $e');
       return false;
     }
   }
@@ -371,7 +371,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
           );
       return result > 0;
     } catch (e) {
-      print('❌ Error updating ingredient stock: $e');
+      //print('❌ Error updating ingredient stock: $e');
       return false;
     }
   }
@@ -418,7 +418,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
         );
       }).toList();
     } catch (e) {
-      print('❌ Error fetching low stock ingredients: $e');
+      //print('❌ Error fetching low stock ingredients: $e');
       return [];
     }
   }
@@ -437,7 +437,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching out of stock ingredients: $e');
+      //print('❌ Error fetching out of stock ingredients: $e');
       return [];
     }
   }
@@ -452,9 +452,9 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
       // Check if ingredient is used in any recipes
       final recipeCount = await _getRecipeUsageCount(id);
       if (recipeCount > 0) {
-        print(
-          '⚠️ Cannot delete ingredient $id: used in $recipeCount recipe(s)',
-        );
+        //print(
+        //  '⚠️ Cannot delete ingredient $id: used in $recipeCount recipe(s)'
+        //);
         throw Exception('Ingredient is used in $recipeCount recipe(s)');
       }
 
@@ -469,7 +469,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error soft deleting ingredient: $e');
+      //print('❌ Error soft deleting ingredient: $e');
       rethrow;
     }
   }
@@ -487,7 +487,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(db.recipeIngredients.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error checking recipe usage: $e');
+      //print('❌ Error checking recipe usage: $e');
       return 0;
     }
   }
@@ -507,7 +507,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced ingredients: $e');
+      //print('❌ Error fetching unsynced ingredients: $e');
       return [];
     }
   }
@@ -522,7 +522,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(ingredients.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced ingredients: $e');
+      //print('❌ Error counting unsynced ingredients: $e');
       return 0;
     }
   }
@@ -546,7 +546,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
         }
       });
     } catch (e) {
-      print('❌ Error marking ingredients as synced: $e');
+      //print('❌ Error marking ingredients as synced: $e');
       rethrow;
     }
   }
@@ -580,7 +580,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
         }
       });
     } catch (e) {
-      print('❌ Error batch upserting ingredients from cloud: $e');
+      //print('❌ Error batch upserting ingredients from cloud: $e');
       rethrow;
     }
   }
@@ -621,7 +621,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
     } catch (e) {
-      print('❌ Error upserting ingredient from cloud: $e');
+      //print('❌ Error upserting ingredient from cloud: $e');
       rethrow;
     }
   }
@@ -633,7 +633,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
         ingredients,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching ingredient by cloud ID: $e');
+      //print('❌ Error fetching ingredient by cloud ID: $e');
       return null;
     }
   }

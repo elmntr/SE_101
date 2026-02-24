@@ -38,9 +38,9 @@ class Organizations extends Table {
 
   /// Track when organization was created/modified
   DateTimeColumn get createdAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
   DateTimeColumn get lastUpdated =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   /// Active status (for soft delete)
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
