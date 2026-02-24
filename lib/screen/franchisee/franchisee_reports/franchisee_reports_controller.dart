@@ -279,7 +279,7 @@ class FranchiseeReportsController {
 
       await calculateChartData();
     } catch (e) {
-      print('❌ Error loading reports data: $e');
+      //print('❌ Error loading reports data: $e');
     } finally {
       isLoading = false;
       onStateChanged();
@@ -302,9 +302,9 @@ class FranchiseeReportsController {
         if (org != null) {
           currentOrganizationId = org.id;
           await prefs.setInt(orgIdKey, org.id);
-          print(
-            '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}',
-          );
+          //print(
+          //  '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}'
+          //);
           return;
         }
       }
@@ -388,10 +388,13 @@ class FranchiseeReportsController {
         0.0,
       );
 
+      double calculatedRevenue = 0;
+
       for (final summary in iterable) {
         // Add to period totals
         periodSold += summary.quantitySold.toDouble();
         periodSpoilage += summary.quantitySpoiled.toDouble();
+        calculatedRevenue += summary.revenue;
 
         // Check if this matches the selected specific date
         if (selectedSpecificDate != null) {
@@ -418,6 +421,10 @@ class FranchiseeReportsController {
         spoilageSeries[bucketIndex] += summary.quantitySpoiled.toDouble();
       }
 
+      // \x1B[33m is ANSI yellow, \x1B[0m resets color
+      //print('\x1B[33m💰 Total Sales (Revenue) for selected period: ₱${calculatedRevenue.toStringAsFixed(2)}\x1B[0m');
+      //print('📊 Total Sold: $periodSold, Total Spoilage: $periodSpoilage');
+
       if (requestId != _chartRequestId) {
         return;
       }
@@ -431,7 +438,7 @@ class FranchiseeReportsController {
       selectedDateSpoilage = dateSpoilage;
       onStateChanged();
     } catch (e) {
-      print('❌ Error calculating chart data: $e');
+      //print('❌ Error calculating chart data: $e');
     }
   }
 

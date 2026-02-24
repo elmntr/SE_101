@@ -22,9 +22,9 @@ class DatabaseConnection {
     final dbFile = File('app_inventory.db');
     if (await dbFile.exists()) {
       await dbFile.delete();
-      print('Database file deleted.');
+      //print('Database file deleted.');
     } else {
-      print('Database file does not exist.');
+      //print('Database file does not exist.');
     }
   }
 
@@ -33,7 +33,7 @@ class DatabaseConnection {
     final file = File(p.join(dir.path, 'app_inventory.db'));
     if (await file.exists()) {
       await file.delete();
-      print('✅ Old database deleted at: ${file.path}');
+      //print('✅ Old database deleted at: ${file.path}');
     }
   }
 }
@@ -46,9 +46,9 @@ class DatabaseConnection {
 
 //     if (!dbFile.existsSync()) {
 //       dbFile.createSync();
-//       print('DEBUG: Database file created at ${dbFile.path}');
+//       //print('DEBUG: Database file created at ${dbFile.path}');
 //     } else {
-//       print('DEBUG: Using existing database at ${dbFile.path}');
+//       //print('DEBUG: Using existing database at ${dbFile.path}');
 //     }
 
 //     final nativeDb = NativeDatabase.createInBackground(

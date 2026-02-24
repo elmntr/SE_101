@@ -39,7 +39,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching categories: $e');
+      //print('❌ Error fetching categories: $e');
       return [];
     }
   }
@@ -58,7 +58,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(categories.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting categories: $e');
+      //print('❌ Error counting categories: $e');
       return 0;
     }
   }
@@ -75,7 +75,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit, offset: offset))
           .watch();
     } catch (e) {
-      print('❌ Error watching categories: $e');
+      //print('❌ Error watching categories: $e');
       return Stream.value([]);
     }
   }
@@ -90,7 +90,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
         CategoriesCompanion.insert(name: name, description: Value(description)),
       );
     } catch (e) {
-      print('❌ Error inserting category: $e');
+      //print('❌ Error inserting category: $e');
       rethrow;
     }
   }
@@ -104,7 +104,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
         batch.insertAll(categories, categoriesList);
       });
     } catch (e) {
-      print('❌ Error batch inserting categories: $e');
+      //print('❌ Error batch inserting categories: $e');
       rethrow;
     }
   }
@@ -115,7 +115,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
       final updated = category.copyWith(lastUpdated: DateTime.now());
       return await update(categories).replace(updated);
     } catch (e) {
-      print('❌ Error updating category: $e');
+      //print('❌ Error updating category: $e');
       return false;
     }
   }
@@ -127,7 +127,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
         categories,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching category by ID: $e');
+      //print('❌ Error fetching category by ID: $e');
       return null;
     }
   }
@@ -139,7 +139,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
             ..where((t) => t.name.equals(name) & t.isDeleted.equals(false)))
           .getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching category by name: $e');
+      //print('❌ Error fetching category by name: $e');
       return null;
     }
   }
@@ -150,7 +150,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
       // Check if category has items
       final itemCount = await getItemCountInCategory(id);
       if (itemCount > 0) {
-        print('⚠️ Cannot delete category $id: has $itemCount items');
+        //print('⚠️ Cannot delete category $id: has $itemCount items');
         throw Exception('Category has $itemCount item(s). Remove items first.');
       }
 
@@ -164,7 +164,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error soft deleting category: $e');
+      //print('❌ Error soft deleting category: $e');
       rethrow;
     }
   }
@@ -175,21 +175,21 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
       // Check if category has items
       final itemCount = await getItemCountInCategory(id);
       if (itemCount > 0) {
-        print('⚠️ Cannot delete category $id: has $itemCount items');
+        //print('⚠️ Cannot delete category $id: has $itemCount items');
         throw Exception('Category has $itemCount item(s). Remove items first.');
       }
 
       // Get category to check if it needs cloud deletion
       final category = await getCategoryById(id);
       if (category == null) {
-        print('⚠️ Category $id not found');
+        //print('⚠️ Category $id not found');
         return false;
       }
 
       // If category is not deleted yet, soft delete it first (marks for cloud sync)
       if (!category.isDeleted) {
         await softDeleteCategory(id);
-        print('📤 Category $id marked for cloud deletion');
+        //print('📤 Category $id marked for cloud deletion');
       }
 
       // Then permanently delete from local database
@@ -198,12 +198,12 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
       )..where((t) => t.id.equals(id))).go();
 
       if (result > 0) {
-        print('✅ Category $id permanently deleted from local database');
+        //print('✅ Category $id permanently deleted from local database');
       }
 
       return result > 0;
     } catch (e) {
-      print('❌ Error deleting category: $e');
+      //print('❌ Error deleting category: $e');
       rethrow;
     }
   }
@@ -221,7 +221,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error restoring category: $e');
+      //print('❌ Error restoring category: $e');
       return false;
     }
   }
@@ -243,7 +243,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(db.items.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting items in category: $e');
+      //print('❌ Error counting items in category: $e');
       return 0;
     }
   }
@@ -288,7 +288,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
         );
       }).toList();
     } catch (e) {
-      print('❌ Error fetching categories with counts: $e');
+      //print('❌ Error fetching categories with counts: $e');
       return [];
     }
   }
@@ -326,7 +326,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
         },
       );
     } catch (e) {
-      print('❌ Error watching categories with counts: $e');
+      //print('❌ Error watching categories with counts: $e');
       return Stream.value([]);
     }
   }
@@ -361,7 +361,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
   );
 }).toList();
     } catch (e) {
-      print('❌ Error fetching empty categories: $e');
+      //print('❌ Error fetching empty categories: $e');
       return [];
     }
   }
@@ -381,7 +381,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
 
       return result;
     } catch (e) {
-      print('❌ Error removing category from items: $e');
+      //print('❌ Error removing category from items: $e');
       return 0;
     }
   }
@@ -428,7 +428,7 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
         avgStock: result.read<double>('avg_stock'),
       );
     } catch (e) {
-      print('❌ Error fetching category statistics: $e');
+      //print('❌ Error fetching category statistics: $e');
       return CategoryStatistics(
         totalItems: 0,
         totalStock: 0,
@@ -463,14 +463,14 @@ class CategoriesDao extends DatabaseAccessor<AppDatabase>
       }
 
       if (cleanedCount > 0) {
-        print(
-          '🧹 Cleaned up $cleanedCount deleted categories from local database',
-        );
+        //print(
+        //  '🧹 Cleaned up $cleanedCount deleted categories from local database'
+        //);
       }
 
       return cleanedCount;
     } catch (e) {
-      print('❌ Error cleaning up deleted categories: $e');
+      //print('❌ Error cleaning up deleted categories: $e');
       return 0;
     }
   }

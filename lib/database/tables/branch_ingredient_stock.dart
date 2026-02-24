@@ -44,9 +44,9 @@ class BranchIngredientStock extends Table {
 
   /// Track when record was created/modified
   DateTimeColumn get createdAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
   DateTimeColumn get lastUpdated =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   /// Sync fields for cloud synchronization
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
@@ -55,6 +55,6 @@ class BranchIngredientStock extends Table {
   /// Ensure one stock record per ingredient per branch
   @override
   List<Set<Column>> get uniqueKeys => [
-        {organizationId, ingredientId},
-      ];
+    {organizationId, ingredientId},
+  ];
 }

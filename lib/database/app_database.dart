@@ -22,6 +22,7 @@ import 'tables/stock_change_requests.dart';
 import 'tables/daily_sales_summary.dart';
 import 'tables/branch_ingredient_stock.dart';
 import 'tables/branch_item_stock.dart';
+import 'tables/sync_conflicts.dart';
 
 // ✅ Import MODIFIED tables
 import 'tables/items.dart';
@@ -44,6 +45,7 @@ import 'daos/stock_change_requests_dao.dart';
 import 'daos/daily_sales_summary_dao.dart';
 import 'daos/branch_ingredient_stock_dao.dart';
 import 'daos/branch_item_stock_dao.dart';
+import 'daos/sync_conflicts_dao.dart';
 
 import 'package:flutter/foundation.dart';
 
@@ -71,6 +73,9 @@ part 'app_database.g.dart';
 
     // Reporting tables
     DailySalesSummary,
+
+    // Sync management tables
+    SyncConflicts,
   ],
   daos: [
     // Core DAOs
@@ -92,6 +97,9 @@ part 'app_database.g.dart';
 
     // Reporting DAOs
     DailySalesSummaryDao,
+
+    // Sync management DAOs
+    SyncConflictsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -105,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(super.executor) : _seedData = false;
 
   @override
-  int get schemaVersion => 3; // Incremented for BranchItemStock table
+  int get schemaVersion => 4; // Incremented for DailySalesSummary cloud_id uniqueness fix
 
   @override
   MigrationStrategy get migration {
@@ -167,6 +175,32 @@ class AppDatabase extends _$AppDatabase {
           );
           
           AppLogger.database('Added BranchItemStock table for multi-branch inventory');
+        }
+        
+        if (from < 4) {
+          // v4: Fix DailySalesSummary cloud_id uniqueness
+          AppLogger.database('Cleaning duplicate cloud_id values in daily_sales_summary...');
+          
+          // Clean duplicates: keep the latest record (by id) for each cloud_id
+          await customStatement('''
+            DELETE FROM daily_sales_summary 
+            WHERE id NOT IN (
+              SELECT MAX(id) 
+              FROM daily_sales_summary 
+              WHERE cloud_id IS NOT NULL 
+              GROUP BY cloud_id
+            )
+            AND cloud_id IS NOT NULL
+          ''');
+          
+          // Add unique index on cloud_id for performance
+          await customStatement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_sales_cloud_id ON daily_sales_summary(cloud_id)',
+          );
+          
+          // Log the cleanup results
+          final remainingCount = await customSelect('SELECT COUNT(*) as count FROM daily_sales_summary WHERE cloud_id IS NOT NULL').getSingle();
+          AppLogger.database('DailySalesSummary cloud_id cleanup completed. Records with cloud_id: ${remainingCount.read<int>('count')}');
         }
         
         AppLogger.database('Database upgrade complete!');
@@ -301,6 +335,8 @@ class AppDatabase extends _$AppDatabase {
 
     AppLogger.database('All indexes created');
   }
+
+
 
   /// ✅ Seed initial data (commissary, roles, admin user)
   Future<void> _seedInitialData() async {

@@ -1,10 +1,13 @@
 // lib/screen/franchisee/franchisee_inventory/replenish_stock_tab.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dart';
+import 'package:chickenjoo_inventory/widgets/realtime_status_indicator.dart';
 
 /// Widget for requesting stock replenishment from commissary
 class ReplenishStockTab extends StatefulWidget {
@@ -25,17 +28,22 @@ class ReplenishStockTab extends StatefulWidget {
   State<ReplenishStockTab> createState() => _ReplenishStockTabState();
 }
 
-class _ReplenishStockTabState extends State<ReplenishStockTab> {
+class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindingObserver {
   late AppDatabase db;
   late List<TextEditingController> qtyControllers;
   List<FocusNode> qtyFocusNodes = [];
   List<StockReplenishmentRequest> existingRequests = [];
   bool isLoading = true;
   bool isSubmitting = false;
+  
+  // Realtime service
+  StreamSubscription<StockRequestEvent>? _eventSubscription;
+  String? _franchiseeCloudId;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     db = database;
     qtyControllers = List.generate(
       widget.items.length,
@@ -52,13 +60,71 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
     _syncAndLoadRequests();
   }
 
+  Future<void> _initializeRealtime() async {
+    // Get the franchisee's cloud ID for filtering
+    try {
+      final org = await db.organizationsDao.getOrganizationById(widget.branchId);
+      //print('🔍 Looking up org for branchId: ${widget.branchId}');
+      //print('🔍 Found org: ${org?.name}, cloudId: ${org?.cloudId}');
+      
+      if (org?.cloudId != null) {
+        _franchiseeCloudId = org!.cloudId;
+        
+        // Attach to realtime service
+        await realtimeStockRequestService.attach(_franchiseeCloudId!);
+        //print('✅ Attached to realtime with franchiseeCloudId: $_franchiseeCloudId');
+        //print('📡 Realtime status: ${realtimeStockRequestService.status}');
+        
+        // Listen for approval/rejection events
+        _eventSubscription = realtimeStockRequestService.eventStream.listen((event) {
+          //print('📬 EVENT RECEIVED: ${event.cloudId} → ${event.newStatus}');
+          if (event.isApproved || event.isRejected || event.isDelivered) {
+            //print('📬 Triggering sync and reload for: ${event.newStatus}');
+            // Sync from cloud first, then reload from local DB
+            _syncAndLoadRequests();
+          }
+        });
+        
+        // Also listen to status changes for debugging
+        realtimeStockRequestService.statusStream.listen((status) {
+          //print('📡 Realtime connection status changed: $status');
+        });
+      } else {
+        //print('⚠️ No cloudId found for org with branchId: ${widget.branchId}');
+      }
+    } catch (e) {
+      //print('⚠️ Failed to initialize realtime: $e');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    //print('📱 App lifecycle state changed: $state');
+    switch (state) {
+      case AppLifecycleState.paused:
+        // Only pause when app truly goes to background
+        realtimeStockRequestService.pause();
+        break;
+      case AppLifecycleState.resumed:
+        realtimeStockRequestService.resume();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // Don't pause on inactive - this triggers too easily
+        break;
+    }
+  }
+
   Future<void> _syncAndLoadRequests() async {
     // First sync to get latest status updates from cloud
     try {
-      print('🔄 Syncing replenishment requests...');
+      //print('🔄 Syncing replenishment requests...');
       await AppGlobals.instance.syncService.syncStockReplenishmentRequests();
+      await AppGlobals.instance.syncService.syncBranchItemStock();
     } catch (e) {
-      print('⚠️ Sync failed: $e');
+      //print('⚠️ Sync failed: $e');
     }
     // Then load from local DB
     await _loadExistingRequests();
@@ -66,6 +132,9 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _eventSubscription?.cancel();
+    realtimeStockRequestService.detach();
     for (var c in qtyControllers) {
       c.dispose();
     }
@@ -86,7 +155,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
         });
       }
     } catch (e) {
-      print('Error loading requests: $e');
+      //print('Error loading requests: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -136,7 +205,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
           requestedBy: widget.userId,
           franchiseeNotes: null,
         );
-        print('📝 Created request for ${entry.key.name}: ${entry.value} units');
+        //print('📝 Created request for ${entry.key.name}: ${entry.value} units');
       }
 
       // Clear inputs
@@ -146,11 +215,12 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
 
       // Auto-sync to push requests to commissary
       try {
-        print('🔄 Auto-syncing replenishment requests...');
+        //print('🔄 Auto-syncing replenishment requests...');
         await AppGlobals.instance.syncService.syncStockReplenishmentRequests();
-        print('✅ Requests synced to cloud');
+      await AppGlobals.instance.syncService.syncBranchItemStock();
+        //print('✅ Requests synced to cloud');
       } catch (syncError) {
-        print('⚠️ Sync failed (will retry later): $syncError');
+        //print('⚠️ Sync failed (will retry later): $syncError');
       }
 
       // Reload requests
@@ -165,7 +235,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
         );
       }
     } catch (e) {
-      print('Error submitting requests: $e');
+      //print('Error submitting requests: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
@@ -191,6 +261,36 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
       default:
         return Colors.grey;
     }
+  }
+
+  DateTime _batchKey(DateTime value) {
+    return DateTime(
+      value.year,
+      value.month,
+      value.day,
+      value.hour,
+      value.minute,
+      value.second,
+    );
+  }
+
+  String _formatBatchTimestamp(DateTime value) {
+    final local = value.toLocal();
+    final mm = local.month.toString().padLeft(2, '0');
+    final dd = local.day.toString().padLeft(2, '0');
+    final hour12 = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final hh = hour12.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    final ss = local.second.toString().padLeft(2, '0');
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+    return '${local.year}-$mm-$dd $hh:$min:$ss $period';
+  }
+
+  String _batchStatus(List<StockReplenishmentRequest> requests) {
+    if (requests.isEmpty) return 'pending';
+    final first = requests.first.status;
+    final allSame = requests.every((r) => r.status == first);
+    return allSame ? first : 'mixed';
   }
 
   @override
@@ -475,17 +575,26 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
 
                 const SizedBox(height: 20),
 
-                // Existing requests section with refresh button
+                // Existing requests section with refresh button and realtime indicator
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Recent Requests',
-                      style: TextStyle(
-                        fontSize: isMobile ? 16 : 18,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: fontAll,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          'Recent Requests',
+                          style: TextStyle(
+                            fontSize: isMobile ? 16 : 18,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: fontAll,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        RealtimeStatusIndicator(
+                          service: realtimeStockRequestService,
+                          compact: isMobile,
+                        ),
+                      ],
                     ),
                     IconButton(
                       icon: const Icon(Icons.refresh),
@@ -513,47 +622,120 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
                     ),
                   )
                 else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: existingRequests.length,
-                    itemBuilder: (context, index) {
-                      final req = existingRequests[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          dense: isMobile,
-                          title: FutureBuilder<Item?>(
-                            future: db.itemsDao.getItemById(req.itemId),
-                            builder: (context, snapshot) {
-                              return Text(
-                                snapshot.data?.name ?? 'Item #${req.itemId}',
-                                style: TextStyle(fontSize: isMobile ? 14 : 16),
-                              );
-                            },
-                          ),
-                          subtitle: Text(
-                            'Qty: ${req.quantityRequested}',
-                            style: TextStyle(fontSize: isMobile ? 12 : 14),
-                          ),
-                          trailing: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isMobile ? 8 : 12,
-                              vertical: isMobile ? 4 : 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(req.status),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              req.status.toUpperCase(),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isMobile ? 10 : 12,
+                  Builder(
+                    builder: (context) {
+                      final batches = <DateTime, List<StockReplenishmentRequest>>{};
+                      for (final req in existingRequests) {
+                        final key = _batchKey(req.requestedAt);
+                        batches.putIfAbsent(key, () => []).add(req);
+                      }
+                      final batchKeys = batches.keys.toList()
+                        ..sort((a, b) => b.compareTo(a));
+
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: batchKeys.length,
+                        itemBuilder: (context, index) {
+                          final batchKey = batchKeys[index];
+                          final batchRequests = batches[batchKey]!;
+                          final batchStatus = _batchStatus(batchRequests);
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ExpansionTile(
+                              tilePadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
                               ),
+                              title: Text(
+                                'Request Batch - ${_formatBatchTimestamp(batchKey)}',
+                                style: TextStyle(
+                                  fontSize: isMobile ? 14 : 16,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${batchRequests.length} item(s)',
+                                style: TextStyle(fontSize: isMobile ? 12 : 14),
+                              ),
+                              trailing: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isMobile ? 8 : 12,
+                                  vertical: isMobile ? 4 : 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(batchStatus),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  batchStatus.toUpperCase(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isMobile ? 10 : 12,
+                                  ),
+                                ),
+                              ),
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    12,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      for (final req in batchRequests)
+                                        ListTile(
+                                          dense: isMobile,
+                                          contentPadding: EdgeInsets.zero,
+                                          title: FutureBuilder<Item?>(
+                                            future: db.itemsDao.getItemById(
+                                              req.itemId,
+                                            ),
+                                            builder: (context, snapshot) {
+                                              return Text(
+                                                snapshot.data?.name ??
+                                                    'Item #${req.itemId}',
+                                                style: TextStyle(
+                                                  fontSize:
+                                                      isMobile ? 13 : 15,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          subtitle: Text(
+                                            'Qty: ${req.quantityRequested}',
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 12 : 14,
+                                            ),
+                                          ),
+                                          trailing: Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: isMobile ? 6 : 10,
+                                              vertical: isMobile ? 3 : 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: _getStatusColor(req.status),
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            child: Text(
+                                              req.status.toUpperCase(),
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: isMobile ? 9 : 11,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       );
                     },
                   ),

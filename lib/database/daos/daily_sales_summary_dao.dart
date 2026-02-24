@@ -4,6 +4,7 @@ import '../app_database.dart';
 import '../tables/daily_sales_summary.dart';
 import '../tables/items.dart';
 import '../tables/organizations.dart';
+import '../../utils/app_logger.dart';
 
 part 'daily_sales_summary_dao.g.dart';
 
@@ -266,20 +267,45 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
   /// Get unsynced summaries
   Future<List<DailySalesSummaryData>> getUnsyncedSummaries({
     int limit = 100,
+    int offset = 0,
   }) async {
     return await (select(dailySalesSummary)
           ..where((t) => t.isSynced.equals(false))
-          ..limit(limit))
+          ..limit(limit, offset: offset))
         .get();
   }
 
   /// Mark summaries as synced
-  Future<void> markAsSynced(List<int> ids) async {
-    await (update(dailySalesSummary)..where((t) => t.id.isIn(ids)))
-        .write(const DailySalesSummaryCompanion(isSynced: Value(true)));
+  Future<void> markAsSynced(List<int> ids, {Map<int, String>? cloudIds}) async {
+    if (cloudIds != null) {
+      await batch((batch) {
+        for (final id in ids) {
+          final cloudId = cloudIds[id];
+          if (cloudId != null) {
+            batch.update(
+              dailySalesSummary,
+              DailySalesSummaryCompanion(
+                isSynced: const Value(true),
+                cloudId: Value(cloudId),
+              ),
+              where: (t) => t.id.equals(id),
+            );
+          } else {
+             batch.update(
+              dailySalesSummary,
+              const DailySalesSummaryCompanion(isSynced: Value(true)),
+              where: (t) => t.id.equals(id),
+            );
+          }
+        }
+      });
+    } else {
+      await (update(dailySalesSummary)..where((t) => t.id.isIn(ids)))
+          .write(const DailySalesSummaryCompanion(isSynced: Value(true)));
+    }
   }
 
-  /// Update cloud ID after sync
+  /// Update cloud ID after sync (Legacy helper, prefer markAsSynced with map)
   Future<void> updateCloudId(int localId, String cloudId) async {
     await (update(dailySalesSummary)..where((t) => t.id.equals(localId)))
         .write(DailySalesSummaryCompanion(
@@ -287,6 +313,78 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
       isSynced: const Value(true),
     ));
   }
+
+  /// Get summary by cloud ID
+  Future<DailySalesSummaryData?> getByCloudId(String cloudId) async {
+    return await (select(dailySalesSummary)
+          ..where((t) => t.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
+  /// Get summary by business key (organizationId, itemId, summaryDate) for conflict resolution
+  Future<DailySalesSummaryData?> getByBusinessKey({
+    required int organizationId,
+    required int itemId,
+    required DateTime summaryDate,
+  }) async {
+    final normalizedDate = DateTime(summaryDate.year, summaryDate.month, summaryDate.day);
+    return await (select(dailySalesSummary)
+          ..where((t) => t.organizationId.equals(organizationId))
+          ..where((t) => t.itemId.equals(itemId))
+          ..where((t) => t.summaryDate.equals(normalizedDate)))
+        .getSingleOrNull();
+  }
+
+  /// Upsert batch from cloud
+Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
+  await batch((batch) {
+    for (final record in records) {
+      final cloudId = record['cloudId'] as String;
+
+      final organizationId = record['organizationId'] as int?;
+      final itemId = record['itemId'] as int?;
+
+      if (organizationId == null || itemId == null) {
+        AppLogger.sync('⚠️ Skipping daily_sales_summary record: Missing required fields');
+        continue;
+      }
+
+      final summaryDate = record['summaryDate'] as DateTime;
+      final resolvedLastUpdated =
+          (record['lastUpdated'] as DateTime?) ?? DateTime.now();
+
+      batch.insert(
+        dailySalesSummary,
+        DailySalesSummaryCompanion.insert(
+          organizationId: organizationId,
+          itemId: itemId,
+          summaryDate: summaryDate,
+          quantitySold: Value(record['quantitySold'] as int? ?? 0),
+          quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
+          revenue: Value(record['revenue'] as double? ?? 0.0),
+          costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
+          grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
+          transactionCount: Value(record['transactionCount'] as int? ?? 0),
+          cloudId: Value(cloudId),
+          lastUpdated: Value(resolvedLastUpdated),
+          isSynced: const Value(true),
+        ),
+        onConflict: DoUpdate(
+          (old) => DailySalesSummaryCompanion(
+            quantitySold: Value(record['quantitySold'] as int? ?? 0),
+            quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
+            revenue: Value(record['revenue'] as double? ?? 0.0),
+            costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
+            grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
+            transactionCount: Value(record['transactionCount'] as int? ?? 0),
+            lastUpdated: Value(resolvedLastUpdated),
+            isSynced: const Value(true),
+          ),
+        ),
+      );
+    }
+  });
+}
 
   /// Watch today's summaries for real-time UI updates
   Stream<List<DailySalesSummaryData>> watchTodaySummaries(int organizationId) {

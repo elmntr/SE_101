@@ -23,12 +23,12 @@ class ReviewChangeDetailPage extends StatelessWidget {
   Future<void> _applyChangesToDatabase() async {
     final db = database;
 
-    print('📊 Starting database update for ${record.items.length} items');
+    // print('📊 Starting database update for ${record.items.length} items');
 
     for (final item in record.items) {
-      print(
-        '🔍 Item: ${item.name} (ID: ${item.id}, Sold: ${item.sold}, Spoilage: ${item.spoilage})',
-      );
+      // print(
+      //   '🔍 Item: ${item.name} (ID: ${item.id}, Sold: ${item.sold}, Spoilage: ${item.spoilage})',
+      // );
 
       // Validate item ID
       if (item.id <= 0) {
@@ -37,18 +37,18 @@ class ReviewChangeDetailPage extends StatelessWidget {
 
       // Add sold and deduct from stock
       if (item.sold > 0) {
-        print('  📉 Adding ${item.sold} sold units...');
+        // print('  📉 Adding ${item.sold} sold units...');
         await db.itemsDao.addSold(item.id, item.sold);
       }
 
       // Add spoilage and deduct from stock
       if (item.spoilage > 0) {
-        print('  📉 Adding ${item.spoilage} spoilage units...');
+        // print('  📉 Adding ${item.spoilage} spoilage units...');
         await db.itemsDao.addSpoilage(item.id, item.spoilage);
       }
     }
 
-    print('✅ Database update completed successfully');
+    // print('✅ Database update completed successfully');
   }
 
   @override
@@ -299,7 +299,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
                           ),
                         ),
                         onPressed: () async {
-                          print('🔵 Approve button pressed');
+                          // print('🔵 Approve button pressed');
 
                           final confirmed = await showDialog<bool>(
                             context: context,
@@ -311,7 +311,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
                               actions: [
                                 TextButton(
                                   onPressed: () {
-                                    print('🔵 User cancelled approval');
+                                    // print('🔵 User cancelled approval');
                                     Navigator.pop(ctx, false);
                                   },
                                   child: const Text('Cancel'),
@@ -321,7 +321,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
                                     backgroundColor: Colors.green,
                                   ),
                                   onPressed: () {
-                                    print('🔵 User confirmed approval');
+                                    // print('🔵 User confirmed approval');
                                     Navigator.pop(ctx, true);
                                   },
                                   child: const Text('Approve'),
@@ -330,16 +330,14 @@ class ReviewChangeDetailPage extends StatelessWidget {
                             ),
                           );
 
-                          print('🔵 Dialog result: $confirmed');
+                          // print('🔵 Dialog result: $confirmed');
 
                           if (confirmed == true) {
-                            print('🔵 Starting approval process...');
+                            // print('🔵 Starting approval process...');
 
                             // Show loading indicator
                             if (!context.mounted) {
-                              print(
-                                '❌ Context not mounted before showing snackbar',
-                              );
+                              // print('❌ Context not mounted before showing snackbar');
                               return;
                             }
 
@@ -350,32 +348,32 @@ class ReviewChangeDetailPage extends StatelessWidget {
                             );
 
                             try {
-                              print('🔵 Calling _applyChangesToDatabase...');
+                              // print('🔵 Calling _applyChangesToDatabase...');
                               await _applyChangesToDatabase();
-                              print('✅ Database changes applied');
+                              // print('✅ Database changes applied');
 
                               // Update status
                               record.status = 'Approved';
 
                               if (onApprove != null) {
-                                print('🔵 Calling onApprove callback');
+                                // print('🔵 Calling onApprove callback');
                                 onApprove!(record);
                               } else {
-                                print('🔵 Using default approval handling');
+                                // print('🔵 Using default approval handling');
                                 try {
                                   InventoryPage.pendingChanges.add(record);
                                   records.remove(record);
                                 } catch (e) {
-                                  print('⚠️ Error updating lists: $e');
+                                  // print('⚠️ Error updating lists: $e');
                                 }
                               }
 
                               if (!context.mounted) {
-                                print('❌ Context not mounted after approval');
+                                // print('❌ Context not mounted after approval');
                                 return;
                               }
 
-                              print('🔵 Showing success message');
+                              // print('🔵 Showing success message');
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
@@ -391,21 +389,19 @@ class ReviewChangeDetailPage extends StatelessWidget {
                               );
 
                               if (!context.mounted) {
-                                print('❌ Context not mounted before pop');
+                                // print('❌ Context not mounted before pop');
                                 return;
                               }
 
-                              print('🔵 Popping navigation');
+                              // print('🔵 Popping navigation');
                               Navigator.of(context).pop();
-                              print('✅ Navigation popped successfully');
+                              // print('✅ Navigation popped successfully');
                             } catch (e, stackTrace) {
-                              print('❌ ERROR during approval: $e');
-                              print('❌ Stack trace: $stackTrace');
+                              // print('❌ ERROR during approval: $e');
+                              // print('❌ Stack trace: $stackTrace');
 
                               if (!context.mounted) {
-                                print(
-                                  '❌ Context not mounted during error handling',
-                                );
+                                // print('❌ Context not mounted during error handling');
                                 return;
                               }
 

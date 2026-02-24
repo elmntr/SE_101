@@ -49,7 +49,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching organizations: $e');
+      //print('❌ Error fetching organizations: $e');
       return [];
     }
   }
@@ -71,7 +71,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(organizations.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting organizations: $e');
+      //print('❌ Error counting organizations: $e');
       return 0;
     }
   }
@@ -88,7 +88,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit, offset: offset))
           .watch();
     } catch (e) {
-      print('❌ Error watching organizations: $e');
+      //print('❌ Error watching organizations: $e');
       return Stream.value([]);
     }
   }
@@ -115,7 +115,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         organizations,
       ).insert(organization.copyWith(isSynced: Value(false)));
     } catch (e) {
-      print('❌ Error inserting organization: $e');
+      //print('❌ Error inserting organization: $e');
       rethrow;
     }
   }
@@ -131,7 +131,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         }
       });
     } catch (e) {
-      print('❌ Error batch inserting organizations: $e');
+      //print('❌ Error batch inserting organizations: $e');
       rethrow;
     }
   }
@@ -141,11 +141,11 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
     try {
       final updated = organization.copyWith(
         isSynced: false,
-        lastUpdated: DateTime.now(),
+        lastUpdated: DateTime.now().toUtc(),
       );
       return await update(organizations).replace(updated);
     } catch (e) {
-      print('❌ Error updating organization: $e');
+      //print('❌ Error updating organization: $e');
       return false;
     }
   }
@@ -157,7 +157,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         organizations,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching organization by ID: $e');
+      //print('❌ Error fetching organization by ID: $e');
       return null;
     }
   }
@@ -169,7 +169,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             ..where((t) => t.name.equals(name) & t.isActive.equals(true)))
           .getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching organization by name: $e');
+      //print('❌ Error fetching organization by name: $e');
       return null;
     }
   }
@@ -180,18 +180,17 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
     bool? isActive,
   }) async {
     try {
-      final query = select(organizations)
-        ..where((t) => t.type.equals(type));
-      
+      final query = select(organizations)..where((t) => t.type.equals(type));
+
       if (isActive != null) {
         query.where((t) => t.isActive.equals(isActive));
       }
-      
+
       query.orderBy([(t) => OrderingTerm(expression: t.name)]);
-      
+
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching organizations by type: $e');
+      //print('❌ Error fetching organizations by type: $e');
       return [];
     }
   }
@@ -204,9 +203,9 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final itemCount = await _getActiveItemCount(id);
 
       if (userCount > 0 || itemCount > 0) {
-        print(
-          '⚠️ Cannot deactivate organization $id: has $userCount users and $itemCount items',
-        );
+        //print(
+        //  '⚠️ Cannot deactivate organization $id: has $userCount users and $itemCount items'
+        //);
         throw Exception(
           'Organization has $userCount active user(s) and $itemCount item(s)',
         );
@@ -216,14 +215,14 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
           await (update(organizations)..where((t) => t.id.equals(id))).write(
             OrganizationsCompanion(
               isActive: Value(false),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
 
       return result > 0;
     } catch (e) {
-      print('❌ Error deactivating organization: $e');
+      //print('❌ Error deactivating organization: $e');
       rethrow;
     }
   }
@@ -235,14 +234,14 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
           await (update(organizations)..where((t) => t.id.equals(id))).write(
             OrganizationsCompanion(
               isActive: Value(true),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
 
       return result > 0;
     } catch (e) {
-      print('❌ Error reactivating organization: $e');
+      //print('❌ Error reactivating organization: $e');
       return false;
     }
   }
@@ -264,7 +263,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         isActive: true,
       );
     } catch (e) {
-      print('❌ Error fetching commissaries: $e');
+      //print('❌ Error fetching commissaries: $e');
       return [];
     }
   }
@@ -280,7 +279,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             ..limit(1))
           .getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching main commissary: $e');
+      //print('❌ Error fetching main commissary: $e');
       return null;
     }
   }
@@ -311,7 +310,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching franchisees: $e');
+      //print('❌ Error fetching franchisees: $e');
       return [];
     }
   }
@@ -331,7 +330,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(t) => OrderingTerm(expression: t.name)]))
           .get();
     } catch (e) {
-      print('❌ Error fetching franchisees by commissary: $e');
+      //print('❌ Error fetching franchisees by commissary: $e');
       return [];
     }
   }
@@ -350,7 +349,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(organizations.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting franchisees: $e');
+      //print('❌ Error counting franchisees: $e');
       return 0;
     }
   }
@@ -372,7 +371,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(db.users.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error checking user count: $e');
+      //print('❌ Error checking user count: $e');
       return 0;
     }
   }
@@ -390,7 +389,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(db.items.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error checking item count: $e');
+      //print('❌ Error checking item count: $e');
       return 0;
     }
   }
@@ -410,7 +409,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced organizations: $e');
+      //print('❌ Error fetching unsynced organizations: $e');
       return [];
     }
   }
@@ -425,7 +424,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(organizations.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced organizations: $e');
+      //print('❌ Error counting unsynced organizations: $e');
       return 0;
     }
   }
@@ -449,38 +448,56 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
         }
       });
     } catch (e) {
-      print('❌ Error marking organizations as synced: $e');
+      //print('❌ Error marking organizations as synced: $e');
       rethrow;
     }
   }
 
   /// ✅ Batch upsert from cloud
-  /// ✅ Batch upsert from cloud
-Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations) async {
-  try {
-    await db.transaction(() async {
-      for (final cloudOrg in cloudOrganizations) {
-        await upsertFromCloud(
-          id: cloudOrg['local_id'] ?? 0,
-          name: cloudOrg['name'] ?? 'Unknown Organization',
-          type: cloudOrg['type'] ?? 'commissary',
-          parentCommissaryId: cloudOrg['parent_commissary_id'], // ✅ Can be null
-          contactPerson: cloudOrg['contact_person'], // ✅ Already nullable (String?)
-          phone: cloudOrg['phone'],
-          email: cloudOrg['email'],
-          address: cloudOrg['address'],
-          isActive: cloudOrg['is_active'] ?? true, // ✅ Default to true
-          createdAt: DateTime.tryParse(cloudOrg['created_at'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-          lastUpdated: DateTime.tryParse(cloudOrg['last_updated'] ?? '') ?? DateTime.now(), // ✅ Safe parse
-          cloudId: cloudOrg['cloud_id'] ?? '', // ✅ Default to empty string
-        );
-      }
-    });
-  } catch (e) {
-    print('❌ Error batch upserting organizations from cloud: $e');
-    rethrow;
+  /// Expects data from toLocalFormat (camelCase keys)
+  Future<void> upsertBatchFromCloud(
+    List<Map<String, dynamic>> cloudOrganizations,
+  ) async {
+    try {
+      await db.transaction(() async {
+        for (final cloudOrg in cloudOrganizations) {
+          // Support both camelCase (from toLocalFormat) and snake_case (legacy) keys
+          await upsertFromCloud(
+            id: cloudOrg['local_id'] ?? cloudOrg['localId'] ?? 0,
+            name: cloudOrg['name'] ?? 'Unknown Organization',
+            type: cloudOrg['type'] ?? 'commissary',
+            parentCommissaryId:
+                cloudOrg['parentCommissaryId'] ??
+                cloudOrg['parent_commissary_id'],
+            contactPerson:
+                cloudOrg['contactPerson'] ?? cloudOrg['contact_person'],
+            phone: cloudOrg['phone'],
+            email: cloudOrg['email'],
+            address: cloudOrg['address'],
+            isActive: cloudOrg['isActive'] ?? cloudOrg['is_active'] ?? true,
+            createdAt: _parseDateTime(
+              cloudOrg['createdAt'] ?? cloudOrg['created_at'],
+            ),
+            lastUpdated: _parseDateTime(
+              cloudOrg['lastUpdated'] ?? cloudOrg['last_updated'],
+            ),
+            cloudId: cloudOrg['cloudId'] ?? cloudOrg['cloud_id'] ?? '',
+          );
+        }
+      });
+    } catch (e) {
+      //print('❌ Error batch upserting organizations from cloud: $e');
+      rethrow;
+    }
   }
-}
+
+  /// Helper to parse DateTime from various formats
+  DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
+  }
 
   /// ✅ Upsert from cloud (individual)
   /// If id > 0, updates existing record. If id == 0, checks by cloudId first.
@@ -510,20 +527,23 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations)
 
       if (existingId != null && existingId > 0) {
         // Update existing record
-        await (update(organizations)..where((t) => t.id.equals(existingId!)))
-            .write(OrganizationsCompanion(
-          name: Value(name),
-          type: Value(type),
-          parentCommissaryId: Value(parentCommissaryId),
-          contactPerson: Value(contactPerson),
-          phone: Value(phone),
-          email: Value(email),
-          address: Value(address),
-          isActive: Value(isActive),
-          lastUpdated: Value(lastUpdated),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
-        ));
+        await (update(
+          organizations,
+        )..where((t) => t.id.equals(existingId!))).write(
+          OrganizationsCompanion(
+            name: Value(name),
+            type: Value(type),
+            parentCommissaryId: Value(parentCommissaryId),
+            contactPerson: Value(contactPerson),
+            phone: Value(phone),
+            email: Value(email),
+            address: Value(address),
+            isActive: Value(isActive),
+            lastUpdated: Value(lastUpdated),
+            isSynced: Value(true),
+            cloudId: Value(cloudId),
+          ),
+        );
       } else {
         // Insert new record (let database assign ID)
         await into(organizations).insert(
@@ -544,7 +564,7 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations)
         );
       }
     } catch (e) {
-      print('❌ Error upserting organization from cloud: $e');
+      //print('❌ Error upserting organization from cloud: $e');
       rethrow;
     }
   }
@@ -556,7 +576,7 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> cloudOrganizations)
         organizations,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching organization by cloud ID: $e');
+      //print('❌ Error fetching organization by cloud ID: $e');
       return null;
     }
   }

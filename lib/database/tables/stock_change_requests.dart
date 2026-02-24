@@ -24,7 +24,7 @@ class StockChangeRequests extends Table {
   IntColumn get requestedBy => integer().references(Users, #id)();
 
   DateTimeColumn get requestedAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   DateTimeColumn get submittedAt => dateTime().nullable()();
 
@@ -40,9 +40,9 @@ class StockChangeRequests extends Table {
   IntColumn get originalStock => integer()();
 
   DateTimeColumn get createdAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
   DateTimeColumn get lastUpdated =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 

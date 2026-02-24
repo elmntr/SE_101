@@ -47,9 +47,9 @@ class Ingredients extends Table {
 
   /// Track when ingredient was created/modified
   DateTimeColumn get createdAt =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
   DateTimeColumn get lastUpdated =>
-      dateTime().clientDefault(() => DateTime.now())();
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
   /// Soft delete
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();

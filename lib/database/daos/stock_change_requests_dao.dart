@@ -1,10 +1,12 @@
 // lib/database/daos/stock_change_requests_dao.dart
 import 'package:drift/drift.dart';
+import '../../app.dart';
 import '../app_database.dart';
 import '../tables/stock_change_requests.dart';
 import '../tables/items.dart';
 import '../tables/organizations.dart';
 import '../tables/users.dart';
+import '../../utils/app_logger.dart';
 
 part 'stock_change_requests_dao.g.dart';
 
@@ -86,7 +88,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching stock change requests: $e');
+      //print('❌ Error fetching stock change requests: $e');
       return [];
     }
   }
@@ -122,7 +124,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(stockChangeRequests.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting stock change requests: $e');
+      //print('❌ Error counting stock change requests: $e');
       return 0;
     }
   }
@@ -160,7 +162,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return query.watch();
     } catch (e) {
-      print('❌ Error watching stock change requests: $e');
+      //print('❌ Error watching stock change requests: $e');
       return Stream.value([]);
     }
   }
@@ -202,7 +204,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
     } catch (e) {
-      print('Error creating change request: $e');
+      //print('Error creating change request: $e');
       rethrow;
     }
   }
@@ -217,14 +219,14 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       // Only allow editing drafts
       final request = await getChangeRequestById(requestId);
       if (request == null || request.status != 'draft') {
-        print('Can only edit draft requests');
+        //print('Can only edit draft requests');
         return false;
       }
 
       final companion = StockChangeRequestsCompanion(
         quantity: quantity != null ? Value(quantity) : const Value.absent(),
         reason: reason != null ? Value(reason) : const Value.absent(),
-        lastUpdated: Value(DateTime.now()),
+        lastUpdated: Value(DateTime.now().toUtc()),
         isSynced: const Value(false),
       );
 
@@ -234,18 +236,18 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('Error updating draft change request: $e');
+      //print('Error updating draft change request: $e');
       return false;
     }
   }
 
-  /// Submit change request (employee submits for review)
+  /// Submit change request (auto-approved)
   Future<bool> submitChangeRequest(int requestId) async {
     try {
       // Only allow submitting drafts
       final request = await getChangeRequestById(requestId);
       if (request == null || request.status != 'draft') {
-        print('⚠️ Can only submit draft requests');
+        //print('⚠️ Can only submit draft requests');
         return false;
       }
 
@@ -254,16 +256,19 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             stockChangeRequests,
           )..where((t) => t.id.equals(requestId))).write(
             StockChangeRequestsCompanion(
-              status: Value('pending'),
-              submittedAt: Value(DateTime.now()),
-              lastUpdated: Value(DateTime.now()),
+              status: Value('approved'),
+              submittedAt: Value(DateTime.now().toUtc()),
+              reviewedBy: Value(request.requestedBy),
+              reviewedAt: Value(DateTime.now().toUtc()),
+              reviewNotes: const Value('Auto-approved'),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
 
       return result > 0;
     } catch (e) {
-      print('❌ Error submitting change request: $e');
+      //print('❌ Error submitting change request: $e');
       return false;
     }
   }
@@ -286,7 +291,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             ]))
           .get();
     } catch (e) {
-      print('❌ Error fetching employee drafts: $e');
+      //print('❌ Error fetching employee drafts: $e');
       return [];
     }
   }
@@ -311,7 +316,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             ]))
           .get();
     } catch (e) {
-      print('❌ Error fetching employee pending requests: $e');
+      //print('❌ Error fetching employee pending requests: $e');
       return [];
     }
   }
@@ -332,12 +337,10 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
                   t.status.equals('pending') &
                   t.isDeleted.equals(false),
             )
-            ..orderBy([
-              (t) => OrderingTerm(expression: t.submittedAt),
-            ]))
+            ..orderBy([(t) => OrderingTerm(expression: t.submittedAt)]))
           .get();
     } catch (e) {
-      print('❌ Error fetching pending requests for franchisee: $e');
+      //print('❌ Error fetching pending requests for franchisee: $e');
       return [];
     }
   }
@@ -351,7 +354,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       final request = await getChangeRequestById(requestId);
       if (request == null || request.status != 'pending') {
-        print('⚠️ Can only approve pending requests');
+        //print('⚠️ Can only approve pending requests');
         return false;
       }
 
@@ -364,9 +367,9 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
           StockChangeRequestsCompanion(
             status: Value('approved'),
             reviewedBy: Value(reviewedBy),
-            reviewedAt: Value(DateTime.now()),
+            reviewedAt: Value(DateTime.now().toUtc()),
             reviewNotes: Value(reviewNotes),
-            lastUpdated: Value(DateTime.now()),
+            lastUpdated: Value(DateTime.now().toUtc()),
             isSynced: Value(false),
           ),
         );
@@ -402,7 +405,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
               variables: [
                 Variable.withInt(request.quantity),
                 Variable.withInt(request.quantity),
-                Variable.withDateTime(DateTime.now()),
+                Variable.withDateTime(DateTime.now().toUtc()),
                 Variable.withInt(request.itemId),
               ],
             );
@@ -412,7 +415,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         return true;
       });
     } catch (e) {
-      print('❌ Error approving change request: $e');
+      //print('❌ Error approving change request: $e');
       return false;
     }
   }
@@ -426,7 +429,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       final request = await getChangeRequestById(requestId);
       if (request == null || request.status != 'pending') {
-        print('⚠️ Can only reject pending requests');
+        //print('⚠️ Can only reject pending requests');
         return false;
       }
 
@@ -438,16 +441,16 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             StockChangeRequestsCompanion(
               status: Value('rejected'),
               reviewedBy: Value(reviewedBy),
-              reviewedAt: Value(DateTime.now()),
+              reviewedAt: Value(DateTime.now().toUtc()),
               reviewNotes: Value(reason),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
               isSynced: Value(false),
             ),
           );
 
       return result > 0;
     } catch (e) {
-      print('❌ Error rejecting change request: $e');
+      //print('❌ Error rejecting change request: $e');
       return false;
     }
   }
@@ -463,7 +466,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         stockChangeRequests,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching change request by ID: $e');
+      //print('❌ Error fetching change request by ID: $e');
       return null;
     }
   }
@@ -487,7 +490,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching item change history: $e');
+      //print('❌ Error fetching item change history: $e');
       return [];
     }
   }
@@ -513,7 +516,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching employee change history: $e');
+      //print('❌ Error fetching employee change history: $e');
       return [];
     }
   }
@@ -541,7 +544,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         'rejected': allRequests.where((r) => r.status == 'rejected').length,
       };
     } catch (e) {
-      print('❌ Error calculating franchisee change stats: $e');
+      //print('❌ Error calculating franchisee change stats: $e');
       return {
         'total': 0,
         'draft': 0,
@@ -562,13 +565,13 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             StockChangeRequestsCompanion(
               isDeleted: Value(true),
               isSynced: Value(false),
-              lastUpdated: Value(DateTime.now()),
+              lastUpdated: Value(DateTime.now().toUtc()),
             ),
           );
 
       return result > 0;
     } catch (e) {
-      print('❌ Error soft deleting change request: $e');
+      //print('❌ Error soft deleting change request: $e');
       return false;
     }
   }
@@ -588,7 +591,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced change requests: $e');
+      //print('❌ Error fetching unsynced change requests: $e');
       return [];
     }
   }
@@ -603,7 +606,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(stockChangeRequests.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced change requests: $e');
+      //print('❌ Error counting unsynced change requests: $e');
       return 0;
     }
   }
@@ -627,46 +630,83 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         }
       });
     } catch (e) {
-      print('❌ Error marking change requests as synced: $e');
+      //print('❌ Error marking change requests as synced: $e');
       rethrow;
     }
   }
 
+  // Helper to parse DateTime from various formats
+  DateTime _parseDateTime(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.parse(value);
+    throw FormatException('Cannot parse DateTime from: $value');
+  }
+
+  // Helper to parse nullable DateTime
+  DateTime? _parseDateTimeNullable(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.parse(value);
+    return null;
+  }
+
   /// ✅ Batch upsert from cloud
+  /// Supports both camelCase (from toLocalFormat) and snake_case keys
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudRequests,
   ) async {
     try {
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
+          // Add null safety checks for required integer fields
+          final id = cloudReq['localId'] ?? cloudReq['local_id'];
+          final franchiseeId = cloudReq['franchiseeId'] ?? cloudReq['franchisee_id'];
+          final itemId = cloudReq['itemId'] ?? cloudReq['item_id'];
+          final quantity = cloudReq['quantity'];
+          final requestedBy = cloudReq['requestedBy'] ?? cloudReq['requested_by'];
+          final originalStock = cloudReq['originalStock'] ?? cloudReq['original_stock'];
+          
+          // Skip invalid records where required integer fields are null
+          if (id == null || franchiseeId == null || itemId == null || 
+              quantity == null || requestedBy == null || originalStock == null) {
+            AppLogger.sync('⚠️ Skipping stock_change_requests record: Required integer field is null');
+            continue;
+          }
+
           await upsertFromCloud(
-            id: cloudReq['local_id'],
-            franchiseeId: cloudReq['franchisee_id'],
-            itemId: cloudReq['item_id'],
-            changeType: cloudReq['change_type'],
-            quantity: cloudReq['quantity'],
+            id: id as int,
+            franchiseeId: franchiseeId as int,
+            itemId: itemId as int,
+            changeType: cloudReq['changeType'] ?? cloudReq['change_type'],
+            quantity: quantity as int,
             status: cloudReq['status'],
-            requestedBy: cloudReq['requested_by'],
-            requestedAt: DateTime.parse(cloudReq['requested_at']),
-            submittedAt: cloudReq['submitted_at'] != null
-                ? DateTime.parse(cloudReq['submitted_at'])
-                : null,
-            reviewedBy: cloudReq['reviewed_by'],
-            reviewedAt: cloudReq['reviewed_at'] != null
-                ? DateTime.parse(cloudReq['reviewed_at'])
-                : null,
+            requestedBy: requestedBy as int,
+            requestedAt: _parseDateTime(
+              cloudReq['requestedAt'] ?? cloudReq['requested_at'],
+            ),
+            submittedAt: _parseDateTimeNullable(
+              cloudReq['submittedAt'] ?? cloudReq['submitted_at'],
+            ),
+            reviewedBy: cloudReq['reviewedBy'] ?? cloudReq['reviewed_by'],
+            reviewedAt: _parseDateTimeNullable(
+              cloudReq['reviewedAt'] ?? cloudReq['reviewed_at'],
+            ),
             reason: cloudReq['reason'],
-            reviewNotes: cloudReq['review_notes'],
-            originalStock: cloudReq['original_stock'],
-            createdAt: DateTime.parse(cloudReq['created_at']),
-            lastUpdated: DateTime.parse(cloudReq['last_updated']),
-            isDeleted: cloudReq['is_deleted'] ?? false,
-            cloudId: cloudReq['cloud_id'],
+            reviewNotes: cloudReq['reviewNotes'] ?? cloudReq['review_notes'],
+            originalStock: originalStock as int,
+            createdAt: _parseDateTime(
+              cloudReq['createdAt'] ?? cloudReq['created_at'],
+            ),
+            lastUpdated: _parseDateTime(
+              cloudReq['lastUpdated'] ?? cloudReq['last_updated'],
+            ),
+            isDeleted: cloudReq['isDeleted'] ?? cloudReq['is_deleted'] ?? false,
+            cloudId: cloudReq['cloudId'] ?? cloudReq['cloud_id'],
           );
         }
       });
     } catch (e) {
-      print('❌ Error batch upserting change requests from cloud: $e');
+      //print('❌ Error batch upserting change requests from cloud: $e');
       rethrow;
     }
   }
@@ -717,7 +757,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
     } catch (e) {
-      print('❌ Error upserting change request from cloud: $e');
+      //print('❌ Error upserting change request from cloud: $e');
       rethrow;
     }
   }
@@ -729,7 +769,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         stockChangeRequests,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching change request by cloud ID: $e');
+      //print('❌ Error fetching change request by cloud ID: $e');
       return null;
     }
   }
