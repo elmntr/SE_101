@@ -28,6 +28,7 @@ class ReplenishStockTab extends StatefulWidget {
 class _ReplenishStockTabState extends State<ReplenishStockTab> {
   late AppDatabase db;
   late List<TextEditingController> qtyControllers;
+  List<FocusNode> qtyFocusNodes = [];
   List<StockReplenishmentRequest> existingRequests = [];
   bool isLoading = true;
   bool isSubmitting = false;
@@ -40,6 +41,14 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
       widget.items.length,
       (_) => TextEditingController(),
     );
+    qtyFocusNodes = List.generate(
+      widget.items.length,
+      (_) => FocusNode(),
+    );
+    // Rebuild when focus changes so hint visibility updates
+    for (final node in qtyFocusNodes) {
+      node.addListener(() => setState(() {}));
+    }
     _syncAndLoadRequests();
   }
 
@@ -59,6 +68,9 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
   void dispose() {
     for (var c in qtyControllers) {
       c.dispose();
+    }
+    for (var n in qtyFocusNodes) {
+      n.dispose();
     }
     super.dispose();
   }
@@ -267,6 +279,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
                         itemCount: widget.items.length,
                         itemBuilder: (context, index) {
                           final item = widget.items[index];
+                          final isFocused = qtyFocusNodes[index].hasFocus;
 
                           if (isMobile) {
                             // Mobile card layout
@@ -331,17 +344,19 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
                                         width: 100,
                                         child: TextField(
                                           controller: qtyControllers[index],
+                                          focusNode: qtyFocusNodes[index],
                                           keyboardType: TextInputType.number,
                                           inputFormatters: [
                                             FilteringTextInputFormatter
                                                 .digitsOnly,
                                           ],
                                           textAlign: TextAlign.center,
-                                          decoration: const InputDecoration(
-                                            hintText: 'Qty',
-                                            border: OutlineInputBorder(),
+                                          decoration: InputDecoration(
+                                            // Show hint only when unfocused
+                                            hintText: isFocused ? '' : 'Qty',
+                                            border: const OutlineInputBorder(),
                                             contentPadding:
-                                                EdgeInsets.symmetric(
+                                                const EdgeInsets.symmetric(
                                                   vertical: 8,
                                                   horizontal: 8,
                                                 ),
@@ -393,18 +408,21 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> {
                                     ),
                                     child: TextField(
                                       controller: qtyControllers[index],
+                                      focusNode: qtyFocusNodes[index],
                                       keyboardType: TextInputType.number,
                                       inputFormatters: [
                                         FilteringTextInputFormatter.digitsOnly,
                                       ],
                                       textAlign: TextAlign.center,
-                                      decoration: const InputDecoration(
-                                        hintText: '0',
-                                        border: OutlineInputBorder(),
-                                        contentPadding: EdgeInsets.symmetric(
-                                          vertical: 8,
-                                          horizontal: 8,
-                                        ),
+                                      decoration: InputDecoration(
+                                        // Show '0' only when unfocused and empty
+                                        hintText: isFocused ? '' : '0',
+                                        border: const OutlineInputBorder(),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              vertical: 8,
+                                              horizontal: 8,
+                                            ),
                                         isDense: true,
                                       ),
                                     ),
