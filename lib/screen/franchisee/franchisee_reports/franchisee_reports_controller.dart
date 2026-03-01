@@ -35,7 +35,7 @@ class ChartPeriodConfig {
 }
 
 DateTime normalizeDate(DateTime date) =>
-    DateTime(date.year, date.month, date.day);
+    DateTime.utc(date.year, date.month, date.day);
 
 ChartPeriodConfig buildWeeklyConfig(DateTime current) {
   final end = normalizeDate(current);

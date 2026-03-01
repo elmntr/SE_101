@@ -296,34 +296,49 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Upsert from cloud (for sync)
+  /// Supports both camelCase (from toLocalFormat) and snake_case keys
   Future<void> upsertFromCloud(Map<String, dynamic> data) async {
-    final cloudId = data['cloud_id'] as String;
+    final cloudId = (data['cloudId'] ?? data['cloud_id']) as String;
 
-    final existing = await (select(branchIngredientStock)
+    var existing = await (select(branchIngredientStock)
           ..where((t) => t.cloudId.equals(cloudId)))
         .getSingleOrNull();
 
+    final organizationId = data['organizationId'] ?? data['organization_id'];
+    final ingredientId = data['ingredientId'] ?? data['ingredient_id'];
+
+    // If not found by cloudId, try business key (organizationId, ingredientId)
+    if (existing == null && organizationId != null && ingredientId != null) {
+      existing = await (select(branchIngredientStock)
+            ..where((t) => t.organizationId.equals(organizationId as int))
+            ..where((t) => t.ingredientId.equals(ingredientId as int)))
+          .getSingleOrNull();
+    }
+
+    final quantityVal = data['quantity'] ?? data['stock'];
+    final minimumStockVal = data['minimumStock'] ?? data['minimum_stock'];
+    final lastUpdatedVal = data['lastUpdated'] ?? data['last_updated'];
+
     final companion = BranchIngredientStockCompanion(
-      organizationId: Value(data['organization_id'] as int),
-      ingredientId: Value(data['ingredient_id'] as int),
-      quantity: Value((data['quantity'] as num?)?.toDouble() ?? 0.0),
-      minimumStock: data['minimum_stock'] != null
-          ? Value((data['minimum_stock'] as num).toDouble())
+      organizationId: Value(organizationId as int),
+      ingredientId: Value(ingredientId as int),
+      quantity: Value((quantityVal as num?)?.toDouble() ?? 0.0),
+      minimumStock: minimumStockVal != null
+          ? Value((minimumStockVal as num).toDouble())
           : const Value.absent(),
-      lastReceivedAt: data['last_received_at'] != null
-          ? Value(DateTime.parse(data['last_received_at'] as String))
-          : const Value.absent(),
-      lastReceivedQuantity: data['last_received_quantity'] != null
-          ? Value((data['last_received_quantity'] as num).toDouble())
-          : const Value.absent(),
-      lastUpdated: Value(DateTime.parse(data['last_updated'] as String)),
+      lastUpdated: lastUpdatedVal is DateTime
+          ? Value(lastUpdatedVal)
+          : lastUpdatedVal is String
+              ? Value(DateTime.parse(lastUpdatedVal))
+              : Value(DateTime.now()),
       isSynced: const Value(true),
       cloudId: Value(cloudId),
     );
 
     if (existing != null) {
+      final existingId = existing.id;
       await (update(branchIngredientStock)
-            ..where((t) => t.id.equals(existing.id)))
+            ..where((t) => t.id.equals(existingId)))
           .write(companion);
     } else {
       await into(branchIngredientStock).insert(companion);
