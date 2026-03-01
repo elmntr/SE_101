@@ -309,6 +309,13 @@ class BranchItemStockDao extends DatabaseAccessor<AppDatabase>
   // SYNC OPERATIONS
   // ============================================================================
 
+  /// Get a stock record by its cloud ID
+  Future<BranchItemStockData?> getByCloudId(String cloudId) {
+    return (select(branchItemStock)
+          ..where((s) => s.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
   /// Mark records as synced
   Future<void> markAsSynced(List<int> ids, {Map<int, String>? cloudIds}) async {
     for (final id in ids) {

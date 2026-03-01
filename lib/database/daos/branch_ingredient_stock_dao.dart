@@ -259,17 +259,31 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
   /// Get unsynced stock records
   Future<List<BranchIngredientStockData>> getUnsyncedStocks({
     int limit = 100,
+    int offset = 0,
   }) async {
     return await (select(branchIngredientStock)
           ..where((t) => t.isSynced.equals(false))
-          ..limit(limit))
+          ..limit(limit, offset: offset))
         .get();
   }
 
+  /// Get a stock record by its cloud ID
+  Future<BranchIngredientStockData?> getByCloudId(String cloudId) {
+    return (select(branchIngredientStock)
+          ..where((t) => t.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
   /// Mark stocks as synced
-  Future<void> markAsSynced(List<int> ids) async {
-    await (update(branchIngredientStock)..where((t) => t.id.isIn(ids)))
-        .write(const BranchIngredientStockCompanion(isSynced: Value(true)));
+  Future<void> markAsSynced(List<int> ids, {Map<int, String>? cloudIds}) async {
+    for (final id in ids) {
+      final companion = BranchIngredientStockCompanion(
+        isSynced: const Value(true),
+        cloudId: cloudIds?[id] != null ? Value(cloudIds![id]) : const Value.absent(),
+      );
+      await (update(branchIngredientStock)..where((t) => t.id.equals(id)))
+          .write(companion);
+    }
   }
 
   /// Update cloud ID after sync
@@ -279,5 +293,47 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
       cloudId: Value(cloudId),
       isSynced: const Value(true),
     ));
+  }
+
+  /// Upsert from cloud (for sync)
+  Future<void> upsertFromCloud(Map<String, dynamic> data) async {
+    final cloudId = data['cloud_id'] as String;
+
+    final existing = await (select(branchIngredientStock)
+          ..where((t) => t.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+
+    final companion = BranchIngredientStockCompanion(
+      organizationId: Value(data['organization_id'] as int),
+      ingredientId: Value(data['ingredient_id'] as int),
+      quantity: Value((data['quantity'] as num?)?.toDouble() ?? 0.0),
+      minimumStock: data['minimum_stock'] != null
+          ? Value((data['minimum_stock'] as num).toDouble())
+          : const Value.absent(),
+      lastReceivedAt: data['last_received_at'] != null
+          ? Value(DateTime.parse(data['last_received_at'] as String))
+          : const Value.absent(),
+      lastReceivedQuantity: data['last_received_quantity'] != null
+          ? Value((data['last_received_quantity'] as num).toDouble())
+          : const Value.absent(),
+      lastUpdated: Value(DateTime.parse(data['last_updated'] as String)),
+      isSynced: const Value(true),
+      cloudId: Value(cloudId),
+    );
+
+    if (existing != null) {
+      await (update(branchIngredientStock)
+            ..where((t) => t.id.equals(existing.id)))
+          .write(companion);
+    } else {
+      await into(branchIngredientStock).insert(companion);
+    }
+  }
+
+  /// Batch upsert from cloud
+  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> dataList) async {
+    for (final data in dataList) {
+      await upsertFromCloud(data);
+    }
   }
 }
