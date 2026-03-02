@@ -55,8 +55,11 @@ final branchItemStockDescriptor = TableSyncDescriptor(
   organizationField: 'organization_id',
   softDeleteField: 'is_deleted',
   
-  // Franchisees push their stock levels
-  canPush: (orgType) => true,
+  // Only franchisee devices push their own stock.
+  // Commissary must NOT push branch_item_stock — it doesn't own those rows
+  // and Supabase RLS will reject any insert/update under a franchisee org_id
+  // made with a commissary JWT (error 42501).
+  canPush: (orgType) => orgType == 'franchisee',
   
   foreignKeys: [
     ForeignKeyMapping(

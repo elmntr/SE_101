@@ -507,16 +507,36 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             AppLogger.sync('   No local record found, will insert new');
           }
 
-          // ✅ Check if status is changing to 'approved' - if so, we need to add stock to branch
+          // ✅ Idempotent approval guard — must satisfy ALL three conditions:
+          //   1. Record already existed locally (not a fresh-sync replay of history)
+          //   2. Previous status was not yet 'approved' (genuine state transition)
+          //   3. New cloud status is 'approved'
+          //
+          // This prevents duplicate stock on fresh install or DB clear:
+          // - On fresh sync, existing == null for all historical requests → guard blocks.
+          // - On realtime approval (pending → approved), existing != null → guard passes.
+          // - On re-sync of already-approved request, previousStatus == 'approved' → guard blocks.
           final isNewlyApproved =
               cloudStatus == 'approved' &&
-              (previousStatus == null || previousStatus != 'approved');
+              existing != null &&
+              previousStatus != 'approved';
 
           if (isNewlyApproved) {
-            AppLogger.sync(
-              '🎉 Request is newly approved! Adding $quantityRequested items to branch stock...',
-            );
-            await _addStockToBranch(franchiseeId, itemId, quantityRequested);
+            // Defensive ID validation — translation failure during early sync
+            // can produce 0 IDs, which would create an invalid BranchItemStock
+            // row that later triggers an RLS 42501 on push.
+            if (franchiseeId == 0 || itemId == 0 || quantityRequested <= 0) {
+              AppLogger.sync(
+                '⚠️ Skipping _addStockToBranch: invalid IDs or quantity '
+                '(franchiseeId=$franchiseeId, itemId=$itemId, qty=$quantityRequested). '
+                'Organization cache may not be fully populated yet.',
+              );
+            } else {
+              AppLogger.sync(
+                '🎉 Request is newly approved! Adding $quantityRequested items to branch stock...',
+              );
+              await _addStockToBranch(franchiseeId, itemId, quantityRequested);
+            }
           }
 
           await upsertFromCloud(
