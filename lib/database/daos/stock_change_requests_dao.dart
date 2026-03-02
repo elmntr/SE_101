@@ -183,7 +183,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   }) async {
     try {
       // Validate changeType
-      const validTypes = ['sold', 'spoiled', 'adjustment', 'return'];
+      const validTypes = ['sold', 'spoiled', 'adjustment', 'return', 'override'];
       if (!validTypes.contains(changeType)) {
         throw ArgumentError(
           'Invalid change type. Must be one of: ${validTypes.join(", ")}',
@@ -409,6 +409,16 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
                 Variable.withInt(request.itemId),
               ],
             );
+            break;
+          case 'override':
+            // Override records are pre-applied at creation time (stock is already set).
+            // If this record ever reaches the pending-approval flow, apply the delta:
+            // newStock = originalStock + quantity (quantity can be negative for decreases).
+            final item = await db.itemsDao.getItemById(request.itemId);
+            if (item != null) {
+              final restoredStock = request.originalStock + request.quantity;
+              await db.itemsDao.updateStock(request.itemId, restoredStock);
+            }
             break;
         }
 

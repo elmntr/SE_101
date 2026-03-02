@@ -186,6 +186,24 @@ class InventoryPageState extends State<InventoryPage> {
     }
   }
 
+  /// Maps internal changeType values to display-friendly labels.
+  String _friendlyChangeType(String changeType) {
+    switch (changeType) {
+      case 'sold':
+        return 'Sold';
+      case 'spoiled':
+        return 'Spoiled';
+      case 'override':
+        return 'Override';
+      case 'adjustment':
+        return 'Adjustment';
+      case 'return':
+        return 'Return';
+      default:
+        return changeType;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> buildChangeHistoryRows() async {
     final rows = <Map<String, dynamic>>[];
 
@@ -195,7 +213,7 @@ class InventoryPageState extends State<InventoryPage> {
       rows.add({
         'employeeName': user?.fullName ?? user?.username ?? 'Unknown',
         'itemName': item?.name ?? 'Unknown',
-        'changeType': request.changeType,
+        'changeType': _friendlyChangeType(request.changeType),
         'quantity': request.quantity.toString(),
         'status': request.status,
         'request': request,
@@ -295,6 +313,64 @@ class InventoryPageState extends State<InventoryPage> {
     }
   }
 
+  /// Show a password confirmation dialog for manual stock overrides.
+  /// Returns true if the password was verified successfully.
+  Future<bool> _showPasswordConfirmDialog(BuildContext context) async {
+    if (currentUserId == null) return false;
+
+    final passwordController = TextEditingController();
+    bool? confirmed;
+
+    confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text(
+          'Confirm Override',
+          style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter your password to confirm the manual stock override.',
+              style: TextStyle(fontFamily: fontAll),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return false;
+
+    final password = passwordController.text.trim();
+    if (password.isEmpty) return false;
+
+    return await db.usersDao.verifyUserPassword(currentUserId!, password);
+  }
+
   /// Show dialog to edit stock and spoilage values for an item
   Future<void> showEditStockDialog(
     BuildContext context,
@@ -385,6 +461,21 @@ class InventoryPageState extends State<InventoryPage> {
     );
 
     if (result != null && context.mounted) {
+      // Require password confirmation if the stock value is being manually overridden
+      if (result['stock'] != item.stock) {
+        final confirmed = await _showPasswordConfirmDialog(context);
+        if (!confirmed) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Stock override cancelled: incorrect password.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+      }
       await updateItemStock(context, item, result);
     }
   }
@@ -456,7 +547,22 @@ class InventoryPageState extends State<InventoryPage> {
             isSynced: const Value(false), // Mark for sync
           ),
         );
-        if (success) anySuccess = true;
+        if (success) {
+          anySuccess = true;
+
+          // Create an override audit record so the manual change is traceable
+          final requestId = await db.stockChangeRequestsDao.createChangeRequest(
+            franchiseeId: currentOrganizationId!,
+            itemId: item.id,
+            changeType: 'override',
+            quantity: newStock - item.stock, // positive = increase, negative = decrease
+            requestedBy: currentUserId!,
+            originalStock: item.stock,
+            reason: 'Manual stock override',
+          );
+          // Immediately approve so the record shows as audited
+          await db.stockChangeRequestsDao.submitChangeRequest(requestId);
+        }
       }
 
       // Step 3: Record sales via PosService (updates stock + daily summary + audit)
