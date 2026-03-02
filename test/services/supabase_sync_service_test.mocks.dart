@@ -4996,21 +4996,7 @@ class MockItemsDao extends _i1.Mock implements _i9.ItemsDao {
           )
           as _i15.Future<bool>);
 
-  @override
-  _i15.Future<bool> addSold(int? itemId, int? quantity) =>
-      (super.noSuchMethod(
-            Invocation.method(#addSold, [itemId, quantity]),
-            returnValue: _i15.Future<bool>.value(false),
-          )
-          as _i15.Future<bool>);
-
-  @override
-  _i15.Future<bool> addSpoilage(int? itemId, int? quantity) =>
-      (super.noSuchMethod(
-            Invocation.method(#addSpoilage, [itemId, quantity]),
-            returnValue: _i15.Future<bool>.value(false),
-          )
-          as _i15.Future<bool>);
+  // addSold() and addSpoilage() removed from ItemsDao — methods deleted.
 
   @override
   _i15.Future<bool> addStock(int? itemId, int? quantity) =>

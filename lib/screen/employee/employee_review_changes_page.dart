@@ -2,7 +2,6 @@ import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory/franchisee_inventory.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/app_globals.dart';
 
 class ReviewChangeDetailPage extends StatelessWidget {
   static List<ChangeRecord> records = [];
@@ -19,36 +18,11 @@ class ReviewChangeDetailPage extends StatelessWidget {
     this.onApprove,
   });
 
-  // ✅ NEW: Apply changes to database
+  // Stock changes are applied by PosService when the employee originally submitted.
+  // This method is intentionally a no-op — approval only marks the record as approved.
   Future<void> _applyChangesToDatabase() async {
-    final db = database;
-
-    // print('📊 Starting database update for ${record.items.length} items');
-
-    for (final item in record.items) {
-      // print(
-      //   '🔍 Item: ${item.name} (ID: ${item.id}, Sold: ${item.sold}, Spoilage: ${item.spoilage})',
-      // );
-
-      // Validate item ID
-      if (item.id <= 0) {
-        throw Exception('Invalid item ID (${item.id}) for ${item.name}');
-      }
-
-      // Add sold and deduct from stock
-      if (item.sold > 0) {
-        // print('  📉 Adding ${item.sold} sold units...');
-        await db.itemsDao.addSold(item.id, item.sold);
-      }
-
-      // Add spoilage and deduct from stock
-      if (item.spoilage > 0) {
-        // print('  📉 Adding ${item.spoilage} spoilage units...');
-        await db.itemsDao.addSpoilage(item.id, item.spoilage);
-      }
-    }
-
-    // print('✅ Database update completed successfully');
+    // No stock writes here: PosService already updated BranchItemStock and
+    // DailySalesSummary on submission. The franchisee approval is acknowledgement only.
   }
 
   @override
@@ -304,9 +278,9 @@ class ReviewChangeDetailPage extends StatelessWidget {
                           final confirmed = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: const Text('Approve and apply changes?'),
+                              title: const Text('Approve changes?'),
                               content: const Text(
-                                'This will update the inventory with sold/spoilage data and deduct from stock.',
+                                'Confirm approval of this change record. Stock was already updated when submitted.',
                               ),
                               actions: [
                                 TextButton(
@@ -343,7 +317,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Applying changes...'),
+                                content: Text('Approving...'),
                               ),
                             );
 
@@ -396,7 +370,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
                               // print('🔵 Popping navigation');
                               Navigator.of(context).pop();
                               // print('✅ Navigation popped successfully');
-                            } catch (e, stackTrace) {
+                            } catch (e) {
                               // print('❌ ERROR during approval: $e');
                               // print('❌ Stack trace: $stackTrace');
 

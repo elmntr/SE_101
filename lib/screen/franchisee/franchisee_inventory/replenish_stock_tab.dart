@@ -58,6 +58,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
       node.addListener(() => setState(() {}));
     }
     _syncAndLoadRequests();
+    _initializeRealtime(); 
   }
 
   Future<void> _initializeRealtime() async {
