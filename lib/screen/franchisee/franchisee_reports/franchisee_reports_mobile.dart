@@ -519,20 +519,42 @@ class _ReportsPageMobileState extends State<ReportsPageMobile> {
 
           final segmentPercent = totalValue > 0 ? value / totalValue : 0.0;
           final color = state.getItemColor(itemId);
+          
+          // Get item name for display
+          String itemName = 'Item';
+          if (state.allItems.isNotEmpty) {
+            final item = state.allItems.firstWhere(
+              (i) => i.id == itemId,
+              orElse: () => state.allItems.first,
+            );
+            itemName = item.name;
+          }
 
           segments.add(
             Flexible(
               flex: (segmentPercent * 1000).round().clamp(1, 1000),
               child: GestureDetector(
-                onTap: () => setState(() {
-                  if (_tappedIndex == bucketIndex && _tappedItemId == itemId) {
-                    _tappedIndex = null;
-                    _tappedItemId = null;
-                  } else {
-                    _tappedIndex = bucketIndex;
-                    _tappedItemId = itemId;
-                  }
-                }),
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  // Show snackbar with item info on tap
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('$itemName: ${value.toStringAsFixed(0)}'),
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  setState(() {
+                    if (_tappedIndex == bucketIndex && _tappedItemId == itemId) {
+                      _tappedIndex = null;
+                      _tappedItemId = null;
+                    } else {
+                      _tappedIndex = bucketIndex;
+                      _tappedItemId = itemId;
+                    }
+                  });
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   decoration: BoxDecoration(
@@ -559,45 +581,6 @@ class _ReportsPageMobileState extends State<ReportsPageMobile> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // Tooltip for stacked bar
-                AnimatedOpacity(
-                  opacity: (_tappedIndex == bucketIndex && _tappedItemId != null)
-                      ? 1.0
-                      : 0.0,
-                  duration: const Duration(milliseconds: 150),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Builder(
-                      builder: (context) {
-                        if (_tappedItemId == null || state.allItems.isEmpty) {
-                          return const SizedBox();
-                        }
-                        final item = state.allItems.firstWhere(
-                          (i) => i.id == _tappedItemId,
-                          orElse: () => state.allItems.first,
-                        );
-                        final itemData = stackedData[_tappedItemId]?[metric];
-                        final value = (itemData != null &&
-                                bucketIndex < itemData.length)
-                            ? itemData[bucketIndex]
-                            : 0.0;
-                        return Text(
-                          '${item.name}: ${value.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600),
-                        );
-                      },
-                    ),
-                  ),
-                ),
                 // Stacked bar
                 Flexible(
                   child: FractionallySizedBox(
