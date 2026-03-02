@@ -54,6 +54,15 @@ class ReportsPageState extends State<ReportsPage> {
   double get selectedDateSpoilage => controller.selectedDateSpoilage;
   bool get isLoading => controller.isLoading;
 
+  // New getters for stacked/grouped bar charts
+  Map<int, Map<String, List<double>>> get stackedChartData =>
+      controller.stackedChartData;
+  List<Map<String, dynamic>> get itemsDataForDate =>
+      controller.itemsDataForDate;
+  bool get shouldShowStackedBars => controller.shouldShowStackedBars;
+  bool get shouldShowGroupedBars => controller.shouldShowGroupedBars;
+  Color getItemColor(int itemId) => controller.getItemColor(itemId);
+
   List<String> get periods => controller.periods;
 
   double get displayTotalSold => controller.displayTotalSold;

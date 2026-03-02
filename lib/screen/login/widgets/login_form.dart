@@ -27,98 +27,71 @@ class LoginForm extends StatelessWidget {
     return Column(
       children: [
         Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
+          decoration: AppDecorations.inputField,
           child: TextField(
             controller: emailController,
             keyboardType: TextInputType.emailAddress,
-            style: const TextStyle(
-              fontFamily: fontAll,
-              fontSize: 18,
-              color: Colors.black,
-            ),
+            style: AppTextStyles.input,
             decoration: const InputDecoration(
               hintText: 'Email Address',
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 25,
-                vertical: 18,
-              ),
+              contentPadding: paddingInput,
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: spacing20),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
+            color: cardBackground,
+            borderRadius: BorderRadius.circular(radiusPill),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10),
+              BoxShadow(color: shadowColor.withValues(alpha: shadowOpacity), blurRadius: shadowBlurMedium),
             ],
           ),
           child: TextField(
             controller: passwordController,
             obscureText: !isPasswordVisible,
-            style: const TextStyle(
-              fontFamily: fontAll,
-              fontSize: 18,
-              color: Colors.black,
-            ),
+            style: AppTextStyles.input,
             decoration: InputDecoration(
               hintText: 'Password',
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 25,
-                vertical: 18,
-              ),
+              contentPadding: paddingInput,
               suffixIcon: IconButton(
                 icon: Icon(
                   isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.grey,
+                  color: textMuted,
                 ),
                 onPressed: onPasswordVisibilityToggle,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: spacing30),
         SizedBox(
           width: loginButtonWidth,
           child: ElevatedButton(
             onPressed: isSubmitting ? null : onLogin,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD62828),
+              backgroundColor: loginButtonRed,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: paddingVerticalXl,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(radiusLg),
               ),
-              elevation: 10,
+              elevation: elevationHigh,
             ),
             child: isSubmitting
                 ? const SizedBox(
-                    height: 20,
-                    width: 20,
+                    height: progressIndicatorSize,
+                    width: progressIndicatorSize,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2,
+                      strokeWidth: progressIndicatorStrokeWidth,
                       color: Colors.white,
                     ),
                   )
-                : const Text(
+                : Text(
                     'LOGIN',
-                    style: TextStyle(
-                      fontFamily: fontAll,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    style: AppTextStyles.button.copyWith(
                       letterSpacing: 1,
                     ),
                   ),

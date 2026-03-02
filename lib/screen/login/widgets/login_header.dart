@@ -13,19 +13,15 @@ class LoginHeader extends StatelessWidget {
           width: 300,
           child: Image.asset(imageAll, height: 80, fit: BoxFit.contain),
         ),
-        const SizedBox(height: 20),
-        const Text(
+        const SizedBox(height: spacing20),
+        Text(
           'Inventory System',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: fontAll,
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
+          style: AppTextStyles.header.copyWith(
             letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: spacing40),
       ],
     );
   }

@@ -6,6 +6,7 @@ import 'package:drift/drift.dart' show Value;
 import '../../../database/app_database.dart';
 import '../../database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/services/pos_service.dart';
 
@@ -317,16 +318,16 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     }
 
     return Container(
-      color: const Color(0xFFEEEEEE),
+      color: backgroundGrey,
       child: Column(
         children: [
           // Employee Info
           Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
+            margin: paddingAllLg,
+            padding: paddingAllLg,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              color: cardBackground,
+              borderRadius: BorderRadius.circular(radiusXl),
             ),
             child: Row(
               children: [
@@ -336,7 +337,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                     children: [
                       const Text(
                         'Employee Name:',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: textMuted),
                       ),
                       Text(
                         widget.userData.fullName ?? widget.userData.username,
@@ -580,24 +581,22 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: spacingXxl),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE30417),
+                      backgroundColor: actionButtonRed,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(radiusPill),
                       ),
                     ),
                     onPressed: _saveChanges,
-                    child: const Text(
+                    child: Text(
                       'SAVE CHANGES',
-                      style: TextStyle(
-                        fontSize: 18,
+                      style: AppTextStyles.button.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
