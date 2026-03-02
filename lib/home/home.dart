@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/screen/employee/employee_items/employee_items.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +41,9 @@ class HomeScreenState extends State<HomeScreen> {
   SyncStatus syncStatus = SyncStatus.synced;
   late ConnectivityService connectivityService;
   bool isOnline = true;
+  
+  // Stream subscription for proper cleanup
+  StreamSubscription<bool>? _connectivitySubscription;
 
   List<Map<String, dynamic>> menuItems = [];
   bool isLoadingRole = true;
@@ -51,11 +55,24 @@ class HomeScreenState extends State<HomeScreen> {
     
     // Connectivity service initialization
     connectivityService = ConnectivityService();
-    connectivityService.connectionStream.listen((status) {
-      setState(() {
-        isOnline = status;
-        syncStatus = SyncStatus.synced;
-      });
+    
+    // Use cached initial value
+    isOnline = connectivityService.isOnline;
+    
+    // Listen to connectivity changes - only setState if value changed
+    _connectivitySubscription = connectivityService.connectionStream.listen((status) {
+      if (!mounted) return;
+      
+      // Only rebuild if status actually changed
+      if (isOnline != status) {
+        setState(() {
+          isOnline = status;
+          // Only reset to synced if we came back online
+          if (status && syncStatus == SyncStatus.error) {
+            syncStatus = SyncStatus.synced;
+          }
+        });
+      }
     });
   }
 
@@ -63,15 +80,18 @@ class HomeScreenState extends State<HomeScreen> {
   Future<void> triggerManualSync() async {
     if (!isOnline || syncStatus == SyncStatus.syncing) return;
 
-    setState(() => syncStatus = SyncStatus.syncing);
+    // Only rebuild if status is changing
+    if (syncStatus != SyncStatus.syncing) {
+      setState(() => syncStatus = SyncStatus.syncing);
+    }
 
     try {
       await AppGlobals.instance.syncService.syncAll();
-      if (mounted) {
+      if (mounted && syncStatus != SyncStatus.synced) {
         setState(() => syncStatus = SyncStatus.synced);
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && syncStatus != SyncStatus.error) {
         setState(() => syncStatus = SyncStatus.error);
       }
     }
@@ -79,6 +99,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _connectivitySubscription?.cancel();
     connectivityService.dispose();
     super.dispose();
   }
