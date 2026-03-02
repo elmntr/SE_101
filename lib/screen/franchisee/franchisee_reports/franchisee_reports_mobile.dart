@@ -575,7 +575,9 @@ class _ReportsPageMobileState extends State<ReportsPageMobile> {
                     ),
                     child: Builder(
                       builder: (context) {
-                        if (_tappedItemId == null) return const SizedBox();
+                        if (_tappedItemId == null || state.allItems.isEmpty) {
+                          return const SizedBox();
+                        }
                         final item = state.allItems.firstWhere(
                           (i) => i.id == _tappedItemId,
                           orElse: () => state.allItems.first,
