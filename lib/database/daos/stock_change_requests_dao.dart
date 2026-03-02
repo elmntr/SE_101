@@ -658,55 +658,68 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
-          // Add null safety checks for required integer fields
-          final id = cloudReq['localId'] ?? cloudReq['local_id'];
           final franchiseeId = cloudReq['franchiseeId'] ?? cloudReq['franchisee_id'];
           final itemId = cloudReq['itemId'] ?? cloudReq['item_id'];
           final quantity = cloudReq['quantity'];
           final requestedBy = cloudReq['requestedBy'] ?? cloudReq['requested_by'];
           final originalStock = cloudReq['originalStock'] ?? cloudReq['original_stock'];
+          final cloudId = cloudReq['cloudId'] ?? cloudReq['cloud_id'];
           
-          // Skip invalid records where required integer fields are null
-          if (id == null || franchiseeId == null || itemId == null || 
-              quantity == null || requestedBy == null || originalStock == null) {
-            AppLogger.sync('⚠️ Skipping stock_change_requests record: Required integer field is null');
+          // Skip invalid records where required fields are null
+          if (franchiseeId == null || itemId == null || 
+              quantity == null || requestedBy == null || originalStock == null || cloudId == null) {
+            AppLogger.sync('⚠️ Skipping stock_change_requests record: Required field is null');
             continue;
           }
 
-          await upsertFromCloud(
-            id: id as int,
-            franchiseeId: franchiseeId as int,
-            itemId: itemId as int,
-            changeType: cloudReq['changeType'] ?? cloudReq['change_type'],
-            quantity: quantity as int,
-            status: cloudReq['status'],
-            requestedBy: requestedBy as int,
-            requestedAt: _parseDateTime(
+          // Look up by cloudId to decide insert vs update
+          final existing = await getChangeRequestByCloudId(cloudId as String);
+          
+          final companion = StockChangeRequestsCompanion(
+            franchiseeId: Value(franchiseeId as int),
+            itemId: Value(itemId as int),
+            changeType: Value(cloudReq['changeType'] ?? cloudReq['change_type'] ?? 'sold'),
+            quantity: Value(quantity as int),
+            status: Value(cloudReq['status'] ?? 'approved'),
+            requestedBy: Value(requestedBy as int),
+            requestedAt: Value(_parseDateTime(
               cloudReq['requestedAt'] ?? cloudReq['requested_at'],
-            ),
-            submittedAt: _parseDateTimeNullable(
+            )),
+            submittedAt: Value(_parseDateTimeNullable(
               cloudReq['submittedAt'] ?? cloudReq['submitted_at'],
-            ),
-            reviewedBy: cloudReq['reviewedBy'] ?? cloudReq['reviewed_by'],
-            reviewedAt: _parseDateTimeNullable(
+            )),
+            reviewedBy: Value(cloudReq['reviewedBy'] ?? cloudReq['reviewed_by']),
+            reviewedAt: Value(_parseDateTimeNullable(
               cloudReq['reviewedAt'] ?? cloudReq['reviewed_at'],
-            ),
-            reason: cloudReq['reason'],
-            reviewNotes: cloudReq['reviewNotes'] ?? cloudReq['review_notes'],
-            originalStock: originalStock as int,
-            createdAt: _parseDateTime(
+            )),
+            reason: Value(cloudReq['reason']),
+            reviewNotes: Value(cloudReq['reviewNotes'] ?? cloudReq['reviewerNotes'] ?? cloudReq['review_notes']),
+            originalStock: Value(originalStock as int),
+            createdAt: Value(_parseDateTime(
               cloudReq['createdAt'] ?? cloudReq['created_at'],
-            ),
-            lastUpdated: _parseDateTime(
+            )),
+            lastUpdated: Value(_parseDateTime(
               cloudReq['lastUpdated'] ?? cloudReq['last_updated'],
-            ),
-            isDeleted: cloudReq['isDeleted'] ?? cloudReq['is_deleted'] ?? false,
-            cloudId: cloudReq['cloudId'] ?? cloudReq['cloud_id'],
+            )),
+            isDeleted: Value(cloudReq['isDeleted'] ?? cloudReq['is_deleted'] ?? false),
+            isSynced: const Value(true),
+            cloudId: Value(cloudId),
           );
+
+          if (existing != null) {
+            // Update existing record
+            await (update(stockChangeRequests)
+                  ..where((t) => t.id.equals(existing.id)))
+                .write(companion);
+          } else {
+            // Insert new record (auto-increment id)
+            await into(stockChangeRequests).insert(
+              companion.copyWith(id: const Value.absent()),
+            );
+          }
         }
       });
     } catch (e) {
-      //print('❌ Error batch upserting change requests from cloud: $e');
       rethrow;
     }
   }

@@ -573,15 +573,77 @@ class SupabaseSyncServiceV2 {
   }
 
   Future<void> _syncBranchIngredientStock() async {
-    // Implementation using engine.pushTable/pullTable
-    // Similar pattern to above
     AppLogger.sync('   📊 Syncing BranchIngredientStock...');
-    // TODO: Implement using generic pattern
+
+    await _engine.pushTable(
+      descriptor: branchIngredientStockDescriptor,
+      getUnsyncedRecords: ({int limit = 100, int offset = 0}) =>
+          db.branchIngredientStockDao.getUnsyncedStocks(limit: limit, offset: offset),
+      markAsSynced: (ids, {cloudIds}) =>
+          db.branchIngredientStockDao.markAsSynced(ids, cloudIds: cloudIds),
+      toMap: (stock) => {
+        'id': stock.id,
+        'organizationId': stock.organizationId,
+        'ingredientId': stock.ingredientId,
+        'stock': stock.quantity,
+        'spoilage': 0,
+        'minimumStock': stock.minimumStock,
+        'createdAt': stock.createdAt,
+        'lastUpdated': stock.lastUpdated,
+      },
+      getId: (stock) => stock.id,
+      getCloudId: (stock) => stock.cloudId,
+      shouldSkip: (stock) => false,
+    );
+
+    await _engine.pullTable(
+      descriptor: branchIngredientStockDescriptor,
+      upsertBatchFromCloud: (records) =>
+          db.branchIngredientStockDao.upsertBatchFromCloud(records),
+      getByCloudId: (cloudId) =>
+          db.branchIngredientStockDao.getByCloudId(cloudId),
+      getLastUpdated: (stock) => stock.lastUpdated,
+      getOrganizationId: (stock) => stock.organizationId,
+    );
   }
 
   Future<void> _syncBranchItemStock() async {
     AppLogger.sync('   📊 Syncing BranchItemStock...');
-    // TODO: Implement using generic pattern
+
+    await _engine.pushTable(
+      descriptor: branchItemStockDescriptor,
+      getUnsyncedRecords: ({int limit = 100, int offset = 0}) =>
+          db.branchItemStockDao.getUnsyncedStock(limit: limit, offset: offset),
+      markAsSynced: (ids, {cloudIds}) =>
+          db.branchItemStockDao.markAsSynced(ids, cloudIds: cloudIds),
+      toMap: (stock) => {
+        'id': stock.id,
+        'organizationId': stock.organizationId,
+        'itemId': stock.itemId,
+        'stock': stock.stock,
+        'sold': stock.sold,
+        'spoilage': stock.spoilage,
+        'price': stock.price,
+        'costPrice': stock.costPrice,
+        'minimumStock': stock.minimumStock,
+        'isDeleted': stock.isDeleted,
+        'createdAt': stock.createdAt,
+        'lastUpdated': stock.lastUpdated,
+      },
+      getId: (stock) => stock.id,
+      getCloudId: (stock) => stock.cloudId,
+      shouldSkip: (stock) => stock.isDeleted,
+    );
+
+    await _engine.pullTable(
+      descriptor: branchItemStockDescriptor,
+      upsertBatchFromCloud: (records) =>
+          db.branchItemStockDao.upsertBatchFromCloud(records),
+      getByCloudId: (cloudId) =>
+          db.branchItemStockDao.getByCloudId(cloudId),
+      getLastUpdated: (stock) => stock.lastUpdated,
+      getOrganizationId: (stock) => stock.organizationId,
+    );
   }
 
   Future<void> _syncReplenishmentRequests() async {
@@ -923,6 +985,8 @@ class SupabaseSyncServiceV2 {
         db.stockReplenishmentRequestsDao.getUnsyncedRequestCount(),
         db.stockChangeRequestsDao.getUnsyncedChangeRequestCount(),
         db.syncConflictsDao.getUnresolvedConflictCount(organizationId: _currentOrganizationId),
+        db.branchItemStockDao.getUnsyncedStock().then((l) => l.length),
+        db.dailySalesSummaryDao.getUnsyncedSummaries().then((l) => l.length),
       ]);
 
       return {
@@ -935,7 +999,9 @@ class SupabaseSyncServiceV2 {
         'unsynced_replenishment_requests': counts[6],
         'unsynced_change_requests': counts[7],
         'unresolved_conflicts': counts[8],
-        'total_unsynced': counts.sublist(0, 8).fold(0, (sum, c) => sum + c),
+        'unsynced_branch_item_stock': counts[9],
+        'unsynced_daily_sales': counts[10],
+        'total_unsynced': counts.sublist(0, 8).fold(0, (sum, c) => sum + c) + counts[9] + counts[10],
         'is_syncing': _isSyncing,
         'is_online': _isOnline,
         'last_sync': _engine.lastSuccessfulSync?.toIso8601String() ?? 'Never',
