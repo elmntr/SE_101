@@ -1,5 +1,6 @@
 // lib/services/search_service.dart
 import 'package:flutter/material.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
 
 /// A universal search service that provides search functionality across different
 /// screens and data types in the application.
@@ -275,7 +276,7 @@ class SearchService {
           style:
               highlightStyle ??
               const TextStyle(
-                backgroundColor: Colors.yellow,
+                backgroundColor: searchHighlight,
                 fontWeight: FontWeight.bold,
               ),
         ),
@@ -400,25 +401,15 @@ class UniversalSearchBar extends StatelessWidget {
       padding: contentPadding,
       decoration:
           decoration ??
-          BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(25),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
+          AppDecorations.searchBar,
       child: TextField(
         controller: controller,
         autofocus: autofocus,
         style: textStyle,
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: hintStyle ?? const TextStyle(color: Colors.grey),
-          icon: prefix ?? Icon(prefixIcon, color: Colors.grey),
+          hintStyle: hintStyle ?? const TextStyle(color: textMuted),
+          icon: prefix ?? Icon(prefixIcon, color: textMuted),
           border: InputBorder.none,
           suffixIcon: _buildSuffixIcon(),
         ),
@@ -437,7 +428,7 @@ class UniversalSearchBar extends StatelessWidget {
         builder: (context, value, child) {
           if (value.text.isEmpty) return const SizedBox.shrink();
           return IconButton(
-            icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+            icon: const Icon(Icons.clear, color: textMuted, size: iconSizeMd),
             onPressed: () {
               controller.clear();
               onSearch?.call('');

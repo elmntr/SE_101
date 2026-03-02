@@ -22,7 +22,7 @@ class LoginScaffoldDesktop extends StatelessWidget {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Container(
-        decoration: const BoxDecoration(color: Color(0xFFEF4848)),
+        decoration: AppDecorations.primaryBackground,
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(

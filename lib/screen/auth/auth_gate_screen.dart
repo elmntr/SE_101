@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 
 /// Auth gate screen that waits for auth bootstrap completion
@@ -79,26 +80,19 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFEF4848), Color(0xFFD32F2F)],
-          ),
-        ),
-        child: const Center(
+        decoration: AppDecorations.primaryGradient,
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(
+              const CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: spacing24),
               Text(
                 'Loading...',
-                style: TextStyle(
+                style: AppTextStyles.body.copyWith(
                   color: Colors.white,
-                  fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
               ),

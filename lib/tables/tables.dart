@@ -13,14 +13,14 @@ Widget emptyTables({
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(message, style: const TextStyle(color: Colors.black54)),
+        Text(message, style: const TextStyle(color: textSecondary)),
         if (buttonType != EmptyButtonType.none && onAddPressed != null) ...[
-          const SizedBox(height: 5),
+          const SizedBox(height: spacingXs),
 
           /// ✅ ICON BUTTON (Add / Plus)
           if (buttonType == EmptyButtonType.icon)
             IconButton(
-              icon: const Icon(Icons.add_circle, color: colorAll, size: 40),
+              icon: const Icon(Icons.add_circle, color: colorAll, size: iconSizeXxl),
               onPressed: onAddPressed,
             ),
 
@@ -28,11 +28,8 @@ Widget emptyTables({
           if (buttonType == EmptyButtonType.elevated)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 25,
-                  vertical: 12,
-                ),
+                backgroundColor: statusError,
+                padding: paddingButton,
               ),
               onPressed: onAddPressed,
               child: Text(
@@ -65,7 +62,7 @@ Widget buildUniversalTable({
             maxLines: null,
             softWrap: true,
             overflow: TextOverflow.fade,
-            style: const TextStyle(color: Colors.red),
+            style: const TextStyle(color: colorAll),
           ),
         );
       }

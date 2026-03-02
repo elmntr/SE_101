@@ -1,6 +1,7 @@
 // lib/widgets/realtime_status_indicator.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../design_constants.dart';
 import '../services/realtime_stock_request_service.dart';
 
 /// Widget that displays the realtime WebSocket connection status.
@@ -72,14 +73,14 @@ class _RealtimeStatusIndicatorState extends State<RealtimeStatusIndicator>
   Color _statusColor() {
     switch (_status) {
       case RealtimeConnectionStatus.connected:
-        return Colors.green;
+        return statusConnected;
       case RealtimeConnectionStatus.connecting:
       case RealtimeConnectionStatus.reconnecting:
-        return Colors.orange;
+        return statusReconnecting;
       case RealtimeConnectionStatus.polling:
-        return Colors.blue;
+        return statusPolling;
       case RealtimeConnectionStatus.disconnected:
-        return Colors.red;
+        return statusDisconnected;
     }
   }
 
@@ -157,10 +158,10 @@ class _RealtimeStatusIndicatorState extends State<RealtimeStatusIndicator>
         child: GestureDetector(
           onTap: widget.onTap,
           child: Container(
-            padding: const EdgeInsets.all(4),
+            padding: paddingAllXs,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(radiusXs),
             ),
             child: icon,
           ),
@@ -173,21 +174,21 @@ class _RealtimeStatusIndicatorState extends State<RealtimeStatusIndicator>
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: paddingStatusBadge,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.3)),
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(radiusXl),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               icon,
-              const SizedBox(width: 6),
+              const SizedBox(width: spacingSm),
               Text(
                 _statusText(),
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: fontSizeSmall,
                   fontWeight: FontWeight.w600,
                   color: color,
                   letterSpacing: 0.5,

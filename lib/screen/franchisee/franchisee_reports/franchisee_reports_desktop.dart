@@ -13,11 +13,36 @@ class ReportsPageDesktop extends StatefulWidget {
 
 class _ReportsPageDesktopState extends State<ReportsPageDesktop> {
   int? _hoveredIndex;
+  int? _hoveredItemId; // For stacked bars - which item segment is hovered
 
   String _formatAxisValue(double value) {
     if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
     if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
     return value.toStringAsFixed(0);
+  }
+
+  /// Calculate max value based on chart mode
+  double _calculateMaxValue() {
+    final state = widget.state;
+    final metric = state.selectedMetric;
+
+    if (state.shouldShowGroupedBars) {
+      // For grouped bars, find max among individual items
+      if (state.itemsDataForDate.isEmpty) return 1.0;
+      return state.itemsDataForDate
+          .map((item) => (item[metric] as double))
+          .reduce((a, b) => a > b ? a : b);
+    } else if (state.shouldShowStackedBars) {
+      // For stacked bars, max is the sum of all items for each bucket
+      final data = state.chartData[metric] ?? [];
+      if (data.isEmpty) return 1.0;
+      return data.reduce((a, b) => a > b ? a : b);
+    } else {
+      // Single item mode - use aggregated data
+      final data = state.chartData[metric] ?? [];
+      if (data.isEmpty) return 1.0;
+      return data.reduce((a, b) => a > b ? a : b);
+    }
   }
 
   @override
@@ -26,8 +51,7 @@ class _ReportsPageDesktopState extends State<ReportsPageDesktop> {
     final labels = state.getChartLabels();
     final data = state.chartData[state.selectedMetric] ??
         List<double>.filled(labels.isEmpty ? 1 : labels.length, 0.0);
-    final maxValue =
-        data.isEmpty ? 1.0 : data.reduce((a, b) => a > b ? a : b);
+    final maxValue = _calculateMaxValue();
 
     return Scaffold(
       backgroundColor: Colors.grey.shade200,
@@ -43,10 +67,20 @@ class _ReportsPageDesktopState extends State<ReportsPageDesktop> {
                   'Reports',
                   style: TextStyle(fontSize: 30, fontFamily: fontAll),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined),
-                  iconSize: 35,
-                  onPressed: () {},
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      iconSize: 28,
+                      tooltip: 'Refresh from cloud',
+                      onPressed: () => state.loadData(),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      iconSize: 35,
+                      onPressed: () {},
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -280,200 +314,7 @@ class _ReportsPageDesktopState extends State<ReportsPageDesktop> {
 
                     // ── Chart ───────────────────────────────────────────────
                     Expanded(
-                      child: data.isEmpty || labels.isEmpty
-                          ? const Center(child: Text('No data available'))
-                          : Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                // Rotated axis title
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                      right: 4, bottom: 24),
-                                  child: RotatedBox(
-                                    quarterTurns: 3,
-                                    child: Text(
-                                      'Stock Amount',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600]),
-                                    ),
-                                  ),
-                                ),
-
-                                // ── Y-axis numbers ──────────────────────────
-                                // Width is fixed; bottom padding accounts for
-                                // SizedBox(8) + x-label row (~16 px) = 24 px.
-                                SizedBox(
-                                  width: 42,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        right: 6, bottom: 24),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: List.generate(5, (i) {
-                                        // i=0 → max, i=4 → 0
-                                        final val = maxValue * (4 - i) / 4;
-                                        return Text(
-                                          _formatAxisValue(val),
-                                          style: TextStyle(
-                                              fontSize: 10,
-                                              color: Colors.grey[600]),
-                                        );
-                                      }),
-                                    ),
-                                  ),
-                                ),
-
-                                // ── Bars + x-labels ─────────────────────────
-                                Expanded(
-                                  child: Column(
-                                    children: [
-                                      Expanded(
-                                        child: Row(
-                                          // stretch so each Expanded child fills
-                                          // the full column height, enabling
-                                          // the inner Column layout for tooltips.
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceEvenly,
-                                          children: List.generate(data.length,
-                                              (index) {
-                                            final value = data[index];
-                                            final heightPercent = maxValue > 0
-                                                ? (value / maxValue)
-                                                    .clamp(0.0, 1.0)
-                                                : 0.0;
-
-                                            return Expanded(
-                                              child: MouseRegion(
-                                                onEnter: (_) => setState(() =>
-                                                    _hoveredIndex = index),
-                                                onExit: (_) => setState(
-                                                    () => _hoveredIndex = null),
-                                                child: Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(horizontal: 4),
-                                                  child: Column(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment.end,
-                                                    children: [
-                                                      // Tooltip — kept in the
-                                                      // layout at all times
-                                                      // (opacity 0 when not
-                                                      // hovered) so bar heights
-                                                      // stay consistent.
-                                                      AnimatedOpacity(
-                                                        opacity: _hoveredIndex ==
-                                                                index
-                                                            ? 1.0
-                                                            : 0.0,
-                                                        duration: const Duration(
-                                                            milliseconds: 120),
-                                                        child: Container(
-                                                          margin: const EdgeInsets
-                                                              .only(bottom: 4),
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  horizontal: 7,
-                                                                  vertical: 3),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color:
-                                                                Colors.black87,
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        5),
-                                                          ),
-                                                          child: Text(
-                                                            value
-                                                                .toStringAsFixed(
-                                                                    0),
-                                                            style: const TextStyle(
-                                                                color: Colors
-                                                                    .white,
-                                                                fontSize: 11,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      // Bar
-                                                      Flexible(
-                                                        child:
-                                                            FractionallySizedBox(
-                                                          heightFactor:
-                                                              heightPercent <
-                                                                      0.01
-                                                                  ? 0.01
-                                                                  : heightPercent,
-                                                          alignment: Alignment
-                                                              .bottomCenter,
-                                                          child:
-                                                              AnimatedContainer(
-                                                            duration: const Duration(
-                                                                milliseconds:
-                                                                    120),
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              color: _hoveredIndex ==
-                                                                      index
-                                                                  ? Colors.red
-                                                                      .shade700
-                                                                  : Colors.red,
-                                                              borderRadius:
-                                                                  const BorderRadius
-                                                                      .vertical(
-                                                                top: Radius
-                                                                    .circular(
-                                                                        2),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          }),
-                                        ),
-                                      ),
-
-                                      const SizedBox(height: 8),
-
-                                      // X-axis labels
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        children: labels
-                                            .map(
-                                              (label) => Expanded(
-                                                child: Text(
-                                                  label,
-                                                  textAlign: TextAlign.center,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                      fontSize: 11,
-                                                      color: Colors.grey[600]),
-                                                ),
-                                              ),
-                                            )
-                                            .toList(),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                      child: _buildChart(state, labels, data, maxValue),
                     ),
                   ],
                 ),
@@ -483,5 +324,399 @@ class _ReportsPageDesktopState extends State<ReportsPageDesktop> {
         ),
       ),
     );
+  }
+
+  /// Build the appropriate chart based on the current mode
+  Widget _buildChart(ReportsPageState state, List<String> labels,
+      List<double> data, double maxValue) {
+    // Check for no data
+    if (state.shouldShowGroupedBars) {
+      if (state.itemsDataForDate.isEmpty) {
+        return const Center(child: Text('No data available'));
+      }
+    } else if (data.isEmpty || labels.isEmpty) {
+      return const Center(child: Text('No data available'));
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Rotated axis title
+        Padding(
+          padding: const EdgeInsets.only(right: 4, bottom: 24),
+          child: RotatedBox(
+            quarterTurns: 3,
+            child: Text(
+              'Stock Amount',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          ),
+        ),
+
+        // Y-axis numbers
+        SizedBox(
+          width: 42,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 6, bottom: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: List.generate(5, (i) {
+                final val = maxValue * (4 - i) / 4;
+                return Text(
+                  _formatAxisValue(val),
+                  style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                );
+              }),
+            ),
+          ),
+        ),
+
+        // Bars + x-labels
+        Expanded(
+          child: Column(
+            children: [
+              Expanded(
+                child: _buildBars(state, labels, data, maxValue),
+              ),
+              const SizedBox(height: 8),
+              _buildXAxisLabels(state, labels),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build the bar section based on chart mode
+  Widget _buildBars(ReportsPageState state, List<String> labels,
+      List<double> data, double maxValue) {
+    if (state.shouldShowGroupedBars) {
+      // Grouped bars: specific date + All Items
+      return _buildGroupedBars(state, maxValue);
+    } else if (state.shouldShowStackedBars) {
+      // Stacked bars: date range + All Items
+      return _buildStackedBars(state, labels, maxValue);
+    } else {
+      // Simple bars: specific item selected
+      return _buildSimpleBars(state, data, maxValue);
+    }
+  }
+
+  /// Build simple bars (single item mode)
+  Widget _buildSimpleBars(
+      ReportsPageState state, List<double> data, double maxValue) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: List.generate(data.length, (index) {
+        final value = data[index];
+        final heightPercent =
+            maxValue > 0 ? (value / maxValue).clamp(0.0, 1.0) : 0.0;
+
+        return Expanded(
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _hoveredIndex = index),
+            onExit: (_) => setState(() => _hoveredIndex = null),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Tooltip
+                  AnimatedOpacity(
+                    opacity: _hoveredIndex == index ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 120),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        value.toStringAsFixed(0),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  // Bar
+                  Flexible(
+                    child: FractionallySizedBox(
+                      heightFactor: heightPercent < 0.01 ? 0.01 : heightPercent,
+                      alignment: Alignment.bottomCenter,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        decoration: BoxDecoration(
+                          color: _hoveredIndex == index
+                              ? Colors.red.shade700
+                              : Colors.red,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  /// Build stacked bars (All Items + date range mode)
+  Widget _buildStackedBars(
+      ReportsPageState state, List<String> labels, double maxValue) {
+    final metric = state.selectedMetric;
+    final stackedData = state.stackedChartData;
+    final aggregatedData = state.chartData[metric] ?? [];
+
+    // Get list of item IDs that have data
+    final itemIds = stackedData.keys.toList();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: List.generate(labels.length, (bucketIndex) {
+        final totalValue =
+            bucketIndex < aggregatedData.length ? aggregatedData[bucketIndex] : 0.0;
+        final heightPercent =
+            maxValue > 0 ? (totalValue / maxValue).clamp(0.0, 1.0) : 0.0;
+
+        // Build stacked segments for this bucket
+        final segments = <Widget>[];
+        for (final itemId in itemIds) {
+          final itemData = stackedData[itemId]?[metric];
+          if (itemData == null || bucketIndex >= itemData.length) continue;
+          final value = itemData[bucketIndex];
+          if (value <= 0) continue;
+
+          final segmentPercent = totalValue > 0 ? value / totalValue : 0.0;
+          final color = state.getItemColor(itemId);
+
+          segments.add(
+            Flexible(
+              flex: (segmentPercent * 1000).round().clamp(1, 1000),
+              child: MouseRegion(
+                onEnter: (_) => setState(() {
+                  _hoveredIndex = bucketIndex;
+                  _hoveredItemId = itemId;
+                }),
+                onExit: (_) => setState(() {
+                  _hoveredIndex = null;
+                  _hoveredItemId = null;
+                }),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  decoration: BoxDecoration(
+                    color: (_hoveredIndex == bucketIndex &&
+                            _hoveredItemId == itemId)
+                        ? Color.lerp(color, Colors.black, 0.2)
+                        : color,
+                    borderRadius: segments.isEmpty
+                        ? const BorderRadius.vertical(top: Radius.circular(2))
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        // Reverse segments so first item is at bottom
+        final reversedSegments = segments.reversed.toList();
+
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Tooltip for stacked bar
+                AnimatedOpacity(
+                  opacity: (_hoveredIndex == bucketIndex && _hoveredItemId != null)
+                      ? 1.0
+                      : 0.0,
+                  duration: const Duration(milliseconds: 120),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Builder(
+                      builder: (context) {
+                        if (_hoveredItemId == null) return const SizedBox();
+                        final item = state.allItems.firstWhere(
+                          (i) => i.id == _hoveredItemId,
+                          orElse: () => state.allItems.first,
+                        );
+                        final itemData = stackedData[_hoveredItemId]?[metric];
+                        final value = (itemData != null &&
+                                bucketIndex < itemData.length)
+                            ? itemData[bucketIndex]
+                            : 0.0;
+                        return Text(
+                          '${item.name}: ${value.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                // Stacked bar
+                Flexible(
+                  child: FractionallySizedBox(
+                    heightFactor: heightPercent < 0.01 ? 0.01 : heightPercent,
+                    alignment: Alignment.bottomCenter,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: reversedSegments.isEmpty
+                          ? [
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade300,
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(2),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ]
+                          : reversedSegments,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  /// Build grouped bars (All Items + specific date mode)
+  Widget _buildGroupedBars(ReportsPageState state, double maxValue) {
+    final metric = state.selectedMetric;
+    final items = state.itemsDataForDate;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: List.generate(items.length, (index) {
+        final itemData = items[index];
+        final value = itemData[metric] as double;
+        final itemName = itemData['itemName'] as String;
+        final itemId = itemData['itemId'] as int;
+        final heightPercent =
+            maxValue > 0 ? (value / maxValue).clamp(0.0, 1.0) : 0.0;
+        final color = state.getItemColor(itemId);
+
+        return Expanded(
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _hoveredIndex = index),
+            onExit: (_) => setState(() => _hoveredIndex = null),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Tooltip with item name and value
+                  AnimatedOpacity(
+                    opacity: _hoveredIndex == index ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 120),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        '$itemName: ${value.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  // Bar with item color
+                  Flexible(
+                    child: FractionallySizedBox(
+                      heightFactor: heightPercent < 0.01 ? 0.01 : heightPercent,
+                      alignment: Alignment.bottomCenter,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        decoration: BoxDecoration(
+                          color: _hoveredIndex == index
+                              ? Color.lerp(color, Colors.black, 0.2)
+                              : color,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  /// Build X-axis labels based on chart mode
+  Widget _buildXAxisLabels(ReportsPageState state, List<String> labels) {
+    if (state.shouldShowGroupedBars) {
+      // For grouped bars, show item names
+      final items = state.itemsDataForDate;
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: items.map((item) {
+          return Expanded(
+            child: Text(
+              item['itemName'] as String,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            ),
+          );
+        }).toList(),
+      );
+    } else {
+      // For stacked and simple bars, show date labels
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: labels
+            .map(
+              (label) => Expanded(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ),
+            )
+            .toList(),
+      );
+    }
   }
 }

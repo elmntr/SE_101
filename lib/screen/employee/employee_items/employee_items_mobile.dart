@@ -188,16 +188,14 @@ class EmployeeItemsPageMobile extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 20),
               child: FloatingActionButton.extended(
                 onPressed: state.showChangeStockDialog,
-                backgroundColor: const Color(0xFFE30417),
-                elevation: 8,
+                backgroundColor: actionButtonRed,
+                elevation: elevationMedium,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(radiusPill),
                 ),
-                label: const Text(
+                label: Text(
                   'Change Stock',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  style: AppTextStyles.button.copyWith(
                     color: Colors.white,
                   ),
                 ),

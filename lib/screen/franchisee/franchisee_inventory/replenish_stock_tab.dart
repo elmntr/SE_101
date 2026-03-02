@@ -537,35 +537,35 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
                   ),
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: spacingXl),
 
                 // Submit button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE30417),
+                      backgroundColor: actionButtonRed,
                       padding: EdgeInsets.symmetric(
                         vertical: isMobile ? 14 : 16,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(radiusMd),
                       ),
                     ),
                     onPressed: isSubmitting ? null : _submitRequests,
                     child: isSubmitting
                         ? const SizedBox(
-                            height: 20,
-                            width: 20,
+                            height: progressIndicatorSize,
+                            width: progressIndicatorSize,
                             child: CircularProgressIndicator(
                               color: Colors.white,
-                              strokeWidth: 2,
+                              strokeWidth: progressIndicatorStrokeWidth,
                             ),
                           )
                         : Text(
                             'SUBMIT REQUEST',
                             style: TextStyle(
-                              fontSize: isMobile ? 14 : 16,
+                              fontSize: isMobile ? fontSizeSubtitle : fontSizeBody,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -573,7 +573,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: spacing20),
 
                 // Existing requests section with refresh button and realtime indicator
                 Row(
@@ -584,7 +584,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
                         Text(
                           'Recent Requests',
                           style: TextStyle(
-                            fontSize: isMobile ? 16 : 18,
+                            fontSize: isMobile ? fontSizeBody : fontSizeButton,
                             fontWeight: FontWeight.bold,
                             fontFamily: fontAll,
                           ),

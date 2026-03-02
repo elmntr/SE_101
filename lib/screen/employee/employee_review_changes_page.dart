@@ -259,7 +259,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
+                                    backgroundColor: statusError,
                                   ),
                                   onPressed: () => Navigator.pop(ctx, true),
                                   child: const Text('Yes'),
@@ -288,14 +288,14 @@ class ReviewChangeDetailPage extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: spacingXl),
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A8F1A),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: approveGreen,
+                          padding: paddingVerticalLg,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(radiusPill),
                           ),
                         ),
                         onPressed: () async {
