@@ -13,6 +13,8 @@ import 'franchisee_inventory_mobile.dart';
 import 'franchisee_inventory_desktop.dart';
 import 'replenish_stock_tab.dart';
 
+import 'package:chickenjoo_inventory/services/pos_service.dart';
+
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
 
@@ -25,6 +27,7 @@ class InventoryPage extends StatefulWidget {
 
 class InventoryPageState extends State<InventoryPage> {
   late AppDatabase db;
+  late PosService posService;
 
   /// Items with branch-specific stock data
   List<ItemWithBranchStock> items = [];
@@ -92,6 +95,7 @@ class InventoryPageState extends State<InventoryPage> {
   void initState() {
     super.initState();
     db = database;
+    posService = PosService(db: db);
     loadData();
 
     // ✅ FIX: Listen to sync completion to refresh data
@@ -299,8 +303,11 @@ class InventoryPageState extends State<InventoryPage> {
     final TextEditingController stockController = TextEditingController(
       text: item.stock.toString(),
     );
+    final TextEditingController soldController = TextEditingController(
+      text: '0', // How many sold this session
+    );
     final TextEditingController spoilageController = TextEditingController(
-      text: item.spoilage.toString(),
+      text: '0', // How many spoiled this session
     );
 
     final result = await showDialog<Map<String, int>?>(
@@ -318,17 +325,26 @@ class InventoryPageState extends State<InventoryPage> {
               controller: stockController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: 'Stock Quantity',
+                labelText: 'Stock Quantity (manual override)',
                 border: OutlineInputBorder(),
               ),
               autofocus: true,
             ),
             const SizedBox(height: 16),
             TextField(
+              controller: soldController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Qty Sold (this session)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
               controller: spoilageController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: 'Spoilage',
+                labelText: 'Qty Spoiled (this session)',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -343,9 +359,16 @@ class InventoryPageState extends State<InventoryPage> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               final newStock = int.tryParse(stockController.text.trim());
+              final newSold = int.tryParse(soldController.text.trim());
               final newSpoilage = int.tryParse(spoilageController.text.trim());
-              if (newStock != null && newStock >= 0 && newSpoilage != null && newSpoilage >= 0) {
-                Navigator.pop(context, {'stock': newStock, 'spoilage': newSpoilage});
+              if (newStock != null && newStock >= 0 &&
+                  newSold != null && newSold >= 0 &&
+                  newSpoilage != null && newSpoilage >= 0) {
+                Navigator.pop(context, {
+                  'stock': newStock,
+                  'sold': newSold,
+                  'spoilage': newSpoilage,
+                });
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -373,8 +396,9 @@ class InventoryPageState extends State<InventoryPage> {
     Map<String, int> values,
   ) async {
     final newStock = values['stock']!;
-    final newSpoilage = values['spoilage']!;
-    
+    final soldQty = values['sold'] ?? 0;
+    final spoilageQty = values['spoilage'] ?? 0;
+
     if (currentOrganizationId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -385,56 +409,124 @@ class InventoryPageState extends State<InventoryPage> {
       return;
     }
 
-    try {
-      if (item.hasBranchStock && item.branchStockId != null) {
-        // Update existing branch stock record
-        final success = await db.branchItemStockDao.updateStock(
-          item.branchStockId!,
-          BranchItemStockCompanion(
-            stock: Value(newStock),
-            spoilage: Value(newSpoilage),
-          ),
-        );
+    if (currentUserId == null || currentUserId! <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Could not identify current user.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
-        if (success) {
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ Updated ${item.name}: Stock=$newStock, Spoilage=$newSpoilage'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          await loadData();
-        } else {
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error: Could not update item.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } else {
-        // Create new branch stock record
+    try {
+      // Step 1: Ensure branch stock record exists before using PosService
+      if (!item.hasBranchStock || item.branchStockId == null) {
         await db.branchItemStockDao.createStock(
           BranchItemStockCompanion(
             organizationId: Value(currentOrganizationId!),
             itemId: Value(item.id),
             stock: Value(newStock),
             sold: const Value(0),
-            spoilage: Value(newSpoilage),
+            spoilage: const Value(0),
             isSynced: const Value(false),
           ),
         );
+        // Reload items to get the new branchStockId
+        await loadData();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Created stock record for ${item.name}. Please re-edit to record sales/spoilage.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        return;
+      }
 
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ Set ${item.name}: Stock=$newStock, Spoilage=$newSpoilage'),
-            backgroundColor: Colors.green,
+      bool anySuccess = false;
+
+      // Step 2: Apply manual stock override if different from current
+      if (newStock != item.stock) {
+        final success = await db.branchItemStockDao.updateStock(
+          item.branchStockId!,
+          BranchItemStockCompanion(
+            stock: Value(newStock),
+            isSynced: const Value(false), // Mark for sync
           ),
         );
+        if (success) anySuccess = true;
+      }
+
+      // Step 3: Record sales via PosService (updates stock + daily summary + audit)
+      if (soldQty > 0) {
+        final result = await posService.recordSale(
+          item: item,
+          quantity: soldQty,
+          organizationId: currentOrganizationId!,
+          requestedByUserId: currentUserId!,
+          createAuditRecord: true,
+        );
+        if (result.success) {
+          anySuccess = true;
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Warning: Sale recording failed: ${result.errorMessage}'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      }
+
+      // Step 4: Record spoilage via PosService (updates stock + daily summary + audit)
+      if (spoilageQty > 0) {
+        final result = await posService.recordSpoilage(
+          item: item,
+          quantity: spoilageQty,
+          organizationId: currentOrganizationId!,
+          requestedByUserId: currentUserId!,
+          createAuditRecord: true,
+        );
+        if (result.success) {
+          anySuccess = true;
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Warning: Spoilage recording failed: ${result.errorMessage}'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      }
+
+      if (anySuccess) {
+        // Step 5: Trigger a sync push so changes go to cloud
+        AppGlobals.instance.syncService.syncBranchItemStock().catchError((_) {});
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Updated ${item.name} (Stock=$newStock, Sold=$soldQty, Spoilage=$spoilageQty)'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
         await loadData();
+      } else if (newStock == item.stock && soldQty == 0 && spoilageQty == 0) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No changes made.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (!context.mounted) return;
