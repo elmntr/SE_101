@@ -515,6 +515,8 @@ class FranchiseeReportsController {
       // Build itemsDataForDate list for grouped bars
       if (selectedSpecificDate != null && selectedItemId == null) {
         for (final entry in itemTotalsForDate.entries) {
+          // Skip if allItems is empty
+          if (allItems.isEmpty) continue;
           final item = allItems.firstWhere(
             (i) => i.id == entry.key,
             orElse: () => allItems.first,
@@ -1062,6 +1064,7 @@ class FranchiseeReportsController {
 
   String getSelectedItemName() {
     if (selectedItemId == null) return 'All Items';
+    if (allItems.isEmpty) return 'Unknown';
     final item = allItems.firstWhere(
       (item) => item.id == selectedItemId,
       orElse: () => allItems.first,

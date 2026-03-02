@@ -555,7 +555,9 @@ class _ReportsPageDesktopState extends State<ReportsPageDesktop> {
                     ),
                     child: Builder(
                       builder: (context) {
-                        if (_hoveredItemId == null) return const SizedBox();
+                        if (_hoveredItemId == null || state.allItems.isEmpty) {
+                          return const SizedBox();
+                        }
                         final item = state.allItems.firstWhere(
                           (i) => i.id == _hoveredItemId,
                           orElse: () => state.allItems.first,
