@@ -28,7 +28,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     required int itemId,
     required DateTime date,
   }) async {
-    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedDate = DateTime.utc(date.year, date.month, date.day);
     return await (select(dailySalesSummary)
           ..where((t) => t.organizationId.equals(organizationId))
           ..where((t) => t.itemId.equals(itemId))
@@ -41,7 +41,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     required int organizationId,
     required DateTime date,
   }) async {
-    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedDate = DateTime.utc(date.year, date.month, date.day);
     return await (select(dailySalesSummary)
           ..where((t) => t.organizationId.equals(organizationId))
           ..where((t) => t.summaryDate.equals(normalizedDate)))
@@ -54,8 +54,8 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    final start = DateTime(startDate.year, startDate.month, startDate.day);
-    final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    final start = DateTime.utc(startDate.year, startDate.month, startDate.day);
+    final end = DateTime.utc(endDate.year, endDate.month, endDate.day, 23, 59, 59);
     return await (select(dailySalesSummary)
           ..where((t) => t.organizationId.equals(organizationId))
           ..where((t) => t.summaryDate.isBetweenValues(start, end))
@@ -77,7 +77,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     int? currentStock,
   }) async {
     final today = DateTime.now();
-    final normalizedDate = DateTime(today.year, today.month, today.day);
+    final normalizedDate = DateTime.utc(today.year, today.month, today.day);
 
     final existing = await getSummary(
       organizationId: organizationId,
@@ -127,7 +127,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     int? currentStock,
   }) async {
     final today = DateTime.now();
-    final normalizedDate = DateTime(today.year, today.month, today.day);
+    final normalizedDate = DateTime.utc(today.year, today.month, today.day);
 
     final existing = await getSummary(
       organizationId: organizationId,
@@ -162,7 +162,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
 
   /// Get total sales for all branches on a specific date (commissary view)
   Future<Map<String, dynamic>> getNetworkTotalsForDate(DateTime date) async {
-    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedDate = DateTime.utc(date.year, date.month, date.day);
     
     final query = selectOnly(dailySalesSummary)
       ..addColumns([
@@ -327,7 +327,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     required int itemId,
     required DateTime summaryDate,
   }) async {
-    final normalizedDate = DateTime(summaryDate.year, summaryDate.month, summaryDate.day);
+    final normalizedDate = DateTime.utc(summaryDate.year, summaryDate.month, summaryDate.day);
     return await (select(dailySalesSummary)
           ..where((t) => t.organizationId.equals(organizationId))
           ..where((t) => t.itemId.equals(itemId))
@@ -349,7 +349,9 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
         continue;
       }
 
-      final summaryDate = record['summaryDate'] as DateTime;
+      final rawSummaryDate = record['summaryDate'] as DateTime;
+      // Normalize to UTC midnight to ensure consistent business dates across timezones
+      final summaryDate = DateTime.utc(rawSummaryDate.year, rawSummaryDate.month, rawSummaryDate.day);
       final resolvedLastUpdated =
           (record['lastUpdated'] as DateTime?) ?? DateTime.now();
 
@@ -389,7 +391,7 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
   /// Watch today's summaries for real-time UI updates
   Stream<List<DailySalesSummaryData>> watchTodaySummaries(int organizationId) {
     final today = DateTime.now();
-    final normalizedDate = DateTime(today.year, today.month, today.day);
+    final normalizedDate = DateTime.utc(today.year, today.month, today.day);
     
     return (select(dailySalesSummary)
           ..where((t) => t.organizationId.equals(organizationId))

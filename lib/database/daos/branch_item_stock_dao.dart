@@ -309,6 +309,13 @@ class BranchItemStockDao extends DatabaseAccessor<AppDatabase>
   // SYNC OPERATIONS
   // ============================================================================
 
+  /// Get a stock record by its cloud ID
+  Future<BranchItemStockData?> getByCloudId(String cloudId) {
+    return (select(branchItemStock)
+          ..where((s) => s.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
   /// Mark records as synced
   Future<void> markAsSynced(List<int> ids, {Map<int, String>? cloudIds}) async {
     for (final id in ids) {
@@ -322,37 +329,59 @@ class BranchItemStockDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Upsert from cloud (for sync)
+  /// Supports both camelCase (from toLocalFormat) and snake_case keys
   Future<void> upsertFromCloud(Map<String, dynamic> data) async {
-    final cloudId = data['cloud_id'] as String;
+    final cloudId = (data['cloudId'] ?? data['cloud_id']) as String;
 
-    // Check if exists by cloud_id
-    final existing = await (select(branchItemStock)
+    // Check if exists by cloud_id first
+    var existing = await (select(branchItemStock)
           ..where((s) => s.cloudId.equals(cloudId)))
         .getSingleOrNull();
 
+    final organizationId = data['organizationId'] ?? data['organization_id'];
+    final itemId = data['itemId'] ?? data['item_id'];
+
+    // If not found by cloudId, try business key (organizationId, itemId)
+    // This handles records created locally before sync assigned a cloudId
+    if (existing == null && organizationId != null && itemId != null) {
+      existing = await (select(branchItemStock)
+            ..where((s) => s.organizationId.equals(organizationId as int))
+            ..where((s) => s.itemId.equals(itemId as int))
+            ..where((s) => s.isDeleted.equals(false)))
+          .getSingleOrNull();
+    }
+
+    final stockVal = data['stock'];
+    final soldVal = data['sold'];
+    final spoilageVal = data['spoilage'];
+    final priceVal = data['price'] ?? data['price'];
+    final costPriceVal = data['costPrice'] ?? data['cost_price'];
+    final minimumStockVal = data['minimumStock'] ?? data['minimum_stock'];
+    final lastUpdatedVal = data['lastUpdated'] ?? data['last_updated'];
+    final isDeletedVal = data['isDeleted'] ?? data['is_deleted'];
+
     final companion = BranchItemStockCompanion(
-      organizationId: Value(data['organization_id'] as int),
-      itemId: Value(data['item_id'] as int),
-      stock: Value(data['stock'] as int? ?? 0),
-      sold: Value(data['sold'] as int? ?? 0),
-      spoilage: Value(data['spoilage'] as int? ?? 0),
-      price: data['price'] != null ? Value((data['price'] as num).toDouble()) : const Value.absent(),
-      costPrice: data['cost_price'] != null ? Value((data['cost_price'] as num).toDouble()) : const Value.absent(),
-      minimumStock: data['minimum_stock'] != null ? Value(data['minimum_stock'] as int) : const Value.absent(),
-      lastReceivedAt: data['last_received_at'] != null 
-          ? Value(DateTime.parse(data['last_received_at'] as String))
-          : const Value.absent(),
-      lastReceivedQuantity: data['last_received_quantity'] != null 
-          ? Value(data['last_received_quantity'] as int)
-          : const Value.absent(),
-      lastUpdated: Value(DateTime.parse(data['last_updated'] as String)),
-      isDeleted: Value(data['is_deleted'] as bool? ?? false),
+      organizationId: Value(organizationId as int),
+      itemId: Value(itemId as int),
+      stock: Value(stockVal as int? ?? 0),
+      sold: Value(soldVal as int? ?? 0),
+      spoilage: Value(spoilageVal as int? ?? 0),
+      price: priceVal != null ? Value((priceVal as num).toDouble()) : const Value.absent(),
+      costPrice: costPriceVal != null ? Value((costPriceVal as num).toDouble()) : const Value.absent(),
+      minimumStock: minimumStockVal != null ? Value(minimumStockVal as int) : const Value.absent(),
+      lastUpdated: lastUpdatedVal is DateTime
+          ? Value(lastUpdatedVal)
+          : lastUpdatedVal is String
+              ? Value(DateTime.parse(lastUpdatedVal))
+              : Value(DateTime.now()),
+      isDeleted: Value(isDeletedVal == true || isDeletedVal == 1),
       isSynced: const Value(true),
       cloudId: Value(cloudId),
     );
 
     if (existing != null) {
-      await (update(branchItemStock)..where((s) => s.id.equals(existing.id)))
+      final existingId = existing.id;
+      await (update(branchItemStock)..where((s) => s.id.equals(existingId)))
           .write(companion);
     } else {
       await into(branchItemStock).insert(companion);
