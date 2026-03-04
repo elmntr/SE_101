@@ -1,4 +1,5 @@
-// lib/screens/inventory_management/products_tab.dart
+﻿// lib/screens/inventory_management/products_tab.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:intl/intl.dart';
@@ -6,7 +7,7 @@ import 'package:uuid/uuid.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/database/daos/items_dao.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
-import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/utils/tables.dart';
 import 'widgets/item_form_dialog.dart';
 
 /// Products/Inventory tab for managing finished products
@@ -52,7 +53,7 @@ class _ProductsTabState extends State<ProductsTab> {
         availableIngredients: ingredients,
         categories: categories,
         onSave: (itemCompanion, recipeIngredients) async {
-          // Insert item
+          // Insert item using named params
           final itemId = await database.itemsDao.insertItem(
             name: itemCompanion.name.value,
             organizationId: itemCompanion.organizationId.value,
@@ -60,19 +61,19 @@ class _ProductsTabState extends State<ProductsTab> {
             categoryId: itemCompanion.categoryId.value,
             price: itemCompanion.price.value,
             costPrice: itemCompanion.costPrice.value,
-            unit: itemCompanion.unit.value,
             minimumStock: itemCompanion.minimumStock.value,
             description: itemCompanion.description.value,
             cloudId: itemCompanion.cloudId.value,
           );
 
           // Insert recipe ingredients
+          const uuid = Uuid();
           for (final ingredient in recipeIngredients) {
             await database.recipeIngredientsDao.insertRecipeIngredient(
               itemId: itemId,
               ingredientId: ingredient.ingredientId,
               quantityNeeded: ingredient.quantity,
-              unit: 'pieces',
+              unit: ingredient.unit,
             );
           }
 
@@ -119,25 +120,26 @@ class _ProductsTabState extends State<ProductsTab> {
             spoilage: item.spoilage,
             price: itemCompanion.price.value,
             costPrice: itemCompanion.costPrice.value,
-            unit: item.unit,
             organizationId: itemCompanion.organizationId.value,
             categoryId: itemCompanion.categoryId.value,
             masterItemId: item.masterItemId,
+            unit: item.unit,
             isDeleted: false,
-            isSynced: false,
             createdAt: item.createdAt,
-            lastUpdated: DateTime.now().toUtc(),
+            lastUpdated: DateTime.now(),
+            isSynced: false,
           );
           await database.itemsDao.updateItem(updatedItem);
 
           // Update recipe - delete old and insert new
+          const uuid = Uuid();
           await database.recipeIngredientsDao.deleteAllForItem(item.id);
           for (final ingredient in recipeIngredients) {
             await database.recipeIngredientsDao.insertRecipeIngredient(
               itemId: item.id,
               ingredientId: ingredient.ingredientId,
               quantityNeeded: ingredient.quantity,
-              unit: 'pieces',
+              unit: ingredient.unit,
             );
           }
 
@@ -326,7 +328,7 @@ class _ProductsTabState extends State<ProductsTab> {
       try {
         await syncService.syncAll();
       } catch (e) {
-        print('?? Failed to sync after delete: $e');
+        print('âš ï¸ Failed to sync after delete: $e');
       }
 
       if (mounted) {
@@ -427,11 +429,10 @@ class _ProductsTabState extends State<ProductsTab> {
               onPressed: () async {
                 final quantity = int.tryParse(controller.text);
                 if (quantity != null && quantity > 0) {
-                  if (isAdding) {
-                    await database.itemsDao.addStock(item.id, quantity);
-                  } else {
-                    await database.itemsDao.updateStock(item.id, (item.stock - quantity).clamp(0, 999999));
-                  }
+                  final newStock = isAdding
+                      ? item.stock + quantity
+                      : item.stock - quantity;
+                  await database.itemsDao.updateStock(item.id, newStock);
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -454,15 +455,20 @@ class _ProductsTabState extends State<ProductsTab> {
   }
 
   void _showRecipeDetailsDialog(Item item) async {
-    final recipeDetails = await database.recipeIngredientsDao
+    final recipeIngredients = await database.recipeIngredientsDao
         .getIngredientsForItem(item.id);
 
-    // Fetch ingredient names
-    final ingredientNames = <int, String>{};
-    for (final ri in recipeDetails) {
+    // Build detail list with ingredient info
+    final recipeDetails = <Map<String, dynamic>>[];
+    for (final ri in recipeIngredients) {
       final ingredient = await database.ingredientsDao.getIngredientById(ri.ingredientId);
       if (ingredient != null) {
-        ingredientNames[ri.ingredientId] = ingredient.name;
+        recipeDetails.add({
+          'ingredientName': ingredient.name,
+          'quantity': ri.quantityNeeded,
+          'unit': ri.unit,
+          'totalCost': ri.quantityNeeded * ingredient.costPerUnit,
+        });
       }
     }
 
@@ -555,18 +561,18 @@ class _ProductsTabState extends State<ProductsTab> {
                                 children: [
                                   Expanded(
                                     flex: 3,
-                                    child: Text(ingredientNames[detail.ingredientId] ?? 'Unknown'),
+                                    child: Text(detail['ingredientName'] as String),
                                   ),
                                   Expanded(
                                     flex: 2,
                                     child: Text(
-                                      '${detail.quantityNeeded} ${detail.unit}',
+                                      '${detail['quantity']} ${detail['unit']}',
                                     ),
                                   ),
-                                  const Expanded(
+                                  Expanded(
                                     flex: 2,
                                     child: Text(
-                                      '-',
+                                      '₱${(detail['totalCost'] as double).toStringAsFixed(2)}',
                                       textAlign: TextAlign.right,
                                     ),
                                   ),
@@ -592,7 +598,7 @@ class _ProductsTabState extends State<ProductsTab> {
                             children: [
                               const Text('Total Cost:'),
                               Text(
-                                '?${(item.costPrice ?? 0).toStringAsFixed(2)}',
+                                '₱${(item.costPrice ?? 0).toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -605,7 +611,7 @@ class _ProductsTabState extends State<ProductsTab> {
                             children: [
                               const Text('Selling Price:'),
                               Text(
-                                '?${(item.price ?? 0).toStringAsFixed(2)}',
+                                '₱${(item.price ?? 0).toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -618,7 +624,7 @@ class _ProductsTabState extends State<ProductsTab> {
                             children: [
                               const Text('Profit Margin:'),
                               Text(
-                                '?${((item.price ?? 0) - (item.costPrice ?? 0)).toStringAsFixed(2)} '
+                                '₱${((item.price ?? 0) - (item.costPrice ?? 0)).toStringAsFixed(2)} '
                                 '(${(item.price ?? 0) > 0 ? (((item.price ?? 0) - (item.costPrice ?? 0)) / (item.price ?? 1) * 100).toStringAsFixed(1) : 0}%)',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -696,7 +702,7 @@ class _ProductsTabState extends State<ProductsTab> {
 
         // Apply low stock filter
         if (widget.showLowStockOnly) {
-          products = products.where((p) => p.minimumStock != null && p.stock <= p.minimumStock!).toList();
+          products = products.where((p) => p.stock <= (p.minimumStock ?? 0)).toList();
         }
 
         // Apply sorting
@@ -742,9 +748,9 @@ class _ProductsTabState extends State<ProductsTab> {
         return buildUniversalTable(
           headers: ['Name', 'Stock', 'Price', 'Cost', 'Margin', 'Status', ''],
           rows: products.map((product) {
-            final isLowStock = product.minimumStock != null && product.stock <= product.minimumStock!;
-            final price = product.price ?? 0;
-            final cost = product.costPrice ?? 0;
+            final isLowStock = product.stock <= (product.minimumStock ?? 0);
+            final price = product.price ?? 0.0;
+            final cost = product.costPrice ?? 0.0;
             final profit = price - cost;
             final profitMargin = price > 0
                 ? (profit / price * 100)
@@ -752,8 +758,8 @@ class _ProductsTabState extends State<ProductsTab> {
             return [
               Text(product.name),
               Text(numberFormat.format(product.stock)),
-              Text('?${numberFormat.format(price)}'),
-              Text('?${numberFormat.format(cost)}'),
+              Text('₱${numberFormat.format(price)}'),
+              Text('₱${numberFormat.format(cost)}'),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -815,6 +821,9 @@ class _ProductsTabState extends State<ProductsTab> {
           }).toList(),
           smallHeaderWidth: 40,
           largeHeaderWidth: 90,
+          showHorizontalScrollbar: Platform.isWindows,
+          horizontalController:
+              Platform.isWindows ? ScrollController() : null,
         );
       },
     );

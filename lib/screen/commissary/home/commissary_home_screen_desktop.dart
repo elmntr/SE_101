@@ -27,7 +27,7 @@ class CommissaryHomeScreenDesktop extends StatelessWidget {
             Image.asset(imageAll, height: 30),
             const SizedBox(width: 10),
             const Text(
-              "Commissary Admin",
+              "Inventory System",
               style: TextStyle(
                 fontFamily: fontAll,
                 fontWeight: FontWeight.w600,
