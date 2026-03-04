@@ -49,6 +49,11 @@ class CommissaryHomeScreenState extends State<CommissaryHomeScreen> {
     _db = database;
     _initConnectivity();
     _loadMenuItems();
+    // Trigger a sync immediately so data is fresh on first load
+    // (esp. on fresh Android installs that haven't synced yet)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      syncService.syncAll();
+    });
   }
 
   void _initConnectivity() {

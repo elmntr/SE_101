@@ -375,8 +375,54 @@ class SupabaseSyncServiceV2 {
       getOrganizationId: (org) => null, // Organizations don't have org_id
     );
 
+    // Rebuild cache so commissary orgs pulled above are available for FK fix
+    await _engine.rebuildAllCaches();
+
+    // Fix franchisees whose parentCommissaryId was null due to cache-miss during pull
+    await _fixFranchiseeParentIds();
+
     // Reload parent commissary for franchisees
     await _reloadParentCommissaryId();
+  }
+
+  /// After an organizations pull, some franchisees may have been stored with
+  /// parentCommissaryId = null because the commissary org wasn't in the FK
+  /// cache yet (same-batch ordering issue).  This method queries Supabase for
+  /// the correct parent UUID, resolves it to a local ID using the now-rebuilt
+  /// cache, and updates the affected rows.
+  Future<void> _fixFranchiseeParentIds() async {
+    try {
+      final orphaned = (await db.organizationsDao.getAllFranchisees())
+          .where((f) => f.parentCommissaryId == null && f.cloudId != null)
+          .toList();
+
+      if (orphaned.isEmpty) return;
+
+      AppLogger.sync('   🔧 Fixing ${orphaned.length} franchisee(s) with null parentCommissaryId...');
+
+      final cloudIds = orphaned.map((f) => f.cloudId!).toList();
+      final records = await supabase
+          .from('organizations')
+          .select('cloud_id, parent_commissary_id')
+          .inFilter('cloud_id', cloudIds);
+
+      for (final r in records) {
+        final parentCloudId = r['parent_commissary_id'] as String?;
+        if (parentCloudId == null) continue;
+
+        final parentLocalId = _engine.getLocalId('organizations', parentCloudId);
+        if (parentLocalId == null) continue;
+
+        final orgCloudId = r['cloud_id'] as String;
+        final org = orphaned.where((f) => f.cloudId == orgCloudId).firstOrNull;
+        if (org == null) continue;
+
+        await db.organizationsDao.updateParentCommissaryId(org.id, parentLocalId);
+        AppLogger.sync('   ✅ Fixed ${org.name} → parentCommissaryId = $parentLocalId');
+      }
+    } catch (e) {
+      AppLogger.sync('   ⚠️ Failed to fix franchisee parent IDs: $e');
+    }
   }
 
   Future<void> _syncRoles() async {

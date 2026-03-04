@@ -150,6 +150,18 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
+  /// ✅ Update only the parentCommissaryId field (used by sync fixup)
+  Future<void> updateParentCommissaryId(int localId, int parentId) async {
+    try {
+      await (update(organizations)..where((t) => t.id.equals(localId))).write(
+        OrganizationsCompanion(parentCommissaryId: Value(parentId)),
+      );
+    } catch (e) {
+      //print('❌ Error updating parentCommissaryId: $e');
+      rethrow;
+    }
+  }
+
   /// ✅ Get organization by ID
   Future<Organization?> getOrganizationById(int id) async {
     try {

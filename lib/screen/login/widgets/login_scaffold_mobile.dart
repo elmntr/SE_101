@@ -42,10 +42,10 @@ class LoginScaffoldMobile extends StatelessWidget {
               ),
             ),
           ),
-          const Positioned(
-            bottom: 12,
+          Positioned(
+            bottom: MediaQuery.of(context).padding.bottom + 12,
             right: 12,
-            child: HqAccessGate(),
+            child: const HqAccessGate(),
           ),
         ],
       ),
