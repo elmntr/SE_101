@@ -102,6 +102,10 @@ class RolePermissions {
   final bool canManageEmployees;
   final bool canManageRoles;
 
+  // Commissary-level aggregate permissions
+  final bool canManageInventory;
+  final bool canManageBranches;
+
   const RolePermissions({
     this.canViewInventory = false,
     this.canAddInventory = false,
@@ -112,6 +116,8 @@ class RolePermissions {
     this.canAccessSettings = false,
     this.canManageEmployees = false,
     this.canManageRoles = false,
+    this.canManageInventory = false,
+    this.canManageBranches = false,
   });
 
   factory RolePermissions.fromRole(Role role) {
@@ -125,6 +131,9 @@ class RolePermissions {
       canAccessSettings: role.canAccessSettings,
       canManageEmployees: role.canManageEmployees,
       canManageRoles: role.canManageRoles,
+      // Derive aggregate permissions from granular ones
+      canManageInventory: role.canViewInventory || role.canAddInventory || role.canEditInventory || role.canDeleteInventory,
+      canManageBranches: role.canManageEmployees,
     );
   }
 }
@@ -359,13 +368,162 @@ class SupabaseAuthService {
         }
       }
 
-      return null;
+      // Priority 3: Not found locally — pull from cloud and seed
+      _logAuth('User not found locally, attempting cloud pull...');
+      return await _pullUserFromCloud(authUser);
     } catch (e) {
       _logAuth('Error finding local user: $e');
       return null;
     }
   }
-  
+
+  /// Pull user data from Supabase cloud, seed locally, then return UserData.
+  /// Called when a valid Supabase Auth session exists but no local user record is found.
+  Future<UserData?> _pullUserFromCloud(supabase.User authUser) async {
+    try {
+      _logAuth('Pulling user from cloud: ${authUser.email}');
+
+      DateTime parseTs(dynamic v) {
+        if (v == null) return DateTime.now().toUtc();
+        if (v is DateTime) return v;
+        return DateTime.tryParse(v.toString()) ?? DateTime.now().toUtc();
+      }
+
+      Map<String, dynamic>? userResponse;
+
+      // Try auth_user_id first (set by migration 002)
+      userResponse = await _supabase
+          .from('users')
+          .select()
+          .eq('auth_user_id', authUser.id)
+          .maybeSingle();
+
+      // Fall back to email match
+      if (userResponse == null && authUser.email != null) {
+        userResponse = await _supabase
+            .from('users')
+            .select()
+            .eq('email', authUser.email!)
+            .maybeSingle();
+      }
+
+      if (userResponse == null) {
+        _logAuth('User not found in cloud: ${authUser.email}');
+        return null;
+      }
+
+      _logAuth('Found user in cloud: ${userResponse['username']}');
+
+      final orgCloudId = userResponse['organization_id'] as String?;
+      final roleCloudId = userResponse['role_id'] as String?;
+
+      if (orgCloudId == null || roleCloudId == null) {
+        _logAuth('User record missing org or role FK');
+        return null;
+      }
+
+      // Fetch org from cloud
+      final orgResponse = await _supabase
+          .from('organizations')
+          .select()
+          .eq('cloud_id', orgCloudId)
+          .maybeSingle();
+
+      if (orgResponse == null) {
+        _logAuth('Org not found in cloud: $orgCloudId');
+        return null;
+      }
+
+      // Fetch role from cloud
+      final roleResponse = await _supabase
+          .from('roles')
+          .select()
+          .eq('cloud_id', roleCloudId)
+          .maybeSingle();
+
+      if (roleResponse == null) {
+        _logAuth('Role not found in cloud: $roleCloudId');
+        return null;
+      }
+
+      _logAuth('Seeding org/role/user to local DB...');
+
+      // Upsert organization
+      await _db.organizationsDao.upsertFromCloud(
+        id: (orgResponse['local_id'] as int?) ?? 0,
+        name: orgResponse['name'] as String,
+        type: orgResponse['type'] as String,
+        contactPerson: orgResponse['contact_person'] as String?,
+        phone: orgResponse['phone'] as String?,
+        email: orgResponse['email'] as String?,
+        address: orgResponse['address'] as String?,
+        isActive: (orgResponse['is_active'] as bool?) ?? true,
+        createdAt: parseTs(orgResponse['created_at']),
+        lastUpdated: parseTs(orgResponse['last_updated']),
+        cloudId: orgResponse['cloud_id'] as String,
+        hqAccessCodeHash: orgResponse['hq_access_code_hash'] as String?,
+      );
+
+      // Upsert role
+      await _db.rolesDao.upsertFromCloud(
+        id: (roleResponse['local_id'] as int?) ?? 0,
+        name: roleResponse['name'] as String,
+        description: roleResponse['description'] as String?,
+        canViewInventory: (roleResponse['can_view_inventory'] as bool?) ?? false,
+        canAddInventory: (roleResponse['can_add_inventory'] as bool?) ?? false,
+        canEditInventory: (roleResponse['can_edit_inventory'] as bool?) ?? false,
+        canDeleteInventory: (roleResponse['can_delete_inventory'] as bool?) ?? false,
+        canViewReports: (roleResponse['can_view_reports'] as bool?) ?? false,
+        canExportData: (roleResponse['can_export_data'] as bool?) ?? false,
+        canAccessSettings: (roleResponse['can_access_settings'] as bool?) ?? false,
+        canManageEmployees: (roleResponse['can_manage_employees'] as bool?) ?? false,
+        canManageRoles: (roleResponse['can_manage_roles'] as bool?) ?? false,
+        isSystemRole: (roleResponse['is_system_role'] as bool?) ?? false,
+        isActive: (roleResponse['is_active'] as bool?) ?? true,
+        createdAt: parseTs(roleResponse['created_at']),
+        lastUpdated: parseTs(roleResponse['last_updated']),
+        cloudId: roleResponse['cloud_id'] as String,
+      );
+
+      // Resolve local IDs
+      final localOrg = await _db.organizationsDao.getOrganizationByCloudId(orgCloudId);
+      final localRole = await _db.rolesDao.getRoleByCloudId(roleCloudId);
+
+      if (localOrg == null || localRole == null) {
+        _logAuth('Failed to retrieve seeded org/role by cloudId');
+        return null;
+      }
+
+      // Upsert user (store authUser.id as cloudId so future lookups by cloudId work)
+      await _db.usersDao.upsertFromCloud(
+        id: (userResponse['local_id'] as int?) ?? 0,
+        email: userResponse['email'] as String,
+        username: userResponse['username'] as String,
+        password: userResponse['password'] as String,
+        phone: userResponse['phone'] as String?,
+        organizationId: localOrg.id,
+        roleId: localRole.id,
+        fullName: userResponse['full_name'] as String?,
+        isActive: (userResponse['is_active'] as bool?) ?? true,
+        createdAt: parseTs(userResponse['created_at']),
+        lastUpdated: parseTs(userResponse['last_updated']),
+        cloudId: authUser.id, // auth UID stored as cloudId for future matching
+      );
+
+      final localUser = await _db.usersDao.getUserByEmail(userResponse['email'] as String);
+      if (localUser == null) {
+        _logAuth('Failed to load newly seeded user');
+        return null;
+      }
+
+      _logAuth('User seeded and loaded: ${localUser.username} (${localOrg.type})');
+      return await _buildUserData(localUser, authUser);
+    } catch (e) {
+      _logAuth('Error pulling user from cloud: $e');
+      return null;
+    }
+  }
+
   /// Build UserData from a local User record
   Future<UserData?> _buildUserData(User user, supabase.User authUser) async {
     final org = await _db.organizationsDao.getOrganizationById(user.organizationId);
@@ -726,6 +884,119 @@ class SupabaseAuthService {
         //print('❌ Error creating employee: $e');
       }
       return AuthResult.failure('Failed to create employee: $e');
+    }
+  }
+
+  // ============================================================
+  // ADMIN FUNCTIONS FOR MANAGING BRANCH USERS
+  // ============================================================
+
+  /// Create a Supabase Auth user for a branch admin.
+  /// Uses signUp() which works with anon key (no admin privileges needed).
+  /// Note: Ensure "Confirm email" is disabled in Supabase Auth settings
+  /// or the user will need to confirm their email before logging in.
+  Future<String?> createBranchAdminAuthUser({
+    required String email,
+    required String password,
+    required String organizationCloudId,
+  }) async {
+    // Store current session before creating new user
+    final currentSession = _supabase.auth.currentSession;
+    final savedUser = _currentUser;
+
+    try {
+      // Use signUp instead of admin.createUser (works with anon key)
+      final response = await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'organization_id': organizationCloudId,
+          'role': 'branch_admin',
+        },
+      );
+
+      if (response.user != null) {
+        final newAuthUserId = response.user!.id;
+
+        _logAuth('Created Supabase Auth user: $newAuthUserId');
+
+        // Sign out the newly created user
+        await _supabase.auth.signOut();
+
+        // Restore the admin's session if we had one
+        if (currentSession != null) {
+          try {
+            await _supabase.auth.setSession(currentSession.refreshToken!);
+            _currentUser = savedUser;
+            _authStateController?.add(savedUser);
+            _logAuth('Restored admin session');
+          } catch (e) {
+            _logAuth('Could not restore session, admin will need to re-login: $e');
+          }
+        }
+
+        return newAuthUserId;
+      }
+      return null;
+    } catch (e) {
+      // Restore session on error too
+      if (currentSession != null) {
+        try {
+          await _supabase.auth.setSession(currentSession.refreshToken!);
+          _currentUser = savedUser;
+          _authStateController?.add(savedUser);
+        } catch (_) {}
+      }
+
+      _logAuth('Failed to create auth user: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a Supabase Auth user via Edge Function.
+  /// Requires a deployed Supabase Edge Function named 'delete-auth-user'.
+  Future<bool> deleteAuthUser(String authUserId) async {
+    try {
+      final response = await _supabase.functions.invoke(
+        'delete-auth-user',
+        body: {'auth_user_id': authUserId},
+      );
+
+      if (response.status == 200) {
+        _logAuth('Deleted auth user via Edge Function: $authUserId');
+        return true;
+      } else {
+        _logAuth('Edge Function returned status ${response.status}');
+        return false;
+      }
+    } catch (e) {
+      _logAuth('Failed to delete auth user: $e');
+      return false;
+    }
+  }
+
+  /// Update user password in Supabase Auth via Edge Function.
+  /// Requires a deployed Supabase Edge Function named 'update-user-password'.
+  Future<bool> updateAuthUserPassword(String authUserId, String newPassword) async {
+    try {
+      final response = await _supabase.functions.invoke(
+        'update-user-password',
+        body: {
+          'auth_user_id': authUserId,
+          'new_password': newPassword,
+        },
+      );
+
+      if (response.status == 200) {
+        _logAuth('Updated auth user password via Edge Function: $authUserId');
+        return true;
+      } else {
+        _logAuth('Edge Function returned status ${response.status}');
+        return false;
+      }
+    } catch (e) {
+      _logAuth('Failed to update auth user password: $e');
+      return false;
     }
   }
 

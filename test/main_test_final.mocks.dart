@@ -1684,6 +1684,44 @@ class MockSupabaseAuthService extends _i1.Mock
           as _i18.Future<_i20.AuthResult>);
 
   @override
+  _i18.Future<String?> createBranchAdminAuthUser({
+    required String? email,
+    required String? password,
+    required String? organizationCloudId,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#createBranchAdminAuthUser, [], {
+              #email: email,
+              #password: password,
+              #organizationCloudId: organizationCloudId,
+            }),
+            returnValue: _i18.Future<String?>.value(),
+          )
+          as _i18.Future<String?>);
+
+  @override
+  _i18.Future<bool> deleteAuthUser(String? authUserId) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteAuthUser, [authUserId]),
+            returnValue: _i18.Future<bool>.value(false),
+          )
+          as _i18.Future<bool>);
+
+  @override
+  _i18.Future<bool> updateAuthUserPassword(
+    String? authUserId,
+    String? newPassword,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateAuthUserPassword, [
+              authUserId,
+              newPassword,
+            ]),
+            returnValue: _i18.Future<bool>.value(false),
+          )
+          as _i18.Future<bool>);
+
+  @override
   _i18.Future<void> signOut() =>
       (super.noSuchMethod(
             Invocation.method(#signOut, []),

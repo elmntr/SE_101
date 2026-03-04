@@ -45,6 +45,9 @@ class Organizations extends Table {
   /// Active status (for soft delete)
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
 
+  /// HQ access code hash (PBKDF2) — only set on commissary org
+  TextColumn get hqAccessCodeHash => text().nullable()();
+
   /// Sync fields for cloud synchronization
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   TextColumn get cloudId => text().nullable()();

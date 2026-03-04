@@ -3,7 +3,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'supabase_sync_service_test.mocks.dart';
+import 'mock_test.mocks.dart';
 
 @GenerateMocks([SupabaseClient, SupabaseQueryBuilder])
 void main() {

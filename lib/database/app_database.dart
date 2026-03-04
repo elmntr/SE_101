@@ -113,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(super.executor) : _seedData = false;
 
   @override
-  int get schemaVersion => 4; // Incremented for DailySalesSummary cloud_id uniqueness fix
+  int get schemaVersion => 5; // v5: Added hq_access_code_hash to organizations
 
   @override
   MigrationStrategy get migration {
@@ -201,6 +201,14 @@ class AppDatabase extends _$AppDatabase {
           // Log the cleanup results
           final remainingCount = await customSelect('SELECT COUNT(*) as count FROM daily_sales_summary WHERE cloud_id IS NOT NULL').getSingle();
           AppLogger.database('DailySalesSummary cloud_id cleanup completed. Records with cloud_id: ${remainingCount.read<int>('count')}');
+        }
+
+        if (from < 5) {
+          // v5: Add hq_access_code_hash column to organizations
+          await customStatement(
+            'ALTER TABLE organizations ADD COLUMN hq_access_code_hash TEXT',
+          );
+          AppLogger.database('Added hq_access_code_hash column to organizations');
         }
         
         AppLogger.database('Database upgrade complete!');

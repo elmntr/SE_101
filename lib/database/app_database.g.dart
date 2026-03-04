@@ -144,6 +144,17 @@ class $OrganizationsTable extends Organizations
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _hqAccessCodeHashMeta = const VerificationMeta(
+    'hqAccessCodeHash',
+  );
+  @override
+  late final GeneratedColumn<String> hqAccessCodeHash = GeneratedColumn<String>(
+    'hq_access_code_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isSyncedMeta = const VerificationMeta(
     'isSynced',
   );
@@ -183,6 +194,7 @@ class $OrganizationsTable extends Organizations
     createdAt,
     lastUpdated,
     isActive,
+    hqAccessCodeHash,
     isSynced,
     cloudId,
   ];
@@ -274,6 +286,15 @@ class $OrganizationsTable extends Organizations
         isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
       );
     }
+    if (data.containsKey('hq_access_code_hash')) {
+      context.handle(
+        _hqAccessCodeHashMeta,
+        hqAccessCodeHash.isAcceptableOrUnknown(
+          data['hq_access_code_hash']!,
+          _hqAccessCodeHashMeta,
+        ),
+      );
+    }
     if (data.containsKey('is_synced')) {
       context.handle(
         _isSyncedMeta,
@@ -339,6 +360,10 @@ class $OrganizationsTable extends Organizations
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
       )!,
+      hqAccessCodeHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hq_access_code_hash'],
+      ),
       isSynced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_synced'],
@@ -387,6 +412,9 @@ class Organization extends DataClass implements Insertable<Organization> {
   /// Active status (for soft delete)
   final bool isActive;
 
+  /// HQ access code hash (PBKDF2) — only set on commissary org
+  final String? hqAccessCodeHash;
+
   /// Sync fields for cloud synchronization
   final bool isSynced;
   final String? cloudId;
@@ -402,6 +430,7 @@ class Organization extends DataClass implements Insertable<Organization> {
     required this.createdAt,
     required this.lastUpdated,
     required this.isActive,
+    this.hqAccessCodeHash,
     required this.isSynced,
     this.cloudId,
   });
@@ -429,6 +458,9 @@ class Organization extends DataClass implements Insertable<Organization> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['last_updated'] = Variable<DateTime>(lastUpdated);
     map['is_active'] = Variable<bool>(isActive);
+    if (!nullToAbsent || hqAccessCodeHash != null) {
+      map['hq_access_code_hash'] = Variable<String>(hqAccessCodeHash);
+    }
     map['is_synced'] = Variable<bool>(isSynced);
     if (!nullToAbsent || cloudId != null) {
       map['cloud_id'] = Variable<String>(cloudId);
@@ -459,6 +491,9 @@ class Organization extends DataClass implements Insertable<Organization> {
       createdAt: Value(createdAt),
       lastUpdated: Value(lastUpdated),
       isActive: Value(isActive),
+      hqAccessCodeHash: hqAccessCodeHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(hqAccessCodeHash),
       isSynced: Value(isSynced),
       cloudId: cloudId == null && nullToAbsent
           ? const Value.absent()
@@ -483,6 +518,7 @@ class Organization extends DataClass implements Insertable<Organization> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
       isActive: serializer.fromJson<bool>(json['isActive']),
+      hqAccessCodeHash: serializer.fromJson<String?>(json['hqAccessCodeHash']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
       cloudId: serializer.fromJson<String?>(json['cloudId']),
     );
@@ -502,6 +538,7 @@ class Organization extends DataClass implements Insertable<Organization> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
       'isActive': serializer.toJson<bool>(isActive),
+      'hqAccessCodeHash': serializer.toJson<String?>(hqAccessCodeHash),
       'isSynced': serializer.toJson<bool>(isSynced),
       'cloudId': serializer.toJson<String?>(cloudId),
     };
@@ -519,6 +556,7 @@ class Organization extends DataClass implements Insertable<Organization> {
     DateTime? createdAt,
     DateTime? lastUpdated,
     bool? isActive,
+    Value<String?> hqAccessCodeHash = const Value.absent(),
     bool? isSynced,
     Value<String?> cloudId = const Value.absent(),
   }) => Organization(
@@ -537,6 +575,9 @@ class Organization extends DataClass implements Insertable<Organization> {
     createdAt: createdAt ?? this.createdAt,
     lastUpdated: lastUpdated ?? this.lastUpdated,
     isActive: isActive ?? this.isActive,
+    hqAccessCodeHash: hqAccessCodeHash.present
+        ? hqAccessCodeHash.value
+        : this.hqAccessCodeHash,
     isSynced: isSynced ?? this.isSynced,
     cloudId: cloudId.present ? cloudId.value : this.cloudId,
   );
@@ -559,6 +600,9 @@ class Organization extends DataClass implements Insertable<Organization> {
           ? data.lastUpdated.value
           : this.lastUpdated,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      hqAccessCodeHash: data.hqAccessCodeHash.present
+          ? data.hqAccessCodeHash.value
+          : this.hqAccessCodeHash,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
       cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
     );
@@ -578,6 +622,7 @@ class Organization extends DataClass implements Insertable<Organization> {
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('isActive: $isActive, ')
+          ..write('hqAccessCodeHash: $hqAccessCodeHash, ')
           ..write('isSynced: $isSynced, ')
           ..write('cloudId: $cloudId')
           ..write(')'))
@@ -597,6 +642,7 @@ class Organization extends DataClass implements Insertable<Organization> {
     createdAt,
     lastUpdated,
     isActive,
+    hqAccessCodeHash,
     isSynced,
     cloudId,
   );
@@ -615,6 +661,7 @@ class Organization extends DataClass implements Insertable<Organization> {
           other.createdAt == this.createdAt &&
           other.lastUpdated == this.lastUpdated &&
           other.isActive == this.isActive &&
+          other.hqAccessCodeHash == this.hqAccessCodeHash &&
           other.isSynced == this.isSynced &&
           other.cloudId == this.cloudId);
 }
@@ -631,6 +678,7 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
   final Value<DateTime> createdAt;
   final Value<DateTime> lastUpdated;
   final Value<bool> isActive;
+  final Value<String?> hqAccessCodeHash;
   final Value<bool> isSynced;
   final Value<String?> cloudId;
   const OrganizationsCompanion({
@@ -645,6 +693,7 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.hqAccessCodeHash = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.cloudId = const Value.absent(),
   });
@@ -660,6 +709,7 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
     this.createdAt = const Value.absent(),
     this.lastUpdated = const Value.absent(),
     this.isActive = const Value.absent(),
+    this.hqAccessCodeHash = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.cloudId = const Value.absent(),
   }) : name = Value(name),
@@ -676,6 +726,7 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastUpdated,
     Expression<bool>? isActive,
+    Expression<String>? hqAccessCodeHash,
     Expression<bool>? isSynced,
     Expression<String>? cloudId,
   }) {
@@ -692,6 +743,7 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
       if (createdAt != null) 'created_at': createdAt,
       if (lastUpdated != null) 'last_updated': lastUpdated,
       if (isActive != null) 'is_active': isActive,
+      if (hqAccessCodeHash != null) 'hq_access_code_hash': hqAccessCodeHash,
       if (isSynced != null) 'is_synced': isSynced,
       if (cloudId != null) 'cloud_id': cloudId,
     });
@@ -709,6 +761,7 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
     Value<DateTime>? createdAt,
     Value<DateTime>? lastUpdated,
     Value<bool>? isActive,
+    Value<String?>? hqAccessCodeHash,
     Value<bool>? isSynced,
     Value<String?>? cloudId,
   }) {
@@ -724,6 +777,7 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
       createdAt: createdAt ?? this.createdAt,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       isActive: isActive ?? this.isActive,
+      hqAccessCodeHash: hqAccessCodeHash ?? this.hqAccessCodeHash,
       isSynced: isSynced ?? this.isSynced,
       cloudId: cloudId ?? this.cloudId,
     );
@@ -765,6 +819,9 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
     if (isActive.present) {
       map['is_active'] = Variable<bool>(isActive.value);
     }
+    if (hqAccessCodeHash.present) {
+      map['hq_access_code_hash'] = Variable<String>(hqAccessCodeHash.value);
+    }
     if (isSynced.present) {
       map['is_synced'] = Variable<bool>(isSynced.value);
     }
@@ -788,6 +845,7 @@ class OrganizationsCompanion extends UpdateCompanion<Organization> {
           ..write('createdAt: $createdAt, ')
           ..write('lastUpdated: $lastUpdated, ')
           ..write('isActive: $isActive, ')
+          ..write('hqAccessCodeHash: $hqAccessCodeHash, ')
           ..write('isSynced: $isSynced, ')
           ..write('cloudId: $cloudId')
           ..write(')'))
@@ -11209,6 +11267,7 @@ typedef $$OrganizationsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> lastUpdated,
       Value<bool> isActive,
+      Value<String?> hqAccessCodeHash,
       Value<bool> isSynced,
       Value<String?> cloudId,
     });
@@ -11225,6 +11284,7 @@ typedef $$OrganizationsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime> lastUpdated,
       Value<bool> isActive,
+      Value<String?> hqAccessCodeHash,
       Value<bool> isSynced,
       Value<String?> cloudId,
     });
@@ -11542,6 +11602,11 @@ class $$OrganizationsTableFilterComposer
 
   ColumnFilters<bool> get isActive => $composableBuilder(
     column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get hqAccessCodeHash => $composableBuilder(
+    column: $table.hqAccessCodeHash,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11868,6 +11933,11 @@ class $$OrganizationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get hqAccessCodeHash => $composableBuilder(
+    column: $table.hqAccessCodeHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
     builder: (column) => ColumnOrderings(column),
@@ -11944,6 +12014,11 @@ class $$OrganizationsTableAnnotationComposer
 
   GeneratedColumn<bool> get isActive =>
       $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<String> get hqAccessCodeHash => $composableBuilder(
+    column: $table.hqAccessCodeHash,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get isSynced =>
       $composableBuilder(column: $table.isSynced, builder: (column) => column);
@@ -12261,6 +12336,7 @@ class $$OrganizationsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> lastUpdated = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<String?> hqAccessCodeHash = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<String?> cloudId = const Value.absent(),
               }) => OrganizationsCompanion(
@@ -12275,6 +12351,7 @@ class $$OrganizationsTableTableManager
                 createdAt: createdAt,
                 lastUpdated: lastUpdated,
                 isActive: isActive,
+                hqAccessCodeHash: hqAccessCodeHash,
                 isSynced: isSynced,
                 cloudId: cloudId,
               ),
@@ -12291,6 +12368,7 @@ class $$OrganizationsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> lastUpdated = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
+                Value<String?> hqAccessCodeHash = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<String?> cloudId = const Value.absent(),
               }) => OrganizationsCompanion.insert(
@@ -12305,6 +12383,7 @@ class $$OrganizationsTableTableManager
                 createdAt: createdAt,
                 lastUpdated: lastUpdated,
                 isActive: isActive,
+                hqAccessCodeHash: hqAccessCodeHash,
                 isSynced: isSynced,
                 cloudId: cloudId,
               ),

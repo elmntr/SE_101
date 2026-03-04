@@ -284,6 +284,14 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
+  /// ✅ Alias for getMainCommissary() — used by commissary screens
+  Future<Organization?> getCommissary() => getMainCommissary();
+
+  /// ✅ Get franchisees by parent commissary's local ID
+  Future<List<Organization>> getFranchisees(int commissaryId) {
+    return getFranchiseesByCommissary(commissaryId);
+  }
+
   // ============================================================================
   // FRANCHISEE-SPECIFIC QUERIES
   // ============================================================================
@@ -482,6 +490,8 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
               cloudOrg['lastUpdated'] ?? cloudOrg['last_updated'],
             ),
             cloudId: cloudOrg['cloudId'] ?? cloudOrg['cloud_id'] ?? '',
+            hqAccessCodeHash:
+                cloudOrg['hqAccessCodeHash'] ?? cloudOrg['hq_access_code_hash'],
           );
         }
       });
@@ -514,6 +524,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
     required DateTime createdAt,
     required DateTime lastUpdated,
     required String cloudId,
+    String? hqAccessCodeHash,
   }) async {
     try {
       // If id is 0, try to find existing by cloudId first
@@ -542,6 +553,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             lastUpdated: Value(lastUpdated),
             isSynced: Value(true),
             cloudId: Value(cloudId),
+            hqAccessCodeHash: Value(hqAccessCodeHash),
           ),
         );
       } else {
@@ -560,6 +572,7 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
             lastUpdated: Value(lastUpdated),
             isSynced: Value(true),
             cloudId: Value(cloudId),
+            hqAccessCodeHash: Value(hqAccessCodeHash),
           ),
         );
       }

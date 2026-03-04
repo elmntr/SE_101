@@ -614,6 +614,44 @@ class MockSupabaseAuthService extends _i1.Mock
           as _i19.Future<_i2.AuthResult>);
 
   @override
+  _i19.Future<String?> createBranchAdminAuthUser({
+    required String? email,
+    required String? password,
+    required String? organizationCloudId,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#createBranchAdminAuthUser, [], {
+              #email: email,
+              #password: password,
+              #organizationCloudId: organizationCloudId,
+            }),
+            returnValue: _i19.Future<String?>.value(),
+          )
+          as _i19.Future<String?>);
+
+  @override
+  _i19.Future<bool> deleteAuthUser(String? authUserId) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteAuthUser, [authUserId]),
+            returnValue: _i19.Future<bool>.value(false),
+          )
+          as _i19.Future<bool>);
+
+  @override
+  _i19.Future<bool> updateAuthUserPassword(
+    String? authUserId,
+    String? newPassword,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateAuthUserPassword, [
+              authUserId,
+              newPassword,
+            ]),
+            returnValue: _i19.Future<bool>.value(false),
+          )
+          as _i19.Future<bool>);
+
+  @override
   _i19.Future<void> signOut() =>
       (super.noSuchMethod(
             Invocation.method(#signOut, []),
@@ -2151,6 +2189,24 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
           as _i19.Future<_i4.Organization?>);
 
   @override
+  _i19.Future<_i4.Organization?> getCommissary() =>
+      (super.noSuchMethod(
+            Invocation.method(#getCommissary, []),
+            returnValue: _i19.Future<_i4.Organization?>.value(),
+          )
+          as _i19.Future<_i4.Organization?>);
+
+  @override
+  _i19.Future<List<_i4.Organization>> getFranchisees(int? commissaryId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getFranchisees, [commissaryId]),
+            returnValue: _i19.Future<List<_i4.Organization>>.value(
+              <_i4.Organization>[],
+            ),
+          )
+          as _i19.Future<List<_i4.Organization>>);
+
+  @override
   _i19.Future<List<_i4.Organization>> getAllFranchisees({
     int? limit,
     int? offset = 0,
@@ -2253,6 +2309,7 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
     required DateTime? createdAt,
     required DateTime? lastUpdated,
     required String? cloudId,
+    String? hqAccessCodeHash,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#upsertFromCloud, [], {
@@ -2268,6 +2325,7 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
               #createdAt: createdAt,
               #lastUpdated: lastUpdated,
               #cloudId: cloudId,
+              #hqAccessCodeHash: hqAccessCodeHash,
             }),
             returnValue: _i19.Future<void>.value(),
             returnValueForMissingStub: _i19.Future<void>.value(),
