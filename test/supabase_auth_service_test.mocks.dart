@@ -4036,6 +4036,15 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
           as _i19.Future<bool>);
 
   @override
+  _i19.Future<void> updateParentCommissaryId(int? localId, int? parentId) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateParentCommissaryId, [localId, parentId]),
+            returnValue: _i19.Future<void>.value(),
+            returnValueForMissingStub: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
+
+  @override
   _i19.Future<_i4.Organization?> getOrganizationById(int? id) =>
       (super.noSuchMethod(
             Invocation.method(#getOrganizationById, [id]),
@@ -4116,6 +4125,27 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
             returnValueForMissingStub: _i19.Future<_i4.Organization?>.value(),
           )
           as _i19.Future<_i4.Organization?>);
+
+  @override
+  _i19.Future<_i4.Organization?> getCommissary() =>
+      (super.noSuchMethod(
+            Invocation.method(#getCommissary, []),
+            returnValue: _i19.Future<_i4.Organization?>.value(),
+            returnValueForMissingStub: _i19.Future<_i4.Organization?>.value(),
+          )
+          as _i19.Future<_i4.Organization?>);
+
+  @override
+  _i19.Future<List<_i4.Organization>> getFranchisees(int? commissaryId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getFranchisees, [commissaryId]),
+            returnValue: _i19.Future<List<_i4.Organization>>.value(
+              <_i4.Organization>[],
+            ),
+            returnValueForMissingStub:
+                _i19.Future<List<_i4.Organization>>.value(<_i4.Organization>[]),
+          )
+          as _i19.Future<List<_i4.Organization>>);
 
   @override
   _i19.Future<List<_i4.Organization>> getAllFranchisees({
@@ -4228,6 +4258,7 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
     required DateTime? createdAt,
     required DateTime? lastUpdated,
     required String? cloudId,
+    String? hqAccessCodeHash,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#upsertFromCloud, [], {
@@ -4243,6 +4274,7 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
               #createdAt: createdAt,
               #lastUpdated: lastUpdated,
               #cloudId: cloudId,
+              #hqAccessCodeHash: hqAccessCodeHash,
             }),
             returnValue: _i19.Future<void>.value(),
             returnValueForMissingStub: _i19.Future<void>.value(),

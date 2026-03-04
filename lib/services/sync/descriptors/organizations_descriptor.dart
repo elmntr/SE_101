@@ -38,5 +38,6 @@ final organizationsDescriptor = TableSyncDescriptor(
     FieldMapping.boolean('isActive', 'is_active'),
     FieldMapping.dateTime('createdAt', 'created_at'),
     FieldMapping.dateTime('lastUpdated', 'last_updated'),
+    FieldMapping.simple('hqAccessCodeHash', 'hq_access_code_hash'),
   ],
 );

@@ -93,41 +93,18 @@ void main() {
     expect(item!.stock, 30);
   });
 
-  test('7. Add sold decreases stock and increases sold', () async {
-    final id = await itemsDao.insertItem(
-      name: 'Burrito',
-      organizationId: orgId,
-      stock: 50,
-    );
-    await itemsDao.addSold(id, 5);
-    final item = await itemsDao.getItemById(id);
-    expect(item!.stock, 45);
-    expect(item.sold, 5);
+  test('7. (removed: addSold deleted — stock deduction is now owned by PosService via BranchItemStock)', () async {
+    // addSold() was deleted. Use posService.recordSale() for stock deductions.
+    expect(true, isTrue);
   });
 
-  test('8. Add sold fails with insufficient stock', () async {
-    final id = await itemsDao.insertItem(
-      name: 'Nachos',
-      organizationId: orgId,
-      stock: 2,
-    );
-    final success = await itemsDao.addSold(id, 5);
-    expect(success, isFalse);
-    final item = await itemsDao.getItemById(id);
-    expect(item!.stock, 2);
-    expect(item.sold, 0);
+  test('8. (removed: addSold deleted)', () async {
+    expect(true, isTrue);
   });
 
-  test('9. Add spoilage decreases stock and increases spoilage', () async {
-    final id = await itemsDao.insertItem(
-      name: 'Enchilada',
-      organizationId: orgId,
-      stock: 30,
-    );
-    await itemsDao.addSpoilage(id, 3);
-    final item = await itemsDao.getItemById(id);
-    expect(item!.stock, 27);
-    expect(item.spoilage, 3);
+  test('9. (removed: addSpoilage deleted — spoilage is now owned by PosService via BranchItemStock)', () async {
+    // addSpoilage() was deleted. Use posService.recordSpoilage() for spoilage.
+    expect(true, isTrue);
   });
 
   test('10. Get items with categories returns correct data', () async {

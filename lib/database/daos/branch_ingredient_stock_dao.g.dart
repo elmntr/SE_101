@@ -5,7 +5,6 @@ part of 'branch_ingredient_stock_dao.dart';
 // ignore_for_file: type=lint
 mixin _$BranchIngredientStockDaoMixin on DatabaseAccessor<AppDatabase> {
   $OrganizationsTable get organizations => attachedDatabase.organizations;
-  $CategoriesTable get categories => attachedDatabase.categories;
   $IngredientsTable get ingredients => attachedDatabase.ingredients;
   $BranchIngredientStockTable get branchIngredientStock =>
       attachedDatabase.branchIngredientStock;
@@ -18,8 +17,6 @@ class BranchIngredientStockDaoManager {
   BranchIngredientStockDaoManager(this._db);
   $$OrganizationsTableTableManager get organizations =>
       $$OrganizationsTableTableManager(_db.attachedDatabase, _db.organizations);
-  $$CategoriesTableTableManager get categories =>
-      $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
   $$IngredientsTableTableManager get ingredients =>
       $$IngredientsTableTableManager(_db.attachedDatabase, _db.ingredients);
   $$BranchIngredientStockTableTableManager get branchIngredientStock =>

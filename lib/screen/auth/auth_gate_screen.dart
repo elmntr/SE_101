@@ -63,7 +63,11 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
   }
 
   void _navigateToHome(UserData user) {
-    Navigator.pushReplacementNamed(context, '/home', arguments: user);
+    if (user.isCommissary) {
+      Navigator.pushReplacementNamed(context, '/commissary-home', arguments: user);
+    } else {
+      Navigator.pushReplacementNamed(context, '/home', arguments: user);
+    }
   }
 
   void _navigateToLogin() {

@@ -192,7 +192,7 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
     // Get all ingredients from commissary
     final commissaryIngredients = await (select(ingredients)
           ..where((t) => t.commissaryId.equals(commissaryId))
-          ..where((t) => t.isDeleted.equals(false)))
+          ..where((t) => t.isActive.equals(true)))
         .get();
 
     // Create stock records for each ingredient (quantity 0)

@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // Connectivity and sync imports
 import '../../services/connectivity_service.dart';
-import '../../connection_status_indicator.dart';
 import '../utils/sync_status.dart';
 import '../services/supabase_auth_service.dart';
 
@@ -76,24 +75,18 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Manual sync trigger
+  /// Manual sync trigger — always does a full pull so the user always sees
+  /// the latest cloud data regardless of the last automatic sync timestamp.
   Future<void> triggerManualSync() async {
-    if (!isOnline || syncStatus == SyncStatus.syncing) return;
+    if (syncStatus == SyncStatus.syncing) return;
 
-    // Only rebuild if status is changing
-    if (syncStatus != SyncStatus.syncing) {
-      setState(() => syncStatus = SyncStatus.syncing);
-    }
+    setState(() => syncStatus = SyncStatus.syncing);
 
     try {
-      await AppGlobals.instance.syncService.syncAll();
-      if (mounted && syncStatus != SyncStatus.synced) {
-        setState(() => syncStatus = SyncStatus.synced);
-      }
+      await AppGlobals.instance.syncService.forceSyncAll();
+      if (mounted) setState(() => syncStatus = SyncStatus.synced);
     } catch (e) {
-      if (mounted && syncStatus != SyncStatus.error) {
-        setState(() => syncStatus = SyncStatus.error);
-      }
+      if (mounted) setState(() => syncStatus = SyncStatus.error);
     }
   }
 

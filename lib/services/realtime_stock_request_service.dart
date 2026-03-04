@@ -80,6 +80,10 @@ class RealtimeStockRequestService {
   Timer? _pollingTimer;
   DateTime? _lastPollTime;
   Timer? _realtimeRetryTimer;
+  // Cancellable timer for the post-disconnection reconnect delay.
+  // Replaces an untracked Future.delayed so it can never stack with
+  // the periodic realtimeRetryTimer.
+  Timer? _disconnectionRetryTimer;
   bool _isAttemptingRealtime = false;
   
   // Adaptive polling intervals
@@ -361,7 +365,10 @@ class RealtimeStockRequestService {
     AppLogger.websocket('🔁 DISCONNECTED — reconnecting in 5s');
     _updateStatus(RealtimeConnectionStatus.reconnecting);
     
-    Future.delayed(const Duration(seconds: 5), () { // was 2 seconds
+    // Use a cancellable Timer instead of Future.delayed so this reconnect
+    // attempt can never stack with the periodic _realtimeRetryTimer.
+    _disconnectionRetryTimer?.cancel();
+    _disconnectionRetryTimer = Timer(const Duration(seconds: 5), () {
       if (!_isPaused && _activeScreenCount > 0) {
         _connectWithRetry();
       }
@@ -375,6 +382,8 @@ class RealtimeStockRequestService {
     _debounceTimer = null;
     _realtimeRetryTimer?.cancel();
     _realtimeRetryTimer = null;
+    _disconnectionRetryTimer?.cancel();
+    _disconnectionRetryTimer = null;
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
     
@@ -606,6 +615,7 @@ class RealtimeStockRequestService {
     _pollingTimer?.cancel();
     _debounceTimer?.cancel();
     _realtimeRetryTimer?.cancel();
+    _disconnectionRetryTimer?.cancel();
     _connectivitySubscription?.cancel();
     _stopListening();
     _statusController.close();

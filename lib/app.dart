@@ -6,6 +6,8 @@ import 'package:chickenjoo_inventory/utils/app_logger.dart';
 import 'screen/auth/auth_gate_screen.dart';
 import 'screen/login/login_screen.dart';
 import 'home/home.dart';
+import 'screen/commissary/login/commissary_login_screen.dart';
+import 'screen/commissary/home/commissary_home_screen.dart';
 
 /// Reinitialize sync service with user's organization context after login
 void reinitializeSyncWithUserContext(UserData userData) {
@@ -110,6 +112,29 @@ class _MyAppState extends State<MyApp> {
 
           return MaterialPageRoute(
             builder: (context) => HomeScreen(signedInUser: userData),
+          );
+        }
+
+        // Commissary login route
+        if (settings.name == '/commissary-login') {
+          return MaterialPageRoute(
+            builder: (context) => const CommissaryLoginScreen(),
+          );
+        }
+
+        // Commissary home route (requires UserData)
+        if (settings.name == '/commissary-home') {
+          final userData = settings.arguments as UserData?;
+
+          if (userData == null) {
+            return MaterialPageRoute(builder: (context) => const CommissaryLoginScreen());
+          }
+
+          AppLogger.websocket('🔌 ROUTE /commissary-home  navigating → calling reinitializeSyncWithUserContext');
+          reinitializeSyncWithUserContext(userData);
+
+          return MaterialPageRoute(
+            builder: (context) => CommissaryHomeScreen(signedInUser: userData),
           );
         }
 

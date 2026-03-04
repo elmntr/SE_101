@@ -379,9 +379,19 @@ Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
             costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
             grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
             transactionCount: Value(record['transactionCount'] as int? ?? 0),
+            cloudId: Value(cloudId), // Ensure cloud ID is stamped on conflict too
             lastUpdated: Value(resolvedLastUpdated),
             isSynced: const Value(true),
           ),
+          // Target the business-key unique constraint, NOT the primary key.
+          // Without this, Drift generates ON CONFLICT("id") which never fires
+          // for auto-increment rows, letting the (org, item, date) unique
+          // constraint throw instead.
+          target: [
+            dailySalesSummary.organizationId,
+            dailySalesSummary.itemId,
+            dailySalesSummary.summaryDate,
+          ],
         ),
       );
     }

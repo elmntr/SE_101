@@ -283,7 +283,7 @@ class RecipeIngredientsDao extends DatabaseAccessor<AppDatabase>
       return await db.transaction(() async {
         for (final entry in requirements.entries) {
           final ingredientId = entry.key;
-          final quantity = entry.value.toInt(); // Convert to int for stock
+          final quantity = entry.value;
 
           final success = await db.ingredientsDao.deductStock(
             ingredientId,

@@ -398,78 +398,10 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     }
   }
 
-  /// ✅ ATOMIC: Add sold quantity and deduct from stock (single query)
-  Future<bool> addSold(int itemId, int quantity) async {
-    if (quantity <= 0) {
-      throw ArgumentError('Quantity must be positive');
-    }
-
-    try {
-      // ✅ Use SQL expression for atomic update
-      final result = await customUpdate(
-        'UPDATE items SET '
-        'sold = sold + ?, '
-        'stock = stock - ?, '
-        'last_updated = ?, '
-        'is_synced = 0 '
-        'WHERE id = ? AND stock >= ?',
-        updates: {items},
-        variables: [
-          Variable.withInt(quantity),
-          Variable.withInt(quantity),
-          Variable.withDateTime(DateTime.now().toUtc()),
-          Variable.withInt(itemId),
-          Variable.withInt(quantity),
-        ],
-      );
-
-      if (result == 0) {
-        //print('⚠️ Insufficient stock for item $itemId');
-        return false;
-      }
-
-      return true;
-    } catch (e) {
-      //print('❌ Error adding sold: $e');
-      return false;
-    }
-  }
-
-  /// ✅ ATOMIC: Add spoilage quantity and deduct from stock
-  Future<bool> addSpoilage(int itemId, int quantity) async {
-    if (quantity <= 0) {
-      throw ArgumentError('Quantity must be positive');
-    }
-
-    try {
-      final result = await customUpdate(
-        'UPDATE items SET '
-        'spoilage = spoilage + ?, '
-        'stock = stock - ?, '
-        'last_updated = ?, '
-        'is_synced = 0 '
-        'WHERE id = ? AND stock >= ?',
-        updates: {items},
-        variables: [
-          Variable.withInt(quantity),
-          Variable.withInt(quantity),
-          Variable.withDateTime(DateTime.now().toUtc()),
-          Variable.withInt(itemId),
-          Variable.withInt(quantity),
-        ],
-      );
-
-      if (result == 0) {
-        //print('⚠️ Insufficient stock for item $itemId');
-        return false;
-      }
-
-      return true;
-    } catch (e) {
-      //print('❌ Error adding spoilage: $e');
-      return false;
-    }
-  }
+  // NOTE: addSold() and addSpoilage() have been removed.
+  // Stock changes are applied exclusively by PosService via BranchItemStock.
+  // DailySalesSummary is the source of truth for reports.
+  // Items.sold and Items.spoilage columns are deprecated.
 
   /// ✅ ATOMIC: Add stock (for replenishment)
   Future<bool> addStock(int itemId, int quantity) async {
