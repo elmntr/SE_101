@@ -561,19 +561,20 @@ class SupabaseSyncServiceV2 {
           'id': ing.id,
           'name': ing.name,
           'commissaryId': ing.commissaryId,
-          'categoryId': ing.categoryId,
           'stock': ing.stock,
-          'spoilage': ing.spoilage,
           'unit': ing.unit,
-          'minimumStock': ing.minimumStock,
-          'description': ing.description,
-          'isDeleted': ing.isDeleted,
+          'criticalLevel': ing.criticalLevel,
+          'costPerUnit': ing.costPerUnit,
+          'isActive': ing.isActive,
+          'needsSync': ing.needsSync,
           'createdAt': ing.createdAt,
           'lastUpdated': ing.lastUpdated,
+          'updatedAt': ing.updatedAt,
+          'lastSyncedAt': ing.lastSyncedAt,
         },
         getId: (ing) => ing.id,
         getCloudId: (ing) => ing.cloudId,
-        shouldSkip: (ing) => ing.isDeleted,
+        shouldSkip: (ing) => !ing.isActive,
       );
     }
 
@@ -943,6 +944,22 @@ class SupabaseSyncServiceV2 {
 
   Future<void> syncImmediate() async {
     AppLogger.sync('⚡ Immediate sync requested');
+    await syncAll();
+  }
+
+  /// Force a **full** pull from Supabase (ignores lastSuccessfulSync)
+  /// and push any locally pending changes.
+  ///
+  /// Use this for user-initiated "Sync Now" button presses where the
+  /// expectation is that ALL cloud data is downloaded, not just incremental
+  /// changes since the last automatic sync.
+  Future<void> forceSyncAll() async {
+    AppLogger.sync('🔄 Force full sync requested (resetting timestamp)');
+    // Re-check connectivity in case the cached flag is stale (common on Windows)
+    _isOnline = await _checkConnectivity();
+    // Resetting lastSuccessfulSync makes the engine use '1970-01-01' as the
+    // lower-bound for every pull query, i.e. it fetches everything.
+    _engine.resetLastSuccessfulSync();
     await syncAll();
   }
 

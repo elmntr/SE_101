@@ -84,7 +84,8 @@ class _IngredientFormDialogState extends State<IngredientFormDialog> {
       _nameController.text = widget.ingredient!.name;
       _unitController.text = widget.ingredient!.unit;
       _stockController.text = _formatWithCommas(widget.ingredient!.stock.toString());
-      _criticalLevelController.text = _formatWithCommas((widget.ingredient!.minimumStock ?? 0).toString());
+      _costController.text = _formatWithCommas(widget.ingredient!.costPerUnit.toString());
+      _criticalLevelController.text = _formatWithCommas((widget.ingredient!.criticalLevel ?? 0).toString());
     }
   }
 
@@ -108,10 +109,11 @@ class _IngredientFormDialogState extends State<IngredientFormDialog> {
           : Value(_uuid.v4()),
       name: Value(_nameController.text.trim()),
       unit: Value(_unitController.text.trim()),
-      stock: Value(int.tryParse(_removeCommas(_stockController.text)) ?? 0),
-      minimumStock: Value(int.tryParse(_removeCommas(_criticalLevelController.text)) ?? 10),
+      stock: Value(double.tryParse(_removeCommas(_stockController.text)) ?? 0.0),
+      criticalLevel: Value(double.tryParse(_removeCommas(_criticalLevelController.text))),
+      costPerUnit: Value(double.tryParse(_removeCommas(_costController.text)) ?? 0.0),
       commissaryId: Value(widget.commissaryId),
-      isSynced: const Value(false),
+      needsSync: const Value(true),
     );
 
     widget.onSave(companion);

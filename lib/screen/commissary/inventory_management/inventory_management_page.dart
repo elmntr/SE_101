@@ -1,8 +1,5 @@
 // lib/screens/inventory_management/inventory_management_page.dart
 import 'package:flutter/material.dart';
-import 'package:drift/drift.dart' show Value;
-import 'package:uuid/uuid.dart';
-import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/database/daos/ingredients_dao.dart';
 import 'package:chickenjoo_inventory/database/daos/items_dao.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
@@ -112,6 +109,10 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
   }
 
   void showAddIngredientDialog() {
+    // Capture page-level messenger before showing dialog — the dialog's builder
+    // context becomes deactivated after Navigator.pop() runs in _handleSave(),
+    // which happens before the async onSave completes.
+    final messenger = ScaffoldMessenger.of(context);
     showDialog(
       context: context,
       builder: (context) => IngredientFormDialog(
@@ -120,7 +121,7 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
           try {
             await database.ingredientsDao.insertIngredients([companion]);
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 const SnackBar(
                   content: Text('Ingredient added successfully'),
                   backgroundColor: Colors.green,
@@ -129,7 +130,7 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
             }
           } catch (e) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 SnackBar(
                   content: Text(e.toString().replaceFirst('Exception: ', '')),
                   backgroundColor: Colors.red,
@@ -148,6 +149,7 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
 
     if (!mounted) return;
 
+    final messenger = ScaffoldMessenger.of(context);
     showDialog(
       context: context,
       builder: (context) => ItemFormDialog(
@@ -179,7 +181,7 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
             }
 
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 const SnackBar(
                   content: Text('Product added successfully'),
                   backgroundColor: Colors.green,
@@ -188,7 +190,7 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
             }
           } catch (e) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 SnackBar(
                   content: Text(e.toString().replaceFirst('Exception: ', '')),
                   backgroundColor: Colors.red,

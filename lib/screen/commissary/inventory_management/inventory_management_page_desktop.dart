@@ -178,6 +178,7 @@ class InventoryManagementPageDesktop extends StatelessWidget {
                               searchQuery: state.searchQuery,
                               sortOrder: state.ingredientSortOrder,
                               showLowStockOnly: state.showLowStockIngredientsOnly,
+                              onAddPressed: state.showAddIngredientDialog,
                             )
                           : ProductsTab(
                               organizationId: state.widget.organizationId,

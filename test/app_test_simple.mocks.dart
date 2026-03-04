@@ -2116,6 +2116,15 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
           as _i19.Future<bool>);
 
   @override
+  _i19.Future<void> updateParentCommissaryId(int? localId, int? parentId) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateParentCommissaryId, [localId, parentId]),
+            returnValue: _i19.Future<void>.value(),
+            returnValueForMissingStub: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
+
+  @override
   _i19.Future<_i4.Organization?> getOrganizationById(int? id) =>
       (super.noSuchMethod(
             Invocation.method(#getOrganizationById, [id]),
