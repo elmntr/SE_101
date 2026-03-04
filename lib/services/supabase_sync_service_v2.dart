@@ -30,6 +30,9 @@ class SupabaseSyncServiceV2 {
   Timer? _syncTimer;
   bool _isSyncing = false;
   bool _isOnline = true;
+  // Set to true when clearOrganizationContext() is called while a sync is
+  // running; the clear is applied in syncAll()'s finally block instead.
+  bool _pendingContextClear = false;
   StreamSubscription? _connectivitySubscription;
 
   // Configuration
@@ -291,6 +294,11 @@ class SupabaseSyncServiceV2 {
       onSyncStatusChanged?.call('Sync failed');
     } finally {
       _isSyncing = false;
+      // Apply any context clear that was deferred because a sync was running.
+      if (_pendingContextClear) {
+        _pendingContextClear = false;
+        clearOrganizationContext();
+      }
     }
   }
 
@@ -646,7 +654,7 @@ class SupabaseSyncServiceV2 {
     );
   }
 
-  Future<void> _syncReplenishmentRequests() async {
+  Future<void> _syncReplenishmentRequests({bool forceFullPull = false}) async {
     AppLogger.sync('   📊 Syncing ReplenishmentRequests...');
     
     // Push local requests to cloud
@@ -688,26 +696,23 @@ class SupabaseSyncServiceV2 {
           db.stockReplenishmentRequestsDao.getRequestByCloudId(cloudId),
       getLastUpdated: (req) => req.lastUpdated,
       getOrganizationId: (req) => req.franchiseeId,
+      // When force-pulling, override the incremental filter without touching
+      // the engine's shared lastSuccessfulSync timestamp.
+      sinceOverride: forceFullPull ? DateTime.utc(1970) : null,
     );
   }
 
   /// Force a FULL sync of replenishment requests (ignores lastSuccessfulSync)
   /// Used by realtime service when it detects pending updates
   Future<void> forceFullSyncReplenishmentRequests() async {
-    AppLogger.sync('   📊 FORCE FULL Syncing ReplenishmentRequests...');
-    
-    // Temporarily reset lastSuccessfulSync to force full pull
-    final oldSync = _engine.lastSuccessfulSync;
-    _engine.resetLastSuccessfulSync();
-    
-    try {
-      await _syncReplenishmentRequests();
-    } finally {
-      // Restore the old sync time (don't update it)
-      if (oldSync != null) {
-        _engine.setLastSuccessfulSync(oldSync);
-      }
+    // If syncAll() is already running it will pull replenishment requests as
+    // part of Tier 4 — no need to duplicate the work.
+    if (_isSyncing) {
+      AppLogger.sync('⏳ Sync already in progress, skipping force sync');
+      return;
     }
+    AppLogger.sync('   📊 FORCE FULL Syncing ReplenishmentRequests...');
+    await _syncReplenishmentRequests(forceFullPull: true);
   }
 
   Future<void> _syncChangeRequests() async {
@@ -920,56 +925,67 @@ class SupabaseSyncServiceV2 {
 
   /// Sync organizations table only
   Future<void> syncOrganizations() async {
+    if (_isSyncing) return;
     await _syncOrganizations();
   }
 
   /// Sync roles table only
   Future<void> syncRoles() async {
+    if (_isSyncing) return;
     await _syncRoles();
   }
 
   /// Sync users table only
   Future<void> syncUsers() async {
+    if (_isSyncing) return;
     await _syncUsers();
   }
 
   /// Sync items table only
   Future<void> syncItems() async {
+    if (_isSyncing) return;
     await _syncItems();
   }
 
   /// Sync ingredients table only
   Future<void> syncIngredients() async {
+    if (_isSyncing) return;
     await _syncIngredients();
   }
 
   /// Sync recipe ingredients table only
   Future<void> syncRecipeIngredients() async {
+    if (_isSyncing) return;
     await _syncRecipeIngredients();
   }
 
   /// Sync stock replenishment requests table only
   Future<void> syncStockReplenishmentRequests() async {
+    if (_isSyncing) return;
     await _syncReplenishmentRequests();
   }
 
   /// Sync stock change requests table only
   Future<void> syncStockChangeRequests() async {
+    if (_isSyncing) return;
     await _syncChangeRequests();
   }
 
   /// Sync branch item stock table only
   Future<void> syncBranchItemStock() async {
+    if (_isSyncing) return;
     await _syncBranchItemStock();
   }
 
   /// Sync branch ingredient stock table only
   Future<void> syncBranchIngredientStock() async {
+    if (_isSyncing) return;
     await _syncBranchIngredientStock();
   }
 
   /// Sync daily sales summary table only
   Future<void> syncDailySalesSummary() async {
+    if (_isSyncing) return;
     await _syncDailySalesSummary();
   }
 
@@ -1038,6 +1054,14 @@ class SupabaseSyncServiceV2 {
 
   /// Clear organization context on logout to prevent stale sync operations
   void clearOrganizationContext() {
+    // If a sync is currently running, defer the clear to avoid nulling
+    // context fields (_currentOrganizationType etc.) mid-flight.
+    if (_isSyncing) {
+      _pendingContextClear = true;
+      AppLogger.sync('⏳ Sync in progress – deferring context clear');
+      return;
+    }
+    _pendingContextClear = false;
     _currentOrganizationId = null;
     _currentOrganizationCloudId = null;
     _currentOrganizationType = null;

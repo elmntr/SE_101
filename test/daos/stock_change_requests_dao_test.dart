@@ -96,7 +96,7 @@ void main() {
   });
 
   test(
-    '3. Approve change request moves status to approved and updates item stock (sold)',
+    '3. Approve sold request: status becomes approved, stock unchanged (PosService owns stock)',
     () async {
       final id = await dao.createChangeRequest(
         franchiseeId: franchiseeId,
@@ -106,19 +106,21 @@ void main() {
         requestedBy: employeeId,
         originalStock: 100,
       );
-      await dao.submitChangeRequest(id);
+      // Manually set to pending (simulating employee submit without PosService auto-approve)
+      await (db.update(db.stockChangeRequests)..where((t) => t.id.equals(id)))
+          .write(const StockChangeRequestsCompanion(status: Value('pending')));
       await dao.approveChangeRequest(requestId: id, reviewedBy: managerId);
 
       final req = await dao.getChangeRequestById(id);
       final item = await db.itemsDao.getItemById(itemId);
 
       expect(req!.status, 'approved');
-      expect(item!.stock, 90);
-      expect(item.sold, 10);
+      // Stock must NOT be touched here — PosService already applied it on submission.
+      expect(item!.stock, 100);
     },
   );
 
-  test('4. Approve change request updates item stock (spoiled)', () async {
+  test('4. Approve spoiled request: status becomes approved, stock unchanged', () async {
     final id = await dao.createChangeRequest(
       franchiseeId: franchiseeId,
       itemId: itemId,
@@ -127,12 +129,14 @@ void main() {
       requestedBy: employeeId,
       originalStock: 100,
     );
-    await dao.submitChangeRequest(id);
+    // Manually set to pending
+    await (db.update(db.stockChangeRequests)..where((t) => t.id.equals(id)))
+        .write(const StockChangeRequestsCompanion(status: Value('pending')));
     await dao.approveChangeRequest(requestId: id, reviewedBy: managerId);
 
     final item = await db.itemsDao.getItemById(itemId);
-    expect(item!.stock, 95);
-    expect(item.spoilage, 5);
+    // Stock must NOT be touched here — PosService already applied it on submission.
+    expect(item!.stock, 100);
   });
 
   test('5. Reject change request moves status to rejected', () async {
@@ -259,12 +263,19 @@ void main() {
   });
 
   test(
-    '11. Approve request for return updates stock and sold correctly',
+    '11. Approve return request restores BranchItemStock correctly',
     () async {
-      await db.itemsDao.addSold(
-        itemId,
-        20,
-      ); // Initial stock 100, sold 20 -> stock 80
+      // Set up: simulate what PosService would have written (stock=80, sold=20)
+      await db.branchItemStockDao.createStock(
+        BranchItemStockCompanion(
+          organizationId: Value(franchiseeId),
+          itemId: Value(itemId),
+          stock: const Value(80),
+          sold: const Value(20),
+          spoilage: const Value(0),
+          isSynced: const Value(false),
+        ),
+      );
       final id = await dao.createChangeRequest(
         franchiseeId: franchiseeId,
         itemId: itemId,
@@ -273,11 +284,15 @@ void main() {
         requestedBy: employeeId,
         originalStock: 80,
       );
-      await dao.submitChangeRequest(id);
+      // Manually set to pending
+      await (db.update(db.stockChangeRequests)..where((t) => t.id.equals(id)))
+          .write(const StockChangeRequestsCompanion(status: Value('pending')));
       await dao.approveChangeRequest(requestId: id, reviewedBy: managerId);
-      final item = await db.itemsDao.getItemById(itemId);
-      expect(item!.stock, 85); // 80 + 5
-      expect(item.sold, 15); // 20 - 5
+
+      final branchStock = await db.branchItemStockDao
+          .getStockForItem(franchiseeId, itemId);
+      expect(branchStock!.stock, 85); // 80 + 5
+      expect(branchStock.sold, 15);   // 20 - 5
     },
   );
 

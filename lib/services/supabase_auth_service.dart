@@ -7,6 +7,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase show User;
+import '../config/supabase_config.dart';
 import '../database/app_database.dart';
 
 /// Auth lifecycle states for clear startup flow
@@ -184,6 +185,17 @@ class SupabaseAuthService {
       final session = data.session;
 
       _logAuth('Auth state changed: $event');
+
+      // When bootstrap() is in progress, let it be the sole owner of the
+      // initialSession event. Without this guard both bootstrap() and the
+      // listener call _loadCurrentUser() concurrently and interleave their
+      // writes to _currentUser / _lifecycleState.
+      if (event == AuthChangeEvent.initialSession &&
+          _bootstrapStarted &&
+          !_bootstrapCompleter.isCompleted) {
+        _logAuth('Skipping initialSession in listener \u2013 bootstrap in progress');
+        return;
+      }
 
       // Handle all session-providing events the same way  
       if ((event == AuthChangeEvent.signedIn || 
@@ -570,11 +582,6 @@ class SupabaseAuthService {
         return AuthResult.failure('Organization not found');
       }
 
-      // 3. Save current session before creating new user
-      // signUp might sign in as the new user if email confirmation is disabled
-      final currentSession = _supabase.auth.currentSession;
-      final currentUserData = _currentUser;
-
       // 4. Create Supabase Auth user
       // Note: If email confirmation is enabled in Supabase, user won't be able to login
       // until they confirm. Disable email confirmation in Supabase Dashboard:
@@ -586,55 +593,50 @@ class SupabaseAuthService {
         //print('   Password: $password'); // Remove this after debugging!
       }
 
-      final authResponse = await _supabase.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          'username': username,
-          'full_name': fullName ?? username,
-          'organization_id': org.cloudId,
-        },
+      final tempClient = SupabaseClient(
+        SupabaseConfig.url,
+        SupabaseConfig.anonKey,
+        authOptions: const AuthClientOptions(
+          authFlowType: AuthFlowType.implicit,
+        ),
       );
+      String? authUserId;
 
-      if (authResponse.user == null) {
-        return AuthResult.failure('Failed to create auth account');
-      }
+      try {
+        final authResponse = await tempClient.auth.signUp(
+          email: email,
+          password: password,
+          data: {
+            'username': username,
+            'full_name': fullName ?? username,
+            'organization_id': org.cloudId,
+          },
+        );
 
-      // Check if email confirmation is required (user exists but session is null)
-      if (authResponse.session == null && authResponse.user != null) {
-        if (kDebugMode) {
-          //print('⚠️ Email confirmation may be required for: $email');
-          //print(
-          //  '   Disable email confirmation in Supabase Dashboard if needed',
-          //);
+        if (authResponse.user == null) {
+          return AuthResult.failure('Failed to create auth account');
         }
-      }
 
-      final authUserId = authResponse.user!.id;
+        // Check if email confirmation is required (user exists but session is null)
+        if (authResponse.session == null && authResponse.user != null) {
+          if (kDebugMode) {
+            //print('⚠️ Email confirmation may be required for: $email');
+            //print(
+            //  '   Disable email confirmation in Supabase Dashboard if needed',
+            //);
+          }
+        }
+
+        authUserId = authResponse.user!.id;
+      } finally {
+        tempClient.dispose();
+      }
 
       if (kDebugMode) {
         //print('✅ Created Supabase Auth user: $authUserId');
         //print(
         //  '   Email confirmed: ${authResponse.user!.emailConfirmedAt != null}',
         //);
-      }
-
-      // 5. Restore original admin session BEFORE inserting to users table
-      // The admin has permission to insert, the new user might not
-      if (currentSession != null &&
-          _supabase.auth.currentUser?.id != currentSession.user.id) {
-        try {
-          await _supabase.auth.setSession(currentSession.refreshToken!);
-          _currentUser = currentUserData;
-          _authStateController?.add(_currentUser);
-          if (kDebugMode) {
-            //print('✅ Restored admin session');
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            //print('⚠️ Could not restore session: $e');
-          }
-        }
       }
 
       // 6. Get role cloud_id

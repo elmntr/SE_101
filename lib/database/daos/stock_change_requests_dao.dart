@@ -374,50 +374,58 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
           ),
         );
 
-        // 2. Apply stock changes based on change type
+        // 2. Apply stock changes based on change type.
+        // NOTE for 'sold' and 'spoiled': PosService already applied the stock
+        // deduction and recorded DailySalesSummary when the employee submitted.
+        // Approval here only changes the audit-record status — no re-deduction.
         switch (request.changeType) {
           case 'sold':
-            await db.itemsDao.addSold(request.itemId, request.quantity);
+            // Stock already deducted by PosService on submission. Status-only update.
             break;
           case 'spoiled':
-            await db.itemsDao.addSpoilage(request.itemId, request.quantity);
+            // Stock already deducted by PosService on submission. Status-only update.
             break;
           case 'adjustment':
-            // For adjustments, directly update stock
-            final item = await db.itemsDao.getItemById(request.itemId);
-            if (item != null) {
-              final newStock =
-                  item.stock +
-                  request.quantity; // Can be negative for deductions
-              await db.itemsDao.updateStock(request.itemId, newStock);
+            // For adjustments, directly update BranchItemStock to the target level.
+            final branchStockAdj = await db.branchItemStockDao
+                .getStockForItem(request.franchiseeId, request.itemId);
+            if (branchStockAdj != null) {
+              final newStock = branchStockAdj.stock + request.quantity; // quantity can be negative
+              await db.branchItemStockDao.updateStock(
+                branchStockAdj.id,
+                BranchItemStockCompanion(stock: Value(newStock)),
+              );
             }
             break;
           case 'return':
-            // Return: decrease sold, increase stock
-            await customUpdate(
-              'UPDATE items SET '
-              'sold = sold - ?, '
-              'stock = stock + ?, '
-              'last_updated = ?, '
-              'is_synced = 0 '
-              'WHERE id = ?',
-              updates: {db.items},
-              variables: [
-                Variable.withInt(request.quantity),
-                Variable.withInt(request.quantity),
-                Variable.withDateTime(DateTime.now().toUtc()),
-                Variable.withInt(request.itemId),
-              ],
-            );
+            // Reverse the prior PosService sale on BranchItemStock:
+            // add quantity back to stock and reduce sold accordingly.
+            final branchStockRet = await db.branchItemStockDao
+                .getStockForItem(request.franchiseeId, request.itemId);
+            if (branchStockRet != null) {
+              final restoredSold = (branchStockRet.sold - request.quantity)
+                  .clamp(0, branchStockRet.sold)
+                  .toInt();
+              await db.branchItemStockDao.updateStock(
+                branchStockRet.id,
+                BranchItemStockCompanion(
+                  stock: Value(branchStockRet.stock + request.quantity),
+                  sold: Value(restoredSold),
+                ),
+              );
+            }
             break;
           case 'override':
-            // Override records are pre-applied at creation time (stock is already set).
-            // If this record ever reaches the pending-approval flow, apply the delta:
-            // newStock = originalStock + quantity (quantity can be negative for decreases).
-            final item = await db.itemsDao.getItemById(request.itemId);
-            if (item != null) {
+            // Override records are pre-applied at creation time via BranchItemStock.
+            // If this record reaches the pending-approval flow, reconcile BranchItemStock.
+            final branchStockOvr = await db.branchItemStockDao
+                .getStockForItem(request.franchiseeId, request.itemId);
+            if (branchStockOvr != null) {
               final restoredStock = request.originalStock + request.quantity;
-              await db.itemsDao.updateStock(request.itemId, restoredStock);
+              await db.branchItemStockDao.updateStock(
+                branchStockOvr.id,
+                BranchItemStockCompanion(stock: Value(restoredStock)),
+              );
             }
             break;
         }

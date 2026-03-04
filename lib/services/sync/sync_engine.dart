@@ -420,6 +420,9 @@ class SyncEngine {
     required int? Function(T record) getOrganizationId,
     Future<T?> Function(Map<String, dynamic> localData)? getByBusinessKey,
     String? additionalFilter,
+    /// When non-null, overrides lastSuccessfulSync for this pull only.
+    /// The engine's stored timestamp is never mutated.
+    DateTime? sinceOverride,
   }) async {
     final stopwatch = Stopwatch()..start();
     int totalPulled = 0;
@@ -430,9 +433,12 @@ class SyncEngine {
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         // Determine sync start time (ensure UTC format for Supabase)
-        final lastSync = descriptor.incrementalSync && lastSuccessfulSync != null
-            ? lastSuccessfulSync!.toUtc().toIso8601String()
-            : '1970-01-01T00:00:00.000Z';
+        // sinceOverride bypasses lastSuccessfulSync without mutating engine state
+        final lastSync = sinceOverride != null
+            ? sinceOverride.toUtc().toIso8601String()
+            : (descriptor.incrementalSync && lastSuccessfulSync != null
+                ? lastSuccessfulSync!.toUtc().toIso8601String()
+                : '1970-01-01T00:00:00.000Z');
 
         if (kDebugMode) {
           AppLogger.sync('   🔍 Pulling ${descriptor.tableName} since: $lastSync');
