@@ -500,29 +500,51 @@ class _ReportsPageDesktopState extends State<ReportsPageDesktop> {
 
           final segmentPercent = totalValue > 0 ? value / totalValue : 0.0;
           final color = state.getItemColor(itemId);
+          
+          // Get item name for tooltip
+          String itemName = 'Item';
+          if (state.allItems.isNotEmpty) {
+            final item = state.allItems.firstWhere(
+              (i) => i.id == itemId,
+              orElse: () => state.allItems.first,
+            );
+            itemName = item.name;
+          }
 
           segments.add(
             Flexible(
               flex: (segmentPercent * 1000).round().clamp(1, 1000),
-              child: MouseRegion(
-                onEnter: (_) => setState(() {
-                  _hoveredIndex = bucketIndex;
-                  _hoveredItemId = itemId;
-                }),
-                onExit: (_) => setState(() {
-                  _hoveredIndex = null;
-                  _hoveredItemId = null;
-                }),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  decoration: BoxDecoration(
-                    color: (_hoveredIndex == bucketIndex &&
-                            _hoveredItemId == itemId)
-                        ? Color.lerp(color, Colors.black, 0.2)
-                        : color,
-                    borderRadius: segments.isEmpty
-                        ? const BorderRadius.vertical(top: Radius.circular(2))
-                        : null,
+              child: Tooltip(
+                message: '$itemName: ${value.toStringAsFixed(0)}',
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                textStyle: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+                child: MouseRegion(
+                  onEnter: (_) => setState(() {
+                    _hoveredIndex = bucketIndex;
+                    _hoveredItemId = itemId;
+                  }),
+                  onExit: (_) => setState(() {
+                    _hoveredIndex = null;
+                    _hoveredItemId = null;
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    decoration: BoxDecoration(
+                      color: (_hoveredIndex == bucketIndex &&
+                              _hoveredItemId == itemId)
+                          ? Color.lerp(color, Colors.black, 0.2)
+                          : color,
+                      borderRadius: segments.isEmpty
+                          ? const BorderRadius.vertical(top: Radius.circular(2))
+                          : null,
+                    ),
                   ),
                 ),
               ),
@@ -539,45 +561,6 @@ class _ReportsPageDesktopState extends State<ReportsPageDesktop> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // Tooltip for stacked bar
-                AnimatedOpacity(
-                  opacity: (_hoveredIndex == bucketIndex && _hoveredItemId != null)
-                      ? 1.0
-                      : 0.0,
-                  duration: const Duration(milliseconds: 120),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Builder(
-                      builder: (context) {
-                        if (_hoveredItemId == null || state.allItems.isEmpty) {
-                          return const SizedBox();
-                        }
-                        final item = state.allItems.firstWhere(
-                          (i) => i.id == _hoveredItemId,
-                          orElse: () => state.allItems.first,
-                        );
-                        final itemData = stackedData[_hoveredItemId]?[metric];
-                        final value = (itemData != null &&
-                                bucketIndex < itemData.length)
-                            ? itemData[bucketIndex]
-                            : 0.0;
-                        return Text(
-                          '${item.name}: ${value.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600),
-                        );
-                      },
-                    ),
-                  ),
-                ),
                 // Stacked bar
                 Flexible(
                   child: FractionallySizedBox(
