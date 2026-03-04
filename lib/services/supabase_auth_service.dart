@@ -186,6 +186,17 @@ class SupabaseAuthService {
 
       _logAuth('Auth state changed: $event');
 
+      // When bootstrap() is in progress, let it be the sole owner of the
+      // initialSession event. Without this guard both bootstrap() and the
+      // listener call _loadCurrentUser() concurrently and interleave their
+      // writes to _currentUser / _lifecycleState.
+      if (event == AuthChangeEvent.initialSession &&
+          _bootstrapStarted &&
+          !_bootstrapCompleter.isCompleted) {
+        _logAuth('Skipping initialSession in listener \u2013 bootstrap in progress');
+        return;
+      }
+
       // Handle all session-providing events the same way  
       if ((event == AuthChangeEvent.signedIn || 
            event == AuthChangeEvent.tokenRefreshed ||
