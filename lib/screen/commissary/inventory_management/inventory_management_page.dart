@@ -1,9 +1,13 @@
 // lib/screens/inventory_management/inventory_management_page.dart
 import 'package:flutter/material.dart';
+import 'package:drift/drift.dart' show Value;
+import 'package:uuid/uuid.dart';
+import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/database/daos/ingredients_dao.dart';
 import 'package:chickenjoo_inventory/database/daos/items_dao.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'inventory_management_page_controller.dart';
 import 'inventory_management_page_desktop.dart';
 import 'inventory_management_page_mobile.dart';
 import 'widgets/ingredient_form_dialog.dart';
@@ -31,97 +35,72 @@ class InventoryManagementPage extends StatefulWidget {
 }
 
 class InventoryManagementPageState extends State<InventoryManagementPage> {
-  int selectedTab = 0; // 0 = Ingredients, 1 = Products
-  bool hasIngredients = false;
-  bool hasProducts = false;
+  late InventoryManagementPageController controller;
 
-  // Search functionality
-  final TextEditingController searchController = TextEditingController();
-  String searchQuery = '';
-
-  // Sort & Filter state for Ingredients tab
-  IngredientSortOrder ingredientSortOrder = IngredientSortOrder.nameAsc;
-  bool showLowStockIngredientsOnly = false;
-
-  // Sort & Filter state for Products tab
-  ItemSortOrder productSortOrder = ItemSortOrder.nameAsc;
-  bool showLowStockProductsOnly = false;
-  int? selectedCategoryId;
+  @override
+  void initState() {
+    super.initState();
+    controller = InventoryManagementPageController(
+      onStateChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
+  }
 
   @override
   void dispose() {
-    searchController.dispose();
+    controller.dispose();
     super.dispose();
   }
 
-  void onSearchChanged(String query) {
-    setState(() {
-      searchQuery = query;
-    });
-  }
+  // Expose controller properties for UI
+  int get selectedTab => controller.selectedTab;
+  bool get hasIngredients => controller.hasIngredients;
+  bool get hasProducts => controller.hasProducts;
+  TextEditingController get searchController => controller.searchController;
+  String get searchQuery => controller.searchQuery;
+  IngredientSortOrder get ingredientSortOrder =>
+      controller.ingredientSortOrder;
+  bool get showLowStockIngredientsOnly =>
+      controller.showLowStockIngredientsOnly;
+  ItemSortOrder get productSortOrder => controller.productSortOrder;
+  bool get showLowStockProductsOnly => controller.showLowStockProductsOnly;
+  int? get selectedCategoryId => controller.selectedCategoryId;
 
-  // Sort/Filter methods for Ingredients
-  void setIngredientSortOrder(IngredientSortOrder order) {
-    setState(() {
-      ingredientSortOrder = order;
-    });
-  }
-
-  void toggleLowStockIngredients(bool value) {
-    setState(() {
-      showLowStockIngredientsOnly = value;
-    });
-  }
-
-  // Sort/Filter methods for Products
-  void setProductSortOrder(ItemSortOrder order) {
-    setState(() {
-      productSortOrder = order;
-    });
-  }
-
-  void toggleLowStockProducts(bool value) {
-    setState(() {
-      showLowStockProductsOnly = value;
-    });
-  }
-
-  void setSelectedCategory(int? categoryId) {
-    setState(() {
-      selectedCategoryId = categoryId;
-    });
-  }
-
-  void setSelectedTab(int index) {
-    setState(() => selectedTab = index);
-  }
-
-  void setHasIngredients(bool value) {
-    if (hasIngredients != value) {
-      setState(() => hasIngredients = value);
-    }
-  }
-
-  void setHasProducts(bool value) {
-    if (hasProducts != value) {
-      setState(() => hasProducts = value);
-    }
-  }
+  // Delegate methods to controller
+  void onSearchChanged(String query) => controller.onSearchChanged(query);
+  void setIngredientSortOrder(IngredientSortOrder order) =>
+      controller.setIngredientSortOrder(order);
+  void toggleLowStockIngredients(bool value) =>
+      controller.toggleLowStockIngredients(value);
+  void setProductSortOrder(ItemSortOrder order) =>
+      controller.setProductSortOrder(order);
+  void toggleLowStockProducts(bool value) =>
+      controller.toggleLowStockProducts(value);
+  void setSelectedCategory(int? categoryId) =>
+      controller.setSelectedCategory(categoryId);
+  void setSelectedTab(int index) => controller.setSelectedTab(index);
+  void setHasIngredients(bool value) => controller.setHasIngredients(value);
+  void setHasProducts(bool value) => controller.setHasProducts(value);
 
   void showAddIngredientDialog() {
-    // Capture page-level messenger before showing dialog — the dialog's builder
-    // context becomes deactivated after Navigator.pop() runs in _handleSave(),
-    // which happens before the async onSave completes.
-    final messenger = ScaffoldMessenger.of(context);
     showDialog(
       context: context,
       builder: (context) => IngredientFormDialog(
         commissaryId: widget.commissaryId,
         onSave: (companion) async {
           try {
-            await database.ingredientsDao.insertIngredients([companion]);
+            await database.ingredientsDao.insertIngredient(
+              name: companion.name.value,
+              commissaryId: companion.commissaryId.value,
+              stock: companion.stock.value,
+              unit: companion.unit.value,
+              criticalLevel: companion.criticalLevel.value,
+              costPerUnit: companion.costPerUnit.value,
+              cloudId: companion.cloudId.value,
+            );
             if (mounted) {
-              messenger.showSnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Ingredient added successfully'),
                   backgroundColor: Colors.green,
@@ -130,7 +109,7 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
             }
           } catch (e) {
             if (mounted) {
-              messenger.showSnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(e.toString().replaceFirst('Exception: ', '')),
                   backgroundColor: Colors.red,
@@ -149,7 +128,6 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
 
     if (!mounted) return;
 
-    final messenger = ScaffoldMessenger.of(context);
     showDialog(
       context: context,
       builder: (context) => ItemFormDialog(
@@ -165,7 +143,6 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
               categoryId: itemCompanion.categoryId.value,
               price: itemCompanion.price.value,
               costPrice: itemCompanion.costPrice.value,
-              unit: itemCompanion.unit.value,
               minimumStock: itemCompanion.minimumStock.value,
               description: itemCompanion.description.value,
               cloudId: itemCompanion.cloudId.value,
@@ -176,12 +153,12 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
                 itemId: itemId,
                 ingredientId: ingredient.ingredientId,
                 quantityNeeded: ingredient.quantity,
-                unit: 'pieces',
+                unit: ingredient.unit,
               );
             }
 
             if (mounted) {
-              messenger.showSnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Product added successfully'),
                   backgroundColor: Colors.green,
@@ -190,7 +167,7 @@ class InventoryManagementPageState extends State<InventoryManagementPage> {
             }
           } catch (e) {
             if (mounted) {
-              messenger.showSnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(e.toString().replaceFirst('Exception: ', '')),
                   backgroundColor: Colors.red,
@@ -313,7 +290,7 @@ class _HelpSection extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('� ', style: TextStyle(color: Colors.grey)),
+                const Text('â€¢ ', style: TextStyle(color: Colors.grey)),
                 Expanded(
                   child: Text(item, style: const TextStyle(fontSize: 14)),
                 ),

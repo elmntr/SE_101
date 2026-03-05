@@ -8,9 +8,11 @@ import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dart';
 
+
 // Import separated UI files
 import 'requests_page_mobile.dart';
 import 'requests_page_desktop.dart';
+import 'requests_page_controller.dart';
 
 class RequestsPage extends StatefulWidget {
   const RequestsPage({super.key});
@@ -21,18 +23,15 @@ class RequestsPage extends StatefulWidget {
 
 class RequestsPageState extends State<RequestsPage> {
   late AppDatabase db;
-  int? currentUserId;
-  int? commissaryId;
-  String? _commissaryCloudId;
-  
-  // Missing state variables - added to fix compile errors
-  final TextEditingController _searchController = TextEditingController();
-  int selectedTab = 0;
-  String searchQuery = '';
+  late RequestsPageController controller;
   final TextEditingController searchController = TextEditingController();
 
-  // Sort functionality
-  String requestSortOrder = 'newestFirst';
+  // Expose controller properties for UI access
+  int? get currentUserId => controller.currentUserId;
+  int? get commissaryId => controller.commissaryId;
+  int get selectedTab => controller.selectedTab;
+  String get searchQuery => controller.searchQuery;
+  String get requestSortOrder => controller.requestSortOrder;
 
   // Realtime stream subscriptions (must be cancelled in dispose)
   StreamSubscription<RealtimeConnectionStatus>? _statusSubscription;
@@ -42,7 +41,15 @@ class RequestsPageState extends State<RequestsPage> {
   void initState() {
     super.initState();
     db = database;
-    _loadContext();
+    controller = RequestsPageController(
+      db: db,
+      onStateChanged: () {
+        if (mounted) {
+          setState(() {});
+        }
+      },
+    );
+    controller.loadContext();
   }
 
   @override
@@ -54,29 +61,11 @@ class RequestsPageState extends State<RequestsPage> {
     super.dispose();
   }
 
-  void setSearchQuery(String query) {
-    setState(() {
-      searchQuery = query;
-    });
-  }
+  void setSearchQuery(String query) => controller.setSearchQuery(query);
+  void setSelectedTab(int index) => controller.setSelectedTab(index);
+  void setRequestSortOrder(String order) => controller.setRequestSortOrder(order);
+  void refresh() => setState(() {});
 
-  void setSelectedTab(int index) {
-    setState(() {
-      selectedTab = index;
-    });
-  }
-
-  void refresh() {
-    setState(() {});
-  }
-
-  void setRequestSortOrder(String order) {
-    setState(() {
-      requestSortOrder = order;
-    });
-  }
-
-  // Public method for scaffolds to use
   List<StockReplenishmentRequest> sortRequests(
     List<StockReplenishmentRequest> requests,
   ) {
@@ -237,155 +226,22 @@ class RequestsPageState extends State<RequestsPage> {
         return;
       }
 
-      // 2. Reduce commissary stock
-      final newStock = item.stock - request.quantityRequested;
-      final rowsUpdated = await db.itemsDao.updateStock(
-        request.itemId,
-        newStock,
-      );
-      print('?? updateStock returned: $rowsUpdated rows updated');
-      print(
-        '?? Reduced commissary stock for item ${item.name}: ${item.stock} ? $newStock',
-      );
+  Future<Map<int, String>> getBranchNames(
+    List<StockReplenishmentRequest> requests,
+  ) =>
+      controller.getBranchNames(requests);
 
-      // Verify the update worked
-      final updatedItem = await db.itemsDao.getItemById(request.itemId);
-      print(
-        '?? Verification - Item after update: stock=${updatedItem?.stock}, needsSync=${updatedItem?.isSynced}',
-      );
-
-      // 3. Add to branch stock
-      // Find existing stock record for branch
-      final branchStock = await db.branchItemStockDao.getStockForItem(
-        request.franchiseeId,
-        request.itemId,
-      );
-
-      if (branchStock != null) {
-        // Update existing
-        await db.branchItemStockDao.receiveItems(
-          branchStock.id,
-          request.quantityRequested,
-        );
-      } else {
-        // Create new
-        await db.branchItemStockDao.createStock(
-          BranchItemStockCompanion(
-            organizationId: Value(request.franchiseeId),
-            itemId: Value(request.itemId),
-            stock: Value(request.quantityRequested),
-            sold: const Value(0),
-            spoilage: const Value(0),
-            lastReceivedAt: Value(DateTime.now()),
-            lastReceivedQuantity: Value(request.quantityRequested),
-          ),
-        );
-      }
-
-      // 4. Mark request as approved
-      await db.stockReplenishmentRequestsDao.approveRequest(
-        requestId: request.id,
-        reviewedBy: currentUserId!,
-        commissaryNotes: 'Auto-approved by commissary app',
-      );
-
-      // 5. Auto-sync to push changes to cloud
-      try {
-        print('?? Auto-syncing after approval...');
-        await syncService.syncAll();
-        print('? Approval synced to cloud');
-      } catch (syncError) {
-        print('?? Sync failed (will retry later): $syncError');
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('? Request approved and stock transferred'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      print('Error approving request: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+  void approveRequest(StockReplenishmentRequest request) async {
+    final confirmed = await controller.confirmApproval(request, context);
+    if (confirmed) {
+      await controller.approveRequest(request, context);
     }
   }
 
-  Future<void> _rejectRequest(StockReplenishmentRequest request) async {
-    if (currentUserId == null) return;
-
-    final reasonController = TextEditingController();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reject Request'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Please provide a reason for rejection:'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                hintText: 'Reason...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Reject'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await db.stockReplenishmentRequestsDao.rejectRequest(
-        requestId: request.id,
-        reviewedBy: currentUserId!,
-        reason: reasonController.text.trim(),
-      );
-
-      // Auto-sync to push rejection to cloud
-      try {
-        print('?? Auto-syncing after rejection...');
-        await syncService.syncAll();
-        print('? Rejection synced to cloud');
-      } catch (syncError) {
-        print('?? Sync failed (will retry later): $syncError');
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Request rejected'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    } catch (e) {
-      print('Error rejecting request: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
+  void rejectRequest(StockReplenishmentRequest request) async {
+    final reason = await controller.getRejectReason(context);
+    if (reason != null) {
+      await controller.rejectRequest(request, reason, context);
     }
   }
 
@@ -398,15 +254,10 @@ class RequestsPageState extends State<RequestsPage> {
       );
     }
 
-    // Determine if we're on mobile or desktop based on screen width
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 800;
-
-    if (isMobile) {
+    if (AppLayout.isDesktop(context) == false) {
       return RequestsPageMobile(state: this);
-    } else {
-      return RequestsPageDesktop(state: this);
     }
+    return RequestsPageDesktop(state: this);
   }
 
   // Public method for scaffolds to build request rows
@@ -473,12 +324,12 @@ class RequestsPageState extends State<RequestsPage> {
                 size: 20,
               ),
               tooltip: 'Approve',
-              onPressed: () => _approveRequest(req),
+              onPressed: () => approveRequest(req),
             ),
             IconButton(
               icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
               tooltip: 'Reject',
-              onPressed: () => _rejectRequest(req),
+              onPressed: () => rejectRequest(req),
             ),
           ],
         ),

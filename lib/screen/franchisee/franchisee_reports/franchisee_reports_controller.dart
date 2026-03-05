@@ -295,11 +295,32 @@ class FranchiseeReportsController {
 
       List<Item> items;
       if (currentOrganizationId != null) {
-        items = await db.itemsDao.getItemsByOrganization(
-          currentOrganizationId!,
-        );
+        // Check if current organization is a franchisee - if so, get items from commissary
+        final currentOrg = await db.organizationsDao.getOrganizationById(currentOrganizationId!);
+        
+        if (currentOrg != null && currentOrg.type == 'franchisee' && currentOrg.parentCommissaryId != null) {
+          // Franchisee: fetch items from parent commissary
+          items = await db.itemsDao.getItemsByOrganization(currentOrg.parentCommissaryId!);
+        } else if (currentOrg != null && currentOrg.type == 'commissary') {
+          // Commissary: fetch items from own organization
+          items = await db.itemsDao.getItemsByOrganization(currentOrganizationId!);
+        } else {
+          // Fallback: try to get commissary items
+          final mainCommissary = await db.organizationsDao.getMainCommissary();
+          if (mainCommissary != null) {
+            items = await db.itemsDao.getItemsByOrganization(mainCommissary.id);
+          } else {
+            items = await db.itemsDao.getAllItems();
+          }
+        }
       } else {
-        items = await db.itemsDao.getAllItems();
+        // No organization - try main commissary first, then all items
+        final mainCommissary = await db.organizationsDao.getMainCommissary();
+        if (mainCommissary != null) {
+          items = await db.itemsDao.getItemsByOrganization(mainCommissary.id);
+        } else {
+          items = await db.itemsDao.getAllItems();
+        }
       }
 
       allItems = items;

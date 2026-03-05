@@ -1,16 +1,14 @@
-// Branches Page - Manage franchisee branches and their admins
+// lib/screens/branches/branches_page.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:drift/drift.dart' show Value;
-import 'package:uuid/uuid.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
-import 'package:chickenjoo_inventory/services/search_service.dart';
-import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'package:chickenjoo_inventory/utils/phone_formatter.dart';
 import 'branches_page_desktop.dart';
 import 'branches_page_mobile.dart';
+import 'branches_page_controller.dart';
 
 /// Branches Page - Manage franchisee branches and their admins
 /// Commissary can:
@@ -26,108 +24,35 @@ class BranchesPage extends StatefulWidget {
 
 class BranchesPageState extends State<BranchesPage> {
   late AppDatabase db;
-  List<Organization> branches = [];
-  Map<int, List<User>> branchUsers = {};
-  Organization? commissary;
-  bool isLoading = true;
-  int selectedTab = 0; // 0 = Branches, 1 = Branch Admins
-
-  // Search functionality
+  late BranchesPageController controller;
   final TextEditingController searchController = TextEditingController();
-  String searchQuery = '';
 
-  // Sort functionality
-  String branchSortOrder = 'nameAsc';
-  String adminSortOrder = 'nameAsc';
-  bool showActiveOnly = false;
-
-  final _uuid = const Uuid();
-
-  void setSelectedTab(int index) {
-    setState(() => selectedTab = index);
-  }
-
-  void onSearchChanged(String query) {
-    setState(() {
-      searchQuery = query;
-    });
-  }
-
-  void setBranchSortOrder(String order) {
-    setState(() {
-      branchSortOrder = order;
-    });
-  }
-
-  void setAdminSortOrder(String order) {
-    setState(() {
-      adminSortOrder = order;
-    });
-  }
-
-  void toggleShowActiveOnly(bool value) {
-    setState(() {
-      showActiveOnly = value;
-    });
-  }
-
-  /// Get filtered and sorted branches based on search query and sort order
-  List<Organization> get filteredBranches {
-    var list = branches.toList();
-    
-    // Apply search filter
-    if (searchQuery.isNotEmpty) {
-      list = SearchService.filter(
-        list,
-        searchQuery,
-        (branch) => [branch.name, branch.address, branch.email, branch.phone],
-      );
-    }
-    
-    // Apply active filter
-    if (showActiveOnly) {
-      list = list.where((b) => b.isActive).toList();
-    }
-    
-    // Apply sorting
-    list.sort((a, b) {
-      switch (branchSortOrder) {
-        case 'nameAsc':
-          return a.name.compareTo(b.name);
-        case 'nameDesc':
-          return b.name.compareTo(a.name);
-        case 'activeFirst':
-          return (b.isActive ? 1 : 0).compareTo(a.isActive ? 1 : 0);
-        case 'inactiveFirst':
-          return (a.isActive ? 1 : 0).compareTo(b.isActive ? 1 : 0);
-        case 'newestFirst':
-          return b.createdAt.compareTo(a.createdAt);
-        case 'oldestFirst':
-          return a.createdAt.compareTo(b.createdAt);
-        default:
-          return a.name.compareTo(b.name);
-      }
-    });
-    
-    return list;
-  }
-
-  /// Get filtered users based on search query
-  List<User> getFilteredUsersForBranch(int branchId) {
-    final users = branchUsers[branchId] ?? [];
-    if (searchQuery.isEmpty) return users;
-    return SearchService.filter(
-      users,
-      searchQuery,
-      (user) => [user.username, user.email, user.phone],
-    );
-  }
+  // Expose controller properties for UI access
+  List<Organization> get branches => controller.branches;
+  Map<int, List<User>> get branchUsers => controller.branchUsers;
+  Organization? get commissary => controller.commissary;
+  bool get isLoading => controller.isLoading;
+  int get selectedTab => controller.selectedTab;
+  String get searchQuery => controller.searchQuery;
+  String get branchSortOrder => controller.branchSortOrder;
+  String get adminSortOrder => controller.adminSortOrder;
+  bool get showActiveOnly => controller.showActiveOnly;
+  int? get selectedBranchFilter => controller.selectedBranchFilter;
+  List<Organization> get filteredBranches => controller.filteredBranches;
 
   @override
   void initState() {
     super.initState();
     db = database;
-    loadData();
+    controller = BranchesPageController(
+      db: db,
+      onStateChanged: () {
+        if (mounted) {
+          setState(() {});
+        }
+      },
+    );
+    controller.loadData();
   }
 
   @override
@@ -136,62 +61,18 @@ class BranchesPageState extends State<BranchesPage> {
     super.dispose();
   }
 
-  Future<void> loadData() async {
-    setState(() => isLoading = true);
-
-    try {
-      // Debug: Get all organizations first
-      final allOrgs = await db.organizationsDao.getAllOrganizations();
-      print('🔍 DEBUG: Total organizations in local DB: ${allOrgs.length}');
-      for (final org in allOrgs) {
-        print('   - [${org.type}] ${org.name} (cloudId: ${org.cloudId}, parentCommissaryId: ${org.parentCommissaryId})');
-      }
-
-      // Get commissary
-      commissary = await db.organizationsDao.getCommissary();
-      if (commissary == null) {
-        print('⚠️ No commissary found');
-        setState(() => isLoading = false);
-        return;
-      }
-      print('✅ Commissary found: ${commissary!.name} (id: ${commissary!.id})');
-
-      // Get all franchisees under this commissary (uses local int id)
-      branches = await db.organizationsDao.getFranchisees(commissary!.id);
-      print('🔍 DEBUG: Franchisees found: ${branches.length}');
-      for (final branch in branches) {
-        print('   - ${branch.name} (parentCommissaryId: ${branch.parentCommissaryId})');
-      }
-
-      // Get users for each branch
-      branchUsers = {};
-      for (final branch in branches) {
-        final users = await db.usersDao.getUsersByOrganization(branch.id);
-        branchUsers[branch.id] = users;
-        print('   - Branch ${branch.name}: ${users.length} users');
-      }
-
-      setState(() => isLoading = false);
-    } catch (e) {
-      print('❌ Error loading branches: $e');
-      setState(() => isLoading = false);
-    }
-  }
-
-  /// Force sync and reload data - for debugging
-  Future<void> forceSyncAndReload() async {
-    setState(() => isLoading = true);
-    print('🔄 Force syncing organizations and users...');
-    
-    try {
-      await syncService.syncAll();
-      print('✅ Sync complete, reloading data...');
-      await loadData();
-    } catch (e) {
-      print('❌ Error during sync: $e');
-      setState(() => isLoading = false);
-    }
-  }
+  void setSelectedTab(int index) => controller.setSelectedTab(index);
+  void onSearchChanged(String query) => controller.onSearchChanged(query);
+  void setBranchSortOrder(String order) => controller.setBranchSortOrder(order);
+  void setAdminSortOrder(String order) => controller.setAdminSortOrder(order);
+  void toggleShowActiveOnly(bool value) => controller.toggleShowActiveOnly(value);
+  void setBranchFilter(int branchId) => controller.setBranchFilter(branchId);
+  List<User> getFilteredUsersForBranch(int branchId) =>
+      controller.getFilteredUsersForBranch(branchId);
+  Future<void> loadData() => controller.loadData();
+  Future<void> forceSyncAndReload() => controller.forceSyncAndReload();
+  Future<List<Map<String, dynamic>>> buildAdminRows() =>
+      controller.buildAdminRows();
 
   // ============================================================================
   // CREATE BRANCH
@@ -248,9 +129,13 @@ class BranchesPageState extends State<BranchesPage> {
                     decoration: const InputDecoration(
                       labelText: 'Phone',
                       prefixIcon: Icon(Icons.phone),
+                      hintText: '09XX XXX XXXX',
                     ),
                     keyboardType: TextInputType.phone,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]')),
+                      PhilippinePhoneFormatter(),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -283,14 +168,17 @@ class BranchesPageState extends State<BranchesPage> {
                             return;
                           }
 
-                          await createBranch(
+                          await controller.createBranch(
                             name: nameController.text.trim(),
+                            context: context,
                             address: addressController.text.trim(),
                             phone: phoneController.text.trim(),
                             email: emailController.text.trim(),
                           );
 
-                          Navigator.pop(context);
+                          if (mounted) {
+                            Navigator.pop(context);
+                          }
                         },
                         child: const Text(
                           'Save',
@@ -306,38 +194,6 @@ class BranchesPageState extends State<BranchesPage> {
         ),
       ),
     );
-  }
-
-  Future<void> createBranch({
-    required String name,
-    String? address,
-    String? phone,
-    String? email,
-  }) async {
-    try {
-      // SE_101: parentCommissaryId is int (local FK), cloudId is nullable Value
-      await db.organizationsDao.insertOrganization(
-        OrganizationsCompanion.insert(
-          name: name,
-          type: 'franchisee',
-          address: Value(address),
-          phone: Value(phone),
-          email: Value(email),
-          parentCommissaryId: Value(commissary!.id),
-          cloudId: Value(_uuid.v4()),
-        ),
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Branch "$name" created successfully')),
-      );
-
-      await loadData();
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to create branch: $e')));
-    }
   }
 
   // ============================================================================
@@ -413,9 +269,13 @@ class BranchesPageState extends State<BranchesPage> {
                       decoration: const InputDecoration(
                         labelText: 'Phone',
                         prefixIcon: Icon(Icons.phone),
+                        hintText: '09XX XXX XXXX',
                       ),
                       keyboardType: TextInputType.phone,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]')),
+                        PhilippinePhoneFormatter(),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -477,15 +337,18 @@ class BranchesPageState extends State<BranchesPage> {
                               return;
                             }
 
-                            await createBranchAdmin(
+                            await controller.createBranchAdmin(
                               branch: selectedBranch!,
                               name: nameController.text.trim(),
                               email: emailController.text.trim(),
                               phone: phoneController.text.trim(),
                               password: passwordController.text,
+                              context: context,
                             );
 
-                            Navigator.pop(context);
+                            if (mounted) {
+                              Navigator.pop(context);
+                            }
                           },
                           child: const Text(
                             'Save',
@@ -504,180 +367,24 @@ class BranchesPageState extends State<BranchesPage> {
     );
   }
 
-  Future<void> createBranchAdmin({
-    required Organization branch,
-    required String name,
-    required String email,
-    required String password,
-    String? phone,
-  }) async {
-    try {
-      // Get Branch Admin role
-      final branchAdminRole = await db.rolesDao.getRoleByName('Branch Admin');
-      if (branchAdminRole == null) {
-        throw Exception('Branch Admin role not found');
-      }
-
-      // 1. Create Supabase Auth user first (required for SE101 login)
-      final SupabaseAuthService auth = authService;
-      final authUserId = await auth.createBranchAdminAuthUser(
-        email: email,
-        password: password,
-        organizationCloudId: branch.cloudId ?? '',
-      );
-
-      if (authUserId == null) {
-        throw Exception('Failed to create authentication account');
-      }
-
-      // 2. Create user in local database
-      // SE_101: uses 'password' field (not passwordHash), no authUserId field,
-      // store Supabase auth UID in cloudId
-      try {
-        final userId = await db
-            .into(db.users)
-            .insert(
-              UsersCompanion.insert(
-                username: name,
-                email: email,
-                password: hashPassword(password),
-                organizationId: branch.id,
-                roleId: branchAdminRole.id,
-                phone: Value(phone),
-                fullName: Value(name),
-                cloudId: Value(authUserId),
-              ),
-            );
-        
-        print('✅ User created locally with ID: $userId');
-      } catch (e) {
-        print('❌ Failed to create user locally: $e');
-        rethrow;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Branch admin "$name" created for ${branch.name}'),
-        ),
-      );
-
-      await loadData();
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to create admin: $e')));
-    }
-  }
-
   // ============================================================================
   // DELETE OPERATIONS
   // ============================================================================
 
   Future<void> deleteBranch(Organization branch) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('Delete Branch'),
-        content: Text('Are you sure you want to delete "${branch.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+    final shouldDelete = await controller.confirmDeleteBranch(branch, context);
 
-    if (shouldDelete == true) {
-      try {
-        await db.organizationsDao.deactivateOrganization(branch.id);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${branch.name} deleted successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-        await loadData();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error deleting branch: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+    if (shouldDelete) {
+      await controller.deleteBranch(branch, context);
     }
   }
 
   Future<void> deleteAdmin(User user) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('Delete Admin'),
-        content: Text('Are you sure you want to delete "${user.username}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+    final shouldDelete = await controller.confirmDeleteAdmin(user, context);
 
-    if (shouldDelete == true) {
-      try {
-        await db.usersDao.deactivateUser(user.id);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${user.username} deleted successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-        await loadData();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error deleting admin: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+    if (shouldDelete) {
+      await controller.deleteAdmin(user, context);
     }
-  }
-
-  // ============================================================================
-  // BUILD ADMIN ROWS
-  // ============================================================================
-
-  Future<List<Map<String, dynamic>>> buildAdminRows() async {
-    final rows = <Map<String, dynamic>>[];
-    for (final branch in branches) {
-      final users = branchUsers[branch.id] ?? [];
-      for (final user in users) {
-        rows.add({'user': user, 'branch': branch});
-      }
-    }
-    return rows;
   }
 
   @override

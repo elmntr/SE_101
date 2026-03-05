@@ -1,4 +1,4 @@
-// lib/screens/inventory_management/widgets/item_form_dialog.dart
+﻿// lib/screens/inventory_management/widgets/item_form_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -81,7 +81,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
       _descriptionController.text = widget.item!.description ?? '';
       _priceController.text = _formatWithCommas((widget.item!.price ?? 0).toString());
       _stockController.text = _formatWithCommas(widget.item!.stock.toString());
-      _criticalLevelController.text = _formatWithCommas((widget.item!.minimumStock ?? 0).toString());
+      _criticalLevelController.text = _formatWithCommas((widget.item!.minimumStock ?? 10).toString());
       _selectedCategoryId = widget.item!.categoryId;
 
       // Load existing recipe
@@ -95,7 +95,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
             quantity: ri.quantityNeeded,
             ingredientName: ingredient?.name ?? 'Unknown',
             unit: ingredient?.unit ?? '',
-            costPerUnit: 0,
+            costPerUnit: ingredient?.costPerUnit ?? 0,
           );
         }).toList();
         _calculateCost();
@@ -139,7 +139,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
               quantity: quantity,
               ingredientName: ingredient.name,
               unit: ingredient.unit,
-              costPerUnit: 0,
+              costPerUnit: ingredient.costPerUnit,
             ));
             _calculateCost();
           });
@@ -356,7 +356,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
                           decoration: const InputDecoration(
                             labelText: 'Selling Price *',
                             hintText: '0',
-                            prefixText: '? ',
+                            prefixText: '₱ ',
                             prefixIcon: Icon(Icons.sell),
                             border: OutlineInputBorder(),
                           ),
@@ -570,7 +570,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
                                   Expanded(
                                     flex: 2,
                                     child: Text(
-                                      '?${ingredient.totalCost.toStringAsFixed(2)}',
+                                      '₱${ingredient.totalCost.toStringAsFixed(2)}',
                                       textAlign: TextAlign.right,
                                     ),
                                   ),
@@ -625,7 +625,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                             Text(
-                              '?${_calculatedCost.toStringAsFixed(2)}',
+                              '₱${_calculatedCost.toStringAsFixed(2)}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
@@ -640,7 +640,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
                           children: [
                             const Text('Selling Price:'),
                             Text(
-                              '?${(double.tryParse(_priceController.text) ?? 0).toStringAsFixed(2)}',
+                              '₱${(double.tryParse(_priceController.text) ?? 0).toStringAsFixed(2)}',
                             ),
                           ],
                         ),
@@ -650,7 +650,7 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
                           children: [
                             const Text('Profit Margin:'),
                             Text(
-                              '?${profitMargin.toStringAsFixed(2)} (${profitPercentage.toStringAsFixed(1)}%)',
+                              '₱${profitMargin.toStringAsFixed(2)} (${profitPercentage.toStringAsFixed(1)}%)',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: profitMargin >= 0 ? Colors.green : Colors.red,
@@ -789,7 +789,7 @@ class _AddIngredientToRecipeDialogState
                 return DropdownMenuItem<int>(
                   value: ingredient.id,
                   child: Text(
-                    '${ingredient.name} (${ingredient.unit})',
+                    '${ingredient.name} (₱${ingredient.costPerUnit}/${ingredient.unit})',
                   ),
                 );
               }).toList(),
@@ -840,7 +840,7 @@ class _AddIngredientToRecipeDialogState
                   children: [
                     const Text('Cost contribution:'),
                     Text(
-                      '${(double.tryParse(_removeCommas(_quantityController.text)) ?? 0).toStringAsFixed(2)} ${_selectedIngredient!.unit}',
+                      '₱${((double.tryParse(_removeCommas(_quantityController.text)) ?? 0) * _selectedIngredient!.costPerUnit).toStringAsFixed(2)}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ],
