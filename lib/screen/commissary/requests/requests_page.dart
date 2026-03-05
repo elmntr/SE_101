@@ -1,10 +1,12 @@
 // lib/screens/requests/requests_page.dart
+import 'dart:async';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dart';
 
 // Import separated UI files
 import 'requests_page_mobile.dart';
@@ -32,6 +34,10 @@ class RequestsPageState extends State<RequestsPage> {
   // Sort functionality
   String requestSortOrder = 'newestFirst';
 
+  // Realtime stream subscriptions (must be cancelled in dispose)
+  StreamSubscription<RealtimeConnectionStatus>? _statusSubscription;
+  StreamSubscription<StockRequestEvent>? _eventSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +47,9 @@ class RequestsPageState extends State<RequestsPage> {
 
   @override
   void dispose() {
+    _statusSubscription?.cancel();
+    _eventSubscription?.cancel();
+    realtimeStockRequestService.detach();
     searchController.dispose();
     super.dispose();
   }
@@ -128,10 +137,10 @@ class RequestsPageState extends State<RequestsPage> {
           _commissaryCloudId = org!.cloudId;
           debugPrint('RequestsPage: attaching realtime cloudId=$_commissaryCloudId');
           await realtimeStockRequestService.attach(_commissaryCloudId!);
-          realtimeStockRequestService.statusStream.listen((status) {
+          _statusSubscription = realtimeStockRequestService.statusStream.listen((status) {
             debugPrint('RequestsPage: realtime status=$status');
           });
-          realtimeStockRequestService.eventStream.listen((event) {
+          _eventSubscription = realtimeStockRequestService.eventStream.listen((event) {
             debugPrint('RequestsPage: realtime event cloudId=${event.cloudId} status=${event.newStatus}');
           });
         }
@@ -144,6 +153,31 @@ class RequestsPageState extends State<RequestsPage> {
   }
 
 
+
+  /// Get branch names for a list of requests
+  Future<Map<int, String>> getBranchNames(
+    List<StockReplenishmentRequest> requests,
+  ) async {
+    final branchIds = requests.map((r) => r.franchiseeId).toSet();
+    final branchNames = <int, String>{};
+    
+    for (final branchId in branchIds) {
+      final org = await db.organizationsDao.getOrganizationById(branchId);
+      branchNames[branchId] = org?.name ?? 'Unknown Branch';
+    }
+    
+    return branchNames;
+  }
+
+  /// Public method to approve a request
+  void approveRequest(StockReplenishmentRequest request) {
+    _approveRequest(request);
+  }
+
+  /// Public method to reject a request
+  void rejectRequest(StockReplenishmentRequest request) {
+    _rejectRequest(request);
+  }
 
   Future<void> _approveRequest(StockReplenishmentRequest request) async {
     if (currentUserId == null) return;
