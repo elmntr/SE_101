@@ -611,19 +611,19 @@ class RequestsPageMobile extends StatelessWidget {
             }
 
             return buildUniversalTable(
-              headers: [
-                'Request ID',
-                'Branch',
-                'Item',
-                'Qty Requested',
-                'Date',
-                'Reviewed',
-                'Status',
-                '',
-              ],
-              rows: rowSnapshot.data!,
-              smallHeaderWidth: 80,
-              largeHeaderWidth: 100,
+                headers: [
+                  'Request ID',
+                  'Branch',
+                  'Item',
+                  'Qty Requested',
+                  'Date',
+                  'Reviewed',
+                  'Status',
+                  '',
+                ],
+                rows: rowSnapshot.data!,
+                smallHeaderWidth: 80,
+                largeHeaderWidth: 100,
             );
           },
         );

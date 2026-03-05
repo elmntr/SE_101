@@ -703,19 +703,19 @@ class RequestsPageDesktop extends StatelessWidget {
             }
 
             return buildUniversalTable(
-              headers: [
-                'Request ID',
-                'Branch',
-                'Item',
-                'Amount Requested',
-                'Date',
-                'Reviewed',
-                'Status',
-                '',
-              ],
-              rows: rowSnapshot.data!,
-              smallHeaderWidth: 20,
-              largeHeaderWidth: 80,
+                headers: [
+                  'Request ID',
+                  'Branch',
+                  'Item',
+                  'Amount Requested',
+                  'Date',
+                  'Reviewed',
+                  'Status',
+                  '',
+                ],
+                rows: rowSnapshot.data!,
+                smallHeaderWidth: 20,
+                largeHeaderWidth: 80,
             );
           },
         );

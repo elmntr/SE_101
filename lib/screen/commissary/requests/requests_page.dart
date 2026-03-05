@@ -1,9 +1,12 @@
 // lib/screens/requests/requests_page.dart
+import 'dart:async';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dart';
 
 
 // Import separated UI files
@@ -30,6 +33,10 @@ class RequestsPageState extends State<RequestsPage> {
   String get searchQuery => controller.searchQuery;
   String get requestSortOrder => controller.requestSortOrder;
 
+  // Realtime stream subscriptions (must be cancelled in dispose)
+  StreamSubscription<RealtimeConnectionStatus>? _statusSubscription;
+  StreamSubscription<StockRequestEvent>? _eventSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +54,9 @@ class RequestsPageState extends State<RequestsPage> {
 
   @override
   void dispose() {
+    _statusSubscription?.cancel();
+    _eventSubscription?.cancel();
+    realtimeStockRequestService.detach();
     searchController.dispose();
     super.dispose();
   }
@@ -58,8 +68,163 @@ class RequestsPageState extends State<RequestsPage> {
 
   List<StockReplenishmentRequest> sortRequests(
     List<StockReplenishmentRequest> requests,
-  ) =>
-      controller.sortRequests(requests);
+  ) {
+    final sorted = List<StockReplenishmentRequest>.from(requests);
+    switch (requestSortOrder) {
+      case 'newestFirst':
+        sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case 'oldestFirst':
+        sorted.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+      case 'quantityDesc':
+        sorted.sort(
+          (a, b) => b.quantityRequested.compareTo(a.quantityRequested),
+        );
+        break;
+      case 'quantityAsc':
+        sorted.sort(
+          (a, b) => a.quantityRequested.compareTo(b.quantityRequested),
+        );
+        break;
+      case 'approvedFirst':
+        sorted.sort((a, b) {
+          if (a.status == 'approved' && b.status != 'approved') return -1;
+          if (a.status != 'approved' && b.status == 'approved') return 1;
+          return b.createdAt.compareTo(a.createdAt);
+        });
+        break;
+      case 'rejectedFirst':
+        sorted.sort((a, b) {
+          if (a.status == 'rejected' && b.status != 'rejected') return -1;
+          if (a.status != 'rejected' && b.status == 'rejected') return 1;
+          return b.createdAt.compareTo(a.createdAt);
+        });
+        break;
+      default:
+        sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+    return sorted;
+  }
+
+  Future<void> _loadContext() async {
+    debugPrint('RequestsPage: loading context...');
+    final user = AppGlobals.instance.authService.currentUser;
+    debugPrint('RequestsPage: currentUser=${user?.id} orgId=${user?.organizationId}');
+    if (user != null) {
+      if (mounted) {
+        setState(() {
+          currentUserId = user.id;
+          commissaryId = user.organizationId;
+        });
+      }
+
+      try {
+        final org = await db.organizationsDao.getOrganizationById(user.organizationId);
+        debugPrint('RequestsPage: org cloudId=${org?.cloudId}');
+        if (org?.cloudId != null) {
+          _commissaryCloudId = org!.cloudId;
+          debugPrint('RequestsPage: attaching realtime cloudId=$_commissaryCloudId');
+          await realtimeStockRequestService.attach(_commissaryCloudId!);
+          _statusSubscription = realtimeStockRequestService.statusStream.listen((status) {
+            debugPrint('RequestsPage: realtime status=$status');
+          });
+          _eventSubscription = realtimeStockRequestService.eventStream.listen((event) {
+            debugPrint('RequestsPage: realtime event cloudId=${event.cloudId} status=${event.newStatus}');
+          });
+        }
+      } catch (e) {
+        debugPrint('RequestsPage: WARN Failed to initialize realtime: $e');
+      }
+    } else {
+      debugPrint('RequestsPage: no currentUser yet');
+    }
+  }
+
+
+
+  /// Get branch names for a list of requests
+  Future<Map<int, String>> getBranchNames(
+    List<StockReplenishmentRequest> requests,
+  ) async {
+    final branchIds = requests.map((r) => r.franchiseeId).toSet();
+    final branchNames = <int, String>{};
+    
+    for (final branchId in branchIds) {
+      final org = await db.organizationsDao.getOrganizationById(branchId);
+      branchNames[branchId] = org?.name ?? 'Unknown Branch';
+    }
+    
+    return branchNames;
+  }
+
+  /// Public method to approve a request
+  void approveRequest(StockReplenishmentRequest request) {
+    _approveRequest(request);
+  }
+
+  /// Public method to reject a request
+  void rejectRequest(StockReplenishmentRequest request) {
+    _rejectRequest(request);
+  }
+
+  Future<void> _approveRequest(StockReplenishmentRequest request) async {
+    if (currentUserId == null) return;
+
+    // Show confirmation dialog with quantity adjustment?
+    // For now, simple confirmation
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Approve Request'),
+        content: Text(
+          'Approve request for ${request.quantityRequested} units?\n\nThis will deduct from commissary stock and add to branch stock immediately.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: const Text('Approve & Transfer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // 1. Check commissary stock
+      final item = await db.itemsDao.getItemById(request.itemId);
+      if (item == null) {
+        throw Exception(
+          'Item not found in commissary (itemId: ${request.itemId})',
+        );
+      }
+
+      print(
+        '?? Item found: ${item.name} (id=${item.id}, cloudId=${item.cloudId})',
+      );
+      print(
+        '   Current stock: ${item.stock}, Requested: ${request.quantityRequested}',
+      );
+
+      if (item.stock < request.quantityRequested) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Insufficient stock! Have: ${item.stock}, Requested: ${request.quantityRequested}',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
 
   Future<Map<int, String>> getBranchNames(
     List<StockReplenishmentRequest> requests,
