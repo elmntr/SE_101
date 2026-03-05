@@ -1,60 +1,62 @@
 // lib/database/tables/ingredients.dart
 import 'package:drift/drift.dart';
-import 'categories.dart';
 import 'organizations.dart';
 
-/// Ingredients table - Raw materials managed by commissary
+/// Ingredients table — aligned to Supabase schema.
 ///
-/// Business Flow:
-/// 1. Commissary creates ingredients (e.g., "Chicken Breast", "Cooking Oil")
-/// 2. These ingredients are used to create Items/Recipes
-/// 3. Ingredients track stock and spoilage (but NOT sold - they're not sold directly)
-///
-/// Key Difference from Items:
-/// - Ingredients: Raw materials, have stock + spoilage (NO sold)
-/// - Items: Final products, have stock + spoilage + sold
+/// Cloud schema: ingredients (id, cloud_id, name, unit, stock, critical_level,
+///   cost_per_unit, commissary_id, is_active, created_at, updated_at,
+///   last_synced_at, needs_sync, last_updated)
 class Ingredients extends Table {
-  /// Primary key
+  /// Primary key — matches Supabase serial PK
   IntColumn get id => integer().autoIncrement()();
+
+  /// UUID synced with Supabase — NOT NULL, UNIQUE (matches cloud constraint)
+  TextColumn get cloudId => text()();
 
   /// Ingredient name (e.g., "Chicken Breast", "Garlic", "Soy Sauce")
   TextColumn get name => text().withLength(min: 1, max: 200)();
 
-  /// Optional category for organization (e.g., "Poultry", "Vegetables", "Spices")
-  IntColumn get categoryId =>
-      integer().nullable().references(Categories, #id)();
-
-  /// Which commissary owns this ingredient
-  /// Only commissary-type organizations can create ingredients
+  /// Which commissary owns this ingredient (INTEGER FK, not UUID)
   IntColumn get commissaryId => integer().references(Organizations, #id)();
 
-  /// Current stock quantity (in base unit)
-  IntColumn get stock => integer().withDefault(const Constant(0))();
-
-  /// Spoiled quantity (deducted from stock when recorded)
-  IntColumn get spoilage => integer().withDefault(const Constant(0))();
+  /// Current stock quantity — REAL to match Supabase double precision
+  RealColumn get stock => real().withDefault(const Constant(0.0))();
 
   /// Unit of measurement (e.g., "kg", "pieces", "liters", "grams")
   TextColumn get unit => text()
       .withLength(min: 1, max: 50)
       .withDefault(const Constant('pieces'))();
 
-  /// Minimum stock threshold for alerts (e.g., alert when stock < 10)
-  IntColumn get minimumStock => integer().nullable()();
+  /// Low-stock threshold — matches Supabase critical_level (replaces minimum_stock)
+  RealColumn get criticalLevel => real().nullable()();
 
-  /// Optional description or notes
-  TextColumn get description => text().nullable().withLength(max: 500)();
+  /// Cost per unit — matches Supabase cost_per_unit
+  RealColumn get costPerUnit => real().withDefault(const Constant(0.0))();
 
-  /// Track when ingredient was created/modified
+  /// Active flag — inverse of old is_deleted, matches Supabase is_active
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+
+  /// Pending sync flag — inverse of old is_synced, matches Supabase needs_sync
+  BoolColumn get needsSync => boolean().withDefault(const Constant(true))();
+
+  /// Creation timestamp
   DateTimeColumn get createdAt =>
       dateTime().clientDefault(() => DateTime.now().toUtc())();
+
+  /// Last local modification timestamp — matches Supabase last_updated
   DateTimeColumn get lastUpdated =>
       dateTime().clientDefault(() => DateTime.now().toUtc())();
 
-  /// Soft delete
-  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  /// Last write timestamp (may be updated by Supabase trigger)
+  DateTimeColumn get updatedAt =>
+      dateTime().clientDefault(() => DateTime.now().toUtc())();
 
-  /// Sync fields for cloud synchronization
-  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
-  TextColumn get cloudId => text().nullable()();
+  /// Last time this row was confirmed by the cloud
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {cloudId},
+      ];
 }

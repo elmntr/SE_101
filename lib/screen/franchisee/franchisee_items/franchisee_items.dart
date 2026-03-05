@@ -137,7 +137,7 @@ class ItemsPageState extends State<ItemsPage> {
 
   void _onSyncComplete() {
     if (mounted) {
-      print('🔄 Sync completed, refreshing items...');
+      //print('🔄 Sync completed, refreshing items...');
       loadData();
     }
   }
@@ -173,7 +173,7 @@ class ItemsPageState extends State<ItemsPage> {
 
       final categories = await db.categoriesDao.getAllCategories();
 
-      print('📦 Loaded ${items.length} items with branch stock for Items page');
+      //print('📦 Loaded ${items.length} items with branch stock for Items page');
 
       if (mounted) {
         setState(() {
@@ -183,7 +183,7 @@ class ItemsPageState extends State<ItemsPage> {
         });
       }
     } catch (e) {
-      print('Error loading data: $e');
+      //print('Error loading data: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -204,11 +204,11 @@ class ItemsPageState extends State<ItemsPage> {
           organization.parentCommissaryId != null) {
         // Franchisee: use parent commissary
         commissaryId = organization.parentCommissaryId;
-        print('📍 Franchisee mode: commissaryId=$commissaryId');
+        //print('📍 Franchisee mode: commissaryId=$commissaryId');
       } else if (organization.type == 'commissary') {
         // Commissary viewing own inventory
         commissaryId = organization.id;
-        print('📍 Commissary mode: commissaryId=$commissaryId');
+        //print('📍 Commissary mode: commissaryId=$commissaryId');
       }
     }
 
@@ -219,7 +219,7 @@ class ItemsPageState extends State<ItemsPage> {
       );
       if (commissaries.isNotEmpty) {
         commissaryId = commissaries.first.id;
-        print('📍 Fallback commissary: commissaryId=$commissaryId');
+        //print('📍 Fallback commissary: commissaryId=$commissaryId');
       }
     }
   }
@@ -240,9 +240,9 @@ class ItemsPageState extends State<ItemsPage> {
         if (org != null) {
           currentOrganizationId = org.id;
           await prefs.setInt(orgIdKey, org.id);
-          print(
-            '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}',
-          );
+          //print(
+          //  '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}'
+          //);
           return;
         }
       }

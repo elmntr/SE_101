@@ -6,9 +6,12 @@ import 'package:chickenjoo_inventory/utils/app_logger.dart';
 import 'screen/auth/auth_gate_screen.dart';
 import 'screen/login/login_screen.dart';
 import 'home/home.dart';
+import 'screen/commissary/login/commissary_login_screen.dart';
+import 'screen/commissary/home/commissary_home_screen.dart';
 
 /// Reinitialize sync service with user's organization context after login
 void reinitializeSyncWithUserContext(UserData userData) {
+  AppLogger.websocket('🔌 SYNC REINIT  called for ${userData.organizationName} (${userData.organizationType}) orgId=${userData.organizationId}');
   try {
     // Get parent commissary info for franchisees
     String? parentCommissaryCloudId;
@@ -25,6 +28,7 @@ void reinitializeSyncWithUserContext(UserData userData) {
           AppGlobals.instance.database.organizationsDao
               .getOrganizationById(org!.parentCommissaryId!)
               .then((parentOrg) {
+            AppLogger.websocket('🔌 SYNC REINIT  (franchisee + parent) orgId=${userData.organizationId} parentId=${org.parentCommissaryId}');
             // Reinitialize with parent commissary context
             AppGlobals.instance.syncService.initialize(
               organizationId: userData.organizationId,
@@ -38,6 +42,7 @@ void reinitializeSyncWithUserContext(UserData userData) {
       });
     }
 
+    AppLogger.websocket('🔌 SYNC REINIT  (initial) orgId=${userData.organizationId} cloudId=${userData.organizationCloudId}');
     // Initial sync with known context (cloud ID from UserData)
     AppGlobals.instance.syncService.initialize(
       organizationId: userData.organizationId,
@@ -102,10 +107,34 @@ class _MyAppState extends State<MyApp> {
           }
 
           // Reinitialize sync service with user's organization context
+          AppLogger.websocket('🔌 ROUTE /home  navigating → calling reinitializeSyncWithUserContext');
           reinitializeSyncWithUserContext(userData);
 
           return MaterialPageRoute(
             builder: (context) => HomeScreen(signedInUser: userData),
+          );
+        }
+
+        // Commissary login route
+        if (settings.name == '/commissary-login') {
+          return MaterialPageRoute(
+            builder: (context) => const CommissaryLoginScreen(),
+          );
+        }
+
+        // Commissary home route (requires UserData)
+        if (settings.name == '/commissary-home') {
+          final userData = settings.arguments as UserData?;
+
+          if (userData == null) {
+            return MaterialPageRoute(builder: (context) => const CommissaryLoginScreen());
+          }
+
+          AppLogger.websocket('🔌 ROUTE /commissary-home  navigating → calling reinitializeSyncWithUserContext');
+          reinitializeSyncWithUserContext(userData);
+
+          return MaterialPageRoute(
+            builder: (context) => CommissaryHomeScreen(signedInUser: userData),
           );
         }
 

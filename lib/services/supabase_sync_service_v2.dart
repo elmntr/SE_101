@@ -30,6 +30,9 @@ class SupabaseSyncServiceV2 {
   Timer? _syncTimer;
   bool _isSyncing = false;
   bool _isOnline = true;
+  // Set to true when clearOrganizationContext() is called while a sync is
+  // running; the clear is applied in syncAll()'s finally block instead.
+  bool _pendingContextClear = false;
   StreamSubscription? _connectivitySubscription;
 
   // Issue 6 fix: Sync lock to prevent overlapping sync calls
@@ -121,6 +124,7 @@ class SupabaseSyncServiceV2 {
     }
 
     AppLogger.sync('🚀 Initializing sync service v2...');
+    AppLogger.websocket('🔌 SYNC INIT  orgId=$organizationId  orgType=$organizationType  cloudId=$organizationCloudId');
 
     try {
       _currentOrganizationId = organizationId;
@@ -182,7 +186,7 @@ class SupabaseSyncServiceV2 {
       AppLogger.sync('✅ Sync service v2 initialized (${_currentOrganizationType ?? 'unknown'} mode)');
     } catch (e, stackTrace) {
       AppLogger.sync('❌ Failed to initialize sync service: $e');
-      if (kDebugMode) print(stackTrace);
+      //if (kDebugMode) print(stackTrace);
       onSyncError?.call('Initialization failed: $e');
     }
   }
@@ -234,12 +238,14 @@ class SupabaseSyncServiceV2 {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(syncInterval, (_) => syncAll());
     AppLogger.sync('⏰ Periodic sync started (every ${syncInterval.inMinutes} minutes)');
+    AppLogger.websocket('🔌 PERIODIC SYNC STARTED  interval=${syncInterval.inMinutes}min');
   }
 
   void stopPeriodicSync() {
     _syncTimer?.cancel();
     _syncTimer = null;
     AppLogger.sync('⏸️ Periodic sync stopped');
+    AppLogger.websocket('🔌 PERIODIC SYNC STOPPED');
   }
 
   // ============================================================================
@@ -335,13 +341,16 @@ class SupabaseSyncServiceV2 {
 
     } catch (e, stackTrace) {
       AppLogger.sync('❌ Sync failed: $e');
-      if (kDebugMode) print(stackTrace);
+      //if (kDebugMode) print(stackTrace);
       onSyncError?.call('Sync failed: $e');
       onSyncStatusChanged?.call('Sync failed');
     } finally {
       _isSyncing = false;
-      _syncCompleter?.complete();
-      _syncCompleter = null;
+      // Apply any context clear that was deferred because a sync was running.
+      if (_pendingContextClear) {
+        _pendingContextClear = false;
+        clearOrganizationContext();
+      }
     }
   }
 
@@ -418,8 +427,54 @@ class SupabaseSyncServiceV2 {
       getOrganizationId: (org) => null, // Organizations don't have org_id
     );
 
+    // Rebuild cache so commissary orgs pulled above are available for FK fix
+    await _engine.rebuildAllCaches();
+
+    // Fix franchisees whose parentCommissaryId was null due to cache-miss during pull
+    await _fixFranchiseeParentIds();
+
     // Reload parent commissary for franchisees
     await _reloadParentCommissaryId();
+  }
+
+  /// After an organizations pull, some franchisees may have been stored with
+  /// parentCommissaryId = null because the commissary org wasn't in the FK
+  /// cache yet (same-batch ordering issue).  This method queries Supabase for
+  /// the correct parent UUID, resolves it to a local ID using the now-rebuilt
+  /// cache, and updates the affected rows.
+  Future<void> _fixFranchiseeParentIds() async {
+    try {
+      final orphaned = (await db.organizationsDao.getAllFranchisees())
+          .where((f) => f.parentCommissaryId == null && f.cloudId != null)
+          .toList();
+
+      if (orphaned.isEmpty) return;
+
+      AppLogger.sync('   🔧 Fixing ${orphaned.length} franchisee(s) with null parentCommissaryId...');
+
+      final cloudIds = orphaned.map((f) => f.cloudId!).toList();
+      final records = await supabase
+          .from('organizations')
+          .select('cloud_id, parent_commissary_id')
+          .inFilter('cloud_id', cloudIds);
+
+      for (final r in records) {
+        final parentCloudId = r['parent_commissary_id'] as String?;
+        if (parentCloudId == null) continue;
+
+        final parentLocalId = _engine.getLocalId('organizations', parentCloudId);
+        if (parentLocalId == null) continue;
+
+        final orgCloudId = r['cloud_id'] as String;
+        final org = orphaned.where((f) => f.cloudId == orgCloudId).firstOrNull;
+        if (org == null) continue;
+
+        await db.organizationsDao.updateParentCommissaryId(org.id, parentLocalId);
+        AppLogger.sync('   ✅ Fixed ${org.name} → parentCommissaryId = $parentLocalId');
+      }
+    } catch (e) {
+      AppLogger.sync('   ⚠️ Failed to fix franchisee parent IDs: $e');
+    }
   }
 
   Future<void> _syncRoles() async {
@@ -558,19 +613,20 @@ class SupabaseSyncServiceV2 {
           'id': ing.id,
           'name': ing.name,
           'commissaryId': ing.commissaryId,
-          'categoryId': ing.categoryId,
           'stock': ing.stock,
-          'spoilage': ing.spoilage,
           'unit': ing.unit,
-          'minimumStock': ing.minimumStock,
-          'description': ing.description,
-          'isDeleted': ing.isDeleted,
+          'criticalLevel': ing.criticalLevel,
+          'costPerUnit': ing.costPerUnit,
+          'isActive': ing.isActive,
+          'needsSync': ing.needsSync,
           'createdAt': ing.createdAt,
           'lastUpdated': ing.lastUpdated,
+          'updatedAt': ing.updatedAt,
+          'lastSyncedAt': ing.lastSyncedAt,
         },
         getId: (ing) => ing.id,
         getCloudId: (ing) => ing.cloudId,
-        shouldSkip: (ing) => ing.isDeleted,
+        shouldSkip: (ing) => !ing.isActive,
       );
     }
 
@@ -624,18 +680,80 @@ class SupabaseSyncServiceV2 {
   }
 
   Future<void> _syncBranchIngredientStock() async {
-    // Implementation using engine.pushTable/pullTable
-    // Similar pattern to above
     AppLogger.sync('   📊 Syncing BranchIngredientStock...');
-    // TODO: Implement using generic pattern
+
+    await _engine.pushTable(
+      descriptor: branchIngredientStockDescriptor,
+      getUnsyncedRecords: ({int limit = 100, int offset = 0}) =>
+          db.branchIngredientStockDao.getUnsyncedStocks(limit: limit, offset: offset),
+      markAsSynced: (ids, {cloudIds}) =>
+          db.branchIngredientStockDao.markAsSynced(ids, cloudIds: cloudIds),
+      toMap: (stock) => {
+        'id': stock.id,
+        'organizationId': stock.organizationId,
+        'ingredientId': stock.ingredientId,
+        'stock': stock.quantity,
+        'spoilage': 0,
+        'minimumStock': stock.minimumStock,
+        'createdAt': stock.createdAt,
+        'lastUpdated': stock.lastUpdated,
+      },
+      getId: (stock) => stock.id,
+      getCloudId: (stock) => stock.cloudId,
+      shouldSkip: (stock) => false,
+    );
+
+    await _engine.pullTable(
+      descriptor: branchIngredientStockDescriptor,
+      upsertBatchFromCloud: (records) =>
+          db.branchIngredientStockDao.upsertBatchFromCloud(records),
+      getByCloudId: (cloudId) =>
+          db.branchIngredientStockDao.getByCloudId(cloudId),
+      getLastUpdated: (stock) => stock.lastUpdated,
+      getOrganizationId: (stock) => stock.organizationId,
+    );
   }
 
   Future<void> _syncBranchItemStock() async {
     AppLogger.sync('   📊 Syncing BranchItemStock...');
-    // TODO: Implement using generic pattern
+
+    await _engine.pushTable(
+      descriptor: branchItemStockDescriptor,
+      getUnsyncedRecords: ({int limit = 100, int offset = 0}) =>
+          db.branchItemStockDao.getUnsyncedStock(limit: limit, offset: offset),
+      markAsSynced: (ids, {cloudIds}) =>
+          db.branchItemStockDao.markAsSynced(ids, cloudIds: cloudIds),
+      toMap: (stock) => {
+        'id': stock.id,
+        'organizationId': stock.organizationId,
+        'itemId': stock.itemId,
+        'stock': stock.stock,
+        'sold': stock.sold,
+        'spoilage': stock.spoilage,
+        'price': stock.price,
+        'costPrice': stock.costPrice,
+        'minimumStock': stock.minimumStock,
+        'isDeleted': stock.isDeleted,
+        'createdAt': stock.createdAt,
+        'lastUpdated': stock.lastUpdated,
+      },
+      getId: (stock) => stock.id,
+      getCloudId: (stock) => stock.cloudId,
+      shouldSkip: (stock) => stock.isDeleted,
+    );
+
+    await _engine.pullTable(
+      descriptor: branchItemStockDescriptor,
+      upsertBatchFromCloud: (records) =>
+          db.branchItemStockDao.upsertBatchFromCloud(records),
+      getByCloudId: (cloudId) =>
+          db.branchItemStockDao.getByCloudId(cloudId),
+      getLastUpdated: (stock) => stock.lastUpdated,
+      getOrganizationId: (stock) => stock.organizationId,
+    );
   }
 
-  Future<void> _syncReplenishmentRequests() async {
+  Future<void> _syncReplenishmentRequests({bool forceFullPull = false}) async {
     AppLogger.sync('   📊 Syncing ReplenishmentRequests...');
     
     // Push local requests to cloud
@@ -677,26 +795,23 @@ class SupabaseSyncServiceV2 {
           db.stockReplenishmentRequestsDao.getRequestByCloudId(cloudId),
       getLastUpdated: (req) => req.lastUpdated,
       getOrganizationId: (req) => req.franchiseeId,
+      // When force-pulling, override the incremental filter without touching
+      // the engine's shared lastSuccessfulSync timestamp.
+      sinceOverride: forceFullPull ? DateTime.utc(1970) : null,
     );
   }
 
   /// Force a FULL sync of replenishment requests (ignores lastSuccessfulSync)
   /// Used by realtime service when it detects pending updates
   Future<void> forceFullSyncReplenishmentRequests() async {
-    AppLogger.sync('   📊 FORCE FULL Syncing ReplenishmentRequests...');
-    
-    // Temporarily reset lastSuccessfulSync to force full pull
-    final oldSync = _engine.lastSuccessfulSync;
-    _engine.resetLastSuccessfulSync();
-    
-    try {
-      await _syncReplenishmentRequests();
-    } finally {
-      // Restore the old sync time (don't update it)
-      if (oldSync != null) {
-        _engine.setLastSuccessfulSync(oldSync);
-      }
+    // If syncAll() is already running it will pull replenishment requests as
+    // part of Tier 4 — no need to duplicate the work.
+    if (_isSyncing) {
+      AppLogger.sync('⏳ Sync already in progress, skipping force sync');
+      return;
     }
+    AppLogger.sync('   📊 FORCE FULL Syncing ReplenishmentRequests...');
+    await _syncReplenishmentRequests(forceFullPull: true);
   }
 
   Future<void> _syncChangeRequests() async {
@@ -784,8 +899,22 @@ class SupabaseSyncServiceV2 {
       getByCloudId: (cloudId) =>
           db.dailySalesSummaryDao.getByCloudId(cloudId),
       getLastUpdated: (summary) => summary.lastUpdated,
-      getOrganizationId: (summary) => summary.organizationId, 
-      // Note: org ID in drift is int (local)
+      getOrganizationId: (summary) => summary.organizationId,
+      // Use business key for conflict detection
+      getByBusinessKey: (localData) async {
+        final organizationId = localData['organizationId'] as int?;
+        final itemId = localData['itemId'] as int?;
+        final summaryDate = localData['summaryDate'] as DateTime?;
+        
+        if (organizationId != null && itemId != null && summaryDate != null) {
+          return await db.dailySalesSummaryDao.getByBusinessKey(
+            organizationId: organizationId,
+            itemId: itemId,
+            summaryDate: summaryDate,
+          );
+        }
+        return null;
+      },
     );
   }
 
@@ -870,6 +999,22 @@ class SupabaseSyncServiceV2 {
     await syncAll();
   }
 
+  /// Force a **full** pull from Supabase (ignores lastSuccessfulSync)
+  /// and push any locally pending changes.
+  ///
+  /// Use this for user-initiated "Sync Now" button presses where the
+  /// expectation is that ALL cloud data is downloaded, not just incremental
+  /// changes since the last automatic sync.
+  Future<void> forceSyncAll() async {
+    AppLogger.sync('🔄 Force full sync requested (resetting timestamp)');
+    // Re-check connectivity in case the cached flag is stale (common on Windows)
+    _isOnline = await _checkConnectivity();
+    // Resetting lastSuccessfulSync makes the engine use '1970-01-01' as the
+    // lower-bound for every pull query, i.e. it fetches everything.
+    _engine.resetLastSuccessfulSync();
+    await syncAll();
+  }
+
   Future<void> syncItemsOnly() async {
     if (_isSyncing) return;
 
@@ -895,56 +1040,67 @@ class SupabaseSyncServiceV2 {
 
   /// Sync organizations table only
   Future<void> syncOrganizations() async {
+    if (_isSyncing) return;
     await _syncOrganizations();
   }
 
   /// Sync roles table only
   Future<void> syncRoles() async {
+    if (_isSyncing) return;
     await _syncRoles();
   }
 
   /// Sync users table only
   Future<void> syncUsers() async {
+    if (_isSyncing) return;
     await _syncUsers();
   }
 
   /// Sync items table only
   Future<void> syncItems() async {
+    if (_isSyncing) return;
     await _syncItems();
   }
 
   /// Sync ingredients table only
   Future<void> syncIngredients() async {
+    if (_isSyncing) return;
     await _syncIngredients();
   }
 
   /// Sync recipe ingredients table only
   Future<void> syncRecipeIngredients() async {
+    if (_isSyncing) return;
     await _syncRecipeIngredients();
   }
 
   /// Sync stock replenishment requests table only
   Future<void> syncStockReplenishmentRequests() async {
+    if (_isSyncing) return;
     await _syncReplenishmentRequests();
   }
 
   /// Sync stock change requests table only
   Future<void> syncStockChangeRequests() async {
+    if (_isSyncing) return;
     await _syncChangeRequests();
   }
 
   /// Sync branch item stock table only
   Future<void> syncBranchItemStock() async {
+    if (_isSyncing) return;
     await _syncBranchItemStock();
   }
 
   /// Sync branch ingredient stock table only
   Future<void> syncBranchIngredientStock() async {
+    if (_isSyncing) return;
     await _syncBranchIngredientStock();
   }
 
   /// Sync daily sales summary table only
   Future<void> syncDailySalesSummary() async {
+    if (_isSyncing) return;
     await _syncDailySalesSummary();
   }
 
@@ -973,6 +1129,8 @@ class SupabaseSyncServiceV2 {
         db.stockReplenishmentRequestsDao.getUnsyncedRequestCount(),
         db.stockChangeRequestsDao.getUnsyncedChangeRequestCount(),
         db.syncConflictsDao.getUnresolvedConflictCount(organizationId: _currentOrganizationId),
+        db.branchItemStockDao.getUnsyncedStock().then((l) => l.length),
+        db.dailySalesSummaryDao.getUnsyncedSummaries().then((l) => l.length),
       ]);
 
       final result = {
@@ -985,7 +1143,9 @@ class SupabaseSyncServiceV2 {
         'unsynced_replenishment_requests': counts[6],
         'unsynced_change_requests': counts[7],
         'unresolved_conflicts': counts[8],
-        'total_unsynced': counts.sublist(0, 8).fold(0, (sum, c) => sum + c),
+        'unsynced_branch_item_stock': counts[9],
+        'unsynced_daily_sales': counts[10],
+        'total_unsynced': counts.sublist(0, 8).fold(0, (sum, c) => sum + c) + counts[9] + counts[10],
         'is_syncing': _isSyncing,
         'is_online': _isOnline,
         'last_sync': _engine.lastSuccessfulSync?.toIso8601String() ?? 'Never',
@@ -1028,6 +1188,14 @@ class SupabaseSyncServiceV2 {
 
   /// Clear organization context on logout to prevent stale sync operations
   void clearOrganizationContext() {
+    // If a sync is currently running, defer the clear to avoid nulling
+    // context fields (_currentOrganizationType etc.) mid-flight.
+    if (_isSyncing) {
+      _pendingContextClear = true;
+      AppLogger.sync('⏳ Sync in progress – deferring context clear');
+      return;
+    }
+    _pendingContextClear = false;
     _currentOrganizationId = null;
     _currentOrganizationCloudId = null;
     _currentOrganizationType = null;

@@ -484,6 +484,40 @@ class MockSupabaseAuthService extends _i1.Mock
           as _i19.Stream<_i2.UserData?>);
 
   @override
+  _i2.AuthLifecycleState get lifecycleState =>
+      (super.noSuchMethod(
+            Invocation.getter(#lifecycleState),
+            returnValue: _i2.AuthLifecycleState.bootstrapping,
+          )
+          as _i2.AuthLifecycleState);
+
+  @override
+  _i19.Stream<_i2.AuthLifecycleState> get lifecycleStateChanges =>
+      (super.noSuchMethod(
+            Invocation.getter(#lifecycleStateChanges),
+            returnValue: _i19.Stream<_i2.AuthLifecycleState>.empty(),
+          )
+          as _i19.Stream<_i2.AuthLifecycleState>);
+
+  @override
+  _i19.Future<void> get bootstrapComplete =>
+      (super.noSuchMethod(
+            Invocation.getter(#bootstrapComplete),
+            returnValue: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
+
+  @override
+  _i19.Future<_i2.AuthLifecycleState> bootstrap() =>
+      (super.noSuchMethod(
+            Invocation.method(#bootstrap, []),
+            returnValue: _i19.Future<_i2.AuthLifecycleState>.value(
+              _i2.AuthLifecycleState.bootstrapping,
+            ),
+          )
+          as _i19.Future<_i2.AuthLifecycleState>);
+
+  @override
   _i19.Future<_i2.AuthResult> signUp({
     required String? email,
     required String? password,
@@ -580,6 +614,44 @@ class MockSupabaseAuthService extends _i1.Mock
           as _i19.Future<_i2.AuthResult>);
 
   @override
+  _i19.Future<String?> createBranchAdminAuthUser({
+    required String? email,
+    required String? password,
+    required String? organizationCloudId,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#createBranchAdminAuthUser, [], {
+              #email: email,
+              #password: password,
+              #organizationCloudId: organizationCloudId,
+            }),
+            returnValue: _i19.Future<String?>.value(),
+          )
+          as _i19.Future<String?>);
+
+  @override
+  _i19.Future<bool> deleteAuthUser(String? authUserId) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteAuthUser, [authUserId]),
+            returnValue: _i19.Future<bool>.value(false),
+          )
+          as _i19.Future<bool>);
+
+  @override
+  _i19.Future<bool> updateAuthUserPassword(
+    String? authUserId,
+    String? newPassword,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateAuthUserPassword, [
+              authUserId,
+              newPassword,
+            ]),
+            returnValue: _i19.Future<bool>.value(false),
+          )
+          as _i19.Future<bool>);
+
+  @override
   _i19.Future<void> signOut() =>
       (super.noSuchMethod(
             Invocation.method(#signOut, []),
@@ -613,14 +685,6 @@ class MockSupabaseAuthService extends _i1.Mock
             ),
           )
           as _i19.Future<_i2.AuthResult>);
-
-  @override
-  _i19.Future<bool> isSessionValid() =>
-      (super.noSuchMethod(
-            Invocation.method(#isSessionValid, []),
-            returnValue: _i19.Future<bool>.value(false),
-          )
-          as _i19.Future<bool>);
 
   @override
   _i19.Future<_i2.AuthResult> restoreSession() =>
@@ -1708,6 +1772,15 @@ class MockSupabaseSyncServiceV2 extends _i1.Mock
           as _i19.Future<void>);
 
   @override
+  _i19.Future<void> forceFullSyncReplenishmentRequests() =>
+      (super.noSuchMethod(
+            Invocation.method(#forceFullSyncReplenishmentRequests, []),
+            returnValue: _i19.Future<void>.value(),
+            returnValueForMissingStub: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
+
+  @override
   _i19.Future<void> syncImmediate() =>
       (super.noSuchMethod(
             Invocation.method(#syncImmediate, []),
@@ -1845,6 +1918,12 @@ class MockSupabaseSyncServiceV2 extends _i1.Mock
       #organizationType: organizationType,
       #parentCommissaryId: parentCommissaryId,
     }),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void clearOrganizationContext() => super.noSuchMethod(
+    Invocation.method(#clearOrganizationContext, []),
     returnValueForMissingStub: null,
   );
 
@@ -2037,6 +2116,15 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
           as _i19.Future<bool>);
 
   @override
+  _i19.Future<void> updateParentCommissaryId(int? localId, int? parentId) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateParentCommissaryId, [localId, parentId]),
+            returnValue: _i19.Future<void>.value(),
+            returnValueForMissingStub: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
+
+  @override
   _i19.Future<_i4.Organization?> getOrganizationById(int? id) =>
       (super.noSuchMethod(
             Invocation.method(#getOrganizationById, [id]),
@@ -2108,6 +2196,24 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
             returnValue: _i19.Future<_i4.Organization?>.value(),
           )
           as _i19.Future<_i4.Organization?>);
+
+  @override
+  _i19.Future<_i4.Organization?> getCommissary() =>
+      (super.noSuchMethod(
+            Invocation.method(#getCommissary, []),
+            returnValue: _i19.Future<_i4.Organization?>.value(),
+          )
+          as _i19.Future<_i4.Organization?>);
+
+  @override
+  _i19.Future<List<_i4.Organization>> getFranchisees(int? commissaryId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getFranchisees, [commissaryId]),
+            returnValue: _i19.Future<List<_i4.Organization>>.value(
+              <_i4.Organization>[],
+            ),
+          )
+          as _i19.Future<List<_i4.Organization>>);
 
   @override
   _i19.Future<List<_i4.Organization>> getAllFranchisees({
@@ -2212,6 +2318,7 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
     required DateTime? createdAt,
     required DateTime? lastUpdated,
     required String? cloudId,
+    String? hqAccessCodeHash,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#upsertFromCloud, [], {
@@ -2227,6 +2334,7 @@ class MockOrganizationsDao extends _i1.Mock implements _i5.OrganizationsDao {
               #createdAt: createdAt,
               #lastUpdated: lastUpdated,
               #cloudId: cloudId,
+              #hqAccessCodeHash: hqAccessCodeHash,
             }),
             returnValue: _i19.Future<void>.value(),
             returnValueForMissingStub: _i19.Future<void>.value(),

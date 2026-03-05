@@ -60,11 +60,13 @@ void main() async {
   SupabaseConfig.printConfigStatus(); // Debug: Show config status
 
   try {
+    AppLogger.websocket('🔌 SUPABASE INIT  starting...');
     await Supabase.initialize(
       url: SupabaseConfig.url,
       anonKey: SupabaseConfig.anonKey,
     );
     AppLogger.info('✅ Supabase initialized');
+    AppLogger.websocket('🔌 SUPABASE INIT  complete');
   } catch (e) {
     AppLogger.warning('Supabase initialization failed: $e');
     AppLogger.info('📱 App will work in offline-only mode');
@@ -112,6 +114,7 @@ void main() async {
   );
 
   // Initialize realtime stock request service
+  AppLogger.websocket('🔌 REALTIME SERVICE  creating instance');
   final realtimeStockRequestService = RealtimeStockRequestService(
     supabase: Supabase.instance.client,
     db: db,
@@ -150,6 +153,7 @@ void main() async {
       .initialize()
       .then((_) {
         AppLogger.info('✅ Sync service initialized');
+        AppLogger.websocket('🔌 SYNC SERVICE  initialized (from main.dart non-blocking)');
         _updateSyncStatus();
       })
       .catchError((e) {

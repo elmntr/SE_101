@@ -6,6 +6,7 @@ import 'package:drift/drift.dart' show Value;
 import '../../../database/app_database.dart';
 import '../../database/models/item_with_branch_stock.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/services/pos_service.dart';
 
@@ -71,9 +72,9 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
       );
       if (org != null) {
         branchOrgId = org.id;
-        print(
-          '📍 Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
-        );
+        //print(
+        //  '📍 Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
+        //);
       }
     }
 
@@ -83,7 +84,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         : null;
 
     if (branchOrg == null) {
-      print('❌ Could not find branch organization: $branchOrgId');
+      //print('❌ Could not find branch organization: $branchOrgId');
       // Initialize empty lists to avoid late initialization error
       _initializeEmptyLists();
       setState(() => isLoading = false);
@@ -107,15 +108,15 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     }
 
     if (commissaryId == null) {
-      print('❌ Could not determine commissary ID');
+      //print('❌ Could not determine commissary ID');
       _initializeEmptyLists();
       setState(() => isLoading = false);
       return;
     }
 
-    print(
-      '📍 Loading items for branch $branchOrgId from commissary $commissaryId',
-    );
+    //print(
+    //  '📍 Loading items for branch $branchOrgId from commissary $commissaryId',
+    //);
 
     // ✅ NEW: Load items WITH branch-specific stock (not shared items table)
     final loadedItems = await db.branchItemStockDao.getItemsWithStockForBranch(
@@ -123,11 +124,11 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
       commissaryId!,
     );
 
-    print('📦 Loaded ${loadedItems.length} items with branch stock');
+    //print('📦 Loaded ${loadedItems.length} items with branch stock');
     for (final item in loadedItems) {
-      print(
-        '   - ${item.name}: stock=${item.stock}, hasBranchStock=${item.hasBranchStock}',
-      );
+      //print(
+      //  '   - ${item.name}: stock=${item.stock}, hasBranchStock=${item.hasBranchStock}',
+      //);
     }
 
     setState(() {
@@ -197,7 +198,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
           // Check if branch stock record exists
           if (!item.hasBranchStock) {
             // Create branch stock record first
-            print('📝 Creating branch stock record for ${item.name}');
+            //print('📝 Creating branch stock record for ${item.name}');
             await db.branchItemStockDao.createStock(
               BranchItemStockCompanion(
                 organizationId: Value(widget.userData.organizationId),
@@ -228,10 +229,10 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             );
             
             if (result.success) {
-              print('   ✅ Sale recorded via PosService: ${item.name} x $soldQty');
+              //print('   ✅ Sale recorded via PosService: ${item.name} x $soldQty');
               anySuccess = true;
             } else {
-              print('   ❌ Sale failed: ${result.errorMessage}');
+              //print('   ❌ Sale failed: ${result.errorMessage}');
             }
           }
 
@@ -245,10 +246,10 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
             );
             
             if (result.success) {
-              print('   ✅ Spoilage recorded via PosService: ${item.name} x $spoilageQty');
+              //print('   ✅ Spoilage recorded via PosService: ${item.name} x $spoilageQty');
               anySuccess = true;
             } else {
-              print('   ❌ Spoilage failed: ${result.errorMessage}');
+              //print('   ❌ Spoilage failed: ${result.errorMessage}');
             }
           }
 
@@ -301,7 +302,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
         );
       }
     } catch (e) {
-      print('❌ Error saving changes: $e');
+      //print('❌ Error saving changes: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
@@ -317,16 +318,16 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
     }
 
     return Container(
-      color: const Color(0xFFEEEEEE),
+      color: backgroundGrey,
       child: Column(
         children: [
           // Employee Info
           Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
+            margin: paddingAllLg,
+            padding: paddingAllLg,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              color: cardBackground,
+              borderRadius: BorderRadius.circular(radiusXl),
             ),
             child: Row(
               children: [
@@ -336,7 +337,7 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                     children: [
                       const Text(
                         'Employee Name:',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: textMuted),
                       ),
                       Text(
                         widget.userData.fullName ?? widget.userData.username,
@@ -580,24 +581,22 @@ class _EmployeeChangeStockPageState extends State<EmployeeChangeStockPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: spacingXxl),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE30417),
+                      backgroundColor: actionButtonRed,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(radiusPill),
                       ),
                     ),
                     onPressed: _saveChanges,
-                    child: const Text(
+                    child: Text(
                       'SAVE CHANGES',
-                      style: TextStyle(
-                        fontSize: 18,
+                      style: AppTextStyles.button.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),

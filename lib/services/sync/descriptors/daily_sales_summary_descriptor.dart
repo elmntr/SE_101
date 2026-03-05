@@ -19,6 +19,7 @@ final dailySalesSummaryDescriptor = TableSyncDescriptor(
   dependencyTier: 4, // Sync after items/ingredients/stock
   incrementalSync: true,
   pullLimit: 500,
+  businessKeyFields: ['organizationId', 'itemId', 'summaryDate'], // Use business key for conflicts
   
   // Franchisees can push their own summaries
   canPush: (orgType) => true,
@@ -44,8 +45,20 @@ final dailySalesSummaryDescriptor = TableSyncDescriptor(
   ],
   
   fieldMappings: [
-    // Business key (part of unique constraint)
-    FieldMapping.dateTime('summaryDate', 'summary_date'),
+    // Business key (part of unique constraint) — date-only, always UTC midnight
+    FieldMapping(
+      localField: 'summaryDate',
+      cloudField: 'summary_date',
+      toCloud: (v) => v is DateTime
+          ? DateTime.utc(v.year, v.month, v.day).toIso8601String()
+          : v?.toString(),
+      fromCloud: (v) {
+        if (v == null) return null;
+        final parsed = DateTime.parse(v.toString());
+        // Always normalize to UTC midnight of the date — timezone-safe
+        return DateTime.utc(parsed.year, parsed.month, parsed.day);
+      },
+    ),
     
     // Sales metrics
     FieldMapping.simple('quantitySold', 'quantity_sold'),

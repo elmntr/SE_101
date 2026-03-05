@@ -1,10 +1,12 @@
 // lib/database/daos/stock_change_requests_dao.dart
 import 'package:drift/drift.dart';
+import '../../app.dart';
 import '../app_database.dart';
 import '../tables/stock_change_requests.dart';
 import '../tables/items.dart';
 import '../tables/organizations.dart';
 import '../tables/users.dart';
+import '../../utils/app_logger.dart';
 
 part 'stock_change_requests_dao.g.dart';
 
@@ -86,7 +88,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching stock change requests: $e');
+      //print('❌ Error fetching stock change requests: $e');
       return [];
     }
   }
@@ -122,7 +124,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(stockChangeRequests.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting stock change requests: $e');
+      //print('❌ Error counting stock change requests: $e');
       return 0;
     }
   }
@@ -160,7 +162,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return query.watch();
     } catch (e) {
-      print('❌ Error watching stock change requests: $e');
+      //print('❌ Error watching stock change requests: $e');
       return Stream.value([]);
     }
   }
@@ -181,7 +183,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
   }) async {
     try {
       // Validate changeType
-      const validTypes = ['sold', 'spoiled', 'adjustment', 'return'];
+      const validTypes = ['sold', 'spoiled', 'adjustment', 'return', 'override'];
       if (!validTypes.contains(changeType)) {
         throw ArgumentError(
           'Invalid change type. Must be one of: ${validTypes.join(", ")}',
@@ -202,7 +204,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
     } catch (e) {
-      print('Error creating change request: $e');
+      //print('Error creating change request: $e');
       rethrow;
     }
   }
@@ -217,7 +219,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       // Only allow editing drafts
       final request = await getChangeRequestById(requestId);
       if (request == null || request.status != 'draft') {
-        print('Can only edit draft requests');
+        //print('Can only edit draft requests');
         return false;
       }
 
@@ -234,7 +236,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('Error updating draft change request: $e');
+      //print('Error updating draft change request: $e');
       return false;
     }
   }
@@ -245,7 +247,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       // Only allow submitting drafts
       final request = await getChangeRequestById(requestId);
       if (request == null || request.status != 'draft') {
-        print('⚠️ Can only submit draft requests');
+        //print('⚠️ Can only submit draft requests');
         return false;
       }
 
@@ -266,7 +268,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error submitting change request: $e');
+      //print('❌ Error submitting change request: $e');
       return false;
     }
   }
@@ -289,7 +291,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             ]))
           .get();
     } catch (e) {
-      print('❌ Error fetching employee drafts: $e');
+      //print('❌ Error fetching employee drafts: $e');
       return [];
     }
   }
@@ -314,7 +316,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             ]))
           .get();
     } catch (e) {
-      print('❌ Error fetching employee pending requests: $e');
+      //print('❌ Error fetching employee pending requests: $e');
       return [];
     }
   }
@@ -338,7 +340,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(t) => OrderingTerm(expression: t.submittedAt)]))
           .get();
     } catch (e) {
-      print('❌ Error fetching pending requests for franchisee: $e');
+      //print('❌ Error fetching pending requests for franchisee: $e');
       return [];
     }
   }
@@ -352,7 +354,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       final request = await getChangeRequestById(requestId);
       if (request == null || request.status != 'pending') {
-        print('⚠️ Can only approve pending requests');
+        //print('⚠️ Can only approve pending requests');
         return false;
       }
 
@@ -372,48 +374,66 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
           ),
         );
 
-        // 2. Apply stock changes based on change type
+        // 2. Apply stock changes based on change type.
+        // NOTE for 'sold' and 'spoiled': PosService already applied the stock
+        // deduction and recorded DailySalesSummary when the employee submitted.
+        // Approval here only changes the audit-record status — no re-deduction.
         switch (request.changeType) {
           case 'sold':
-            await db.itemsDao.addSold(request.itemId, request.quantity);
+            // Stock already deducted by PosService on submission. Status-only update.
             break;
           case 'spoiled':
-            await db.itemsDao.addSpoilage(request.itemId, request.quantity);
+            // Stock already deducted by PosService on submission. Status-only update.
             break;
           case 'adjustment':
-            // For adjustments, directly update stock
-            final item = await db.itemsDao.getItemById(request.itemId);
-            if (item != null) {
-              final newStock =
-                  item.stock +
-                  request.quantity; // Can be negative for deductions
-              await db.itemsDao.updateStock(request.itemId, newStock);
+            // For adjustments, directly update BranchItemStock to the target level.
+            final branchStockAdj = await db.branchItemStockDao
+                .getStockForItem(request.franchiseeId, request.itemId);
+            if (branchStockAdj != null) {
+              final newStock = branchStockAdj.stock + request.quantity; // quantity can be negative
+              await db.branchItemStockDao.updateStock(
+                branchStockAdj.id,
+                BranchItemStockCompanion(stock: Value(newStock)),
+              );
             }
             break;
           case 'return':
-            // Return: decrease sold, increase stock
-            await customUpdate(
-              'UPDATE items SET '
-              'sold = sold - ?, '
-              'stock = stock + ?, '
-              'last_updated = ?, '
-              'is_synced = 0 '
-              'WHERE id = ?',
-              updates: {db.items},
-              variables: [
-                Variable.withInt(request.quantity),
-                Variable.withInt(request.quantity),
-                Variable.withDateTime(DateTime.now().toUtc()),
-                Variable.withInt(request.itemId),
-              ],
-            );
+            // Reverse the prior PosService sale on BranchItemStock:
+            // add quantity back to stock and reduce sold accordingly.
+            final branchStockRet = await db.branchItemStockDao
+                .getStockForItem(request.franchiseeId, request.itemId);
+            if (branchStockRet != null) {
+              final restoredSold = (branchStockRet.sold - request.quantity)
+                  .clamp(0, branchStockRet.sold)
+                  .toInt();
+              await db.branchItemStockDao.updateStock(
+                branchStockRet.id,
+                BranchItemStockCompanion(
+                  stock: Value(branchStockRet.stock + request.quantity),
+                  sold: Value(restoredSold),
+                ),
+              );
+            }
+            break;
+          case 'override':
+            // Override records are pre-applied at creation time via BranchItemStock.
+            // If this record reaches the pending-approval flow, reconcile BranchItemStock.
+            final branchStockOvr = await db.branchItemStockDao
+                .getStockForItem(request.franchiseeId, request.itemId);
+            if (branchStockOvr != null) {
+              final restoredStock = request.originalStock + request.quantity;
+              await db.branchItemStockDao.updateStock(
+                branchStockOvr.id,
+                BranchItemStockCompanion(stock: Value(restoredStock)),
+              );
+            }
             break;
         }
 
         return true;
       });
     } catch (e) {
-      print('❌ Error approving change request: $e');
+      //print('❌ Error approving change request: $e');
       return false;
     }
   }
@@ -427,7 +447,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       final request = await getChangeRequestById(requestId);
       if (request == null || request.status != 'pending') {
-        print('⚠️ Can only reject pending requests');
+        //print('⚠️ Can only reject pending requests');
         return false;
       }
 
@@ -448,7 +468,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error rejecting change request: $e');
+      //print('❌ Error rejecting change request: $e');
       return false;
     }
   }
@@ -464,7 +484,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         stockChangeRequests,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching change request by ID: $e');
+      //print('❌ Error fetching change request by ID: $e');
       return null;
     }
   }
@@ -488,7 +508,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching item change history: $e');
+      //print('❌ Error fetching item change history: $e');
       return [];
     }
   }
@@ -514,7 +534,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching employee change history: $e');
+      //print('❌ Error fetching employee change history: $e');
       return [];
     }
   }
@@ -542,7 +562,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         'rejected': allRequests.where((r) => r.status == 'rejected').length,
       };
     } catch (e) {
-      print('❌ Error calculating franchisee change stats: $e');
+      //print('❌ Error calculating franchisee change stats: $e');
       return {
         'total': 0,
         'draft': 0,
@@ -569,7 +589,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error soft deleting change request: $e');
+      //print('❌ Error soft deleting change request: $e');
       return false;
     }
   }
@@ -589,7 +609,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced change requests: $e');
+      //print('❌ Error fetching unsynced change requests: $e');
       return [];
     }
   }
@@ -604,7 +624,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(stockChangeRequests.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced change requests: $e');
+      //print('❌ Error counting unsynced change requests: $e');
       return 0;
     }
   }
@@ -628,7 +648,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         }
       });
     } catch (e) {
-      print('❌ Error marking change requests as synced: $e');
+      //print('❌ Error marking change requests as synced: $e');
       rethrow;
     }
   }
@@ -656,41 +676,68 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     try {
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
-          await upsertFromCloud(
-            id: cloudReq['localId'] ?? cloudReq['local_id'],
-            franchiseeId: cloudReq['franchiseeId'] ?? cloudReq['franchisee_id'],
-            itemId: cloudReq['itemId'] ?? cloudReq['item_id'],
-            changeType: cloudReq['changeType'] ?? cloudReq['change_type'],
-            quantity: cloudReq['quantity'],
-            status: cloudReq['status'],
-            requestedBy: cloudReq['requestedBy'] ?? cloudReq['requested_by'],
-            requestedAt: _parseDateTime(
+          final franchiseeId = cloudReq['franchiseeId'] ?? cloudReq['franchisee_id'];
+          final itemId = cloudReq['itemId'] ?? cloudReq['item_id'];
+          final quantity = cloudReq['quantity'];
+          final requestedBy = cloudReq['requestedBy'] ?? cloudReq['requested_by'];
+          final originalStock = cloudReq['originalStock'] ?? cloudReq['original_stock'];
+          final cloudId = cloudReq['cloudId'] ?? cloudReq['cloud_id'];
+          
+          // Skip invalid records where required fields are null
+          if (franchiseeId == null || itemId == null || 
+              quantity == null || requestedBy == null || originalStock == null || cloudId == null) {
+            AppLogger.sync('⚠️ Skipping stock_change_requests record: Required field is null');
+            continue;
+          }
+
+          // Look up by cloudId to decide insert vs update
+          final existing = await getChangeRequestByCloudId(cloudId as String);
+          
+          final companion = StockChangeRequestsCompanion(
+            franchiseeId: Value(franchiseeId as int),
+            itemId: Value(itemId as int),
+            changeType: Value(cloudReq['changeType'] ?? cloudReq['change_type'] ?? 'sold'),
+            quantity: Value(quantity as int),
+            status: Value(cloudReq['status'] ?? 'approved'),
+            requestedBy: Value(requestedBy as int),
+            requestedAt: Value(_parseDateTime(
               cloudReq['requestedAt'] ?? cloudReq['requested_at'],
-            ),
-            submittedAt: _parseDateTimeNullable(
+            )),
+            submittedAt: Value(_parseDateTimeNullable(
               cloudReq['submittedAt'] ?? cloudReq['submitted_at'],
-            ),
-            reviewedBy: cloudReq['reviewedBy'] ?? cloudReq['reviewed_by'],
-            reviewedAt: _parseDateTimeNullable(
+            )),
+            reviewedBy: Value(cloudReq['reviewedBy'] ?? cloudReq['reviewed_by']),
+            reviewedAt: Value(_parseDateTimeNullable(
               cloudReq['reviewedAt'] ?? cloudReq['reviewed_at'],
-            ),
-            reason: cloudReq['reason'],
-            reviewNotes: cloudReq['reviewNotes'] ?? cloudReq['review_notes'],
-            originalStock:
-                cloudReq['originalStock'] ?? cloudReq['original_stock'],
-            createdAt: _parseDateTime(
+            )),
+            reason: Value(cloudReq['reason']),
+            reviewNotes: Value(cloudReq['reviewNotes'] ?? cloudReq['reviewerNotes'] ?? cloudReq['review_notes']),
+            originalStock: Value(originalStock as int),
+            createdAt: Value(_parseDateTime(
               cloudReq['createdAt'] ?? cloudReq['created_at'],
-            ),
-            lastUpdated: _parseDateTime(
+            )),
+            lastUpdated: Value(_parseDateTime(
               cloudReq['lastUpdated'] ?? cloudReq['last_updated'],
-            ),
-            isDeleted: cloudReq['isDeleted'] ?? cloudReq['is_deleted'] ?? false,
-            cloudId: cloudReq['cloudId'] ?? cloudReq['cloud_id'],
+            )),
+            isDeleted: Value(cloudReq['isDeleted'] ?? cloudReq['is_deleted'] ?? false),
+            isSynced: const Value(true),
+            cloudId: Value(cloudId),
           );
+
+          if (existing != null) {
+            // Update existing record
+            await (update(stockChangeRequests)
+                  ..where((t) => t.id.equals(existing.id)))
+                .write(companion);
+          } else {
+            // Insert new record (auto-increment id)
+            await into(stockChangeRequests).insert(
+              companion.copyWith(id: const Value.absent()),
+            );
+          }
         }
       });
     } catch (e) {
-      print('❌ Error batch upserting change requests from cloud: $e');
       rethrow;
     }
   }
@@ -741,7 +788,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
     } catch (e) {
-      print('❌ Error upserting change request from cloud: $e');
+      //print('❌ Error upserting change request from cloud: $e');
       rethrow;
     }
   }
@@ -753,7 +800,7 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
         stockChangeRequests,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching change request by cloud ID: $e');
+      //print('❌ Error fetching change request by cloud ID: $e');
       return null;
     }
   }

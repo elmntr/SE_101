@@ -13,6 +13,8 @@ import 'franchisee_inventory_mobile.dart';
 import 'franchisee_inventory_desktop.dart';
 import 'replenish_stock_tab.dart';
 
+import 'package:chickenjoo_inventory/services/pos_service.dart';
+
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
 
@@ -25,6 +27,7 @@ class InventoryPage extends StatefulWidget {
 
 class InventoryPageState extends State<InventoryPage> {
   late AppDatabase db;
+  late PosService posService;
 
   /// Items with branch-specific stock data
   List<ItemWithBranchStock> items = [];
@@ -92,6 +95,7 @@ class InventoryPageState extends State<InventoryPage> {
   void initState() {
     super.initState();
     db = database;
+    posService = PosService(db: db);
     loadData();
 
     // ✅ FIX: Listen to sync completion to refresh data
@@ -106,7 +110,7 @@ class InventoryPageState extends State<InventoryPage> {
 
   void _onSyncComplete() {
     if (mounted) {
-      print('🔄 Sync completed, refreshing inventory...');
+      //print('🔄 Sync completed, refreshing inventory...');
       loadData();
     }
   }
@@ -136,11 +140,11 @@ class InventoryPageState extends State<InventoryPage> {
         final loadedItems = await db.branchItemStockDao
             .getItemsWithStockForBranch(currentOrganizationId!, commissaryId!);
 
-        print('📦 Loaded ${loadedItems.length} items with branch stock');
+        //print('📦 Loaded ${loadedItems.length} items with branch stock');
         for (final item in loadedItems) {
-          print(
-            '   - ${item.name}: stock=${item.stock}, sold=${item.sold}, spoilage=${item.spoilage}, hasBranchStock=${item.hasBranchStock}',
-          );
+          //print(
+          //  '   - ${item.name}: stock=${item.stock}, sold=${item.sold}, spoilage=${item.spoilage}, hasBranchStock=${item.hasBranchStock}'
+          //);
         }
 
         final employees = await db.usersDao.getUsersByOrganization(
@@ -162,9 +166,9 @@ class InventoryPageState extends State<InventoryPage> {
           });
         }
       } else {
-        print(
-          '⚠️ Missing org context: orgId=$currentOrganizationId, commissaryId=$commissaryId',
-        );
+        //print(
+        //  '⚠️ Missing org context: orgId=$currentOrganizationId, commissaryId=$commissaryId'
+        //);
         if (mounted) {
           setState(() {
             items = [];
@@ -175,10 +179,28 @@ class InventoryPageState extends State<InventoryPage> {
         }
       }
     } catch (e) {
-      print('❌ Error loading inventory data: $e');
+      //print('❌ Error loading inventory data: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
+    }
+  }
+
+  /// Maps internal changeType values to display-friendly labels.
+  String _friendlyChangeType(String changeType) {
+    switch (changeType) {
+      case 'sold':
+        return 'Sold';
+      case 'spoiled':
+        return 'Spoiled';
+      case 'override':
+        return 'Override';
+      case 'adjustment':
+        return 'Adjustment';
+      case 'return':
+        return 'Return';
+      default:
+        return changeType;
     }
   }
 
@@ -191,7 +213,7 @@ class InventoryPageState extends State<InventoryPage> {
       rows.add({
         'employeeName': user?.fullName ?? user?.username ?? 'Unknown',
         'itemName': item?.name ?? 'Unknown',
-        'changeType': request.changeType,
+        'changeType': _friendlyChangeType(request.changeType),
         'quantity': request.quantity.toString(),
         'status': request.status,
         'request': request,
@@ -291,6 +313,64 @@ class InventoryPageState extends State<InventoryPage> {
     }
   }
 
+  /// Show a password confirmation dialog for manual stock overrides.
+  /// Returns true if the password was verified successfully.
+  Future<bool> _showPasswordConfirmDialog(BuildContext context) async {
+    if (currentUserId == null) return false;
+
+    final passwordController = TextEditingController();
+    bool? confirmed;
+
+    confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text(
+          'Confirm Override',
+          style: TextStyle(fontFamily: fontAll, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter your password to confirm the manual stock override.',
+              style: TextStyle(fontFamily: fontAll),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return false;
+
+    final password = passwordController.text.trim();
+    if (password.isEmpty) return false;
+
+    return await db.usersDao.verifyUserPassword(currentUserId!, password);
+  }
+
   /// Show dialog to edit stock and spoilage values for an item
   Future<void> showEditStockDialog(
     BuildContext context,
@@ -299,8 +379,11 @@ class InventoryPageState extends State<InventoryPage> {
     final TextEditingController stockController = TextEditingController(
       text: item.stock.toString(),
     );
+    final TextEditingController soldController = TextEditingController(
+      text: '0', // How many sold this session
+    );
     final TextEditingController spoilageController = TextEditingController(
-      text: item.spoilage.toString(),
+      text: '0', // How many spoiled this session
     );
 
     final result = await showDialog<Map<String, int>?>(
@@ -318,17 +401,26 @@ class InventoryPageState extends State<InventoryPage> {
               controller: stockController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: 'Stock Quantity',
+                labelText: 'Stock Quantity (manual override)',
                 border: OutlineInputBorder(),
               ),
               autofocus: true,
             ),
             const SizedBox(height: 16),
             TextField(
+              controller: soldController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Qty Sold (this session)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
               controller: spoilageController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: 'Spoilage',
+                labelText: 'Qty Spoiled (this session)',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -343,9 +435,16 @@ class InventoryPageState extends State<InventoryPage> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               final newStock = int.tryParse(stockController.text.trim());
+              final newSold = int.tryParse(soldController.text.trim());
               final newSpoilage = int.tryParse(spoilageController.text.trim());
-              if (newStock != null && newStock >= 0 && newSpoilage != null && newSpoilage >= 0) {
-                Navigator.pop(context, {'stock': newStock, 'spoilage': newSpoilage});
+              if (newStock != null && newStock >= 0 &&
+                  newSold != null && newSold >= 0 &&
+                  newSpoilage != null && newSpoilage >= 0) {
+                Navigator.pop(context, {
+                  'stock': newStock,
+                  'sold': newSold,
+                  'spoilage': newSpoilage,
+                });
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -362,6 +461,21 @@ class InventoryPageState extends State<InventoryPage> {
     );
 
     if (result != null && context.mounted) {
+      // Require password confirmation if the stock value is being manually overridden
+      if (result['stock'] != item.stock) {
+        final confirmed = await _showPasswordConfirmDialog(context);
+        if (!confirmed) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Stock override cancelled: incorrect password.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+      }
       await updateItemStock(context, item, result);
     }
   }
@@ -373,8 +487,9 @@ class InventoryPageState extends State<InventoryPage> {
     Map<String, int> values,
   ) async {
     final newStock = values['stock']!;
-    final newSpoilage = values['spoilage']!;
-    
+    final soldQty = values['sold'] ?? 0;
+    final spoilageQty = values['spoilage'] ?? 0;
+
     if (currentOrganizationId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -385,56 +500,139 @@ class InventoryPageState extends State<InventoryPage> {
       return;
     }
 
-    try {
-      if (item.hasBranchStock && item.branchStockId != null) {
-        // Update existing branch stock record
-        final success = await db.branchItemStockDao.updateStock(
-          item.branchStockId!,
-          BranchItemStockCompanion(
-            stock: Value(newStock),
-            spoilage: Value(newSpoilage),
-          ),
-        );
+    if (currentUserId == null || currentUserId! <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Could not identify current user.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
-        if (success) {
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ Updated ${item.name}: Stock=$newStock, Spoilage=$newSpoilage'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          await loadData();
-        } else {
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error: Could not update item.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } else {
-        // Create new branch stock record
+    try {
+      // Step 1: Ensure branch stock record exists before using PosService
+      if (!item.hasBranchStock || item.branchStockId == null) {
         await db.branchItemStockDao.createStock(
           BranchItemStockCompanion(
             organizationId: Value(currentOrganizationId!),
             itemId: Value(item.id),
             stock: Value(newStock),
             sold: const Value(0),
-            spoilage: Value(newSpoilage),
+            spoilage: const Value(0),
             isSynced: const Value(false),
           ),
         );
+        // Reload items to get the new branchStockId
+        await loadData();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Created stock record for ${item.name}. Please re-edit to record sales/spoilage.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        return;
+      }
 
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ Set ${item.name}: Stock=$newStock, Spoilage=$newSpoilage'),
-            backgroundColor: Colors.green,
+      bool anySuccess = false;
+
+      // Step 2: Apply manual stock override if different from current
+      if (newStock != item.stock) {
+        final success = await db.branchItemStockDao.updateStock(
+          item.branchStockId!,
+          BranchItemStockCompanion(
+            stock: Value(newStock),
+            isSynced: const Value(false), // Mark for sync
           ),
         );
+        if (success) {
+          anySuccess = true;
+
+          // Create an override audit record so the manual change is traceable
+          final requestId = await db.stockChangeRequestsDao.createChangeRequest(
+            franchiseeId: currentOrganizationId!,
+            itemId: item.id,
+            changeType: 'override',
+            quantity: newStock - item.stock, // positive = increase, negative = decrease
+            requestedBy: currentUserId!,
+            originalStock: item.stock,
+            reason: 'Manual stock override',
+          );
+          // Immediately approve so the record shows as audited
+          await db.stockChangeRequestsDao.submitChangeRequest(requestId);
+        }
+      }
+
+      // Step 3: Record sales via PosService (updates stock + daily summary + audit)
+      if (soldQty > 0) {
+        final result = await posService.recordSale(
+          item: item,
+          quantity: soldQty,
+          organizationId: currentOrganizationId!,
+          requestedByUserId: currentUserId!,
+          createAuditRecord: true,
+        );
+        if (result.success) {
+          anySuccess = true;
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Warning: Sale recording failed: ${result.errorMessage}'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      }
+
+      // Step 4: Record spoilage via PosService (updates stock + daily summary + audit)
+      if (spoilageQty > 0) {
+        final result = await posService.recordSpoilage(
+          item: item,
+          quantity: spoilageQty,
+          organizationId: currentOrganizationId!,
+          requestedByUserId: currentUserId!,
+          createAuditRecord: true,
+        );
+        if (result.success) {
+          anySuccess = true;
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Warning: Spoilage recording failed: ${result.errorMessage}'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      }
+
+      if (anySuccess) {
+        // Step 5: Trigger a sync push so changes go to cloud
+        AppGlobals.instance.syncService.syncBranchItemStock().catchError((_) {});
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Updated ${item.name} (Stock=$newStock, Sold=$soldQty, Spoilage=$spoilageQty)'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
         await loadData();
+      } else if (newStock == item.stock && soldQty == 0 && spoilageQty == 0) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No changes made.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (!context.mounted) return;
@@ -463,9 +661,9 @@ class InventoryPageState extends State<InventoryPage> {
         if (org != null) {
           currentOrganizationId = org.id;
           await prefs.setInt(orgIdKey, org.id);
-          print(
-            '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}',
-          );
+          //print(
+          //  '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}'
+          //);
           return;
         }
       }
@@ -492,11 +690,11 @@ class InventoryPageState extends State<InventoryPage> {
           organization.parentCommissaryId != null) {
         // Franchisee: use parent commissary
         commissaryId = organization.parentCommissaryId;
-        print('📍 Franchisee mode: commissaryId=${commissaryId}');
+        //print('📍 Franchisee mode: commissaryId=${commissaryId}');
       } else if (organization.type == 'commissary') {
         // Commissary viewing own inventory
         commissaryId = organization.id;
-        print('📍 Commissary mode: commissaryId=${commissaryId}');
+        //print('📍 Commissary mode: commissaryId=${commissaryId}');
       }
     }
 
@@ -507,7 +705,7 @@ class InventoryPageState extends State<InventoryPage> {
       );
       if (commissaries.isNotEmpty) {
         commissaryId = commissaries.first.id;
-        print('📍 Fallback commissary: commissaryId=${commissaryId}');
+        //print('📍 Fallback commissary: commissaryId=${commissaryId}');
       }
     }
   }
@@ -522,11 +720,11 @@ class InventoryPageState extends State<InventoryPage> {
         );
         if (localUser != null) {
           currentUserId = localUser.id;
-          print(
-            '👤 Resolved local User ID from cloud ID: ${currentUser.cloudId} → ${localUser.id}',
-          );
+          //print(
+          //  '👤 Resolved local User ID from cloud ID: ${currentUser.cloudId} → ${localUser.id}'
+          //);
         } else {
-          print('⚠️ Could not resolve local user from cloud ID: ${currentUser.cloudId}');
+          //print('⚠️ Could not resolve local user from cloud ID: ${currentUser.cloudId}');
           // Try syncing users first, then retry
           await _trySyncAndResolveUser(currentUser.cloudId!);
         }
@@ -539,7 +737,7 @@ class InventoryPageState extends State<InventoryPage> {
     } else {
       // No authenticated user from auth service
       // This might happen if auth service hasn't loaded yet
-      print('⚠️ No current user from auth service, checking Supabase auth...');
+      //print('⚠️ No current user from auth service, checking Supabase auth...');
       final supabaseUser = Supabase.instance.client.auth.currentUser;
       if (supabaseUser != null) {
         await _tryResolveUserByEmail(supabaseUser.email ?? '');
@@ -547,38 +745,38 @@ class InventoryPageState extends State<InventoryPage> {
         currentUserId = null;
       }
     }
-    print('👤 Current User ID: $currentUserId');
+    //print('👤 Current User ID: $currentUserId');
   }
 
   /// Try to sync users and resolve local user ID
   Future<void> _trySyncAndResolveUser(String cloudId) async {
     try {
-      print('🔄 Syncing dependencies and users to resolve local ID...');
+      //print('🔄 Syncing dependencies and users to resolve local ID...');
       // Sync dependencies first to ensure FK resolution works
       await AppGlobals.instance.syncService.syncOrganizations();
       await AppGlobals.instance.syncService.syncRoles();
       
       // DEBUG: Verify DB State
       final roles = await db.rolesDao.getAllRoles();
-      print('🔍 DEBUG: Local Roles count: ${roles.length}');
-      for (var r in roles) print('   - Role: ${r.id} | ${r.cloudId} | ${r.name}');
+      //print('🔍 DEBUG: Local Roles count: ${roles.length}');
+      // for (var r in roles) //print('   - Role: ${r.id} | ${r.cloudId} | ${r.name}');
       
       final orgs = await db.organizationsDao.getAllOrganizations();
-      print('🔍 DEBUG: Local Orgs count: ${orgs.length}');
-      for (var o in orgs) print('   - Org: ${o.id} | ${o.cloudId} | ${o.name}');
+      //print('🔍 DEBUG: Local Orgs count: ${orgs.length}');
+      // for (var o in orgs) //print('   - Org: ${o.id} | ${o.cloudId} | ${o.name}');
 
       await AppGlobals.instance.syncService.syncUsers();
 
       final localUser = await db.usersDao.getUserByCloudId(cloudId);
       if (localUser != null) {
         currentUserId = localUser.id;
-        print('👤 Resolved local User ID after sync: $cloudId → ${localUser.id}');
+        //print('👤 Resolved local User ID after sync: $cloudId → ${localUser.id}');
       } else {
-        print('❌ User still not found after sync (Organization/Role might be missing/inactive)');
+        //print('❌ User still not found after sync (Organization/Role might be missing/inactive)');
         currentUserId = null;
       }
     } catch (e) {
-      print('⚠️ Sync failed: $e');
+      //print('⚠️ Sync failed: $e');
       currentUserId = null;
     }
   }
@@ -594,10 +792,10 @@ class InventoryPageState extends State<InventoryPage> {
       final localUser = await db.usersDao.getUserByEmail(email);
       if (localUser != null) {
         currentUserId = localUser.id;
-        print('👤 Resolved User ID by email: $email → ${localUser.id}');
+        //print('👤 Resolved User ID by email: $email → ${localUser.id}');
       } else {
         // Try syncing first
-        print('🔄 User not found locally, syncing dependencies and users...');
+        //print('🔄 User not found locally, syncing dependencies and users...');
         await AppGlobals.instance.syncService.syncOrganizations();
         await AppGlobals.instance.syncService.syncRoles();
         await AppGlobals.instance.syncService.syncUsers();
@@ -605,14 +803,14 @@ class InventoryPageState extends State<InventoryPage> {
         final syncedUser = await db.usersDao.getUserByEmail(email);
         if (syncedUser != null) {
           currentUserId = syncedUser.id;
-          print('👤 Resolved User ID after sync: $email → ${syncedUser.id}');
+          //print('👤 Resolved User ID after sync: $email → ${syncedUser.id}');
         } else {
-          print('❌ User not found even after sync: $email');
+          //print('❌ User not found even after sync: $email');
           currentUserId = null;
         }
       }
     } catch (e) {
-      print('⚠️ Error resolving user: $e');
+      //print('⚠️ Error resolving user: $e');
       currentUserId = null;
     }
   }
@@ -632,7 +830,7 @@ class InventoryPageState extends State<InventoryPage> {
       await AppGlobals.instance.syncService.syncBranchItemStock();
       // loadData will be called via _onSyncComplete
     } catch (e) {
-      print('Error refreshing inventory: $e');
+      //print('Error refreshing inventory: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }

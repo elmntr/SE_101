@@ -102,8 +102,8 @@ class PosService {
       final unitPrice = item.price ?? 0.0;
       final unitCost = item.costPrice ?? 0.0;
 
-      print('💰 Recording sale: ${item.name} x $quantity @ ₱$unitPrice');
-      print('   Stock: $currentStock → $newStock');
+      //print('💰 Recording sale: ${item.name} x $quantity @ ₱$unitPrice');
+      //print('   Stock: $currentStock → $newStock');
 
       // 1. Update BranchItemStock (stock decreases, sold increases)
       final stockSuccess = await db.branchItemStockDao.recordSale(
@@ -128,7 +128,7 @@ class PosService {
         currentStock: newStock,
       );
 
-      print('   ✅ Sale recorded in DailySalesSummary');
+      //print('   ✅ Sale recorded in DailySalesSummary');
 
       // 3. Create audit trail (optional)
       if (createAuditRecord && requestedByUserId != null) {
@@ -142,7 +142,7 @@ class PosService {
           reason: 'POS Sale',
         );
         await db.stockChangeRequestsDao.submitChangeRequest(requestId);
-        print('   📋 Audit record created: $requestId');
+        //print('   📋 Audit record created: $requestId');
       }
 
       return TransactionResult.success(
@@ -151,7 +151,7 @@ class PosService {
         type: TransactionType.sale,
       );
     } catch (e) {
-      print('❌ Error recording sale: $e');
+      //print('❌ Error recording sale: $e');
       return TransactionResult.failure(
         'Error recording sale: $e',
         TransactionType.sale,
@@ -200,8 +200,8 @@ class PosService {
       final currentStock = item.stock;
       final newStock = currentStock - quantity;
 
-      print('🗑️ Recording spoilage: ${item.name} x $quantity');
-      print('   Stock: $currentStock → $newStock');
+      //print('🗑️ Recording spoilage: ${item.name} x $quantity');
+      //print('   Stock: $currentStock → $newStock');
 
       // 1. Update BranchItemStock (stock decreases, spoilage increases)
       final stockSuccess = await db.branchItemStockDao.recordSpoilage(
@@ -224,7 +224,7 @@ class PosService {
         currentStock: newStock,
       );
 
-      print('   ✅ Spoilage recorded in DailySalesSummary');
+      //print('   ✅ Spoilage recorded in DailySalesSummary');
 
       // 3. Create audit trail (optional)
       if (createAuditRecord && requestedByUserId != null) {
@@ -238,7 +238,7 @@ class PosService {
           reason: 'POS Spoilage',
         );
         await db.stockChangeRequestsDao.submitChangeRequest(requestId);
-        print('   📋 Audit record created: $requestId');
+        //print('   📋 Audit record created: $requestId');
       }
 
       return TransactionResult.success(
@@ -247,7 +247,7 @@ class PosService {
         type: TransactionType.spoilage,
       );
     } catch (e) {
-      print('❌ Error recording spoilage: $e');
+      //print('❌ Error recording spoilage: $e');
       return TransactionResult.failure(
         'Error recording spoilage: $e',
         TransactionType.spoilage,

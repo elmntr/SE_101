@@ -90,7 +90,7 @@ class FranchiseeProductsViewState extends State<FranchiseeProductsView> {
       await AppGlobals.instance.syncService.syncItemsOnly();
       // loadData will be called automatically via _onSyncComplete
     } catch (e) {
-      print('Error refreshing products: $e');
+      //print('Error refreshing products: $e');
       if (mounted) {
         controller.isLoading = false;
         setState(() {});

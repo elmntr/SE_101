@@ -4,6 +4,7 @@ import '../app_database.dart';
 import '../tables/daily_sales_summary.dart';
 import '../tables/items.dart';
 import '../tables/organizations.dart';
+import '../../utils/app_logger.dart';
 
 part 'daily_sales_summary_dao.g.dart';
 
@@ -27,7 +28,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     required int itemId,
     required DateTime date,
   }) async {
-    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedDate = DateTime.utc(date.year, date.month, date.day);
     return await (select(dailySalesSummary)
           ..where((t) => t.organizationId.equals(organizationId))
           ..where((t) => t.itemId.equals(itemId))
@@ -40,7 +41,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     required int organizationId,
     required DateTime date,
   }) async {
-    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedDate = DateTime.utc(date.year, date.month, date.day);
     return await (select(dailySalesSummary)
           ..where((t) => t.organizationId.equals(organizationId))
           ..where((t) => t.summaryDate.equals(normalizedDate)))
@@ -53,8 +54,8 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    final start = DateTime(startDate.year, startDate.month, startDate.day);
-    final end = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+    final start = DateTime.utc(startDate.year, startDate.month, startDate.day);
+    final end = DateTime.utc(endDate.year, endDate.month, endDate.day, 23, 59, 59);
     return await (select(dailySalesSummary)
           ..where((t) => t.organizationId.equals(organizationId))
           ..where((t) => t.summaryDate.isBetweenValues(start, end))
@@ -76,7 +77,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     int? currentStock,
   }) async {
     final today = DateTime.now();
-    final normalizedDate = DateTime(today.year, today.month, today.day);
+    final normalizedDate = DateTime.utc(today.year, today.month, today.day);
 
     final existing = await getSummary(
       organizationId: organizationId,
@@ -126,7 +127,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
     int? currentStock,
   }) async {
     final today = DateTime.now();
-    final normalizedDate = DateTime(today.year, today.month, today.day);
+    final normalizedDate = DateTime.utc(today.year, today.month, today.day);
 
     final existing = await getSummary(
       organizationId: organizationId,
@@ -161,7 +162,7 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
 
   /// Get total sales for all branches on a specific date (commissary view)
   Future<Map<String, dynamic>> getNetworkTotalsForDate(DateTime date) async {
-    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedDate = DateTime.utc(date.year, date.month, date.day);
     
     final query = selectOnly(dailySalesSummary)
       ..addColumns([
@@ -320,77 +321,87 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
-  /// Issue 3 fix: Use business key lookup instead of batch insert
-  /// to avoid "Too many elements" error on cloud_id conflict
-  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
+  /// Get summary by business key (organizationId, itemId, summaryDate) for conflict resolution
+  Future<DailySalesSummaryData?> getByBusinessKey({
+    required int organizationId,
+    required int itemId,
+    required DateTime summaryDate,
+  }) async {
+    final normalizedDate = DateTime.utc(summaryDate.year, summaryDate.month, summaryDate.day);
+    return await (select(dailySalesSummary)
+          ..where((t) => t.organizationId.equals(organizationId))
+          ..where((t) => t.itemId.equals(itemId))
+          ..where((t) => t.summaryDate.equals(normalizedDate)))
+        .getSingleOrNull();
+  }
+
+  /// Upsert batch from cloud
+Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> records) async {
+  await batch((batch) {
     for (final record in records) {
-      try {
-        final cloudId = record['cloudId'] as String;
-        
-        // Handle potentially null fields safely
-        final organizationId = record['organizationId'] as int?;
-        final itemId = record['itemId'] as int?;
-        
-        if (organizationId == null || itemId == null) {
-          // Skip invalid records where FKs couldn't be resolved
-          continue;
-        }
+      final cloudId = record['cloudId'] as String;
 
-        final summaryDate = record['summaryDate'] as DateTime;
-        final lastUpdated = record['lastUpdated'] as DateTime?;
+      final organizationId = record['organizationId'] as int?;
+      final itemId = record['itemId'] as int?;
 
-        // Business key: {organizationId, itemId, summaryDate}
-        final existing = await getSummary(
+      if (organizationId == null || itemId == null) {
+        AppLogger.sync('⚠️ Skipping daily_sales_summary record: Missing required fields');
+        continue;
+      }
+
+      final rawSummaryDate = record['summaryDate'] as DateTime;
+      // Normalize to UTC midnight to ensure consistent business dates across timezones
+      final summaryDate = DateTime.utc(rawSummaryDate.year, rawSummaryDate.month, rawSummaryDate.day);
+      final resolvedLastUpdated =
+          (record['lastUpdated'] as DateTime?) ?? DateTime.now();
+
+      batch.insert(
+        dailySalesSummary,
+        DailySalesSummaryCompanion.insert(
           organizationId: organizationId,
           itemId: itemId,
-          date: summaryDate,
-        );
-
-        if (existing != null) {
-          // UPDATE existing record
-          await (update(dailySalesSummary)
-                ..where((t) => t.id.equals(existing.id)))
-              .write(DailySalesSummaryCompanion(
+          summaryDate: summaryDate,
+          quantitySold: Value(record['quantitySold'] as int? ?? 0),
+          quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
+          revenue: Value(record['revenue'] as double? ?? 0.0),
+          costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
+          grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
+          transactionCount: Value(record['transactionCount'] as int? ?? 0),
+          cloudId: Value(cloudId),
+          lastUpdated: Value(resolvedLastUpdated),
+          isSynced: const Value(true),
+        ),
+        onConflict: DoUpdate(
+          (old) => DailySalesSummaryCompanion(
             quantitySold: Value(record['quantitySold'] as int? ?? 0),
             quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
             revenue: Value(record['revenue'] as double? ?? 0.0),
             costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
             grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
             transactionCount: Value(record['transactionCount'] as int? ?? 0),
-            cloudId: Value(cloudId),
-            lastUpdated: Value(lastUpdated ?? DateTime.now()),
+            cloudId: Value(cloudId), // Ensure cloud ID is stamped on conflict too
+            lastUpdated: Value(resolvedLastUpdated),
             isSynced: const Value(true),
-          ));
-        } else {
-          // INSERT new record
-          await into(dailySalesSummary).insert(
-            DailySalesSummaryCompanion.insert(
-              organizationId: organizationId,
-              itemId: itemId,
-              summaryDate: summaryDate,
-              quantitySold: Value(record['quantitySold'] as int? ?? 0),
-              quantitySpoiled: Value(record['quantitySpoiled'] as int? ?? 0),
-              revenue: Value(record['revenue'] as double? ?? 0.0),
-              costOfGoodsSold: Value(record['costOfGoodsSold'] as double? ?? 0.0),
-              grossProfit: Value(record['grossProfit'] as double? ?? 0.0),
-              transactionCount: Value(record['transactionCount'] as int? ?? 0),
-              cloudId: Value(cloudId),
-              lastUpdated: Value(lastUpdated ?? DateTime.now()),
-              isSynced: const Value(true),
-            ),
-          );
-        }
-      } catch (e) {
-        // Log error but continue with next record
-        print('❌ Error upserting daily_sales_summary: $e');
-      }
+          ),
+          // Target the business-key unique constraint, NOT the primary key.
+          // Without this, Drift generates ON CONFLICT("id") which never fires
+          // for auto-increment rows, letting the (org, item, date) unique
+          // constraint throw instead.
+          target: [
+            dailySalesSummary.organizationId,
+            dailySalesSummary.itemId,
+            dailySalesSummary.summaryDate,
+          ],
+        ),
+      );
     }
-  }
+  });
+}
 
   /// Watch today's summaries for real-time UI updates
   Stream<List<DailySalesSummaryData>> watchTodaySummaries(int organizationId) {
     final today = DateTime.now();
-    final normalizedDate = DateTime(today.year, today.month, today.day);
+    final normalizedDate = DateTime.utc(today.year, today.month, today.day);
     
     return (select(dailySalesSummary)
           ..where((t) => t.organizationId.equals(organizationId))

@@ -31,6 +31,7 @@ class ReplenishStockTab extends StatefulWidget {
 class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindingObserver {
   late AppDatabase db;
   late List<TextEditingController> qtyControllers;
+  List<FocusNode> qtyFocusNodes = [];
   List<StockReplenishmentRequest> existingRequests = [];
   bool isLoading = true;
   bool isSubmitting = false;
@@ -48,30 +49,38 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
       widget.items.length,
       (_) => TextEditingController(),
     );
-    _initializeRealtime();
+    qtyFocusNodes = List.generate(
+      widget.items.length,
+      (_) => FocusNode(),
+    );
+    // Rebuild when focus changes so hint visibility updates
+    for (final node in qtyFocusNodes) {
+      node.addListener(() => setState(() {}));
+    }
     _syncAndLoadRequests();
+    _initializeRealtime(); 
   }
 
   Future<void> _initializeRealtime() async {
     // Get the franchisee's cloud ID for filtering
     try {
       final org = await db.organizationsDao.getOrganizationById(widget.branchId);
-      print('🔍 Looking up org for branchId: ${widget.branchId}');
-      print('🔍 Found org: ${org?.name}, cloudId: ${org?.cloudId}');
+      //print('🔍 Looking up org for branchId: ${widget.branchId}');
+      //print('🔍 Found org: ${org?.name}, cloudId: ${org?.cloudId}');
       
       if (org?.cloudId != null) {
         _franchiseeCloudId = org!.cloudId;
         
         // Attach to realtime service
         await realtimeStockRequestService.attach(_franchiseeCloudId!);
-        print('✅ Attached to realtime with franchiseeCloudId: $_franchiseeCloudId');
-        print('📡 Realtime status: ${realtimeStockRequestService.status}');
+        //print('✅ Attached to realtime with franchiseeCloudId: $_franchiseeCloudId');
+        //print('📡 Realtime status: ${realtimeStockRequestService.status}');
         
         // Listen for approval/rejection events
         _eventSubscription = realtimeStockRequestService.eventStream.listen((event) {
-          print('📬 EVENT RECEIVED: ${event.cloudId} → ${event.newStatus}');
+          //print('📬 EVENT RECEIVED: ${event.cloudId} → ${event.newStatus}');
           if (event.isApproved || event.isRejected || event.isDelivered) {
-            print('📬 Triggering sync and reload for: ${event.newStatus}');
+            //print('📬 Triggering sync and reload for: ${event.newStatus}');
             // Sync from cloud first, then reload from local DB
             _syncAndLoadRequests();
           }
@@ -79,20 +88,20 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
         
         // Also listen to status changes for debugging
         realtimeStockRequestService.statusStream.listen((status) {
-          print('📡 Realtime connection status changed: $status');
+          //print('📡 Realtime connection status changed: $status');
         });
       } else {
-        print('⚠️ No cloudId found for org with branchId: ${widget.branchId}');
+        //print('⚠️ No cloudId found for org with branchId: ${widget.branchId}');
       }
     } catch (e) {
-      print('⚠️ Failed to initialize realtime: $e');
+      //print('⚠️ Failed to initialize realtime: $e');
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    print('📱 App lifecycle state changed: $state');
+    //print('📱 App lifecycle state changed: $state');
     switch (state) {
       case AppLifecycleState.paused:
         // Only pause when app truly goes to background
@@ -112,11 +121,11 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
   Future<void> _syncAndLoadRequests() async {
     // First sync to get latest status updates from cloud
     try {
-      print('🔄 Syncing replenishment requests...');
+      //print('🔄 Syncing replenishment requests...');
       await AppGlobals.instance.syncService.syncStockReplenishmentRequests();
       await AppGlobals.instance.syncService.syncBranchItemStock();
     } catch (e) {
-      print('⚠️ Sync failed: $e');
+      //print('⚠️ Sync failed: $e');
     }
     // Then load from local DB
     await _loadExistingRequests();
@@ -129,6 +138,9 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
     realtimeStockRequestService.detach();
     for (var c in qtyControllers) {
       c.dispose();
+    }
+    for (var n in qtyFocusNodes) {
+      n.dispose();
     }
     super.dispose();
   }
@@ -144,7 +156,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
         });
       }
     } catch (e) {
-      print('Error loading requests: $e');
+      //print('Error loading requests: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -194,7 +206,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
           requestedBy: widget.userId,
           franchiseeNotes: null,
         );
-        print('📝 Created request for ${entry.key.name}: ${entry.value} units');
+        //print('📝 Created request for ${entry.key.name}: ${entry.value} units');
       }
 
       // Clear inputs
@@ -204,12 +216,12 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
 
       // Auto-sync to push requests to commissary
       try {
-        print('🔄 Auto-syncing replenishment requests...');
+        //print('🔄 Auto-syncing replenishment requests...');
         await AppGlobals.instance.syncService.syncStockReplenishmentRequests();
       await AppGlobals.instance.syncService.syncBranchItemStock();
-        print('✅ Requests synced to cloud');
+        //print('✅ Requests synced to cloud');
       } catch (syncError) {
-        print('⚠️ Sync failed (will retry later): $syncError');
+        //print('⚠️ Sync failed (will retry later): $syncError');
       }
 
       // Reload requests
@@ -224,7 +236,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
         );
       }
     } catch (e) {
-      print('Error submitting requests: $e');
+      //print('Error submitting requests: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
@@ -368,6 +380,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
                         itemCount: widget.items.length,
                         itemBuilder: (context, index) {
                           final item = widget.items[index];
+                          final isFocused = qtyFocusNodes[index].hasFocus;
 
                           if (isMobile) {
                             // Mobile card layout
@@ -432,17 +445,19 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
                                         width: 100,
                                         child: TextField(
                                           controller: qtyControllers[index],
+                                          focusNode: qtyFocusNodes[index],
                                           keyboardType: TextInputType.number,
                                           inputFormatters: [
                                             FilteringTextInputFormatter
                                                 .digitsOnly,
                                           ],
                                           textAlign: TextAlign.center,
-                                          decoration: const InputDecoration(
-                                            hintText: 'Qty',
-                                            border: OutlineInputBorder(),
+                                          decoration: InputDecoration(
+                                            // Show hint only when unfocused
+                                            hintText: isFocused ? '' : 'Qty',
+                                            border: const OutlineInputBorder(),
                                             contentPadding:
-                                                EdgeInsets.symmetric(
+                                                const EdgeInsets.symmetric(
                                                   vertical: 8,
                                                   horizontal: 8,
                                                 ),
@@ -494,18 +509,21 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
                                     ),
                                     child: TextField(
                                       controller: qtyControllers[index],
+                                      focusNode: qtyFocusNodes[index],
                                       keyboardType: TextInputType.number,
                                       inputFormatters: [
                                         FilteringTextInputFormatter.digitsOnly,
                                       ],
                                       textAlign: TextAlign.center,
-                                      decoration: const InputDecoration(
-                                        hintText: '0',
-                                        border: OutlineInputBorder(),
-                                        contentPadding: EdgeInsets.symmetric(
-                                          vertical: 8,
-                                          horizontal: 8,
-                                        ),
+                                      decoration: InputDecoration(
+                                        // Show '0' only when unfocused and empty
+                                        hintText: isFocused ? '' : '0',
+                                        border: const OutlineInputBorder(),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              vertical: 8,
+                                              horizontal: 8,
+                                            ),
                                         isDense: true,
                                       ),
                                     ),
@@ -520,35 +538,35 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
                   ),
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: spacingXl),
 
                 // Submit button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE30417),
+                      backgroundColor: actionButtonRed,
                       padding: EdgeInsets.symmetric(
                         vertical: isMobile ? 14 : 16,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(radiusMd),
                       ),
                     ),
                     onPressed: isSubmitting ? null : _submitRequests,
                     child: isSubmitting
                         ? const SizedBox(
-                            height: 20,
-                            width: 20,
+                            height: progressIndicatorSize,
+                            width: progressIndicatorSize,
                             child: CircularProgressIndicator(
                               color: Colors.white,
-                              strokeWidth: 2,
+                              strokeWidth: progressIndicatorStrokeWidth,
                             ),
                           )
                         : Text(
                             'SUBMIT REQUEST',
                             style: TextStyle(
-                              fontSize: isMobile ? 14 : 16,
+                              fontSize: isMobile ? fontSizeSubtitle : fontSizeBody,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -556,7 +574,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: spacing20),
 
                 // Existing requests section with refresh button and realtime indicator
                 Row(
@@ -567,7 +585,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
                         Text(
                           'Recent Requests',
                           style: TextStyle(
-                            fontSize: isMobile ? 16 : 18,
+                            fontSize: isMobile ? fontSizeBody : fontSizeButton,
                             fontWeight: FontWeight.bold,
                             fontFamily: fontAll,
                           ),

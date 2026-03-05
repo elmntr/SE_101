@@ -138,8 +138,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e, stackTrace) {
       if (!mounted) return;
-      print('❌ Login error: $e');
-      print('   Stack trace: $stackTrace');
+      //print('❌ Login error: $e');
+      //print('   Stack trace: $stackTrace');
       _showSnackBar('An error occurred. Please try again.');
       setState(() => _isSubmitting = false);
     }

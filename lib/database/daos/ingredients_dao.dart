@@ -1,60 +1,52 @@
-// lib/database/daos/ingredients_dao.dart
+﻿// lib/database/daos/ingredients_dao.dart
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 import '../app_database.dart';
 import '../tables/ingredients.dart';
-import '../tables/categories.dart';
 import '../tables/organizations.dart';
 
 part 'ingredients_dao.g.dart';
 
-/// IngredientsDao - Manage raw materials/ingredients for commissary
+/// IngredientsDao â€” manages raw materials/ingredients for the commissary.
 ///
-/// Business Logic:
-/// - Only commissary can create/manage ingredients
-/// - Ingredients have stock and spoilage (NO sold - they're not sold directly)
-/// - Ingredients are used in recipes to create items
-/// - Track stock levels for alerts when low
-@DriftAccessor(tables: [Ingredients, Categories, Organizations])
+/// Local schema is aligned to Supabase:
+///   stock / criticalLevel   â†’ REAL (double precision)
+///   isActive                â†’ true = visible  (was isDeleted = false)
+///   needsSync               â†’ true = pending  (was isSynced = false)
+///   cloudId                 â†’ NOT NULL, UNIQUE
+@DriftAccessor(tables: [Ingredients, Organizations])
 class IngredientsDao extends DatabaseAccessor<AppDatabase>
     with _$IngredientsDaoMixin {
   IngredientsDao(super.db);
 
+  static const _uuid = Uuid();
   static const int defaultPageSize = 50;
   static const int maxPageSize = 100;
 
   // ============================================================================
-  // BASIC CRUD OPERATIONS
+  // READ OPERATIONS
   // ============================================================================
 
-  /// ✅ Get all ingredients with pagination
+  /// Get all active ingredients with optional filters and pagination.
   Future<List<Ingredient>> getAllIngredients({
     int? limit,
     int offset = 0,
     String? searchQuery,
-    int? categoryId,
     int? commissaryId,
     IngredientSortOrder sortOrder = IngredientSortOrder.nameAsc,
   }) async {
     try {
       final query = select(ingredients)
-        ..where((t) => t.isDeleted.equals(false));
+        ..where((t) => t.isActive.equals(true));
 
-      // Search filter
       if (searchQuery != null && searchQuery.isNotEmpty) {
         query.where((t) => t.name.contains(searchQuery));
       }
 
-      // Category filter
-      if (categoryId != null) {
-        query.where((t) => t.categoryId.equals(categoryId));
-      }
-
-      // Commissary filter
       if (commissaryId != null) {
         query.where((t) => t.commissaryId.equals(commissaryId));
       }
 
-      // Sorting
       query.orderBy([
         (t) {
           switch (sortOrder) {
@@ -68,19 +60,14 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
               return OrderingTerm(expression: t.stock, mode: OrderingMode.desc);
             case IngredientSortOrder.newestFirst:
               return OrderingTerm(
-                expression: t.createdAt,
-                mode: OrderingMode.desc,
-              );
+                  expression: t.createdAt, mode: OrderingMode.desc);
             case IngredientSortOrder.oldestFirst:
               return OrderingTerm(
-                expression: t.createdAt,
-                mode: OrderingMode.asc,
-              );
+                  expression: t.createdAt, mode: OrderingMode.asc);
           }
         },
       ]);
 
-      // Pagination
       if (limit != null) {
         final safeLimit = limit > maxPageSize ? maxPageSize : limit;
         query.limit(safeLimit, offset: offset);
@@ -88,28 +75,22 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching ingredients: $e');
       rethrow;
     }
   }
 
-  /// ✅ Get total count for pagination
+  /// Total count of active ingredients (for pagination).
   Future<int> getIngredientCount({
     String? searchQuery,
-    int? categoryId,
     int? commissaryId,
   }) async {
     try {
       final query = selectOnly(ingredients)
         ..addColumns([ingredients.id.count()])
-        ..where(ingredients.isDeleted.equals(false));
+        ..where(ingredients.isActive.equals(true));
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
         query.where(ingredients.name.contains(searchQuery));
-      }
-
-      if (categoryId != null) {
-        query.where(ingredients.categoryId.equals(categoryId));
       }
 
       if (commissaryId != null) {
@@ -119,12 +100,11 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(ingredients.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting ingredients: $e');
       return 0;
     }
   }
 
-  /// ✅ Watch ingredients (real-time updates)
+  /// Real-time stream of active ingredients for a commissary.
   Stream<List<Ingredient>> watchAllIngredients({
     int limit = defaultPageSize,
     int offset = 0,
@@ -132,7 +112,7 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
   }) {
     try {
       final query = select(ingredients)
-        ..where((t) => t.isDeleted.equals(false));
+        ..where((t) => t.isActive.equals(true));
 
       if (commissaryId != null) {
         query.where((t) => t.commissaryId.equals(commissaryId));
@@ -144,100 +124,41 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
 
       return query.watch();
     } catch (e) {
-      print('❌ Error watching ingredients: $e');
       return Stream.value([]);
     }
   }
 
-  /// ✅ Insert a new ingredient
-  /// Throws an exception if an ingredient with the same name already exists
-  Future<int> insertIngredient({
-    required String name,
-    required int commissaryId,
-    int stock = 0,
-    int? categoryId,
-    String? unit,
-    int? minimumStock,
-    String? description,
-    String? cloudId,
-  }) async {
-    try {
-      // Check for duplicate ingredient name
-      final existingIngredient = await getIngredientByName(
-        name,
-        commissaryId: commissaryId,
-      );
-      if (existingIngredient != null) {
-        throw Exception('An ingredient with the name "$name" already exists');
-      }
-
-      return await into(ingredients).insert(
-        IngredientsCompanion.insert(
-          name: name,
-          commissaryId: commissaryId,
-          stock: Value(stock),
-          categoryId: Value(categoryId),
-          unit: Value(unit ?? 'pieces'),
-          minimumStock: Value(minimumStock),
-          description: Value(description),
-          isSynced: Value(false),
-          cloudId: Value(cloudId),
-        ),
-      );
-    } catch (e) {
-      print('❌ Error inserting ingredient: $e');
-      rethrow;
-    }
-  }
-
-  /// ✅ Batch insert ingredients
-  Future<void> insertIngredients(
-    List<IngredientsCompanion> ingredientsList,
-  ) async {
-    try {
-      await db.batch((batch) {
-        batch.insertAll(ingredients, ingredientsList);
-      });
-    } catch (e) {
-      print('❌ Error batch inserting ingredients: $e');
-      rethrow;
-    }
-  }
-
-  /// ✅ Update an existing ingredient
-  Future<bool> updateIngredient(Ingredient ingredient) async {
-    try {
-      final updated = ingredient.copyWith(
-        isSynced: false,
-        lastUpdated: DateTime.now(),
-      );
-      return await update(ingredients).replace(updated);
-    } catch (e) {
-      print('❌ Error updating ingredient: $e');
-      return false;
-    }
-  }
-
-  /// ✅ Get ingredient by ID
+  /// Get ingredient by local ID.
   Future<Ingredient?> getIngredientById(int id) async {
     try {
-      return await (select(
-        ingredients,
-      )..where((t) => t.id.equals(id))).getSingleOrNull();
+      return await (select(ingredients)..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching ingredient by ID: $e');
       return null;
     }
   }
 
-  /// ✅ Get ingredient by name (case-insensitive)
+  /// Get ingredient by cloud UUID.
+  Future<Ingredient?> getIngredientByCloudId(String cloudId) async {
+    try {
+      return await (select(ingredients)
+            ..where((t) => t.cloudId.equals(cloudId)))
+          .getSingleOrNull();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Get ingredient by name (case-insensitive) within a commissary.
   Future<Ingredient?> getIngredientByName(
     String name, {
     int? commissaryId,
   }) async {
     try {
       final query = select(ingredients)
-        ..where((t) => t.name.lower().equals(name.toLowerCase()) & t.isDeleted.equals(false));
+        ..where((t) =>
+            t.name.lower().equals(name.toLowerCase()) &
+            t.isActive.equals(true));
 
       if (commissaryId != null) {
         query.where((t) => t.commissaryId.equals(commissaryId));
@@ -245,8 +166,132 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching ingredient by name: $e');
       return null;
+    }
+  }
+
+  /// Ingredients whose stock is at or below their critical level.
+  Future<List<Ingredient>> getLowStockIngredients({int? commissaryId}) async {
+    try {
+      final query = '''
+        SELECT * FROM ingredients
+        WHERE is_active = 1
+        AND critical_level IS NOT NULL
+        AND stock <= critical_level
+        ${commissaryId != null ? 'AND commissary_id = ?' : ''}
+        ORDER BY stock ASC
+      ''';
+
+      final results = await customSelect(
+        query,
+        variables:
+            commissaryId != null ? [Variable.withInt(commissaryId)] : [],
+        readsFrom: {ingredients},
+      ).get();
+
+      return results.map((row) => Ingredient(
+            id: row.read<int>('id'),
+            cloudId: row.read<String>('cloud_id'),
+            name: row.read<String>('name'),
+            commissaryId: row.read<int>('commissary_id'),
+            stock: row.read<double>('stock'),
+            unit: row.read<String>('unit'),
+            criticalLevel: row.readNullable<double>('critical_level'),
+            costPerUnit: row.read<double>('cost_per_unit'),
+            isActive: row.read<bool>('is_active'),
+            needsSync: row.read<bool>('needs_sync'),
+            createdAt: row.read<DateTime>('created_at'),
+            lastUpdated: row.read<DateTime>('last_updated'),
+            updatedAt: row.read<DateTime>('updated_at'),
+            lastSyncedAt: row.readNullable<DateTime>('last_synced_at'),
+          )).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Ingredients with zero stock.
+  Future<List<Ingredient>> getOutOfStockIngredients(
+      {int? commissaryId}) async {
+    try {
+      final query = select(ingredients)
+        ..where(
+            (t) => t.isActive.equals(true) & t.stock.isSmallerOrEqualValue(0));
+
+      if (commissaryId != null) {
+        query.where((t) => t.commissaryId.equals(commissaryId));
+      }
+
+      query.orderBy([(t) => OrderingTerm(expression: t.name)]);
+      return await query.get();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ============================================================================
+  // WRITE OPERATIONS
+  // ============================================================================
+
+  /// Insert a new ingredient. Auto-generates a cloudId UUID if not supplied.
+  ///
+  /// Throws if an active ingredient with the same name already exists.
+  Future<int> insertIngredient({
+    required String name,
+    required int commissaryId,
+    double stock = 0,
+    String? unit,
+    double? criticalLevel,
+    double costPerUnit = 0,
+    String? cloudId,
+  }) async {
+    try {
+      final existing = await getIngredientByName(name,
+          commissaryId: commissaryId);
+      if (existing != null) {
+        throw Exception('An ingredient with the name "$name" already exists');
+      }
+
+      return await into(ingredients).insert(
+        IngredientsCompanion.insert(
+          cloudId: cloudId ?? _uuid.v4(),
+          name: name,
+          commissaryId: commissaryId,
+          stock: Value(stock),
+          unit: Value(unit ?? 'pieces'),
+          criticalLevel: Value(criticalLevel),
+          costPerUnit: Value(costPerUnit),
+          needsSync: const Value(true),
+        ),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Batch insert from a list of companions (used by the form dialog save path).
+  Future<void> insertIngredients(
+      List<IngredientsCompanion> ingredientsList) async {
+    try {
+      await db.batch((batch) {
+        batch.insertAll(ingredients, ingredientsList);
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Replace an ingredient row entirely (sets needsSync=true, updatedAt=now).
+  Future<bool> updateIngredient(Ingredient ingredient) async {
+    try {
+      final updated = ingredient.copyWith(
+        needsSync: true,
+        lastUpdated: DateTime.now().toUtc(),
+        updatedAt: DateTime.now().toUtc(),
+      );
+      return await update(ingredients).replace(updated);
+    } catch (e) {
+      return false;
     }
   }
 
@@ -254,191 +299,73 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
   // STOCK MANAGEMENT
   // ============================================================================
 
-  /// ✅ ATOMIC: Add stock (for replenishment/receiving)
-  Future<bool> addStock(int ingredientId, int quantity) async {
-    if (quantity <= 0) {
-      throw ArgumentError('Quantity must be positive');
-    }
-
+  /// Atomically add stock (e.g., after a replenishment delivery).
+  Future<bool> addStock(int ingredientId, double quantity) async {
+    if (quantity <= 0) throw ArgumentError('Quantity must be positive');
     try {
       final result = await customUpdate(
         'UPDATE ingredients SET '
         'stock = stock + ?, '
         'last_updated = ?, '
-        'is_synced = 0 '
+        'updated_at = ?, '
+        'needs_sync = 1 '
         'WHERE id = ?',
         updates: {ingredients},
         variables: [
-          Variable.withInt(quantity),
-          Variable.withDateTime(DateTime.now()),
+          Variable.withReal(quantity),
+          Variable.withDateTime(DateTime.now().toUtc()),
+          Variable.withDateTime(DateTime.now().toUtc()),
           Variable.withInt(ingredientId),
         ],
       );
-
       return result > 0;
     } catch (e) {
-      print('❌ Error adding ingredient stock: $e');
       return false;
     }
   }
 
-  /// ✅ ATOMIC: Deduct stock (when used in recipes)
-  Future<bool> deductStock(int ingredientId, int quantity) async {
-    if (quantity <= 0) {
-      throw ArgumentError('Quantity must be positive');
-    }
-
+  /// Atomically deduct stock (e.g., used in production). Returns false if
+  /// insufficient stock.
+  Future<bool> deductStock(int ingredientId, double quantity) async {
+    if (quantity <= 0) throw ArgumentError('Quantity must be positive');
     try {
       final result = await customUpdate(
         'UPDATE ingredients SET '
         'stock = stock - ?, '
         'last_updated = ?, '
-        'is_synced = 0 '
+        'updated_at = ?, '
+        'needs_sync = 1 '
         'WHERE id = ? AND stock >= ?',
         updates: {ingredients},
         variables: [
-          Variable.withInt(quantity),
-          Variable.withDateTime(DateTime.now()),
+          Variable.withReal(quantity),
+          Variable.withDateTime(DateTime.now().toUtc()),
+          Variable.withDateTime(DateTime.now().toUtc()),
           Variable.withInt(ingredientId),
-          Variable.withInt(quantity),
+          Variable.withReal(quantity),
         ],
       );
-
-      if (result == 0) {
-        print('⚠️ Insufficient stock for ingredient $ingredientId');
-        return false;
-      }
-
-      return true;
+      return result > 0;
     } catch (e) {
-      print('❌ Error deducting ingredient stock: $e');
       return false;
     }
   }
 
-  /// ✅ ATOMIC: Add spoilage and deduct from stock
-  Future<bool> addSpoilage(int ingredientId, int quantity) async {
-    if (quantity <= 0) {
-      throw ArgumentError('Quantity must be positive');
-    }
-
-    try {
-      final result = await customUpdate(
-        'UPDATE ingredients SET '
-        'spoilage = spoilage + ?, '
-        'stock = stock - ?, '
-        'last_updated = ?, '
-        'is_synced = 0 '
-        'WHERE id = ? AND stock >= ?',
-        updates: {ingredients},
-        variables: [
-          Variable.withInt(quantity),
-          Variable.withInt(quantity),
-          Variable.withDateTime(DateTime.now()),
-          Variable.withInt(ingredientId),
-          Variable.withInt(quantity),
-        ],
-      );
-
-      if (result == 0) {
-        print('⚠️ Insufficient stock for ingredient $ingredientId');
-        return false;
-      }
-
-      return true;
-    } catch (e) {
-      print('❌ Error adding ingredient spoilage: $e');
-      return false;
-    }
-  }
-
-  /// ✅ Update stock directly (with validation)
-  Future<bool> updateStock(int ingredientId, int newStock) async {
-    if (newStock < 0) {
-      throw ArgumentError('Stock cannot be negative');
-    }
-
+  /// Overwrite stock level directly.
+  Future<bool> updateStock(int ingredientId, double newStock) async {
+    if (newStock < 0) throw ArgumentError('Stock cannot be negative');
     try {
       final result =
-          await (update(
-            ingredients,
-          )..where((t) => t.id.equals(ingredientId))).write(
-            IngredientsCompanion(
-              stock: Value(newStock),
-              lastUpdated: Value(DateTime.now()),
-              isSynced: Value(false),
-            ),
-          );
+          await (update(ingredients)..where((t) => t.id.equals(ingredientId)))
+              .write(IngredientsCompanion(
+        stock: Value(newStock),
+        lastUpdated: Value(DateTime.now().toUtc()),
+        updatedAt: Value(DateTime.now().toUtc()),
+        needsSync: const Value(true),
+      ));
       return result > 0;
     } catch (e) {
-      print('❌ Error updating ingredient stock: $e');
       return false;
-    }
-  }
-
-  // ============================================================================
-  // LOW STOCK ALERTS
-  // ============================================================================
-
-  /// ✅ Get low stock ingredients
-  Future<List<Ingredient>> getLowStockIngredients({int? commissaryId}) async {
-    try {
-      final query =
-          '''
-        SELECT * FROM ingredients
-        WHERE is_deleted = 0
-        AND minimum_stock IS NOT NULL
-        AND stock <= minimum_stock
-        ${commissaryId != null ? 'AND commissary_id = ?' : ''}
-        ORDER BY stock ASC
-      ''';
-
-      final results = await customSelect(
-        query,
-        variables: commissaryId != null ? [Variable.withInt(commissaryId)] : [],
-        readsFrom: {ingredients},
-      ).get();
-
-      return results.map((row) {
-        return Ingredient(
-          id: row.read<int>('id'),
-          name: row.read<String>('name'),
-          commissaryId: row.read<int>('commissary_id'),
-          stock: row.read<int>('stock'),
-          spoilage: row.read<int>('spoilage'),
-          unit: row.read<String>('unit'),
-          categoryId: row.readNullable<int>('category_id'),
-          minimumStock: row.readNullable<int>('minimum_stock'),
-          description: row.readNullable<String>('description'),
-          createdAt: row.read<DateTime>('created_at'),
-          lastUpdated: row.read<DateTime>('last_updated'),
-          isDeleted: row.read<bool>('is_deleted'),
-          isSynced: row.read<bool>('is_synced'),
-          cloudId: row.readNullable<String>('cloud_id'),
-        );
-      }).toList();
-    } catch (e) {
-      print('❌ Error fetching low stock ingredients: $e');
-      return [];
-    }
-  }
-
-  /// ✅ Get out of stock ingredients
-  Future<List<Ingredient>> getOutOfStockIngredients({int? commissaryId}) async {
-    try {
-      final query = select(ingredients)
-        ..where((t) => t.isDeleted.equals(false) & t.stock.equals(0));
-
-      if (commissaryId != null) {
-        query.where((t) => t.commissaryId.equals(commissaryId));
-      }
-
-      query.orderBy([(t) => OrderingTerm(expression: t.name)]);
-
-      return await query.get();
-    } catch (e) {
-      print('❌ Error fetching out of stock ingredients: $e');
-      return [];
     }
   }
 
@@ -446,48 +373,38 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
   // DELETE OPERATIONS
   // ============================================================================
 
-  /// ✅ Soft delete ingredient
+  /// Soft-delete: marks isActive=false. Blocked if ingredient is in any recipe.
   Future<bool> softDeleteIngredient(int id) async {
     try {
-      // Check if ingredient is used in any recipes
       final recipeCount = await _getRecipeUsageCount(id);
       if (recipeCount > 0) {
-        print(
-          '⚠️ Cannot delete ingredient $id: used in $recipeCount recipe(s)',
-        );
         throw Exception('Ingredient is used in $recipeCount recipe(s)');
       }
 
-      final result = await (update(ingredients)..where((t) => t.id.equals(id)))
-          .write(
-            IngredientsCompanion(
-              isDeleted: Value(true),
-              isSynced: Value(false),
-              lastUpdated: Value(DateTime.now()),
-            ),
-          );
-
+      final result =
+          await (update(ingredients)..where((t) => t.id.equals(id))).write(
+        IngredientsCompanion(
+          isActive: const Value(false),
+          needsSync: const Value(true),
+          lastUpdated: Value(DateTime.now().toUtc()),
+          updatedAt: Value(DateTime.now().toUtc()),
+        ),
+      );
       return result > 0;
     } catch (e) {
-      print('❌ Error soft deleting ingredient: $e');
       rethrow;
     }
   }
 
-  /// ✅ Check if ingredient is used in any recipes
   Future<int> _getRecipeUsageCount(int ingredientId) async {
     try {
       final query = selectOnly(db.recipeIngredients)
         ..addColumns([db.recipeIngredients.id.count()])
-        ..where(
-          db.recipeIngredients.ingredientId.equals(ingredientId) &
-              db.recipeIngredients.isDeleted.equals(false),
-        );
-
+        ..where(db.recipeIngredients.ingredientId.equals(ingredientId) &
+            db.recipeIngredients.isDeleted.equals(false));
       final result = await query.getSingle();
       return result.read(db.recipeIngredients.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error checking recipe usage: $e');
       return 0;
     }
   }
@@ -496,150 +413,174 @@ class IngredientsDao extends DatabaseAccessor<AppDatabase>
   // SYNC OPERATIONS
   // ============================================================================
 
-  /// ✅ Get unsynced ingredients (paginated)
-  Future<List<Ingredient>> getUnsyncedIngredients({
-    int limit = 100,
-    int offset = 0,
-  }) async {
+  /// Rows that need to be pushed to Supabase (needsSync = true).
+  Future<List<Ingredient>> getUnsyncedIngredients(
+      {int limit = 100, int offset = 0}) async {
     try {
       return await (select(ingredients)
-            ..where((t) => t.isSynced.equals(false))
+            ..where((t) => t.needsSync.equals(true))
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced ingredients: $e');
       return [];
     }
   }
 
-  /// ✅ Count unsynced ingredients
+  /// Count of rows pending push.
   Future<int> getUnsyncedIngredientCount() async {
     try {
       final query = selectOnly(ingredients)
         ..addColumns([ingredients.id.count()])
-        ..where(ingredients.isSynced.equals(false));
-
+        ..where(ingredients.needsSync.equals(true));
       final result = await query.getSingle();
       return result.read(ingredients.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced ingredients: $e');
       return 0;
     }
   }
 
-  /// ✅ Mark ingredients as synced (batch)
-  Future<void> markAsSynced(
-    List<int> ingredientIds, {
-    Map<int, String>? cloudIds,
-  }) async {
+  /// Mark rows as synced (needsSync=false, lastSyncedAt=now).
+  Future<void> markAsSynced(List<int> ingredientIds,
+      {Map<int, String>? cloudIds}) async {
     try {
       await db.batch((batch) {
         for (final id in ingredientIds) {
           batch.update(
             ingredients,
             IngredientsCompanion(
-              isSynced: Value(true),
-              cloudId: Value(cloudIds?[id]),
+              needsSync: const Value(false),
+              lastSyncedAt: Value(DateTime.now().toUtc()),
+              cloudId: cloudIds != null && cloudIds.containsKey(id)
+                  ? Value(cloudIds[id]!)
+                  : const Value.absent(),
             ),
             where: (t) => t.id.equals(id),
           );
         }
       });
     } catch (e) {
-      print('❌ Error marking ingredients as synced: $e');
       rethrow;
     }
   }
 
-  /// ✅ Batch upsert from cloud
+  /// Batch upsert records pulled from Supabase.
   Future<void> upsertBatchFromCloud(
-    List<Map<String, dynamic>> cloudIngredients,
-  ) async {
+      List<Map<String, dynamic>> cloudIngredients) async {
     try {
       await db.transaction(() async {
-        for (final cloudIngredient in cloudIngredients) {
-          // Map Supabase column names to local column names
-          final stockValue = cloudIngredient['stock'];
-          final criticalLevel = cloudIngredient['critical_level'];
-          
+        for (final row in cloudIngredients) {
+          // toLocalFormat() converts keys to camelCase and DateTime fields to
+          // actual DateTime objects. Accept both camelCase (from sync engine)
+          // and snake_case (direct cloud) keys for resilience.
+          final id = row['id'] as int?;
+          final cloudId = (row['cloudId'] ?? row['cloud_id']) as String?;
+          final name = (row['name']) as String?;
+          final commissaryId =
+              (row['commissaryId'] ?? row['commissary_id']) as int?;
+
+          if (id == null || cloudId == null || name == null ||
+              commissaryId == null) {
+            // Skip malformed records
+            continue;
+          }
+
+          final rawStock = row['stock'] as num?;
+          final rawCritical =
+              (row['criticalLevel'] ?? row['critical_level']) as num?;
+          final rawCost =
+              (row['costPerUnit'] ?? row['cost_per_unit']) as num?;
+          final isActive =
+              (row['isActive'] ?? row['is_active']) as bool? ?? true;
+          final needsSync =
+              (row['needsSync'] ?? row['needs_sync']) as bool? ?? false;
+
+          // DateTime fields: already DateTime if coming from toLocalFormat,
+          // otherwise parse from string.
+          DateTime _toDateTime(dynamic v, DateTime fallback) {
+            if (v is DateTime) return v.toUtc();
+            if (v is String) return DateTime.parse(v).toUtc();
+            return fallback;
+          }
+
+          final now = DateTime.now().toUtc();
+          final createdAt = _toDateTime(
+              row['createdAt'] ?? row['created_at'], now);
+          final lastUpdated = _toDateTime(
+              row['lastUpdated'] ?? row['last_updated'], now);
+          final updatedAt = _toDateTime(
+              row['updatedAt'] ?? row['updated_at'], lastUpdated);
+          final lastSyncedRaw =
+              row['lastSyncedAt'] ?? row['last_synced_at'];
+          final lastSyncedAt = lastSyncedRaw != null
+              ? _toDateTime(lastSyncedRaw, now)
+              : null;
+
           await upsertFromCloud(
-            id: cloudIngredient['id'] ?? cloudIngredient['local_id'],  // Supabase uses 'id'
-            name: cloudIngredient['name'],
-            commissaryId: cloudIngredient['commissary_id'],
-            stock: stockValue is num ? stockValue.toInt() : 0,  // Convert double to int
-            spoilage: cloudIngredient['spoilage'] ?? 0,  // Default to 0 if not in Supabase
-            unit: cloudIngredient['unit'],
-            categoryId: cloudIngredient['category_id'],
-            minimumStock: criticalLevel is num ? criticalLevel.toInt() : null,  // Map critical_level to minimumStock
-            description: cloudIngredient['description'],
-            createdAt: DateTime.parse(cloudIngredient['created_at']),
-            lastUpdated: DateTime.parse(cloudIngredient['last_updated']),
-            isDeleted: cloudIngredient['is_deleted'] ?? cloudIngredient['is_active'] == false,
-            cloudId: cloudIngredient['cloud_id'],
+            id: id,
+            cloudId: cloudId,
+            name: name,
+            commissaryId: commissaryId,
+            stock: rawStock?.toDouble() ?? 0.0,
+            unit: row['unit'] as String? ?? 'pieces',
+            criticalLevel: rawCritical?.toDouble(),
+            costPerUnit: rawCost?.toDouble() ?? 0.0,
+            isActive: isActive,
+            needsSync: needsSync,
+            createdAt: createdAt,
+            lastUpdated: lastUpdated,
+            updatedAt: updatedAt,
+            lastSyncedAt: lastSyncedAt,
           );
         }
       });
     } catch (e) {
-      print('❌ Error batch upserting ingredients from cloud: $e');
       rethrow;
     }
   }
 
-  /// ✅ Upsert from cloud (individual)
+  /// Upsert a single record from Supabase.
   Future<void> upsertFromCloud({
     required int id,
+    required String cloudId,
     required String name,
     required int commissaryId,
-    required int stock,
-    required int spoilage,
+    required double stock,
     required String unit,
-    int? categoryId,
-    int? minimumStock,
-    String? description,
+    double? criticalLevel,
+    required double costPerUnit,
+    required bool isActive,
+    required bool needsSync,
     required DateTime createdAt,
     required DateTime lastUpdated,
-    required bool isDeleted,
-    required String cloudId,
+    required DateTime updatedAt,
+    DateTime? lastSyncedAt,
   }) async {
     try {
       await into(ingredients).insertOnConflictUpdate(
         IngredientsCompanion.insert(
           id: Value(id),
+          cloudId: cloudId,
           name: name,
           commissaryId: commissaryId,
           stock: Value(stock),
-          spoilage: Value(spoilage),
           unit: Value(unit),
-          categoryId: Value(categoryId),
-          minimumStock: Value(minimumStock),
-          description: Value(description),
+          criticalLevel: Value(criticalLevel),
+          costPerUnit: Value(costPerUnit),
+          isActive: Value(isActive),
+          needsSync: Value(needsSync),
           createdAt: Value(createdAt),
           lastUpdated: Value(lastUpdated),
-          isDeleted: Value(isDeleted),
-          isSynced: Value(true),
-          cloudId: Value(cloudId),
+          updatedAt: Value(updatedAt),
+          lastSyncedAt: Value(lastSyncedAt),
         ),
       );
     } catch (e) {
-      print('❌ Error upserting ingredient from cloud: $e');
       rethrow;
-    }
-  }
-
-  /// ✅ Get ingredient by cloud ID
-  Future<Ingredient?> getIngredientByCloudId(String cloudId) async {
-    try {
-      return await (select(
-        ingredients,
-      )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
-    } catch (e) {
-      print('❌ Error fetching ingredient by cloud ID: $e');
-      return null;
     }
   }
 }
 
-/// ✅ Sorting options for ingredients
+/// Sort options for ingredient lists.
 enum IngredientSortOrder {
   nameAsc,
   nameDesc,
@@ -648,3 +589,4 @@ enum IngredientSortOrder {
   newestFirst,
   oldestFirst,
 }
+

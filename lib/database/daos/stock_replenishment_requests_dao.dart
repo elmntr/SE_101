@@ -79,7 +79,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching replenishment requests: $e');
+      //print('❌ Error fetching replenishment requests: $e');
       return [];
     }
   }
@@ -114,7 +114,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(stockReplenishmentRequests.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting replenishment requests: $e');
+      //print('❌ Error counting replenishment requests: $e');
       return 0;
     }
   }
@@ -152,7 +152,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return query.watch();
     } catch (e) {
-      print('❌ Error watching replenishment requests: $e');
+      //print('❌ Error watching replenishment requests: $e');
       return Stream.value([]);
     }
   }
@@ -181,7 +181,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
         ),
       );
     } catch (e) {
-      print('❌ Error creating replenishment request: $e');
+      //print('❌ Error creating replenishment request: $e');
       rethrow;
     }
   }
@@ -193,7 +193,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
         stockReplenishmentRequests,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching request by ID: $e');
+      //print('❌ Error fetching request by ID: $e');
       return null;
     }
   }
@@ -227,7 +227,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error approving request: $e');
+      //print('❌ Error approving request: $e');
       return false;
     }
   }
@@ -255,7 +255,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error rejecting request: $e');
+      //print('❌ Error rejecting request: $e');
       return false;
     }
   }
@@ -276,7 +276,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error marking request as delivered: $e');
+      //print('❌ Error marking request as delivered: $e');
       return false;
     }
   }
@@ -300,7 +300,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(t) => OrderingTerm(expression: t.requestedAt)]))
           .get();
     } catch (e) {
-      print('❌ Error fetching pending requests: $e');
+      //print('❌ Error fetching pending requests: $e');
       return [];
     }
   }
@@ -320,7 +320,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(t) => OrderingTerm(expression: t.reviewedAt)]))
           .get();
     } catch (e) {
-      print('❌ Error fetching approved requests: $e');
+      //print('❌ Error fetching approved requests: $e');
       return [];
     }
   }
@@ -347,7 +347,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return await query.get();
     } catch (e) {
-      print('❌ Error fetching franchisee request history: $e');
+      //print('❌ Error fetching franchisee request history: $e');
       return [];
     }
   }
@@ -375,7 +375,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
         'delivered': allRequests.where((r) => r.status == 'delivered').length,
       };
     } catch (e) {
-      print('❌ Error calculating franchisee request stats: $e');
+      //print('❌ Error calculating franchisee request stats: $e');
       return {
         'total': 0,
         'pending': 0,
@@ -402,7 +402,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
 
       return result > 0;
     } catch (e) {
-      print('❌ Error soft deleting request: $e');
+      //print('❌ Error soft deleting request: $e');
       return false;
     }
   }
@@ -422,7 +422,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit, offset: offset))
           .get();
     } catch (e) {
-      print('❌ Error fetching unsynced requests: $e');
+      //print('❌ Error fetching unsynced requests: $e');
       return [];
     }
   }
@@ -437,7 +437,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
       final result = await query.getSingle();
       return result.read(stockReplenishmentRequests.id.count()) ?? 0;
     } catch (e) {
-      print('❌ Error counting unsynced requests: $e');
+      //print('❌ Error counting unsynced requests: $e');
       return 0;
     }
   }
@@ -461,7 +461,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
         }
       });
     } catch (e) {
-      print('❌ Error marking requests as synced: $e');
+      //print('❌ Error marking requests as synced: $e');
       rethrow;
     }
   }
@@ -507,16 +507,36 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             AppLogger.sync('   No local record found, will insert new');
           }
 
-          // ✅ Check if status is changing to 'approved' - if so, we need to add stock to branch
+          // ✅ Idempotent approval guard — must satisfy ALL three conditions:
+          //   1. Record already existed locally (not a fresh-sync replay of history)
+          //   2. Previous status was not yet 'approved' (genuine state transition)
+          //   3. New cloud status is 'approved'
+          //
+          // This prevents duplicate stock on fresh install or DB clear:
+          // - On fresh sync, existing == null for all historical requests → guard blocks.
+          // - On realtime approval (pending → approved), existing != null → guard passes.
+          // - On re-sync of already-approved request, previousStatus == 'approved' → guard blocks.
           final isNewlyApproved =
               cloudStatus == 'approved' &&
-              (previousStatus == null || previousStatus != 'approved');
+              existing != null &&
+              previousStatus != 'approved';
 
           if (isNewlyApproved) {
-            AppLogger.sync(
-              '🎉 Request is newly approved! Adding $quantityRequested items to branch stock...',
-            );
-            await _addStockToBranch(franchiseeId, itemId, quantityRequested);
+            // Defensive ID validation — translation failure during early sync
+            // can produce 0 IDs, which would create an invalid BranchItemStock
+            // row that later triggers an RLS 42501 on push.
+            if (franchiseeId == 0 || itemId == 0 || quantityRequested <= 0) {
+              AppLogger.sync(
+                '⚠️ Skipping _addStockToBranch: invalid IDs or quantity '
+                '(franchiseeId=$franchiseeId, itemId=$itemId, qty=$quantityRequested). '
+                'Organization cache may not be fully populated yet.',
+              );
+            } else {
+              AppLogger.sync(
+                '🎉 Request is newly approved! Adding $quantityRequested items to branch stock...',
+              );
+              await _addStockToBranch(franchiseeId, itemId, quantityRequested);
+            }
           }
 
           await upsertFromCloud(
@@ -693,7 +713,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             cloudId: Value(cloudId),
           ),
         );
-        print('   ✓ Updated request #$id (status: $status)');
+        //print('   ✓ Updated request #$id (status: $status)');
       } else {
         // Insert new record
         await into(stockReplenishmentRequests).insert(
@@ -717,12 +737,12 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
             cloudId: Value(cloudId),
           ),
         );
-        print(
-          '   ✓ Inserted new request from cloud (cloudId: $cloudId, status: $status)',
-        );
+        //print(
+        //  '   ✓ Inserted new request from cloud (cloudId: $cloudId, status: $status)'
+        //);
       }
     } catch (e) {
-      print('❌ Error upserting request from cloud: $e');
+      //print('❌ Error upserting request from cloud: $e');
       rethrow;
     }
   }
@@ -734,7 +754,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
         stockReplenishmentRequests,
       )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
     } catch (e) {
-      print('❌ Error fetching request by cloud ID: $e');
+      //print('❌ Error fetching request by cloud ID: $e');
       return null;
     }
   }

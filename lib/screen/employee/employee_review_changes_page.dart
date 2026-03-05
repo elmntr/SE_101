@@ -2,7 +2,6 @@ import 'package:chickenjoo_inventory/screen/employee/item_change_record.dart';
 import 'package:chickenjoo_inventory/screen/franchisee/franchisee_inventory/franchisee_inventory.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:flutter/material.dart';
-import 'package:chickenjoo_inventory/app_globals.dart';
 
 class ReviewChangeDetailPage extends StatelessWidget {
   static List<ChangeRecord> records = [];
@@ -19,36 +18,11 @@ class ReviewChangeDetailPage extends StatelessWidget {
     this.onApprove,
   });
 
-  // ✅ NEW: Apply changes to database
+  // Stock changes are applied by PosService when the employee originally submitted.
+  // This method is intentionally a no-op — approval only marks the record as approved.
   Future<void> _applyChangesToDatabase() async {
-    final db = database;
-
-    print('📊 Starting database update for ${record.items.length} items');
-
-    for (final item in record.items) {
-      print(
-        '🔍 Item: ${item.name} (ID: ${item.id}, Sold: ${item.sold}, Spoilage: ${item.spoilage})',
-      );
-
-      // Validate item ID
-      if (item.id <= 0) {
-        throw Exception('Invalid item ID (${item.id}) for ${item.name}');
-      }
-
-      // Add sold and deduct from stock
-      if (item.sold > 0) {
-        print('  📉 Adding ${item.sold} sold units...');
-        await db.itemsDao.addSold(item.id, item.sold);
-      }
-
-      // Add spoilage and deduct from stock
-      if (item.spoilage > 0) {
-        print('  📉 Adding ${item.spoilage} spoilage units...');
-        await db.itemsDao.addSpoilage(item.id, item.spoilage);
-      }
-    }
-
-    print('✅ Database update completed successfully');
+    // No stock writes here: PosService already updated BranchItemStock and
+    // DailySalesSummary on submission. The franchisee approval is acknowledgement only.
   }
 
   @override
@@ -259,7 +233,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
                                 ),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
+                                    backgroundColor: statusError,
                                   ),
                                   onPressed: () => Navigator.pop(ctx, true),
                                   child: const Text('Yes'),
@@ -288,30 +262,30 @@ class ReviewChangeDetailPage extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: spacingXl),
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A8F1A),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: approveGreen,
+                          padding: paddingVerticalLg,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(radiusPill),
                           ),
                         ),
                         onPressed: () async {
-                          print('🔵 Approve button pressed');
+                          // print('🔵 Approve button pressed');
 
                           final confirmed = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: const Text('Approve and apply changes?'),
+                              title: const Text('Approve changes?'),
                               content: const Text(
-                                'This will update the inventory with sold/spoilage data and deduct from stock.',
+                                'Confirm approval of this change record. Stock was already updated when submitted.',
                               ),
                               actions: [
                                 TextButton(
                                   onPressed: () {
-                                    print('🔵 User cancelled approval');
+                                    // print('🔵 User cancelled approval');
                                     Navigator.pop(ctx, false);
                                   },
                                   child: const Text('Cancel'),
@@ -321,7 +295,7 @@ class ReviewChangeDetailPage extends StatelessWidget {
                                     backgroundColor: Colors.green,
                                   ),
                                   onPressed: () {
-                                    print('🔵 User confirmed approval');
+                                    // print('🔵 User confirmed approval');
                                     Navigator.pop(ctx, true);
                                   },
                                   child: const Text('Approve'),
@@ -330,52 +304,50 @@ class ReviewChangeDetailPage extends StatelessWidget {
                             ),
                           );
 
-                          print('🔵 Dialog result: $confirmed');
+                          // print('🔵 Dialog result: $confirmed');
 
                           if (confirmed == true) {
-                            print('🔵 Starting approval process...');
+                            // print('🔵 Starting approval process...');
 
                             // Show loading indicator
                             if (!context.mounted) {
-                              print(
-                                '❌ Context not mounted before showing snackbar',
-                              );
+                              // print('❌ Context not mounted before showing snackbar');
                               return;
                             }
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Applying changes...'),
+                                content: Text('Approving...'),
                               ),
                             );
 
                             try {
-                              print('🔵 Calling _applyChangesToDatabase...');
+                              // print('🔵 Calling _applyChangesToDatabase...');
                               await _applyChangesToDatabase();
-                              print('✅ Database changes applied');
+                              // print('✅ Database changes applied');
 
                               // Update status
                               record.status = 'Approved';
 
                               if (onApprove != null) {
-                                print('🔵 Calling onApprove callback');
+                                // print('🔵 Calling onApprove callback');
                                 onApprove!(record);
                               } else {
-                                print('🔵 Using default approval handling');
+                                // print('🔵 Using default approval handling');
                                 try {
                                   InventoryPage.pendingChanges.add(record);
                                   records.remove(record);
                                 } catch (e) {
-                                  print('⚠️ Error updating lists: $e');
+                                  // print('⚠️ Error updating lists: $e');
                                 }
                               }
 
                               if (!context.mounted) {
-                                print('❌ Context not mounted after approval');
+                                // print('❌ Context not mounted after approval');
                                 return;
                               }
 
-                              print('🔵 Showing success message');
+                              // print('🔵 Showing success message');
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
@@ -391,21 +363,19 @@ class ReviewChangeDetailPage extends StatelessWidget {
                               );
 
                               if (!context.mounted) {
-                                print('❌ Context not mounted before pop');
+                                // print('❌ Context not mounted before pop');
                                 return;
                               }
 
-                              print('🔵 Popping navigation');
+                              // print('🔵 Popping navigation');
                               Navigator.of(context).pop();
-                              print('✅ Navigation popped successfully');
-                            } catch (e, stackTrace) {
-                              print('❌ ERROR during approval: $e');
-                              print('❌ Stack trace: $stackTrace');
+                              // print('✅ Navigation popped successfully');
+                            } catch (e) {
+                              // print('❌ ERROR during approval: $e');
+                              // print('❌ Stack trace: $stackTrace');
 
                               if (!context.mounted) {
-                                print(
-                                  '❌ Context not mounted during error handling',
-                                );
+                                // print('❌ Context not mounted during error handling');
                                 return;
                               }
 

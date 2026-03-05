@@ -192,7 +192,7 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
     // Get all ingredients from commissary
     final commissaryIngredients = await (select(ingredients)
           ..where((t) => t.commissaryId.equals(commissaryId))
-          ..where((t) => t.isDeleted.equals(false)))
+          ..where((t) => t.isActive.equals(true)))
         .get();
 
     // Create stock records for each ingredient (quantity 0)
@@ -259,17 +259,31 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
   /// Get unsynced stock records
   Future<List<BranchIngredientStockData>> getUnsyncedStocks({
     int limit = 100,
+    int offset = 0,
   }) async {
     return await (select(branchIngredientStock)
           ..where((t) => t.isSynced.equals(false))
-          ..limit(limit))
+          ..limit(limit, offset: offset))
         .get();
   }
 
+  /// Get a stock record by its cloud ID
+  Future<BranchIngredientStockData?> getByCloudId(String cloudId) {
+    return (select(branchIngredientStock)
+          ..where((t) => t.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+  }
+
   /// Mark stocks as synced
-  Future<void> markAsSynced(List<int> ids) async {
-    await (update(branchIngredientStock)..where((t) => t.id.isIn(ids)))
-        .write(const BranchIngredientStockCompanion(isSynced: Value(true)));
+  Future<void> markAsSynced(List<int> ids, {Map<int, String>? cloudIds}) async {
+    for (final id in ids) {
+      final companion = BranchIngredientStockCompanion(
+        isSynced: const Value(true),
+        cloudId: cloudIds?[id] != null ? Value(cloudIds![id]) : const Value.absent(),
+      );
+      await (update(branchIngredientStock)..where((t) => t.id.equals(id)))
+          .write(companion);
+    }
   }
 
   /// Update cloud ID after sync
@@ -279,5 +293,62 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
       cloudId: Value(cloudId),
       isSynced: const Value(true),
     ));
+  }
+
+  /// Upsert from cloud (for sync)
+  /// Supports both camelCase (from toLocalFormat) and snake_case keys
+  Future<void> upsertFromCloud(Map<String, dynamic> data) async {
+    final cloudId = (data['cloudId'] ?? data['cloud_id']) as String;
+
+    var existing = await (select(branchIngredientStock)
+          ..where((t) => t.cloudId.equals(cloudId)))
+        .getSingleOrNull();
+
+    final organizationId = data['organizationId'] ?? data['organization_id'];
+    final ingredientId = data['ingredientId'] ?? data['ingredient_id'];
+
+    // If not found by cloudId, try business key (organizationId, ingredientId)
+    if (existing == null && organizationId != null && ingredientId != null) {
+      existing = await (select(branchIngredientStock)
+            ..where((t) => t.organizationId.equals(organizationId as int))
+            ..where((t) => t.ingredientId.equals(ingredientId as int)))
+          .getSingleOrNull();
+    }
+
+    final quantityVal = data['quantity'] ?? data['stock'];
+    final minimumStockVal = data['minimumStock'] ?? data['minimum_stock'];
+    final lastUpdatedVal = data['lastUpdated'] ?? data['last_updated'];
+
+    final companion = BranchIngredientStockCompanion(
+      organizationId: Value(organizationId as int),
+      ingredientId: Value(ingredientId as int),
+      quantity: Value((quantityVal as num?)?.toDouble() ?? 0.0),
+      minimumStock: minimumStockVal != null
+          ? Value((minimumStockVal as num).toDouble())
+          : const Value.absent(),
+      lastUpdated: lastUpdatedVal is DateTime
+          ? Value(lastUpdatedVal)
+          : lastUpdatedVal is String
+              ? Value(DateTime.parse(lastUpdatedVal))
+              : Value(DateTime.now()),
+      isSynced: const Value(true),
+      cloudId: Value(cloudId),
+    );
+
+    if (existing != null) {
+      final existingId = existing.id;
+      await (update(branchIngredientStock)
+            ..where((t) => t.id.equals(existingId)))
+          .write(companion);
+    } else {
+      await into(branchIngredientStock).insert(companion);
+    }
+  }
+
+  /// Batch upsert from cloud
+  Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> dataList) async {
+    for (final data in dataList) {
+      await upsertFromCloud(data);
+    }
   }
 }

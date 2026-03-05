@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../database/app_database.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
+import 'package:chickenjoo_inventory/design_constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const List<String> monthNames = [
@@ -35,7 +36,7 @@ class ChartPeriodConfig {
 }
 
 DateTime normalizeDate(DateTime date) =>
-    DateTime(date.year, date.month, date.day);
+    DateTime.utc(date.year, date.month, date.day);
 
 ChartPeriodConfig buildWeeklyConfig(DateTime current) {
   final end = normalizeDate(current);
@@ -236,6 +237,32 @@ class FranchiseeReportsController {
   bool isLoading = true;
   int _chartRequestId = 0;
 
+  // Stacked chart data: For "All Items" mode - stores data per item per bucket
+  // Structure: { itemId: { 'sold': [values], 'spoilage': [values] } }
+  Map<int, Map<String, List<double>>> stackedChartData = {};
+
+  // Item data for specific date view (grouped bars):
+  // Structure: [ { 'itemId': id, 'itemName': name, 'sold': value, 'spoilage': value } ]
+  List<Map<String, dynamic>> itemsDataForDate = [];
+
+  // Color palette for stacked/grouped bars
+  static const List<Color> itemColors = chartColorPalette;
+
+  /// Get color for an item based on its index in allItems
+  Color getItemColor(int itemId) {
+    final index = allItems.indexWhere((item) => item.id == itemId);
+    if (index < 0) return itemColors[0];
+    return itemColors[index % itemColors.length];
+  }
+
+  /// Check if we should show stacked bars (All Items + date range)
+  bool get shouldShowStackedBars =>
+      selectedItemId == null && selectedSpecificDate == null;
+
+  /// Check if we should show grouped bars (All Items + specific date)
+  bool get shouldShowGroupedBars =>
+      selectedItemId == null && selectedSpecificDate != null;
+
   final List<String> periods = ['Weekly', 'Monthly', 'Yearly'];
   static const String orgIdKey = 'current_organization_id';
 
@@ -262,6 +289,10 @@ class FranchiseeReportsController {
     try {
       await loadCurrentOrganization();
 
+      // Sync data from cloud before loading from local database
+      // This ensures we have the latest data from Supabase
+      await _syncDataFromCloud();
+
       List<Item> items;
       if (currentOrganizationId != null) {
         items = await db.itemsDao.getItemsByOrganization(
@@ -279,10 +310,27 @@ class FranchiseeReportsController {
 
       await calculateChartData();
     } catch (e) {
-      print('❌ Error loading reports data: $e');
+      //print('❌ Error loading reports data: $e');
     } finally {
       isLoading = false;
       onStateChanged();
+    }
+  }
+
+  /// Sync items and daily sales summary data from the cloud
+  /// Fails silently if offline or sync fails
+  Future<void> _syncDataFromCloud() async {
+    try {
+      final syncService = AppGlobals.instance.syncService;
+      
+      // Sync items first (needed for item names in reports)
+      await syncService.syncItems();
+      
+      // Sync daily sales summary data
+      await syncService.syncDailySalesSummary();
+    } catch (e) {
+      // Silently fail - will use local data if sync fails (offline mode)
+      // The app is offline-first, so this is expected behavior
     }
   }
 
@@ -302,9 +350,9 @@ class FranchiseeReportsController {
         if (org != null) {
           currentOrganizationId = org.id;
           await prefs.setInt(orgIdKey, org.id);
-          print(
-            '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}',
-          );
+          //print(
+          //  '📍 Resolved org ID from cloud ID: ${currentUser.organizationCloudId} → ${org.id}'
+          //);
           return;
         }
       }
@@ -329,6 +377,8 @@ class FranchiseeReportsController {
       'sold': List<double>.filled(displayConfig.bucketCount, 0.0),
       'spoilage': List<double>.filled(displayConfig.bucketCount, 0.0),
     };
+    stackedChartData = {};
+    itemsDataForDate = [];
     totalSold = 0;
     totalSpoilage = 0;
     selectedDateSold = 0;
@@ -388,6 +438,12 @@ class FranchiseeReportsController {
         0.0,
       );
 
+      // For stacked chart data - build per-item data
+      final Map<int, Map<String, List<double>>> tempStackedData = {};
+
+      // For grouped bar data (specific date + all items) - track per-item totals
+      final Map<int, Map<String, double>> itemTotalsForDate = {};
+
       double calculatedRevenue = 0;
 
       for (final summary in iterable) {
@@ -411,6 +467,19 @@ class FranchiseeReportsController {
           if (matches) {
             dateSold += summary.quantitySold.toDouble();
             dateSpoilage += summary.quantitySpoiled.toDouble();
+
+            // Build item-level data for grouped bars (specific date + all items)
+            if (selectedItemId == null) {
+              if (!itemTotalsForDate.containsKey(summary.itemId)) {
+                itemTotalsForDate[summary.itemId] = {'sold': 0.0, 'spoilage': 0.0};
+              }
+              itemTotalsForDate[summary.itemId]!['sold'] =
+                  itemTotalsForDate[summary.itemId]!['sold']! +
+                      summary.quantitySold.toDouble();
+              itemTotalsForDate[summary.itemId]!['spoilage'] =
+                  itemTotalsForDate[summary.itemId]!['spoilage']! +
+                      summary.quantitySpoiled.toDouble();
+            }
           }
         }
 
@@ -419,17 +488,54 @@ class FranchiseeReportsController {
         if (bucketIndex == null) continue;
         soldSeries[bucketIndex] += summary.quantitySold.toDouble();
         spoilageSeries[bucketIndex] += summary.quantitySpoiled.toDouble();
-      }
 
-      // \x1B[33m is ANSI yellow, \x1B[0m resets color
-      print('\x1B[33m💰 Total Sales (Revenue) for selected period: ₱${calculatedRevenue.toStringAsFixed(2)}\x1B[0m');
-      print('📊 Total Sold: $periodSold, Total Spoilage: $periodSpoilage');
+        // Build stacked chart data (for All Items + date range mode)
+        if (selectedItemId == null && selectedSpecificDate == null) {
+          final itemId = summary.itemId;
+          if (!tempStackedData.containsKey(itemId)) {
+            tempStackedData[itemId] = {
+              'sold': List<double>.filled(displayConfig.bucketCount, 0.0),
+              'spoilage': List<double>.filled(displayConfig.bucketCount, 0.0),
+            };
+          }
+          tempStackedData[itemId]!['sold']![bucketIndex] +=
+              summary.quantitySold.toDouble();
+          tempStackedData[itemId]!['spoilage']![bucketIndex] +=
+              summary.quantitySpoiled.toDouble();
+        }
+      }
 
       if (requestId != _chartRequestId) {
         return;
       }
 
       chartData = {'sold': soldSeries, 'spoilage': spoilageSeries};
+      stackedChartData = tempStackedData;
+
+      // Build itemsDataForDate list for grouped bars
+      if (selectedSpecificDate != null && selectedItemId == null) {
+        for (final entry in itemTotalsForDate.entries) {
+          // Skip if allItems is empty
+          if (allItems.isEmpty) continue;
+          final item = allItems.firstWhere(
+            (i) => i.id == entry.key,
+            orElse: () => allItems.first,
+          );
+          // Only add items that have data
+          if (entry.value['sold']! > 0 || entry.value['spoilage']! > 0) {
+            itemsDataForDate.add({
+              'itemId': entry.key,
+              'itemName': item.name,
+              'sold': entry.value['sold']!,
+              'spoilage': entry.value['spoilage']!,
+            });
+          }
+        }
+        // Sort by the selected metric in descending order
+        itemsDataForDate.sort((a, b) =>
+            (b[selectedMetric] as double).compareTo(a[selectedMetric] as double));
+      }
+
       totalSold = periodSold;
       totalSpoilage = periodSpoilage;
       allTimeTotalSold = allTimeSold;
@@ -438,7 +544,7 @@ class FranchiseeReportsController {
       selectedDateSpoilage = dateSpoilage;
       onStateChanged();
     } catch (e) {
-      print('❌ Error calculating chart data: $e');
+      //print('❌ Error calculating chart data: $e');
     }
   }
 
@@ -958,6 +1064,7 @@ class FranchiseeReportsController {
 
   String getSelectedItemName() {
     if (selectedItemId == null) return 'All Items';
+    if (allItems.isEmpty) return 'Unknown';
     final item = allItems.firstWhere(
       (item) => item.id == selectedItemId,
       orElse: () => allItems.first,

@@ -128,7 +128,7 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
 
   void _onSyncComplete() {
     if (mounted) {
-      print('🔄 Sync completed, refreshing employee items...');
+      //print('🔄 Sync completed, refreshing employee items...');
       loadData();
     }
   }
@@ -139,17 +139,14 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
       context: context,
       barrierDismissible: true,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 16,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusXxl)),
+        elevation: elevationDialog,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(radiusXxl),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
+            constraints: dialogConstraintsLarge,
+            decoration: AppDecorations.dialog,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -160,11 +157,11 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
                     vertical: 16,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE30417),
+                    color: actionButtonRed,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 4,
+                        color: shadowColor.withValues(alpha: shadowOpacity),
+                        blurRadius: shadowBlurLow,
                         offset: const Offset(0, 2),
                       ),
                     ],
@@ -174,17 +171,13 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
                       const Icon(
                         Icons.inventory_2_outlined,
                         color: Colors.white,
-                        size: 24,
+                        size: iconSizeLg,
                       ),
-                      const SizedBox(width: 12),
-                      const Expanded(
+                      const SizedBox(width: spacingXl),
+                      Expanded(
                         child: Text(
                           'Change Item Stock',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: AppTextStyles.dialogTitle,
                         ),
                       ),
                       IconButton(
@@ -224,17 +217,14 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
       context: context,
       barrierDismissible: true,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 16,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusXxl)),
+        elevation: elevationDialog,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(radiusXxl),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 700, maxHeight: 600),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
+            constraints: dialogConstraintsMedium,
+            decoration: AppDecorations.dialog,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -245,27 +235,23 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
                     vertical: 16,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE30417),
+                    color: actionButtonRed,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 4,
+                        color: shadowColor.withValues(alpha: shadowOpacity),
+                        blurRadius: shadowBlurLow,
                         offset: const Offset(0, 2),
                       ),
                     ],
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.history, color: Colors.white, size: 24),
-                      const SizedBox(width: 12),
-                      const Expanded(
+                      const Icon(Icons.history, color: Colors.white, size: iconSizeLg),
+                      const SizedBox(width: spacingXl),
+                      Expanded(
                         child: Text(
                           'Review Changes',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: AppTextStyles.dialogTitle,
                         ),
                       ),
                       IconButton(
@@ -484,9 +470,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
         );
         if (org != null) {
           orgId = org.id;
-          print(
-            '📍 Employee items: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
-          );
+          //print(
+          //  '📍 Employee items: Resolved org ID from cloud ID: ${widget.userData.organizationCloudId} → ${org.id}',
+          //);
         }
       }
 
@@ -503,9 +489,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
             orgId,
             organization.parentCommissaryId!,
           );
-          print(
-            '📍 Employee items (franchisee): Loaded ${items.length} items with branch stock from commissary ${organization.parentCommissaryId}',
-          );
+          //print(
+          //  '📍 Employee items (franchisee): Loaded ${items.length} items with branch stock from commissary ${organization.parentCommissaryId}',
+          //);
         } else {
           // Fallback: try to get any commissary
           final commissaries = await db.organizationsDao.getAllOrganizations(
@@ -516,9 +502,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
               orgId,
               commissaries.first.id,
             );
-            print(
-              '📍 Employee items (franchisee fallback): Loaded ${items.length} items with branch stock from commissary ${commissaries.first.id}',
-            );
+            //print(
+            //  '📍 Employee items (franchisee fallback): Loaded ${items.length} items with branch stock from commissary ${commissaries.first.id}',
+            //);
           }
         }
       } else {
@@ -533,9 +519,9 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
               ),
             )
             .toList();
-        print(
-          '📍 Employee items (commissary): Loaded ${items.length} items from org $orgId',
-        );
+        //print(
+        //  '📍 Employee items (commissary): Loaded ${items.length} items from org $orgId',
+        //);
       }
 
       // Load employees for filter
@@ -560,7 +546,7 @@ class EmployeeItemsPageState extends State<EmployeeItemsPage> {
         });
       }
     } catch (e) {
-      print('Error loading data: $e');
+      //print('Error loading data: $e');
       if (mounted) {
         setState(() => isLoading = false);
       }

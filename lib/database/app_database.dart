@@ -113,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(super.executor) : _seedData = false;
 
   @override
-  int get schemaVersion => 3; // Incremented for BranchItemStock table
+  int get schemaVersion => 6; // v6: Aligned ingredients table to Supabase schema
 
   @override
   MigrationStrategy get migration {
@@ -177,6 +177,132 @@ class AppDatabase extends _$AppDatabase {
           AppLogger.database('Added BranchItemStock table for multi-branch inventory');
         }
         
+        if (from < 4) {
+          // v4: Fix DailySalesSummary cloud_id uniqueness
+          AppLogger.database('Cleaning duplicate cloud_id values in daily_sales_summary...');
+          
+          // Clean duplicates: keep the latest record (by id) for each cloud_id
+          await customStatement('''
+            DELETE FROM daily_sales_summary 
+            WHERE id NOT IN (
+              SELECT MAX(id) 
+              FROM daily_sales_summary 
+              WHERE cloud_id IS NOT NULL 
+              GROUP BY cloud_id
+            )
+            AND cloud_id IS NOT NULL
+          ''');
+          
+          // Add unique index on cloud_id for performance
+          await customStatement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_sales_cloud_id ON daily_sales_summary(cloud_id)',
+          );
+          
+          // Log the cleanup results
+          final remainingCount = await customSelect('SELECT COUNT(*) as count FROM daily_sales_summary WHERE cloud_id IS NOT NULL').getSingle();
+          AppLogger.database('DailySalesSummary cloud_id cleanup completed. Records with cloud_id: ${remainingCount.read<int>('count')}');
+        }
+
+        if (from < 5) {
+          // v5: Add hq_access_code_hash column to organizations
+          await customStatement(
+            'ALTER TABLE organizations ADD COLUMN hq_access_code_hash TEXT',
+          );
+          AppLogger.database('Added hq_access_code_hash column to organizations');
+        }
+
+        if (from < 6) {
+          // v6: Recreate ingredients table aligned to Supabase schema.
+          // Changes: cloud_id NOT NULL+UNIQUE, stock REAL, criticalLevel
+          // (replaces minimumStock), costPerUnit, isActive (replaces isDeleted),
+          // needsSync (replaces isSynced), updatedAt, lastSyncedAt.
+          // Removed: spoilage, categoryId, description.
+
+          // Disable FK checks during table recreation
+          await customStatement('PRAGMA foreign_keys = OFF');
+
+          await customStatement('''
+            CREATE TABLE ingredients_new (
+              id      INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              cloud_id      TEXT    NOT NULL,
+              name          TEXT    NOT NULL,
+              commissary_id INTEGER NOT NULL REFERENCES organizations(id),
+              stock         REAL    NOT NULL DEFAULT 0.0,
+              unit          TEXT    NOT NULL DEFAULT 'pieces',
+              critical_level REAL,
+              cost_per_unit  REAL   NOT NULL DEFAULT 0.0,
+              is_active      INTEGER NOT NULL DEFAULT 1,
+              needs_sync     INTEGER NOT NULL DEFAULT 1,
+              created_at     INTEGER NOT NULL,
+              last_updated   INTEGER NOT NULL,
+              updated_at     INTEGER NOT NULL,
+              last_synced_at INTEGER
+            )
+          ''');
+
+          // Copy existing data, mapping old columns to new ones.
+          // cloud_id: generate a v4-like UUID for rows that had NULL.
+          // is_active  = NOT is_deleted  (inverted logic)
+          // needs_sync = NOT is_synced   (inverted logic)
+          // critical_level <- minimum_stock (INTEGER → REAL)
+          // updated_at     <- last_updated (reuse existing value)
+          await customStatement('''
+            INSERT INTO ingredients_new (
+              id, cloud_id, name, commissary_id, stock, unit, critical_level,
+              cost_per_unit, is_active, needs_sync,
+              created_at, last_updated, updated_at, last_synced_at
+            )
+            SELECT
+              id,
+              COALESCE(
+                cloud_id,
+                lower(hex(randomblob(4))) || '-' ||
+                lower(hex(randomblob(2))) || '-4' ||
+                substr(lower(hex(randomblob(2))), 2) || '-' ||
+                substr('89ab', abs(random()) % 4 + 1, 1) ||
+                substr(lower(hex(randomblob(2))), 2) || '-' ||
+                lower(hex(randomblob(6)))
+              ),
+              name,
+              commissary_id,
+              CAST(stock AS REAL),
+              unit,
+              CAST(minimum_stock AS REAL),
+              0.0,
+              CASE WHEN is_deleted = 1 THEN 0 ELSE 1 END,
+              CASE WHEN is_synced  = 1 THEN 0 ELSE 1 END,
+              created_at,
+              last_updated,
+              last_updated,
+              NULL
+            FROM ingredients
+          ''');
+
+          await customStatement('DROP TABLE ingredients');
+          await customStatement(
+              'ALTER TABLE ingredients_new RENAME TO ingredients');
+
+          // Unique index for cloud_id
+          await customStatement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS '
+            'idx_ingredients_cloud_id_unique ON ingredients(cloud_id)',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS '
+            'idx_ingredients_commissary ON ingredients(commissary_id) '
+            'WHERE is_active = 1',
+          );
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS '
+            'idx_ingredients_last_updated ON ingredients(last_updated)',
+          );
+
+          await customStatement('PRAGMA foreign_keys = ON');
+
+          AppLogger.database(
+              'Aligned ingredients table to Supabase schema (v6)');
+        }
+
         AppLogger.database('Database upgrade complete!');
       },
       beforeOpen: (details) async {
@@ -309,6 +435,8 @@ class AppDatabase extends _$AppDatabase {
 
     AppLogger.database('All indexes created');
   }
+
+
 
   /// ✅ Seed initial data (commissary, roles, admin user)
   Future<void> _seedInitialData() async {
