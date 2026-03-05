@@ -1,4 +1,4 @@
-// lib/screens/inventory_management/widgets/ingredient_form_dialog.dart
+﻿// lib/screens/inventory_management/widgets/ingredient_form_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -85,7 +85,7 @@ class _IngredientFormDialogState extends State<IngredientFormDialog> {
       _unitController.text = widget.ingredient!.unit;
       _stockController.text = _formatWithCommas(widget.ingredient!.stock.toString());
       _costController.text = _formatWithCommas(widget.ingredient!.costPerUnit.toString());
-      _criticalLevelController.text = _formatWithCommas((widget.ingredient!.criticalLevel ?? 0).toString());
+      _criticalLevelController.text = _formatWithCommas(widget.ingredient!.criticalLevel.toString());
     }
   }
 
@@ -109,10 +109,11 @@ class _IngredientFormDialogState extends State<IngredientFormDialog> {
           : Value(_uuid.v4()),
       name: Value(_nameController.text.trim()),
       unit: Value(_unitController.text.trim()),
-      stock: Value(double.tryParse(_removeCommas(_stockController.text)) ?? 0.0),
-      criticalLevel: Value(double.tryParse(_removeCommas(_criticalLevelController.text))),
-      costPerUnit: Value(double.tryParse(_removeCommas(_costController.text)) ?? 0.0),
+      stock: Value(double.tryParse(_removeCommas(_stockController.text)) ?? 0),
+      costPerUnit: Value(double.tryParse(_removeCommas(_costController.text)) ?? 0),
+      criticalLevel: Value(double.tryParse(_removeCommas(_criticalLevelController.text)) ?? 10),
       commissaryId: Value(widget.commissaryId),
+      isActive: const Value(true),
       needsSync: const Value(true),
     );
 
@@ -250,7 +251,7 @@ class _IngredientFormDialogState extends State<IngredientFormDialog> {
                           decoration: const InputDecoration(
                             labelText: 'Cost per Unit *',
                             hintText: '0',
-                            prefixText: '? ',
+                            prefixText: '₱ ',
                             prefixIcon: Icon(Icons.attach_money),
                             border: OutlineInputBorder(),
                           ),
