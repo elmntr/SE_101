@@ -24,12 +24,11 @@ class RequestsPageState extends State<RequestsPage> {
   int? currentUserId;
   int? commissaryId;
   String? _commissaryCloudId;
-  
-  // Missing state variables - added to fix compile errors
-  final TextEditingController _searchController = TextEditingController();
+
+  final TextEditingController searchController = TextEditingController();
+
   int selectedTab = 0;
   String searchQuery = '';
-  final TextEditingController searchController = TextEditingController();
 
   // Sort functionality
   String requestSortOrder = 'newestFirst';
@@ -52,6 +51,16 @@ class RequestsPageState extends State<RequestsPage> {
     realtimeStockRequestService.detach();
     searchController.dispose();
     super.dispose();
+  }
+
+  /// Sync replenishment requests from cloud then rebuild the UI.
+  Future<void> _syncAndRefresh() async {
+    try {
+      await syncService.syncStockReplenishmentRequests();
+    } catch (e) {
+      debugPrint('RequestsPage: sync error: $e');
+    }
+    if (mounted) setState(() {});
   }
 
   void setSearchQuery(String query) {
@@ -136,13 +145,18 @@ class RequestsPageState extends State<RequestsPage> {
         if (org?.cloudId != null) {
           _commissaryCloudId = org!.cloudId;
           debugPrint('RequestsPage: attaching realtime cloudId=$_commissaryCloudId');
-          await realtimeStockRequestService.attach(_commissaryCloudId!);
+          // Use commissary mode: filters by commissary_id, fires on INSERT events
+          await realtimeStockRequestService.attachAsCommissary(_commissaryCloudId!);
           _statusSubscription = realtimeStockRequestService.statusStream.listen((status) {
             debugPrint('RequestsPage: realtime status=$status');
           });
           _eventSubscription = realtimeStockRequestService.eventStream.listen((event) {
             debugPrint('RequestsPage: realtime event cloudId=${event.cloudId} status=${event.newStatus}');
+            // Sync and rebuild the list whenever a new/updated request arrives.
+            _syncAndRefresh();
           });
+          // Initial catch-up sync in case requests arrived before we attached.
+          _syncAndRefresh();
         }
       } catch (e) {
         debugPrint('RequestsPage: WARN Failed to initialize realtime: $e');
@@ -282,26 +296,46 @@ class RequestsPageState extends State<RequestsPage> {
         );
       }
 
-      // 4. Mark request as approved
+      // 4. Mark request as approved in local DB
+      final reviewedAt = DateTime.now();
       await db.stockReplenishmentRequestsDao.approveRequest(
         requestId: request.id,
         reviewedBy: currentUserId!,
         commissaryNotes: 'Auto-approved by commissary app',
       );
 
-      // 5. Auto-sync to push changes to cloud
-      try {
-        print('?? Auto-syncing after approval...');
-        await syncService.syncAll();
-        print('? Approval synced to cloud');
-      } catch (syncError) {
-        print('?? Sync failed (will retry later): $syncError');
+      // 5. Push status change directly to Supabase — no sync engine, no locks.
+      //    This is what makes the approval live (mirrors how receiving works).
+      final reviewerCloudId =
+          AppGlobals.instance.authService.currentUser?.cloudId;
+      if (reviewerCloudId != null && request.cloudId != null) {
+        try {
+          await syncService.directUpdateRequestStatus(
+            requestCloudId: request.cloudId!,
+            status: 'approved',
+            reviewerCloudId: reviewerCloudId,
+            notes: 'Auto-approved by commissary app',
+            reviewedAt: reviewedAt,
+          );
+        } catch (pushError) {
+          debugPrint('RequestsPage: direct push failed (will sync later): $pushError');
+        }
+      } else {
+        debugPrint('RequestsPage: missing cloudId — approval will sync on next background sync');
       }
+
+      // 6. Refresh UI immediately (local DB already has the correct state).
+      if (mounted) setState(() {});
+
+      // 7. Background-sync items + branch stock levels (non-blocking).
+      syncService.pushReplenishmentOutcomeNow().catchError(
+        (e) => debugPrint('RequestsPage: background stock sync failed: $e'),
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('? Request approved and stock transferred'),
+            content: Text('Request approved and stock transferred'),
             backgroundColor: Colors.green,
           ),
         );
@@ -356,20 +390,41 @@ class RequestsPageState extends State<RequestsPage> {
     if (confirmed != true) return;
 
     try {
+      final reviewedAt = DateTime.now();
       await db.stockReplenishmentRequestsDao.rejectRequest(
         requestId: request.id,
         reviewedBy: currentUserId!,
         reason: reasonController.text.trim(),
       );
 
-      // Auto-sync to push rejection to cloud
-      try {
-        print('?? Auto-syncing after rejection...');
-        await syncService.syncAll();
-        print('? Rejection synced to cloud');
-      } catch (syncError) {
-        print('?? Sync failed (will retry later): $syncError');
+      // Push status change directly to Supabase — no sync engine, no locks.
+      final reviewerCloudId =
+          AppGlobals.instance.authService.currentUser?.cloudId;
+      if (reviewerCloudId != null && request.cloudId != null) {
+        try {
+          await syncService.directUpdateRequestStatus(
+            requestCloudId: request.cloudId!,
+            status: 'rejected',
+            reviewerCloudId: reviewerCloudId,
+            notes: reasonController.text.trim().isNotEmpty
+                ? reasonController.text.trim()
+                : null,
+            reviewedAt: reviewedAt,
+          );
+        } catch (pushError) {
+          debugPrint('RequestsPage: direct push failed (will sync later): $pushError');
+        }
+      } else {
+        debugPrint('RequestsPage: missing cloudId — rejection will sync on next background sync');
       }
+
+      // Refresh UI immediately.
+      if (mounted) setState(() {});
+
+      // Background-sync stock levels (non-blocking).
+      syncService.pushReplenishmentOutcomeNow().catchError(
+        (e) => debugPrint('RequestsPage: background stock sync failed: $e'),
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

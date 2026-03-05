@@ -999,6 +999,95 @@ class SupabaseSyncServiceV2 {
     await syncAll();
   }
 
+  /// Directly update a single stock_replenishment_request row in Supabase
+  /// without touching the sync engine, bypassing all locks and cooldowns.
+  ///
+  /// Call this immediately after the local DB approve/reject write so the
+  /// change reaches the cloud in real-time just like an incoming WebSocket
+  /// event triggers an immediate pull.
+  Future<void> directUpdateRequestStatus({
+    required String requestCloudId,
+    required String status,           // 'approved' | 'rejected'
+    required String reviewerCloudId,  // Supabase auth UUID of the commissary user
+    String? notes,
+    required DateTime reviewedAt,
+  }) async {
+    if (!_isOnline) {
+      AppLogger.sync('⚠️ directUpdateRequestStatus: offline, skipping direct push');
+      return;
+    }
+    AppLogger.sync('🚀 directUpdateRequestStatus: $requestCloudId → $status');
+    await supabase.from('stock_replenishment_requests').update({
+      'status': status,
+      'reviewed_by': reviewerCloudId,
+      'reviewed_at': reviewedAt.toUtc().toIso8601String(),
+      'commissary_notes': notes,
+      'last_updated': DateTime.now().toUtc().toIso8601String(),
+    }).eq('cloud_id', requestCloudId);
+    AppLogger.sync('✅ directUpdateRequestStatus: done ($requestCloudId → $status)');
+  }
+
+  /// Push the result of a commissary approve/reject action to Supabase
+  /// immediately, bypassing the smart-sync cooldown.
+  ///
+  /// Only syncs the three tables that change during an approval/rejection:
+  ///   • stock_replenishment_requests  (status update)
+  ///   • branch_item_stock             (stock added to franchisee)
+  ///   • items                         (commissary stock deducted)
+  ///
+  /// Waits for any in-flight full sync to complete first so the DB engine
+  /// is not used concurrently. After pushing, listeners are notified via
+  /// [notifySyncComplete].
+  Future<void> pushReplenishmentOutcomeNow() async {
+    if (!_isOnline || !canSync) {
+      AppLogger.sync('⚠️ pushReplenishmentOutcomeNow: offline or not authenticated, skipping');
+      return;
+    }
+
+    // If a full sync is already in flight, wait for it to finish so the DB
+    // engine is not used concurrently.  We must NOT return early — the local
+    // approve/reject write happened AFTER the in-flight sync's push phase
+    // already ran, so this outcome has NOT been pushed yet.
+    if (_syncCompleter != null && !_syncCompleter!.isCompleted) {
+      AppLogger.sync('⏳ pushReplenishmentOutcomeNow: awaiting in-flight sync before pushing outcome...');
+      await _syncCompleter!.future.catchError((_) {});
+      AppLogger.sync('⏳ pushReplenishmentOutcomeNow: in-flight sync done, now pushing outcome...');
+    }
+
+    if (_isSyncing) {
+      AppLogger.sync('⏳ pushReplenishmentOutcomeNow: _isSyncing=true, waiting...');
+      int waited = 0;
+      while (_isSyncing && waited < 10000) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        waited += 100;
+      }
+    }
+
+    AppLogger.sync('🚀 pushReplenishmentOutcomeNow: pushing approval outcome to cloud...');
+    _isSyncing = true;
+    _syncCompleter = Completer<void>();
+    try {
+      await _engine.rebuildAllCaches();
+      // Push + pull in dependency order
+      await _syncItems();                    // commissary stock deduction
+      await _syncBranchItemStock();          // franchisee stock credit
+      await _syncReplenishmentRequests();    // status = approved/rejected
+      _engine.lastSuccessfulSync = DateTime.now();
+      AppLogger.sync('✅ pushReplenishmentOutcomeNow: done');
+      notifySyncComplete();
+    } catch (e) {
+      AppLogger.error('pushReplenishmentOutcomeNow failed: $e');
+      onSyncError?.call('Push failed: $e');
+    } finally {
+      _isSyncing = false;
+      _syncCompleter?.complete();
+      if (_pendingContextClear) {
+        _pendingContextClear = false;
+        clearOrganizationContext();
+      }
+    }
+  }
+
   /// Force a **full** pull from Supabase (ignores lastSuccessfulSync)
   /// and push any locally pending changes.
   ///

@@ -118,6 +118,10 @@ class RealtimeStockRequestService {
   // Organization filter
   String? _franchiseeCloudId;
 
+  // Commissary mode — set via attachAsCommissary()
+  bool _isCommissaryMode = false;
+  String? _commissaryCloudId;
+
   RealtimeStockRequestService({
     required this.supabase,
     required this.db,
@@ -142,6 +146,31 @@ class RealtimeStockRequestService {
   // ═══════════════════════════════════════════════════════════════════════════
   // REFERENCE COUNTING (Multi-screen support)
   // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Attach a commissary screen to this service.
+  /// Filters on commissary_id and fires on INSERT (new pending requests).
+  Future<void> attachAsCommissary(String commissaryCloudId) async {
+    AppLogger.websocket('📎 attachAsCommissary() cloudId=$commissaryCloudId  screens=$_activeScreenCount');
+
+    if (_activeScreenCount > 0 && _isCommissaryMode && _commissaryCloudId == commissaryCloudId) {
+      _activeScreenCount++;
+      AppLogger.websocket('📎 Duplicate commissary attach ignored (count: $_activeScreenCount)');
+      return;
+    }
+
+    if (_activeScreenCount > 0) {
+      await _stopListening();
+      _activeScreenCount = 0;
+    }
+
+    _isCommissaryMode = true;
+    _commissaryCloudId = commissaryCloudId;
+    _franchiseeCloudId = null;
+    _activeScreenCount++;
+
+    AppLogger.websocket('📎 Commissary screen attached (count: $_activeScreenCount)');
+    await _startListening();
+  }
 
   /// Attach a screen to this service (increments reference count)
   /// Starts listening if this is first screen
@@ -235,9 +264,16 @@ class RealtimeStockRequestService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Future<void> _startListening() async {
-    if (_franchiseeCloudId == null) {
-      AppLogger.error('Cannot start listening: franchiseeCloudId not set');
-      return;
+    if (_isCommissaryMode) {
+      if (_commissaryCloudId == null) {
+        AppLogger.error('Cannot start listening: commissaryCloudId not set');
+        return;
+      }
+    } else {
+      if (_franchiseeCloudId == null) {
+        AppLogger.error('Cannot start listening: franchiseeCloudId not set');
+        return;
+      }
     }
 
     _updateStatus(RealtimeConnectionStatus.connecting);
@@ -283,10 +319,13 @@ class RealtimeStockRequestService {
   Future<void> _createChannel() async {
     // ── DIAGNOSTIC: log every channel open with a traceable stamp ──
     final stamp = DateTime.now().toIso8601String();
-    AppLogger.websocket('🔌 OPEN   channel [$stamp] franchisee=$_franchiseeCloudId  screens=$_activeScreenCount');
-    
-    // Good — stable name per user session (Supabase reuses instead of opening a new socket each retry)
-    final channelName = 'stock-requests-$_franchiseeCloudId';
+    final cloudId = _isCommissaryMode ? _commissaryCloudId : _franchiseeCloudId;
+    final mode = _isCommissaryMode ? 'commissary' : 'franchisee';
+    AppLogger.websocket('🔌 OPEN   channel [$stamp] $mode=$cloudId  screens=$_activeScreenCount');
+
+    final channelName = _isCommissaryMode
+        ? 'stock-requests-commissary-$_commissaryCloudId'
+        : 'stock-requests-$_franchiseeCloudId';
     if (_stockRequestChannel != null) {
       AppLogger.websocket('🔌 CLOSE  reason=replacing_before_new_open  screens=$_activeScreenCount');
       await supabase.removeChannel(_stockRequestChannel!);
@@ -296,28 +335,40 @@ class RealtimeStockRequestService {
     AppLogger.websocket('🔌 NAMED  channel → $channelName');
 
     final completer = Completer<void>();
-    
-    // Listen to ALL postgres changes (*, not just update) without filter
+
     _stockRequestChannel!
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,  // Listen to INSERT, UPDATE, DELETE
+          event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'stock_replenishment_requests',
+          // Server-side filter reduces bandwidth and avoids full-table RLS checks
+          filter: _isCommissaryMode
+              ? PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'commissary_id',
+                  value: _commissaryCloudId!,
+                )
+              : PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'franchisee_id',
+                  value: _franchiseeCloudId!,
+                ),
           callback: (payload) {
             AppLogger.sync('🔔 POSTGRES CHANGE RECEIVED! Event type: ${payload.eventType}');
             AppLogger.sync('   Old: ${payload.oldRecord}');
             AppLogger.sync('   New: ${payload.newRecord}');
-            
-            // Only process updates
-            if (payload.eventType == PostgresChangeEvent.update) {
-              // Manual filter check
-              final franchiseeId = payload.newRecord['franchisee_id']?.toString();
-              AppLogger.sync('   Checking: franchisee_id=$franchiseeId vs expected=$_franchiseeCloudId');
-              
-              if (franchiseeId == _franchiseeCloudId) {
+
+            if (_isCommissaryMode) {
+              // Commissary: care about new pending requests (INSERT) and any
+              // subsequent status changes on those requests (UPDATE).
+              if (payload.eventType == PostgresChangeEvent.insert ||
+                  payload.eventType == PostgresChangeEvent.update) {
+                _handleCommissaryEvent(payload.newRecord);
+              }
+            } else {
+              // Franchisee: only care about status changes on their requests.
+              if (payload.eventType == PostgresChangeEvent.update) {
                 _handleStatusUpdate(payload.oldRecord, payload.newRecord);
-              } else {
-                AppLogger.sync('   ⏭️ Skipping - not for this franchisee');
               }
             }
           },
@@ -386,13 +437,15 @@ class RealtimeStockRequestService {
     _disconnectionRetryTimer = null;
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
-    
+    _isCommissaryMode = false;
+    _commissaryCloudId = null;
+
     if (_stockRequestChannel != null) {
       AppLogger.websocket('🔌 CLOSE  reason=all_screens_detached  screens=$_activeScreenCount');
       await supabase.removeChannel(_stockRequestChannel!);
       _stockRequestChannel = null;
     }
-    
+
     _updateStatus(RealtimeConnectionStatus.disconnected);
     AppLogger.websocket('🔌 STOPPED listening — all timers/channels cleared');
   }
@@ -419,25 +472,33 @@ class RealtimeStockRequestService {
 
   Future<void> _pollForUpdates() async {
     if (_isPaused || _isSyncing) return;
-    
+
     try {
-      AppLogger.sync('📊 Polling for franchisee_id: $_franchiseeCloudId');
-      
-      // Query for ANY approved/rejected/delivered requests
-      // The sync service will handle checking if local DB needs updating
-      final response = await supabase
-          .from('stock_replenishment_requests')
-          .select()
-          .eq('franchisee_id', _franchiseeCloudId!)
-          .inFilter('status', ['approved', 'rejected', 'delivered'])
-          .eq('is_deleted', false);
-      
-      AppLogger.sync('📊 Found ${(response as List).length} approved/rejected/delivered requests');
-      
-      if (response.isNotEmpty) {
-        // Just trigger a sync - let the sync service figure out what's new
-        AppLogger.sync('📬 Triggering sync to check for updates...');
-        _triggerDebouncedSync();
+      if (_isCommissaryMode) {
+        AppLogger.sync('📊 Polling for commissary_id: $_commissaryCloudId');
+        final response = await supabase
+            .from('stock_replenishment_requests')
+            .select()
+            .eq('commissary_id', _commissaryCloudId!)
+            .eq('status', 'pending')
+            .eq('is_deleted', false);
+        AppLogger.sync('📊 Found ${(response as List).length} pending requests');
+        if (response.isNotEmpty) {
+          _triggerDebouncedSync();
+        }
+      } else {
+        AppLogger.sync('📊 Polling for franchisee_id: $_franchiseeCloudId');
+        final response = await supabase
+            .from('stock_replenishment_requests')
+            .select()
+            .eq('franchisee_id', _franchiseeCloudId!)
+            .inFilter('status', ['approved', 'rejected', 'delivered'])
+            .eq('is_deleted', false);
+        AppLogger.sync('📊 Found ${(response as List).length} approved/rejected/delivered requests');
+        if (response.isNotEmpty) {
+          AppLogger.sync('📬 Triggering sync to check for updates...');
+          _triggerDebouncedSync();
+        }
       }
     } catch (e) {
       AppLogger.error('Polling error: $e');
@@ -526,6 +587,37 @@ class RealtimeStockRequestService {
       }
     } catch (e) {
       AppLogger.error('Error handling status update: $e');
+    }
+  }
+
+  /// Commissary mode: fires on INSERT (new pending request) or UPDATE.
+  void _handleCommissaryEvent(Map<String, dynamic> newRecord) {
+    try {
+      final status = newRecord['status']?.toString() ?? '';
+
+      // Synthesise a StockRequestEvent with oldStatus='' for INSERT events.
+      final event = StockRequestEvent(
+        cloudId: newRecord['cloud_id']?.toString() ?? '',
+        franchiseeId: newRecord['franchisee_id']?.toString() ?? '',
+        itemId: newRecord['item_id']?.toString() ?? '',
+        quantityRequested: _parseIntSafe(newRecord['quantity_requested']),
+        oldStatus: '',
+        newStatus: status,
+        timestamp: DateTime.tryParse(newRecord['last_updated']?.toString() ?? '') ?? DateTime.now(),
+        rawData: newRecord,
+      );
+
+      _eventController.add(event);
+
+      if (kDebugMode) {
+        AppLogger.sync('📬 Commissary event: request ${event.cloudId} status=$status');
+      }
+
+      // Always sync — could be a new pending request or a change in a request
+      // the commissary admin is actively reviewing.
+      _triggerDebouncedSync();
+    } catch (e) {
+      AppLogger.error('Error handling commissary event: $e');
     }
   }
 
