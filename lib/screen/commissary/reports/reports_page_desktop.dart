@@ -339,7 +339,7 @@ class ReportsPageDesktop extends StatelessWidget {
           crossAxisCount: state.desktopGridColumns,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 1.0,
+          mainAxisExtent: 200, // Fixed height for consistent bar charts
         ),
         itemCount: displayBranches.length,
         itemBuilder: (context, index) {
