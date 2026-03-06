@@ -11,6 +11,7 @@ import 'package:chickenjoo_inventory/services/realtime_stock_request_service.dar
 // Import separated UI files
 import 'requests_page_mobile.dart';
 import 'requests_page_desktop.dart';
+import 'requests_page_controller.dart';
 
 class RequestsPage extends StatefulWidget {
   const RequestsPage({super.key});
@@ -21,6 +22,7 @@ class RequestsPage extends StatefulWidget {
 
 class RequestsPageState extends State<RequestsPage> {
   late AppDatabase db;
+  late RequestsPageController controller;
   int? currentUserId;
   int? commissaryId;
   String? _commissaryCloudId;
@@ -41,6 +43,15 @@ class RequestsPageState extends State<RequestsPage> {
   void initState() {
     super.initState();
     db = database;
+    controller = RequestsPageController(
+      db: db,
+      onStateChanged: () {
+        if (mounted) {
+          setState(() {});
+        }
+      },
+    );
+    controller.loadContext();
     _loadContext();
   }
 
@@ -453,15 +464,10 @@ class RequestsPageState extends State<RequestsPage> {
       );
     }
 
-    // Determine if we're on mobile or desktop based on screen width
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 800;
-
-    if (isMobile) {
+    if (AppLayout.isDesktop(context) == false) {
       return RequestsPageMobile(state: this);
-    } else {
-      return RequestsPageDesktop(state: this);
     }
+    return RequestsPageDesktop(state: this);
   }
 
   // Public method for scaffolds to build request rows
@@ -528,12 +534,12 @@ class RequestsPageState extends State<RequestsPage> {
                 size: 20,
               ),
               tooltip: 'Approve',
-              onPressed: () => _approveRequest(req),
+              onPressed: () => approveRequest(req),
             ),
             IconButton(
               icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
               tooltip: 'Reject',
-              onPressed: () => _rejectRequest(req),
+              onPressed: () => rejectRequest(req),
             ),
           ],
         ),

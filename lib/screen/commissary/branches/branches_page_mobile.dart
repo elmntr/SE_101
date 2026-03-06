@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/utils/tables.dart';
 import 'package:chickenjoo_inventory/widgets/filter_widgets.dart';
 import 'branches_page.dart';
 
@@ -99,8 +99,8 @@ class BranchesPageMobile extends StatelessWidget {
                           iconSize: 24,
                           options: const [
                             FilterOption.header('SORT BY'),
-                            FilterOption(value: 'nameAsc', label: 'Name (A–Z)'),
-                            FilterOption(value: 'nameDesc', label: 'Name (Z–A)'),
+                            FilterOption(value: 'nameAsc', label: 'Name (Aâ€“Z)'),
+                            FilterOption(value: 'nameDesc', label: 'Name (Zâ€“A)'),
                             FilterOption.divider(),
                             FilterOption(value: 'activeFirst', label: 'Active First'),
                             FilterOption(value: 'inactiveFirst', label: 'Inactive First'),
@@ -119,6 +119,69 @@ class BranchesPageMobile extends StatelessWidget {
                           ),
                           tooltip: 'Active only',
                           onPressed: () => state.toggleShowActiveOnly(!state.showActiveOnly),
+                        ),
+                      // Branch filter for admins tab
+                      if (state.selectedTab == 1)
+                        PopupMenuButton<int>(
+                          icon: Icon(
+                            Icons.filter_list,
+                            size: 24,
+                            color: state.selectedBranchFilter != null ? Colors.blue : null,
+                          ),
+                          tooltip: 'Filter by branch',
+                          onSelected: state.setBranchFilter,
+                          itemBuilder: (context) {
+                            final items = <PopupMenuEntry<int>>[];
+                            items.add(
+                              PopupMenuItem<int>(
+                                value: -1,
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.store, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'All Branches',
+                                      style: TextStyle(
+                                        fontWeight: state.selectedBranchFilter == null
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                    if (state.selectedBranchFilter == null) ...[
+                                      const Spacer(),
+                                      Icon(Icons.check, size: 18, color: Theme.of(context).primaryColor),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                            items.add(const PopupMenuDivider());
+                            for (final branch in state.branches) {
+                              final isSelected = state.selectedBranchFilter == branch.id;
+                              items.add(
+                                PopupMenuItem<int>(
+                                  value: branch.id,
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.storefront, size: 18),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          branch.name,
+                                          style: TextStyle(
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        Icon(Icons.check, size: 18, color: Theme.of(context).primaryColor),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            return items;
+                          },
                         ),
                     ],
                   ),

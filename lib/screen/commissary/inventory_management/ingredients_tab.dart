@@ -1,10 +1,11 @@
-// lib/screens/inventory_management/ingredients_tab.dart
+﻿// lib/screens/inventory_management/ingredients_tab.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/database/daos/ingredients_dao.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
-import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/utils/tables.dart';
 import 'widgets/ingredient_form_dialog.dart';
 
 /// Ingredients tab for managing raw materials/ingredients
@@ -15,10 +16,6 @@ class IngredientsTab extends StatefulWidget {
   final IngredientSortOrder sortOrder;
   final bool showLowStockOnly;
 
-  /// Callback for the "Add Ingredient" action.
-  /// Should be provided by the parent so errors surface to the user properly.
-  final VoidCallback? onAddPressed;
-
   const IngredientsTab({
     super.key,
     required this.commissaryId,
@@ -26,7 +23,6 @@ class IngredientsTab extends StatefulWidget {
     this.searchQuery = '',
     this.sortOrder = IngredientSortOrder.nameAsc,
     this.showLowStockOnly = false,
-    this.onAddPressed,
   });
 
   @override
@@ -37,6 +33,34 @@ class _IngredientsTabState extends State<IngredientsTab> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  void _showAddIngredientDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => IngredientFormDialog(
+        commissaryId: widget.commissaryId,
+        onSave: (companion) async {
+          await database.ingredientsDao.insertIngredient(
+            name: companion.name.value,
+            commissaryId: companion.commissaryId.value,
+            stock: companion.stock.value,
+            unit: companion.unit.value,
+            criticalLevel: companion.criticalLevel.value,
+            costPerUnit: companion.costPerUnit.value,
+            cloudId: companion.cloudId.value,
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Ingredient added successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        },
+      ),
+    );
   }
 
   void _showEditIngredientDialog(Ingredient ingredient) {
@@ -52,31 +76,22 @@ class _IngredientsTabState extends State<IngredientsTab> {
             name: companion.name.value,
             unit: companion.unit.value,
             stock: companion.stock.value,
-            criticalLevel: companion.criticalLevel.value,
             costPerUnit: companion.costPerUnit.value,
+            criticalLevel: companion.criticalLevel.value,
             commissaryId: companion.commissaryId.value,
-            isActive: true,
-            needsSync: true,
+            isActive: companion.isActive.value,
             createdAt: ingredient.createdAt,
-            lastUpdated: DateTime.now().toUtc(),
-            updatedAt: DateTime.now().toUtc(),
+            updatedAt: DateTime.now(),
+            lastUpdated: DateTime.now(),
             lastSyncedAt: ingredient.lastSyncedAt,
+            needsSync: true,
           );
-          // Capture messenger before the dialog closes
-          final messenger = ScaffoldMessenger.of(context);
-          try {
-            await database.ingredientsDao.updateIngredient(updated);
-            messenger.showSnackBar(
+          await database.ingredientsDao.updateIngredient(updated);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Ingredient updated successfully'),
                 backgroundColor: Colors.green,
-              ),
-            );
-          } catch (e) {
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text(e.toString().replaceFirst('Exception: ', '')),
-                backgroundColor: Colors.red,
               ),
             );
           }
@@ -101,21 +116,13 @@ class _IngredientsTabState extends State<IngredientsTab> {
           ),
           ElevatedButton(
             onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
-              try {
-                await database.ingredientsDao.softDeleteIngredient(ingredient.id);
-                messenger.showSnackBar(
+              await database.ingredientsDao.softDeleteIngredient(ingredient.id);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('${ingredient.name} deleted'),
                     backgroundColor: Colors.orange,
-                  ),
-                );
-              } catch (e) {
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(e.toString().replaceFirst('Exception: ', '')),
-                    backgroundColor: Colors.red,
                   ),
                 );
               }
@@ -151,7 +158,7 @@ class _IngredientsTabState extends State<IngredientsTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Current Stock: ${ingredient.stock} ${ingredient.unit}',
+                'Current Stock: ${ingredient.stock.toStringAsFixed(2)} ${ingredient.unit}',
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 16),
@@ -209,33 +216,21 @@ class _IngredientsTabState extends State<IngredientsTab> {
               onPressed: () async {
                 final quantity = double.tryParse(controller.text);
                 if (quantity != null && quantity > 0) {
-                  final messenger = ScaffoldMessenger.of(context);
-                  Navigator.pop(context);
-                  try {
-                    if (isAdding) {
-                      await database.ingredientsDao.addStock(
-                        ingredient.id,
-                        quantity,
-                      );
-                    } else {
-                      await database.ingredientsDao.deductStock(
-                        ingredient.id,
-                        quantity,
-                      );
-                    }
-                    messenger.showSnackBar(
+                  final newStock = isAdding
+                      ? ingredient.stock + quantity
+                      : ingredient.stock - quantity;
+                  await database.ingredientsDao.updateStock(
+                    ingredient.id,
+                    newStock,
+                  );
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
                           '${isAdding ? "Added" : "Removed"} ${quantity.toStringAsFixed(2)} ${ingredient.unit}',
                         ),
                         backgroundColor: Colors.green,
-                      ),
-                    );
-                  } catch (e) {
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(e.toString().replaceFirst('Exception: ', '')),
-                        backgroundColor: Colors.red,
                       ),
                     );
                   }
@@ -296,7 +291,7 @@ class _IngredientsTabState extends State<IngredientsTab> {
         // Apply low stock filter
         if (widget.showLowStockOnly) {
           ingredients = ingredients
-              .where((i) => i.criticalLevel != null && i.stock <= i.criticalLevel!)
+              .where((i) => i.stock <= (i.criticalLevel ?? 0))
               .toList();
         }
 
@@ -323,7 +318,7 @@ class _IngredientsTabState extends State<IngredientsTab> {
             !widget.showLowStockOnly) {
           return emptyTables(
             message: 'You can manage your ingredients here.',
-            onAddPressed: widget.onAddPressed,
+            onAddPressed: _showAddIngredientDialog,
             buttonType: EmptyButtonType.icon,
             buttonText: null,
           );
@@ -344,19 +339,19 @@ class _IngredientsTabState extends State<IngredientsTab> {
             'Name',
             'Stock',
             'Unit',
-            'Critical Level',
             'Cost/Unit',
+            'Critical Level',
             'Status',
             '',
           ],
           rows: ingredients.map((ingredient) {
-            final isLowStock = ingredient.criticalLevel != null && ingredient.stock <= ingredient.criticalLevel!;
+            final isLowStock = ingredient.stock <= (ingredient.criticalLevel ?? 0);
             return [
               Text(ingredient.name),
               Text(numberFormat.format(ingredient.stock)),
               Text(ingredient.unit),
-              Text(numberFormat.format(ingredient.criticalLevel ?? 0)),
               Text('₱${numberFormat.format(ingredient.costPerUnit)}'),
+              Text(numberFormat.format(ingredient.criticalLevel ?? 0)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -397,6 +392,9 @@ class _IngredientsTabState extends State<IngredientsTab> {
           }).toList(),
           smallHeaderWidth: 40,
           largeHeaderWidth: 90,
+          showHorizontalScrollbar: Platform.isWindows,
+          horizontalController:
+              Platform.isWindows ? ScrollController() : null,
         );
       },
     );

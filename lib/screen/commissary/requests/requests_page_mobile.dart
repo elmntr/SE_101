@@ -1,10 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:chickenjoo_inventory/database/app_database.dart';
 import 'package:chickenjoo_inventory/services/search_service.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
-import 'package:chickenjoo_inventory/tables/tables.dart';
+import 'package:chickenjoo_inventory/utils/tables.dart';
 import 'package:chickenjoo_inventory/widgets/filter_widgets.dart';
 import 'requests_page.dart';
 

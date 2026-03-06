@@ -1,8 +1,12 @@
 // lib/screen/commissary/login/commissary_login_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/services/supabase_auth_service.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'widgets/login_form.dart';
+import 'widgets/login_scaffold_mobile.dart';
+import 'widgets/login_scaffold_desktop.dart';
 
 /// Login screen focused only on explicit sign-in attempts.
 /// 
@@ -65,13 +69,10 @@ class _CommissaryLoginScreenState extends State<CommissaryLoginScreen> {
 
     try {
       print('🔐 [LOGIN] Calling authService.signIn...');
-      // Use Supabase Auth for authentication
-      // This establishes a Supabase session with auth.uid() for RLS
       final result = await _authService.signIn(
         email: email,
         password: password,
       );
-      
 
       print('🔐 [LOGIN] signIn result: success=${result.success}, message=${result.message}, localUser=${result.localUser != null}');
 
@@ -84,8 +85,7 @@ class _CommissaryLoginScreenState extends State<CommissaryLoginScreen> {
         return;
       }
 
-      print('🔐 [LOGIN] Login successful! Navigating to home...');
-      // Navigate to home with authenticated user data
+      print('🔐 [LOGIN] Login successful! Navigating to commissary home...');
       Navigator.pushReplacementNamed(context, '/commissary-home', arguments: result.localUser);
     } catch (e, stackTrace) {
       print('🔐 [LOGIN] Exception: $e');
@@ -98,171 +98,43 @@ class _CommissaryLoginScreenState extends State<CommissaryLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final fieldPadding = AppLayout.fieldPadding(context);
     final loginButtonWidth = AppLayout.loginButtonWidth(context);
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFEF4848), Color(0xFFD32F2F)],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: fieldPadding),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo and Title
-                  _buildHeader(),
-                  const SizedBox(height: 40),
-                  // Login Form
-                  _buildLoginForm(loginButtonWidth),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    // Determine if we're on mobile based on screen width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600 && !kIsWeb;
 
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        SizedBox(
-          width: 300,
-          child: Image.asset(imageAll, height: 80, fit: BoxFit.contain),
-        ),
-        const SizedBox(height: 32),
-        const Text(
-          'COMMISSARY',
-          style: TextStyle(
-            fontSize: 25,
-            fontWeight: FontWeight.w600,
-            color: Colors.white70,
-            letterSpacing: 4,
-            fontFamily: fontAll,
-          ),
-        ),
-      ],
+    final loginForm = Focus(
+      onKey: (node, event) {
+        if (event.logicalKey.keyLabel == 'Enter') {
+          _handleLogin();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: LoginForm(
+        emailController: _emailController,
+        passwordController: _passwordController,
+        isPasswordVisible: _isPasswordVisible,
+        isSubmitting: _isSubmitting,
+        onPasswordVisibilityToggle: () {
+          setState(() {
+            _isPasswordVisible = !_isPasswordVisible;
+          });
+        },
+        onLogin: _handleLogin,
+        loginButtonWidth: loginButtonWidth,
+      ),
     );
-  }
 
-  Widget _buildLoginForm(double buttonWidth) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Welcome Back',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              fontFamily: fontAll,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Sign in to continue',
-            style: TextStyle(
-              color: Colors.grey,
-              fontFamily: fontAll,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          
-          // Email Field
-          TextField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: 'Email',
-              prefixIcon: const Icon(Icons.email_outlined),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Password Field
-          TextField(
-            controller: _passwordController,
-            obscureText: !_isPasswordVisible,
-            decoration: InputDecoration(
-              labelText: 'Password',
-              prefixIcon: const Icon(Icons.lock_outlined),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                ),
-                onPressed: () {
-                  setState(() => _isPasswordVisible = !_isPasswordVisible);
-                },
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onSubmitted: (_) => _handleLogin(),
-          ),
-          const SizedBox(height: 32),
-          
-          // Login Button
-          SizedBox(
-            width: buttonWidth,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isSubmitting ? null : _handleLogin,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFEF4848),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 2,
-              ),
-              child: _isSubmitting
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Text(
-                      'Sign In',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: fontAll,
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
+    if (isMobile) {
+      return LoginScaffoldMobile(
+        loginForm: loginForm,
+      );
+    } else {
+      return LoginScaffoldDesktop(
+        loginForm: loginForm,
+      );
+    }
   }
 }

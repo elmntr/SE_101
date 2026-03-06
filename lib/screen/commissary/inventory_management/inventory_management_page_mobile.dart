@@ -104,12 +104,13 @@ class InventoryManagementPageMobile extends StatelessWidget {
                           iconSize: 24,
                           options: const [
                             FilterOption.header('SORT BY'),
-                            FilterOption(value: IngredientSortOrder.nameAsc, label: 'Name (A�Z)'),
-                            FilterOption(value: IngredientSortOrder.nameDesc, label: 'Name (Z�A)'),
+                            FilterOption(value: IngredientSortOrder.nameAsc, label: 'Name (Aâ€“Z)'),
+                            FilterOption(value: IngredientSortOrder.nameDesc, label: 'Name (Zâ€“A)'),
                             FilterOption.divider(),
-                            FilterOption(value: IngredientSortOrder.stockAsc, label: 'Stock (Low ? High)'),
-                            FilterOption(value: IngredientSortOrder.stockDesc, label: 'Stock (High ? Low)'),
+                            FilterOption(value: IngredientSortOrder.stockAsc, label: 'Stock (Low â†’ High)'),
+                            FilterOption(value: IngredientSortOrder.stockDesc, label: 'Stock (High â†’ Low)'),
                             FilterOption.divider(),
+
                             FilterOption(value: IngredientSortOrder.newestFirst, label: 'Newest First'),
                             FilterOption(value: IngredientSortOrder.oldestFirst, label: 'Oldest First'),
                           ],
@@ -122,12 +123,13 @@ class InventoryManagementPageMobile extends StatelessWidget {
                           iconSize: 24,
                           options: const [
                             FilterOption.header('SORT BY'),
-                            FilterOption(value: ItemSortOrder.nameAsc, label: 'Name (A�Z)'),
-                            FilterOption(value: ItemSortOrder.nameDesc, label: 'Name (Z�A)'),
+                            FilterOption(value: ItemSortOrder.nameAsc, label: 'Name (Aâ€“Z)'),
+                            FilterOption(value: ItemSortOrder.nameDesc, label: 'Name (Zâ€“A)'),
                             FilterOption.divider(),
-                            FilterOption(value: ItemSortOrder.stockAsc, label: 'Stock (Low ? High)'),
-                            FilterOption(value: ItemSortOrder.stockDesc, label: 'Stock (High ? Low)'),
+                            FilterOption(value: ItemSortOrder.stockAsc, label: 'Stock (Low â†’ High)'),
+                            FilterOption(value: ItemSortOrder.stockDesc, label: 'Stock (High â†’ Low)'),
                             FilterOption.divider(),
+
                             FilterOption(value: ItemSortOrder.newestFirst, label: 'Newest First'),
                             FilterOption(value: ItemSortOrder.oldestFirst, label: 'Oldest First'),
                           ],
@@ -188,7 +190,6 @@ class InventoryManagementPageMobile extends StatelessWidget {
                           searchQuery: state.searchQuery,
                           sortOrder: state.ingredientSortOrder,
                           showLowStockOnly: state.showLowStockIngredientsOnly,
-                          onAddPressed: state.showAddIngredientDialog,
                         )
                       : ProductsTab(
                           organizationId: state.widget.organizationId,

@@ -85,13 +85,14 @@ class InventoryManagementPageDesktop extends StatelessWidget {
                     tooltip: 'Sort ingredients',
                     options: const [
                       FilterOption.header('SORT BY NAME'),
-                      FilterOption(value: IngredientSortOrder.nameAsc, label: 'Name (A�Z)', icon: Icons.sort_by_alpha),
-                      FilterOption(value: IngredientSortOrder.nameDesc, label: 'Name (Z�A)', icon: Icons.sort_by_alpha),
+                      FilterOption(value: IngredientSortOrder.nameAsc, label: 'Name (Aâ€“Z)', icon: Icons.sort_by_alpha),
+                      FilterOption(value: IngredientSortOrder.nameDesc, label: 'Name (Zâ€“A)', icon: Icons.sort_by_alpha),
                       FilterOption.divider(),
                       FilterOption.header('SORT BY STOCK'),
-                      FilterOption(value: IngredientSortOrder.stockAsc, label: 'Stock (Low ? High)', icon: Icons.inventory_2),
-                      FilterOption(value: IngredientSortOrder.stockDesc, label: 'Stock (High ? Low)', icon: Icons.inventory_2),
+                      FilterOption(value: IngredientSortOrder.stockAsc, label: 'Stock (Low â†’ High)', icon: Icons.inventory_2),
+                      FilterOption(value: IngredientSortOrder.stockDesc, label: 'Stock (High â†’ Low)', icon: Icons.inventory_2),
                       FilterOption.divider(),
+
                       FilterOption.header('SORT BY DATE'),
                       FilterOption(value: IngredientSortOrder.newestFirst, label: 'Newest First', icon: Icons.schedule),
                       FilterOption(value: IngredientSortOrder.oldestFirst, label: 'Oldest First', icon: Icons.history),
@@ -104,13 +105,14 @@ class InventoryManagementPageDesktop extends StatelessWidget {
                     tooltip: 'Sort products',
                     options: const [
                       FilterOption.header('SORT BY NAME'),
-                      FilterOption(value: ItemSortOrder.nameAsc, label: 'Name (A�Z)', icon: Icons.sort_by_alpha),
-                      FilterOption(value: ItemSortOrder.nameDesc, label: 'Name (Z�A)', icon: Icons.sort_by_alpha),
+                      FilterOption(value: ItemSortOrder.nameAsc, label: 'Name (Aâ€“Z)', icon: Icons.sort_by_alpha),
+                      FilterOption(value: ItemSortOrder.nameDesc, label: 'Name (Zâ€“A)', icon: Icons.sort_by_alpha),
                       FilterOption.divider(),
                       FilterOption.header('SORT BY STOCK'),
-                      FilterOption(value: ItemSortOrder.stockAsc, label: 'Stock (Low ? High)', icon: Icons.inventory_2),
-                      FilterOption(value: ItemSortOrder.stockDesc, label: 'Stock (High ? Low)', icon: Icons.inventory_2),
+                      FilterOption(value: ItemSortOrder.stockAsc, label: 'Stock (Low â†’ High)', icon: Icons.inventory_2),
+                      FilterOption(value: ItemSortOrder.stockDesc, label: 'Stock (High â†’ Low)', icon: Icons.inventory_2),
                       FilterOption.divider(),
+
                       FilterOption.header('SORT BY DATE'),
                       FilterOption(value: ItemSortOrder.newestFirst, label: 'Newest First', icon: Icons.schedule),
                       FilterOption(value: ItemSortOrder.oldestFirst, label: 'Oldest First', icon: Icons.history),
@@ -178,7 +180,6 @@ class InventoryManagementPageDesktop extends StatelessWidget {
                               searchQuery: state.searchQuery,
                               sortOrder: state.ingredientSortOrder,
                               showLowStockOnly: state.showLowStockIngredientsOnly,
-                              onAddPressed: state.showAddIngredientDialog,
                             )
                           : ProductsTab(
                               organizationId: state.widget.organizationId,

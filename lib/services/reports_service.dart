@@ -103,6 +103,16 @@ class BranchAggregatedStats {
     required this.daysActive,
   });
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BranchAggregatedStats &&
+          runtimeType == other.runtimeType &&
+          organizationId == other.organizationId;
+
+  @override
+  int get hashCode => organizationId.hashCode;
+
   /// Create from a list of daily summaries for the same branch
   factory BranchAggregatedStats.fromDailySummaries(List<BranchSalesSummary> summaries) {
     if (summaries.isEmpty) {
