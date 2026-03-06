@@ -35,6 +35,25 @@ class SupabaseSyncServiceV2 {
   bool _pendingContextClear = false;
   StreamSubscription? _connectivitySubscription;
 
+  // Issue 6 fix: Sync lock to prevent overlapping sync calls
+  Completer<void>? _syncCompleter;
+
+  // Issue 5 fix: Debounce rapid sync requests
+  Timer? _syncDebounceTimer;
+  static const Duration _debounceDelay = Duration(milliseconds: 500);
+
+  // Smart sync: Don't re-sync within 30 seconds
+  DateTime? _lastFullSyncTime;
+  static const Duration smartSyncCooldown = Duration(seconds: 30);
+
+  // Issue 2 fix: Prevent duplicate initialization
+  bool _isInitialized = false;
+
+  // Issue 11 fix: Cache getSyncStatus result for 10 seconds
+  Map<String, dynamic>? _cachedSyncStatus;
+  DateTime? _cacheTimestamp;
+  static const Duration _cacheTTL = Duration(seconds: 10);
+
   // Configuration
   static const Duration syncInterval = Duration(minutes: 5);
 
@@ -98,6 +117,12 @@ class SupabaseSyncServiceV2 {
     int? parentCommissaryId,
     String? parentCommissaryCloudId,
   }) async {
+    // Issue 2 fix: Guard against duplicate initialization
+    if (_isInitialized) {
+      AppLogger.sync('⚠️ Sync service already initialized, skipping');
+      return;
+    }
+
     AppLogger.sync('🚀 Initializing sync service v2...');
     AppLogger.websocket('🔌 SYNC INIT  orgId=$organizationId  orgType=$organizationType  cloudId=$organizationCloudId');
 
@@ -119,8 +144,9 @@ class SupabaseSyncServiceV2 {
       _isOnline = await _checkConnectivity();
       onConnectivityChanged?.call(_isOnline);
 
-      // Initialize caches
-      await _engine.initializeCaches([
+      // Initialize caches (defer to background - don't block UI)
+      AppLogger.sync('⏱️ Deferring cache initialization to background...');
+      _engine.initializeCaches([
         'organizations',
         'roles',
         'users',
@@ -132,9 +158,13 @@ class SupabaseSyncServiceV2 {
         'daily_sales_summary',
         'branch_ingredient_stock',
         'branch_item_stock',
-      ]);
+      ]).then((_) {
+        AppLogger.sync('⏱️ Cache initialization completed in background');
+      }).catchError((e) {
+        AppLogger.error('⚠️ Cache initialization failed: $e');
+      });
 
-      // Load organization cloud IDs
+      // Load organization cloud IDs (quick operation)
       await _loadOrganizationCloudIds();
 
       // Start periodic sync
@@ -145,6 +175,8 @@ class SupabaseSyncServiceV2 {
       _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
         _handleConnectivityChange,
       );
+
+      _isInitialized = true;
 
       // Initial sync
       if (_isOnline) {
@@ -221,6 +253,12 @@ class SupabaseSyncServiceV2 {
   // ============================================================================
 
   Future<void> syncAll() async {
+    // Issue 6 fix: Use Completer to prevent overlapping sync calls
+    if (_syncCompleter != null && !_syncCompleter!.isCompleted) {
+      AppLogger.sync('⏳ Sync already in progress (via Completer)');
+      return _syncCompleter!.future;
+    }
+
     if (_isSyncing) {
       AppLogger.sync('⏳ Sync already in progress');
       return;
@@ -238,7 +276,17 @@ class SupabaseSyncServiceV2 {
       return;
     }
 
+    // Smart sync: Don't re-sync within cooldown period
+    if (_lastFullSyncTime != null) {
+      final timeSinceLastSync = DateTime.now().difference(_lastFullSyncTime!);
+      if (timeSinceLastSync.inSeconds < smartSyncCooldown.inSeconds) {
+        AppLogger.sync('⏸️ Sync already ran ${timeSinceLastSync.inSeconds}s ago, skipping (cooldown: ${smartSyncCooldown.inSeconds}s)');
+        return;
+      }
+    }
+
     _isSyncing = true;
+    _syncCompleter = Completer<void>();
     onSyncStatusChanged?.call('Syncing...');
 
     try {
@@ -271,6 +319,9 @@ class SupabaseSyncServiceV2 {
 
         completedTables += tierFunctions.length;
         onSyncProgress?.call(completedTables / totalTables, 'Tier $tier');
+
+        // Issue 1 fix: Yield to UI thread between tiers to prevent jank
+        await Future.delayed(Duration.zero);
       }
 
       // Final cache rebuild (redundant but ensures consistency)
@@ -280,6 +331,7 @@ class SupabaseSyncServiceV2 {
       await _cleanupDeletedRecords();
 
       _engine.lastSuccessfulSync = DateTime.now();
+      _lastFullSyncTime = DateTime.now(); // Update cooldown timestamp
       final duration = DateTime.now().difference(startTime);
 
       AppLogger.sync('✅ Sync completed in ${duration.inSeconds}s');
@@ -947,6 +999,95 @@ class SupabaseSyncServiceV2 {
     await syncAll();
   }
 
+  /// Directly update a single stock_replenishment_request row in Supabase
+  /// without touching the sync engine, bypassing all locks and cooldowns.
+  ///
+  /// Call this immediately after the local DB approve/reject write so the
+  /// change reaches the cloud in real-time just like an incoming WebSocket
+  /// event triggers an immediate pull.
+  Future<void> directUpdateRequestStatus({
+    required String requestCloudId,
+    required String status,           // 'approved' | 'rejected'
+    required String reviewerCloudId,  // Supabase auth UUID of the commissary user
+    String? notes,
+    required DateTime reviewedAt,
+  }) async {
+    if (!_isOnline) {
+      AppLogger.sync('⚠️ directUpdateRequestStatus: offline, skipping direct push');
+      return;
+    }
+    AppLogger.sync('🚀 directUpdateRequestStatus: $requestCloudId → $status');
+    await supabase.from('stock_replenishment_requests').update({
+      'status': status,
+      'reviewed_by': reviewerCloudId,
+      'reviewed_at': reviewedAt.toUtc().toIso8601String(),
+      'commissary_notes': notes,
+      'last_updated': DateTime.now().toUtc().toIso8601String(),
+    }).eq('cloud_id', requestCloudId);
+    AppLogger.sync('✅ directUpdateRequestStatus: done ($requestCloudId → $status)');
+  }
+
+  /// Push the result of a commissary approve/reject action to Supabase
+  /// immediately, bypassing the smart-sync cooldown.
+  ///
+  /// Only syncs the three tables that change during an approval/rejection:
+  ///   • stock_replenishment_requests  (status update)
+  ///   • branch_item_stock             (stock added to franchisee)
+  ///   • items                         (commissary stock deducted)
+  ///
+  /// Waits for any in-flight full sync to complete first so the DB engine
+  /// is not used concurrently. After pushing, listeners are notified via
+  /// [notifySyncComplete].
+  Future<void> pushReplenishmentOutcomeNow() async {
+    if (!_isOnline || !canSync) {
+      AppLogger.sync('⚠️ pushReplenishmentOutcomeNow: offline or not authenticated, skipping');
+      return;
+    }
+
+    // If a full sync is already in flight, wait for it to finish so the DB
+    // engine is not used concurrently.  We must NOT return early — the local
+    // approve/reject write happened AFTER the in-flight sync's push phase
+    // already ran, so this outcome has NOT been pushed yet.
+    if (_syncCompleter != null && !_syncCompleter!.isCompleted) {
+      AppLogger.sync('⏳ pushReplenishmentOutcomeNow: awaiting in-flight sync before pushing outcome...');
+      await _syncCompleter!.future.catchError((_) {});
+      AppLogger.sync('⏳ pushReplenishmentOutcomeNow: in-flight sync done, now pushing outcome...');
+    }
+
+    if (_isSyncing) {
+      AppLogger.sync('⏳ pushReplenishmentOutcomeNow: _isSyncing=true, waiting...');
+      int waited = 0;
+      while (_isSyncing && waited < 10000) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        waited += 100;
+      }
+    }
+
+    AppLogger.sync('🚀 pushReplenishmentOutcomeNow: pushing approval outcome to cloud...');
+    _isSyncing = true;
+    _syncCompleter = Completer<void>();
+    try {
+      await _engine.rebuildAllCaches();
+      // Push + pull in dependency order
+      await _syncItems();                    // commissary stock deduction
+      await _syncBranchItemStock();          // franchisee stock credit
+      await _syncReplenishmentRequests();    // status = approved/rejected
+      _engine.lastSuccessfulSync = DateTime.now();
+      AppLogger.sync('✅ pushReplenishmentOutcomeNow: done');
+      notifySyncComplete();
+    } catch (e) {
+      AppLogger.error('pushReplenishmentOutcomeNow failed: $e');
+      onSyncError?.call('Push failed: $e');
+    } finally {
+      _isSyncing = false;
+      _syncCompleter?.complete();
+      if (_pendingContextClear) {
+        _pendingContextClear = false;
+        clearOrganizationContext();
+      }
+    }
+  }
+
   /// Force a **full** pull from Supabase (ignores lastSuccessfulSync)
   /// and push any locally pending changes.
   ///
@@ -1053,6 +1194,19 @@ class SupabaseSyncServiceV2 {
   }
 
   Future<Map<String, dynamic>> getSyncStatus() async {
+    // Issue 11 fix: Cache result for 10 seconds to avoid 9 COUNT queries every 30s
+    if (_cachedSyncStatus != null && _cacheTimestamp != null) {
+      final age = DateTime.now().difference(_cacheTimestamp!);
+      if (age < _cacheTTL) {
+        // Return cached result, but update live fields
+        return {
+          ..._cachedSyncStatus!,
+          'is_syncing': _isSyncing,
+          'is_online': _isOnline,
+        };
+      }
+    }
+
     try {
       final counts = await Future.wait([
         db.itemsDao.getUnsyncedItemCount(),
@@ -1068,7 +1222,7 @@ class SupabaseSyncServiceV2 {
         db.dailySalesSummaryDao.getUnsyncedSummaries().then((l) => l.length),
       ]);
 
-      return {
+      final result = {
         'unsynced_items': counts[0],
         'unsynced_users': counts[1],
         'unsynced_roles': counts[2],
@@ -1088,6 +1242,12 @@ class SupabaseSyncServiceV2 {
         'organization_type': _currentOrganizationType,
         'organization_id': _currentOrganizationId,
       };
+
+      // Cache the result
+      _cachedSyncStatus = result;
+      _cacheTimestamp = DateTime.now();
+
+      return result;
     } catch (e) {
       return {
         'error': e.toString(),

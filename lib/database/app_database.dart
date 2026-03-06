@@ -113,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(super.executor) : _seedData = false;
 
   @override
-  int get schemaVersion => 6; // v6: Aligned ingredients table to Supabase schema
+  int get schemaVersion => 7; // v7: Add is_deleted to items/categories/recipe_ingredients/stock_*_requests/branch_item_stock
 
   @override
   MigrationStrategy get migration {
@@ -303,6 +303,42 @@ class AppDatabase extends _$AppDatabase {
               'Aligned ingredients table to Supabase schema (v6)');
         }
 
+        if (from < 7) {
+          // v7: Add is_deleted soft-delete column to tables that gained it in
+          // the Dart table definitions but never had a corresponding migration.
+          // SQLite does not support `ADD COLUMN IF NOT EXISTS`, so we use a
+          // try-catch to silently skip tables that already have the column.
+          final addIsDeleted = [
+            'items',
+            'categories',
+            'recipe_ingredients',
+            'stock_change_requests',
+            'stock_replenishment_requests',
+            'branch_item_stock',
+          ];
+          for (final table in addIsDeleted) {
+            try {
+              await customStatement(
+                'ALTER TABLE $table ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0',
+              );
+              AppLogger.database('Added is_deleted to $table');
+            } catch (_) {
+              // Column already exists — safe to ignore
+              AppLogger.database('is_deleted already present in $table, skipping');
+            }
+          }
+
+          // Also recreate the ingredients indexes that were left stale from v6
+          // (they still referenced is_deleted / category_id which no longer exist).
+          await customStatement('DROP INDEX IF EXISTS idx_ingredients_commissary');
+          await customStatement('DROP INDEX IF EXISTS idx_ingredients_category');
+          await customStatement(
+            'CREATE INDEX IF NOT EXISTS idx_ingredients_commissary ON ingredients(commissary_id) WHERE is_active = 1',
+          );
+
+          AppLogger.database('v7 migration complete');
+        }
+
         AppLogger.database('Database upgrade complete!');
       },
       beforeOpen: (details) async {
@@ -383,12 +419,9 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_items_updated ON items(last_updated DESC)',
     );
 
-    // Ingredients indexes
+    // Ingredients indexes (table uses is_active; category_id was removed in v6)
     await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_ingredients_commissary ON ingredients(commissary_id) WHERE is_deleted = 0',
-    );
-    await customStatement(
-      'CREATE INDEX IF NOT EXISTS idx_ingredients_category ON ingredients(category_id) WHERE is_deleted = 0',
+      'CREATE INDEX IF NOT EXISTS idx_ingredients_commissary ON ingredients(commissary_id) WHERE is_active = 1',
     );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_ingredients_cloud_id ON ingredients(cloud_id)',

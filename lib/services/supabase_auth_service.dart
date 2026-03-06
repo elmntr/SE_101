@@ -241,7 +241,7 @@ class SupabaseAuthService {
   void _logAuth(String message) {
     if (kDebugMode) {
       final timestamp = DateTime.now().toIso8601String();
-      //print('🔐 [$timestamp] [AUTH] $message');
+      debugPrint('🔐 [$timestamp] [AUTH] $message');
     }
   }
   
@@ -370,7 +370,15 @@ class SupabaseAuthService {
 
       // Priority 3: Not found locally — pull from cloud and seed
       _logAuth('User not found locally, attempting cloud pull...');
-      return await _pullUserFromCloud(authUser);
+      final pulled = await _pullUserFromCloud(authUser);
+      if (pulled == null) {
+        _logAuth(
+          'Cloud pull failed. Ensure the Supabase migration '
+          '011_fix_auth_bootstrap.sql has been applied and '
+          'that auth_user_id is set on the users row.',
+        );
+      }
+      return pulled;
     } catch (e) {
       _logAuth('Error finding local user: $e');
       return null;
@@ -408,11 +416,27 @@ class SupabaseAuthService {
       }
 
       if (userResponse == null) {
-        _logAuth('User not found in cloud: ${authUser.email}');
+        _logAuth('User not found in cloud (tried auth_user_id + email): ${authUser.email}');
         return null;
       }
 
       _logAuth('Found user in cloud: ${userResponse['username']}');
+
+      // If found via email fallback (auth_user_id was null), self-patch it now.
+      // Migration 011_fix_auth_bootstrap.sql adds a policy that allows this.
+      // This ensures future logins use the fast auth_user_id path.
+      if (userResponse['auth_user_id'] == null) {
+        _logAuth('auth_user_id is null – patching it via email match...');
+        try {
+          await _supabase
+              .from('users')
+              .update({'auth_user_id': authUser.id})
+              .eq('email', authUser.email!);
+          _logAuth('auth_user_id patched successfully');
+        } catch (e) {
+          _logAuth('Could not patch auth_user_id (non-blocking): $e');
+        }
+      }
 
       final orgCloudId = userResponse['organization_id'] as String?;
       final roleCloudId = userResponse['role_id'] as String?;
@@ -430,7 +454,11 @@ class SupabaseAuthService {
           .maybeSingle();
 
       if (orgResponse == null) {
-        _logAuth('Org not found in cloud: $orgCloudId');
+        _logAuth(
+          'Org not found in cloud: $orgCloudId. '
+          'This usually means the RLS helper functions still use the old '
+          'auth_user_id-only lookup. Apply migration 011_fix_auth_bootstrap.sql.',
+        );
         return null;
       }
 
@@ -637,10 +665,16 @@ class SupabaseAuthService {
       await _loadCurrentUser(authResponse.user!);
 
       if (_currentUser == null) {
-        // User authenticated but no local record found
-        // This might happen if user was created in Supabase but not synced locally
+        // Auth succeeded but the local profile could not be seeded from cloud.
+        // Most common cause: auth_user_id is not set on the Supabase users row,
+        // and the RLS helper functions cannot resolve the org type.
+        // Fix: apply migration 011_fix_auth_bootstrap.sql in Supabase.
+        await _supabase.auth.signOut();
         return AuthResult.failure(
-          'User not found in local database. Please sync first.',
+          'Login succeeded but your account profile could not be loaded. '
+          'Please check your internet connection. '
+          'If the problem persists, ask your administrator to apply the '
+          'latest database migration (011_fix_auth_bootstrap.sql).',
         );
       }
 

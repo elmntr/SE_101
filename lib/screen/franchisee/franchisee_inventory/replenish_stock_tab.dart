@@ -38,6 +38,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
   
   // Realtime service
   StreamSubscription<StockRequestEvent>? _eventSubscription;
+  StreamSubscription<RealtimeConnectionStatus>? _statusSubscription;
   String? _franchiseeCloudId;
 
   @override
@@ -87,7 +88,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
         });
         
         // Also listen to status changes for debugging
-        realtimeStockRequestService.statusStream.listen((status) {
+        _statusSubscription = realtimeStockRequestService.statusStream.listen((status) {
           //print('📡 Realtime connection status changed: $status');
         });
       } else {
@@ -135,6 +136,7 @@ class _ReplenishStockTabState extends State<ReplenishStockTab> with WidgetsBindi
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _eventSubscription?.cancel();
+    _statusSubscription?.cancel();
     realtimeStockRequestService.detach();
     for (var c in qtyControllers) {
       c.dispose();
