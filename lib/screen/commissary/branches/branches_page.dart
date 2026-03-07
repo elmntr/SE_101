@@ -16,7 +16,9 @@ import 'branches_page_controller.dart';
 /// - Create branch admin users scoped to a specific branch
 /// - View all branches and their status
 class BranchesPage extends StatefulWidget {
-  const BranchesPage({super.key});
+  final int initialTab;
+
+  const BranchesPage({super.key, this.initialTab = 0});
 
   @override
   State<BranchesPage> createState() => BranchesPageState();
@@ -52,6 +54,7 @@ class BranchesPageState extends State<BranchesPage> {
         }
       },
     );
+    controller.selectedTab = widget.initialTab;
     controller.loadData();
   }
 

@@ -50,7 +50,7 @@ class _SettingsEditAccountPageState extends State<SettingsEditAccountPage> {
   // Scroll controller and key for auto-scrolling to password section
   final ScrollController _scrollController = ScrollController();
   final ScrollController _desktopScrollController = ScrollController();
-  final GlobalKey _passwordSectionKey = GlobalKey();
+  final GlobalKey _passwordFieldsKey = GlobalKey();
 
   // Snackbar deduplication
   String? _lastSnackBarMessage;
@@ -123,15 +123,16 @@ class _SettingsEditAccountPageState extends State<SettingsEditAccountPage> {
       _isChangingPassword = !_isChangingPassword;
     });
 
-    // Auto-scroll to password section when opening
+    // Auto-scroll to password fields when opening
     if (_isChangingPassword) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final keyContext = _passwordSectionKey.currentContext;
+        final keyContext = _passwordFieldsKey.currentContext;
         if (keyContext != null) {
           Scrollable.ensureVisible(
             keyContext,
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
+            alignment: 0.0,
           );
         }
       });
@@ -304,6 +305,9 @@ class _SettingsEditAccountPageState extends State<SettingsEditAccountPage> {
       // IMPORTANT: Reload user profile in auth service so changes reflect throughout app
       await _reloadUserProfile();
 
+      // Immediately sync all changes to Supabase users table
+      await _upsertSupabaseUsersTable();
+
       _showSnackBar('✓ Account updated successfully. Changes will reflect throughout the app.');
       setState(() {
         _isEditing = false;
@@ -393,6 +397,9 @@ class _SettingsEditAccountPageState extends State<SettingsEditAccountPage> {
       }
 
       // SUCCESS: Both Supabase Auth and local DB updated by authService.updatePassword
+      // Also update Supabase users table immediately
+      await _upsertSupabaseUsersTable();
+
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
@@ -417,6 +424,109 @@ class _SettingsEditAccountPageState extends State<SettingsEditAccountPage> {
     } catch (e) {
       _showSnackBar('Unexpected error: $e', isError: true);
       setState(() => _isSaving = false);
+    }
+  }
+
+  /// Update the current user's data in the Supabase users table.
+  /// Uses UPDATE (not upsert) to work with RLS self-link and star policies.
+  Future<void> _upsertSupabaseUsersTable() async {
+    try {
+      final supabaseUser = Supabase.instance.client.auth.currentUser;
+      if (supabaseUser == null) {
+        debugPrint('⚠️ Users table sync: No authenticated Supabase user');
+        return;
+      }
+
+      final localUser = await _db.usersDao.getUserById(widget.userData.id);
+      if (localUser == null) {
+        debugPrint('⚠️ Users table sync: Local user ${widget.userData.id} not found');
+        return;
+      }
+
+      final role = await _db.rolesDao.getRoleById(widget.userData.roleId);
+      final roleCloudId = role?.cloudId;
+      final orgCloudId = widget.userData.organizationCloudId;
+      final userCloudId = widget.userData.cloudId ?? supabaseUser.id;
+      final now = DateTime.now().toUtc().toIso8601String();
+
+      debugPrint('📤 Supabase users table update:');
+      debugPrint('   cloud_id=$userCloudId');
+      debugPrint('   auth.uid=${supabaseUser.id}');
+      debugPrint('   auth.email=${supabaseUser.email}');
+      debugPrint('   local email=${localUser.email}');
+      debugPrint('   username=${localUser.username}');
+      debugPrint('   org_cloud_id=$orgCloudId');
+      debugPrint('   role_cloud_id=$roleCloudId');
+
+      if (orgCloudId == null) {
+        debugPrint('⚠️ Users table sync: organization cloud_id is null, aborting');
+        return;
+      }
+      if (roleCloudId == null) {
+        debugPrint('⚠️ Users table sync: role cloud_id is null, aborting');
+        return;
+      }
+
+      final updateData = {
+        'auth_user_id': supabaseUser.id,
+        'email': localUser.email,
+        'username': localUser.username,
+        'password': localUser.password,
+        'phone': localUser.phone,
+        'full_name': localUser.fullName,
+        'organization_id': orgCloudId,
+        'role_id': roleCloudId,
+        'is_active': localUser.isActive,
+        'last_updated': now,
+      };
+
+      // Primary: update by auth_user_id (most reliable — links local to cloud)
+      // Local cloud_id may differ from Supabase cloud_id, but auth_user_id
+      // always matches supabaseUser.id
+      final result = await Supabase.instance.client
+          .from('users')
+          .update(updateData)
+          .eq('auth_user_id', supabaseUser.id)
+          .select();
+
+      if (result.isNotEmpty) {
+        debugPrint('✅ Supabase users table updated (by auth_user_id)');
+        // Sync the real cloud_id back to local DB if they differ
+        final realCloudId = result.first['cloud_id'] as String?;
+        if (realCloudId != null && realCloudId != userCloudId) {
+          debugPrint('   Fixing local cloud_id: $userCloudId → $realCloudId');
+          await (_db.update(_db.users)
+                ..where((t) => t.id.equals(widget.userData.id)))
+              .write(UsersCompanion(cloudId: Value(realCloudId)));
+        }
+        return;
+      }
+
+      // Fallback: update by email match (self-link policy)
+      debugPrint('   auth_user_id update matched 0 rows, trying email match...');
+      final emailResult = await Supabase.instance.client
+          .from('users')
+          .update(updateData)
+          .eq('email', supabaseUser.email ?? '')
+          .select();
+
+      if (emailResult.isNotEmpty) {
+        debugPrint('✅ Supabase users table updated (by email)');
+        final realCloudId = emailResult.first['cloud_id'] as String?;
+        if (realCloudId != null && realCloudId != userCloudId) {
+          debugPrint('   Fixing local cloud_id: $userCloudId → $realCloudId');
+          await (_db.update(_db.users)
+                ..where((t) => t.id.equals(widget.userData.id)))
+              .write(UsersCompanion(cloudId: Value(realCloudId)));
+        }
+        return;
+      }
+
+      // Both failed
+      debugPrint('⚠️ Supabase users table: no row matched auth_user_id or email');
+      debugPrint('   auth_user_id=${supabaseUser.id}, email=${supabaseUser.email}');
+    } catch (e) {
+      debugPrint('⚠️ Supabase users table update failed: $e');
     }
   }
 
@@ -592,7 +702,6 @@ class _SettingsEditAccountPageState extends State<SettingsEditAccountPage> {
               const SizedBox(height: 24),
               
               Row(
-                key: _passwordSectionKey,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
@@ -615,6 +724,7 @@ class _SettingsEditAccountPageState extends State<SettingsEditAccountPage> {
               if (_isChangingPassword) ...[
                 const SizedBox(height: 16),
                 _buildPasswordField(
+                  key: _passwordFieldsKey,
                   label: 'Current Password',
                   controller: _currentPasswordController,
                   obscureText: _obscureCurrentPassword,
@@ -860,6 +970,7 @@ class _SettingsEditAccountPageState extends State<SettingsEditAccountPage> {
                         
                         if (_isChangingPassword) ...[                          const SizedBox(height: 24),
                           _buildPasswordField(
+                            key: _passwordFieldsKey,
                             label: 'Current Password',
                             controller: _currentPasswordController,
                             obscureText: _obscureCurrentPassword,
@@ -1191,12 +1302,14 @@ class _SettingsEditAccountPageState extends State<SettingsEditAccountPage> {
 
   /// Build password field with show/hide toggle
   Widget _buildPasswordField({
+    Key? key,
     required String label,
     required TextEditingController controller,
     required bool obscureText,
     required VoidCallback onToggleObscure,
   }) {
     return Column(
+      key: key,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
