@@ -1,4 +1,5 @@
 // lib/screens/home/home_screen_controller.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
@@ -13,6 +14,7 @@ class CommissaryHomeScreenController {
   final UserData signedInUser;
 
   late ConnectivityService _connectivityService;
+  StreamSubscription<bool>? _connectivitySubscription;
 
   Widget? currentPage;
   int selectedIndex = 0;
@@ -36,10 +38,12 @@ class CommissaryHomeScreenController {
 
   void _initConnectivity() {
     _connectivityService = ConnectivityService();
-    _connectivityService.connectionStream.listen((online) {
-      isOnline = online;
-      syncStatus = online ? SyncStatus.synced : SyncStatus.idle;
-      onStateChanged();
+    _connectivitySubscription = _connectivityService.connectionStream.listen((online) {
+      if (isOnline != online) {
+        isOnline = online;
+        syncStatus = online ? SyncStatus.synced : SyncStatus.idle;
+        onStateChanged();
+      }
     });
   }
 
@@ -49,6 +53,7 @@ class CommissaryHomeScreenController {
   }
 
   void dispose() {
+    _connectivitySubscription?.cancel();
     _connectivityService.dispose();
   }
 

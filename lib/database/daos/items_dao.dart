@@ -519,7 +519,19 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudItems,
   ) async {
+    if (cloudItems.isEmpty) return;
     try {
+      // Pre-fetch existing cloud_id → local id in one query to avoid N SELECTs
+      final existingMap = <String, int>{};
+      final existingRows = await (selectOnly(items)
+            ..addColumns([items.id, items.cloudId]))
+          .get();
+      for (final row in existingRows) {
+        final cid = row.read(items.cloudId);
+        final lid = row.read(items.id);
+        if (cid != null && lid != null) existingMap[cid] = lid;
+      }
+
       await db.transaction(() async {
         for (final cloudItem in cloudItems) {
           // Support both camelCase (from toLocalFormat) and snake_case (raw cloud) keys
@@ -534,10 +546,11 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
               cloudItem['cost_price'] ??
               cloudItem['cost'];
 
+          final _batchCloudId =
+              (cloudItem['cloudId'] ?? cloudItem['cloud_id'])?.toString() ?? '';
           await upsertFromCloud(
-            cloudId:
-                (cloudItem['cloudId'] ?? cloudItem['cloud_id'])?.toString() ??
-                '',
+            cloudId: _batchCloudId,
+            existingId: existingMap[_batchCloudId],
             name: (cloudItem['name'] as String?) ?? 'Unknown Item',
             organizationId:
                 cloudItem['organizationId'] ??
@@ -611,12 +624,15 @@ class ItemsDao extends DatabaseAccessor<AppDatabase> with _$ItemsDaoMixin {
     required DateTime createdAt,
     required DateTime lastUpdated,
     required bool isDeleted,
+    // Batch hint — when provided by upsertBatchFromCloud, skips the DB lookup
+    int? existingId,
   }) async {
     try {
-      // First check if item exists by cloud_id
-      final existing = await getItemByCloudId(cloudId);
+      // First check if item exists by cloud_id (skip DB query if hint is provided)
+      final existing = existingId != null ? null : await getItemByCloudId(cloudId);
+      final resolvedId = existingId ?? existing?.id;
 
-      if (existing != null) {
+      if (resolvedId != null) {
         // Update existing item
         await (update(items)..where((t) => t.cloudId.equals(cloudId))).write(
           ItemsCompanion(

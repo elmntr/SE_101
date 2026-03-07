@@ -3,6 +3,19 @@
 import '../table_sync_descriptor.dart';
 import '../sync_conflict.dart';
 
+/// Safely coerce a cloud value to int.
+/// Handles: int, double (truncated), numeric String, null → null.
+dynamic _coerceInt(dynamic v) {
+  if (v == null) return null;
+  if (v is int) return v;
+  if (v is double) return v.toInt();
+  if (v is String) {
+    final parsed = int.tryParse(v) ?? double.tryParse(v)?.toInt();
+    return parsed;
+  }
+  return null;
+}
+
 /// Descriptor for StockReplenishmentRequests table sync
 /// 
 /// Tier 4: Depends on Organizations, Items, Users
@@ -120,12 +133,22 @@ final changeRequestsDescriptor = TableSyncDescriptor(
   
   fieldMappings: [
     FieldMapping.simple('changeType', 'change_type'),
-    FieldMapping.simple('quantity', 'quantity'),
+    FieldMapping(
+      localField: 'quantity',
+      cloudField: 'quantity',
+      fromCloud: _coerceInt,
+      toCloud: (v) => v,
+    ),
     FieldMapping.simple('status', 'status'),
     FieldMapping.dateTime('requestedAt', 'requested_at'),
     FieldMapping.dateTime('submittedAt', 'submitted_at'),
     FieldMapping.dateTime('reviewedAt', 'reviewed_at'),
-    FieldMapping.simple('originalStock', 'original_stock'),
+    FieldMapping(
+      localField: 'originalStock',
+      cloudField: 'original_stock',
+      fromCloud: _coerceInt,
+      toCloud: (v) => v,
+    ),
     FieldMapping.simple('reason', 'reason'),
     FieldMapping.simple('reviewNotes', 'reviewer_notes'),
     FieldMapping.boolean('isDeleted', 'is_deleted'),

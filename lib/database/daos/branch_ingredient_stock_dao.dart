@@ -256,6 +256,11 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
   // SYNC OPERATIONS
   // ═══════════════════════════════════════════════════════════════════════════
 
+  /// Get all records (including soft-deleted) for UUID cache building
+  Future<List<BranchIngredientStockData>> getAllBranchIngredientStocks() {
+    return select(branchIngredientStock).get();
+  }
+
   /// Get unsynced stock records
   Future<List<BranchIngredientStockData>> getUnsyncedStocks({
     int limit = 100,
@@ -297,22 +302,26 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
 
   /// Upsert from cloud (for sync)
   /// Supports both camelCase (from toLocalFormat) and snake_case keys
-  Future<void> upsertFromCloud(Map<String, dynamic> data) async {
+  Future<void> upsertFromCloud(Map<String, dynamic> data, {int? existingId}) async {
     final cloudId = (data['cloudId'] ?? data['cloud_id']) as String;
-
-    var existing = await (select(branchIngredientStock)
-          ..where((t) => t.cloudId.equals(cloudId)))
-        .getSingleOrNull();
-
     final organizationId = data['organizationId'] ?? data['organization_id'];
     final ingredientId = data['ingredientId'] ?? data['ingredient_id'];
 
-    // If not found by cloudId, try business key (organizationId, ingredientId)
-    if (existing == null && organizationId != null && ingredientId != null) {
-      existing = await (select(branchIngredientStock)
-            ..where((t) => t.organizationId.equals(organizationId as int))
-            ..where((t) => t.ingredientId.equals(ingredientId as int)))
+    // Use pre-fetched hint if available; otherwise query by cloudId then business key
+    int? resolvedId = existingId;
+    if (resolvedId == null) {
+      var existing = await (select(branchIngredientStock)
+            ..where((t) => t.cloudId.equals(cloudId)))
           .getSingleOrNull();
+
+      // If not found by cloudId, try business key (organizationId, ingredientId)
+      if (existing == null && organizationId != null && ingredientId != null) {
+        existing = await (select(branchIngredientStock)
+              ..where((t) => t.organizationId.equals(organizationId as int))
+              ..where((t) => t.ingredientId.equals(ingredientId as int)))
+            .getSingleOrNull();
+      }
+      resolvedId = existing?.id;
     }
 
     final quantityVal = data['quantity'] ?? data['stock'];
@@ -335,8 +344,8 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
       cloudId: Value(cloudId),
     );
 
-    if (existing != null) {
-      final existingId = existing.id;
+    if (resolvedId != null) {
+      final existingId = resolvedId;
       await (update(branchIngredientStock)
             ..where((t) => t.id.equals(existingId)))
           .write(companion);
@@ -347,8 +356,37 @@ class BranchIngredientStockDao extends DatabaseAccessor<AppDatabase>
 
   /// Batch upsert from cloud
   Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> dataList) async {
+    if (dataList.isEmpty) return;
+    // Pre-fetch existing records by cloudId and business key in one query
+    final byCloudId = <String, int>{};
+    final byBusinessKey = <(int, int), int>{};
+    final existingRows = await (selectOnly(branchIngredientStock)
+          ..addColumns([
+            branchIngredientStock.id,
+            branchIngredientStock.cloudId,
+            branchIngredientStock.organizationId,
+            branchIngredientStock.ingredientId,
+          ]))
+        .get();
+    for (final row in existingRows) {
+      final lid = row.read(branchIngredientStock.id);
+      if (lid == null) continue;
+      final cid = row.read(branchIngredientStock.cloudId);
+      if (cid != null) byCloudId[cid] = lid;
+      final orgId = row.read(branchIngredientStock.organizationId);
+      final ingId = row.read(branchIngredientStock.ingredientId);
+      if (orgId != null && ingId != null) byBusinessKey[(orgId, ingId)] = lid;
+    }
+
     for (final data in dataList) {
-      await upsertFromCloud(data);
+      final cloudId = (data['cloudId'] ?? data['cloud_id'])?.toString();
+      final orgId = data['organizationId'] ?? data['organization_id'];
+      final ingId = data['ingredientId'] ?? data['ingredient_id'];
+      final existingId = (cloudId != null ? byCloudId[cloudId] : null) ??
+          (orgId != null && ingId != null
+              ? byBusinessKey[(orgId as int, ingId as int)]
+              : null);
+      await upsertFromCloud(data, existingId: existingId);
     }
   }
 }

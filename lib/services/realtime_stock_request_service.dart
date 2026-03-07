@@ -242,6 +242,8 @@ class RealtimeStockRequestService {
     
     _pollingTimer?.cancel();
     _pollingTimer = null;
+    _disconnectionRetryTimer?.cancel();
+    _disconnectionRetryTimer = null;
     _cancelRealtimeRetry();
     
     _updateStatus(RealtimeConnectionStatus.disconnected);
@@ -252,9 +254,13 @@ class RealtimeStockRequestService {
     if (!_isPaused) return;
     _isPaused = false;
     
-    AppLogger.websocket('▶️ RESUME — restarting listener (screens: $_activeScreenCount)');
+    AppLogger.websocket('▶️ RESUME — restarting listener (screens: $_activeScreenCount, commissary=$_isCommissaryMode)');
     
-    if (_activeScreenCount > 0 && _franchiseeCloudId != null) {
+    final hasIdentity = _isCommissaryMode
+        ? _commissaryCloudId != null
+        : _franchiseeCloudId != null;
+
+    if (_activeScreenCount > 0 && hasIdentity) {
       await _startListening();
     }
   }

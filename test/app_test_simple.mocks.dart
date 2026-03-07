@@ -1790,6 +1790,45 @@ class MockSupabaseSyncServiceV2 extends _i1.Mock
           as _i19.Future<void>);
 
   @override
+  _i19.Future<void> directUpdateRequestStatus({
+    required String? requestCloudId,
+    required String? status,
+    required String? reviewerCloudId,
+    String? notes,
+    required DateTime? reviewedAt,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#directUpdateRequestStatus, [], {
+              #requestCloudId: requestCloudId,
+              #status: status,
+              #reviewerCloudId: reviewerCloudId,
+              #notes: notes,
+              #reviewedAt: reviewedAt,
+            }),
+            returnValue: _i19.Future<void>.value(),
+            returnValueForMissingStub: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
+
+  @override
+  _i19.Future<void> pushReplenishmentOutcomeNow() =>
+      (super.noSuchMethod(
+            Invocation.method(#pushReplenishmentOutcomeNow, []),
+            returnValue: _i19.Future<void>.value(),
+            returnValueForMissingStub: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
+
+  @override
+  _i19.Future<void> forceSyncAll() =>
+      (super.noSuchMethod(
+            Invocation.method(#forceSyncAll, []),
+            returnValue: _i19.Future<void>.value(),
+            returnValueForMissingStub: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
+
+  @override
   _i19.Future<void> syncItemsOnly() =>
       (super.noSuchMethod(
             Invocation.method(#syncItemsOnly, []),
@@ -2862,6 +2901,15 @@ class MockRealtimeStockRequestService extends _i1.Mock
     Invocation.setter(#syncCallback, value),
     returnValueForMissingStub: null,
   );
+
+  @override
+  _i19.Future<void> attachAsCommissary(String? commissaryCloudId) =>
+      (super.noSuchMethod(
+            Invocation.method(#attachAsCommissary, [commissaryCloudId]),
+            returnValue: _i19.Future<void>.value(),
+            returnValueForMissingStub: _i19.Future<void>.value(),
+          )
+          as _i19.Future<void>);
 
   @override
   _i19.Future<void> attach(String? franchiseeCloudId) =>

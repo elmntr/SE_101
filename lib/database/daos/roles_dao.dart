@@ -343,13 +343,15 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudRoles,
   ) async {
+    if (cloudRoles.isEmpty) return;
     try {
       await db.transaction(() async {
         for (final cloudRole in cloudRoles) {
           // Support both camelCase (from toLocalFormat) and snake_case (raw cloud) keys
+          final roleName = (cloudRole['name'] ?? 'Unknown Role') as String;
           await upsertFromCloud(
             id: cloudRole['localId'] ?? cloudRole['local_id'] ?? 0,
-            name: cloudRole['name'] ?? 'Unknown Role',
+            name: roleName,
             description: cloudRole['description'],
             canViewInventory:
                 cloudRole['canViewInventory'] ??
@@ -434,15 +436,35 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
     required DateTime createdAt,
     required DateTime lastUpdated,
     required String cloudId,
+    // Kept for API compatibility; no longer used (atomic upsert needs no hint)
+    int? existingId,
   }) async {
     try {
-      // ✅ First, try to find existing role by name
-      final existingRole = await getRoleByName(name);
-
-      if (existingRole != null) {
-        // ✅ Update existing role instead of inserting
-        await (update(roles)..where((t) => t.id.equals(existingRole.id))).write(
-          RolesCompanion(
+      // Atomic INSERT … ON CONFLICT(name) DO UPDATE — eliminates the
+      // SELECT-then-INSERT TOCTOU race between the auth service seeding path
+      // and the sync engine's upsertBatchFromCloud path.
+      await into(roles).insert(
+        RolesCompanion.insert(
+          name: name,
+          description: Value(description),
+          canViewInventory: Value(canViewInventory),
+          canAddInventory: Value(canAddInventory),
+          canEditInventory: Value(canEditInventory),
+          canDeleteInventory: Value(canDeleteInventory),
+          canViewReports: Value(canViewReports),
+          canExportData: Value(canExportData),
+          canAccessSettings: Value(canAccessSettings),
+          canManageEmployees: Value(canManageEmployees),
+          canManageRoles: Value(canManageRoles),
+          isSystemRole: Value(isSystemRole),
+          isActive: Value(isActive),
+          createdAt: Value(createdAt),
+          lastUpdated: Value(lastUpdated),
+          isSynced: const Value(true),
+          cloudId: Value(cloudId),
+        ),
+        onConflict: DoUpdate(
+          (old) => RolesCompanion(
             description: Value(description),
             canViewInventory: Value(canViewInventory),
             canAddInventory: Value(canAddInventory),
@@ -456,34 +478,14 @@ class RolesDao extends DatabaseAccessor<AppDatabase> with _$RolesDaoMixin {
             isSystemRole: Value(isSystemRole),
             isActive: Value(isActive),
             lastUpdated: Value(lastUpdated),
-            isSynced: Value(true),
+            isSynced: const Value(true),
             cloudId: Value(cloudId),
           ),
-        );
-      } else {
-        // ✅ Insert new role
-        await into(roles).insert(
-          RolesCompanion.insert(
-            name: name,
-            description: Value(description),
-            canViewInventory: Value(canViewInventory),
-            canAddInventory: Value(canAddInventory),
-            canEditInventory: Value(canEditInventory),
-            canDeleteInventory: Value(canDeleteInventory),
-            canViewReports: Value(canViewReports),
-            canExportData: Value(canExportData),
-            canAccessSettings: Value(canAccessSettings),
-            canManageEmployees: Value(canManageEmployees),
-            canManageRoles: Value(canManageRoles),
-            isSystemRole: Value(isSystemRole),
-            isActive: Value(isActive),
-            createdAt: Value(createdAt),
-            lastUpdated: Value(lastUpdated),
-            isSynced: Value(true),
-            cloudId: Value(cloudId),
-          ),
-        );
-      }
+          // Target the name UNIQUE constraint (not the PK) so the existing
+          // row's auto-increment id is preserved — FK references stay valid.
+          target: [roles.name],
+        ),
+      );
     } catch (e) {
       //print('❌ Error upserting role from cloud: $e');
       rethrow;

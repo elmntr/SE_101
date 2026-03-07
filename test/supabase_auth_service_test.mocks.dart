@@ -3196,7 +3196,6 @@ class MockUsersDao extends _i1.Mock implements _i8.UsersDao {
     required int? id,
     required String? email,
     required String? username,
-    required String? password,
     String? phone,
     required int? organizationId,
     required int? roleId,
@@ -3205,13 +3204,13 @@ class MockUsersDao extends _i1.Mock implements _i8.UsersDao {
     required DateTime? createdAt,
     required DateTime? lastUpdated,
     required String? cloudId,
+    int? existingId,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#upsertFromCloud, [], {
               #id: id,
               #email: email,
               #username: username,
-              #password: password,
               #phone: phone,
               #organizationId: organizationId,
               #roleId: roleId,
@@ -3220,6 +3219,7 @@ class MockUsersDao extends _i1.Mock implements _i8.UsersDao {
               #createdAt: createdAt,
               #lastUpdated: lastUpdated,
               #cloudId: cloudId,
+              #existingId: existingId,
             }),
             returnValue: _i19.Future<void>.value(),
             returnValueForMissingStub: _i19.Future<void>.value(),
@@ -5195,6 +5195,7 @@ class MockRolesDao extends _i1.Mock implements _i7.RolesDao {
     required DateTime? createdAt,
     required DateTime? lastUpdated,
     required String? cloudId,
+    int? existingId,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#upsertFromCloud, [], {
@@ -5215,6 +5216,7 @@ class MockRolesDao extends _i1.Mock implements _i7.RolesDao {
               #createdAt: createdAt,
               #lastUpdated: lastUpdated,
               #cloudId: cloudId,
+              #existingId: existingId,
             }),
             returnValue: _i19.Future<void>.value(),
             returnValueForMissingStub: _i19.Future<void>.value(),

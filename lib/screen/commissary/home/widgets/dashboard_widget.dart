@@ -1,18 +1,83 @@
 // lib/screens/home/widgets/dashboard_widget.dart
 import 'package:flutter/material.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
 
 /// Dashboard widget shown as the home/landing page of the commissary app.
-/// Displays overview stats and quick action buttons.
-class DashboardWidget extends StatelessWidget {
+/// Displays live overview stats (loaded from local DB) and quick action buttons.
+class DashboardWidget extends StatefulWidget {
   final String username;
+  final int organizationId;
   final void Function(int) onSwitchPage;
 
   const DashboardWidget({
     super.key,
     required this.username,
+    required this.organizationId,
     required this.onSwitchPage,
   });
+
+  @override
+  State<DashboardWidget> createState() => _DashboardWidgetState();
+}
+
+class _DashboardWidgetState extends State<DashboardWidget> {
+  bool _isLoading = true;
+  int _activeBranches = 0;
+  int _totalItems = 0;
+  int _pendingRequests = 0;
+  int _lowStockAlerts = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+    syncCompleteNotifier.addListener(_onSyncComplete);
+  }
+
+  @override
+  void dispose() {
+    syncCompleteNotifier.removeListener(_onSyncComplete);
+    super.dispose();
+  }
+
+  void _onSyncComplete() {
+    if (mounted) _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final db = database;
+      final results = await Future.wait([
+        db.organizationsDao.getOrganizationCount(
+          type: 'franchisee',
+          isActive: true,
+          parentCommissaryId: widget.organizationId,
+        ),
+        db.itemsDao.getItemCount(),
+        db.stockReplenishmentRequestsDao.getRequestCount(
+          status: 'pending',
+          commissaryId: widget.organizationId,
+        ),
+        db.branchItemStockDao.getLowStockCountForCommissary(
+          widget.organizationId,
+        ),
+      ]);
+      if (mounted) {
+        setState(() {
+          _activeBranches = results[0];
+          _totalItems = results[1];
+          _pendingRequests = results[2];
+          _lowStockAlerts = results[3];
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +88,7 @@ class DashboardWidget extends StatelessWidget {
         children: [
           // Welcome message
           Text(
-            'Welcome back, $username!',
+            'Welcome back, ${widget.username}!',
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -60,25 +125,25 @@ class DashboardWidget extends StatelessWidget {
                 children: [
                   _buildStatCard(
                     title: 'Active Branches',
-                    value: '0',
+                    value: _activeBranches,
                     icon: Icons.store,
                     color: Colors.blue,
                   ),
                   _buildStatCard(
                     title: 'Total Items',
-                    value: '0',
+                    value: _totalItems,
                     icon: Icons.inventory,
                     color: Colors.green,
                   ),
                   _buildStatCard(
                     title: 'Pending Requests',
-                    value: '0',
+                    value: _pendingRequests,
                     icon: Icons.pending_actions,
                     color: Colors.orange,
                   ),
                   _buildStatCard(
                     title: 'Low Stock Alerts',
-                    value: '0',
+                    value: _lowStockAlerts,
                     icon: Icons.warning,
                     color: Colors.red,
                   ),
@@ -115,22 +180,22 @@ class DashboardWidget extends StatelessWidget {
                   _buildQuickAction(
                     icon: Icons.add_business,
                     label: 'Add Branch',
-                    onTap: () => onSwitchPage(1),
+                    onTap: () => widget.onSwitchPage(1),
                   ),
                   _buildQuickAction(
                     icon: Icons.add_box,
                     label: 'Add Item',
-                    onTap: () => onSwitchPage(2),
+                    onTap: () => widget.onSwitchPage(2),
                   ),
                   _buildQuickAction(
                     icon: Icons.person_add,
                     label: 'Add Branch Admin',
-                    onTap: () => onSwitchPage(1),
+                    onTap: () => widget.onSwitchPage(1),
                   ),
                   _buildQuickAction(
                     icon: Icons.assessment,
                     label: 'View Reports',
-                    onTap: () => onSwitchPage(4),
+                    onTap: () => widget.onSwitchPage(4),
                   ),
                 ],
               );
@@ -143,7 +208,7 @@ class DashboardWidget extends StatelessWidget {
 
   Widget _buildStatCard({
     required String title,
-    required String value,
+    required int value,
     required IconData icon,
     required Color color,
   }) {
@@ -180,14 +245,20 @@ class DashboardWidget extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: fontAll,
-                ),
-              ),
+              _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      '$value',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: fontAll,
+                      ),
+                    ),
               Text(
                 title,
                 style: const TextStyle(

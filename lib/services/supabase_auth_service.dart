@@ -153,6 +153,7 @@ class SupabaseAuthService {
   // Current session state
   UserData? _currentUser;
   StreamController<UserData?>? _authStateController;
+  StreamSubscription<AuthState>? _authListenerSubscription;
   
   // Auth lifecycle state
   AuthLifecycleState _lifecycleState = AuthLifecycleState.bootstrapping;
@@ -189,7 +190,7 @@ class SupabaseAuthService {
 
   /// Initialize auth state listener
   void _initAuthListener() {
-    _supabase.auth.onAuthStateChange.listen((data) async {
+    _authListenerSubscription = _supabase.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
       final session = data.session;
 
@@ -347,12 +348,13 @@ class SupabaseAuthService {
     try {
       final users = await _db.usersDao.getAllUsers();
 
-      // Priority 1: Match by cloudId (Supabase auth user ID) first
+      // Priority 1: Match by cloudId — handles both legacy (auth UID stored
+      // as cloudId) and new (actual users.cloud_id) paths.
       for (final user in users) {
         if (!user.isActive) continue;
 
         if (user.cloudId != null && user.cloudId == authUser.id) {
-          _logAuth('Found user by cloudId: ${user.username}');
+          _logAuth('Found user by cloudId (auth UID match): ${user.username}');
           return await _buildUserData(user, authUser);
         }
       }
@@ -476,11 +478,58 @@ class SupabaseAuthService {
 
       _logAuth('Seeding org/role/user to local DB...');
 
-      // Upsert organization
+      // Resolve parentCommissaryId: for franchisee orgs the cloud record holds
+      // parent_commissary_id as a UUID.  We need the *local* integer ID so
+      // _loadCommissaryId() in the products view can navigate up to the parent.
+      final parentCloudId = orgResponse['parent_commissary_id'] as String?;
+      int? parentLocalId;
+      if (parentCloudId != null) {
+        // Check local DB first
+        var parentOrg = await _db.organizationsDao.getOrganizationByCloudId(parentCloudId);
+
+        // If not in local DB yet, fetch it from cloud and seed it
+        if (parentOrg == null) {
+          _logAuth('Parent commissary not in local DB, fetching from cloud: $parentCloudId');
+          final parentResponse = await _supabase
+              .from('organizations')
+              .select()
+              .eq('cloud_id', parentCloudId)
+              .maybeSingle();
+
+          if (parentResponse != null) {
+            await _db.organizationsDao.upsertFromCloud(
+              id: (parentResponse['local_id'] as int?) ?? 0,
+              name: parentResponse['name'] as String,
+              type: parentResponse['type'] as String,
+              parentCommissaryId: null,
+              contactPerson: parentResponse['contact_person'] as String?,
+              phone: parentResponse['phone'] as String?,
+              email: parentResponse['email'] as String?,
+              address: parentResponse['address'] as String?,
+              isActive: (parentResponse['is_active'] as bool?) ?? true,
+              createdAt: parseTs(parentResponse['created_at']),
+              lastUpdated: parseTs(parentResponse['last_updated']),
+              cloudId: parentCloudId,
+              hqAccessCodeHash: parentResponse['hq_access_code_hash'] as String?,
+            );
+            parentOrg = await _db.organizationsDao.getOrganizationByCloudId(parentCloudId);
+          }
+        }
+
+        parentLocalId = parentOrg?.id;
+        if (parentLocalId != null) {
+          _logAuth('Resolved parent commissary local ID: $parentLocalId');
+        } else {
+          _logAuth('⚠️ Could not resolve parent commissary for cloud_id: $parentCloudId');
+        }
+      }
+
+      // Upsert organization (with resolved parentCommissaryId)
       await _db.organizationsDao.upsertFromCloud(
         id: (orgResponse['local_id'] as int?) ?? 0,
         name: orgResponse['name'] as String,
         type: orgResponse['type'] as String,
+        parentCommissaryId: parentLocalId,
         contactPerson: orgResponse['contact_person'] as String?,
         phone: orgResponse['phone'] as String?,
         email: orgResponse['email'] as String?,
@@ -522,12 +571,14 @@ class SupabaseAuthService {
         return null;
       }
 
-      // Upsert user (store authUser.id as cloudId so future lookups by cloudId work)
+      // Upsert user — store the actual Supabase users.cloud_id (not the auth
+      // UID) so that the sync engine's UUID cache maps correctly and
+      // subsequent user pulls don't create duplicates.
+      final userCloudId = userResponse['cloud_id'] as String;
       await _db.usersDao.upsertFromCloud(
         id: (userResponse['local_id'] as int?) ?? 0,
         email: userResponse['email'] as String,
         username: userResponse['username'] as String,
-        password: userResponse['password'] as String,
         phone: userResponse['phone'] as String?,
         organizationId: localOrg.id,
         roleId: localRole.id,
@@ -535,7 +586,7 @@ class SupabaseAuthService {
         isActive: (userResponse['is_active'] as bool?) ?? true,
         createdAt: parseTs(userResponse['created_at']),
         lastUpdated: parseTs(userResponse['last_updated']),
-        cloudId: authUser.id, // auth UID stored as cloudId for future matching
+        cloudId: userCloudId,
       );
 
       final localUser = await _db.usersDao.getUserByEmail(userResponse['email'] as String);
@@ -1812,6 +1863,7 @@ class SupabaseAuthService {
 
   /// Dispose resources
   void dispose() {
+    _authListenerSubscription?.cancel();
     _authStateController?.close();
     _lifecycleController.close();
   }

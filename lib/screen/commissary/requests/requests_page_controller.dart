@@ -42,14 +42,6 @@ class RequestsPageController {
             'RequestsPageController: attaching realtime cloudId=$commissaryCloudId',
           );
           await realtimeStockRequestService.attach(commissaryCloudId!);
-          realtimeStockRequestService.statusStream.listen((status) {
-            debugPrint('RequestsPageController: realtime status=$status');
-          });
-          realtimeStockRequestService.eventStream.listen((event) {
-            debugPrint(
-              'RequestsPageController: realtime event cloudId=${event.cloudId} status=${event.newStatus}',
-            );
-          });
         }
       } catch (e) {
         debugPrint(

@@ -12,7 +12,6 @@ import '../database/app_database.dart';
 import '../utils/app_logger.dart';
 import '../app_globals.dart' show notifySyncComplete;
 import 'sync/sync.dart';
-import 'sync/descriptors/daily_sales_summary_descriptor.dart';
 
 /// Refactored Supabase Sync Service using generic SyncEngine
 /// 
@@ -210,8 +209,11 @@ class SupabaseSyncServiceV2 {
       onConnectivityChanged?.call(_isOnline);
 
       if (_isOnline) {
-        AppLogger.sync('📡 Network restored, triggering sync...');
-        syncAll();
+        AppLogger.sync('📡 Network restored, debouncing sync...');
+        // Debounce rapid connectivity events (WiFi reconnect often fires
+        // multiple times in quick succession).
+        _syncDebounceTimer?.cancel();
+        _syncDebounceTimer = Timer(_debounceDelay, () => syncAll());
       } else {
         AppLogger.sync('🔵 Network lost');
         onSyncStatusChanged?.call('Offline');
@@ -302,6 +304,13 @@ class SupabaseSyncServiceV2 {
       final sortedTiers = tierMap.keys.toList()..sort();
       
       for (final tier in sortedTiers) {
+        // Re-check auth before each tier to avoid wasted requests
+        if (!canSync) {
+          AppLogger.sync('🔒 Auth lost before tier $tier, aborting sync');
+          onSyncStatusChanged?.call('Not authenticated');
+          return;
+        }
+
         final tierFunctions = tierMap[tier] ?? [];
         if (tierFunctions.isEmpty) continue;
 
@@ -310,7 +319,7 @@ class SupabaseSyncServiceV2 {
         }
 
         // Execute all tables in this tier in parallel
-        await Future.wait(tierFunctions.map((fn) => fn()));
+        await Future.wait(tierFunctions.map((fn) => fn()), eagerError: true);
 
         // IMPORTANT: Rebuild caches after each tier so that subsequent tiers
         // can resolve foreign keys to records just pulled from this tier.
@@ -339,6 +348,19 @@ class SupabaseSyncServiceV2 {
       onSyncComplete?.call();
       notifySyncComplete();
 
+    } on SyncAuthException catch (e) {
+      AppLogger.sync('🔒 Auth error during sync: $e');
+      onSyncStatusChanged?.call('Session expired');
+      // Try to refresh the session once
+      try {
+        await supabase.auth.refreshSession();
+        AppLogger.sync('🔄 Session refreshed after auth error — next periodic sync will retry');
+      } catch (refreshError) {
+        AppLogger.sync('❌ Session refresh failed: $refreshError');
+        stopPeriodicSync();
+        onSyncError?.call('Session expired. Please sign in again.');
+        onSyncStatusChanged?.call('Not authenticated');
+      }
     } catch (e, stackTrace) {
       AppLogger.sync('❌ Sync failed: $e');
       //if (kDebugMode) print(stackTrace);
@@ -346,6 +368,7 @@ class SupabaseSyncServiceV2 {
       onSyncStatusChanged?.call('Sync failed');
     } finally {
       _isSyncing = false;
+      _syncCompleter?.complete();
       // Apply any context clear that was deferred because a sync was running.
       if (_pendingContextClear) {
         _pendingContextClear = false;
@@ -531,7 +554,7 @@ class SupabaseSyncServiceV2 {
         'id': user.id,
         'email': user.email,
         'username': user.username,
-        'password': user.password,
+        // password excluded — kept local-only for security
         'phone': user.phone,
         'organizationId': user.organizationId,
         'roleId': user.roleId,
@@ -804,14 +827,8 @@ class SupabaseSyncServiceV2 {
   /// Force a FULL sync of replenishment requests (ignores lastSuccessfulSync)
   /// Used by realtime service when it detects pending updates
   Future<void> forceFullSyncReplenishmentRequests() async {
-    // If syncAll() is already running it will pull replenishment requests as
-    // part of Tier 4 — no need to duplicate the work.
-    if (_isSyncing) {
-      AppLogger.sync('⏳ Sync already in progress, skipping force sync');
-      return;
-    }
-    AppLogger.sync('   📊 FORCE FULL Syncing ReplenishmentRequests...');
-    await _syncReplenishmentRequests(forceFullPull: true);
+    await _runGuardedSync('replenishment_requests_force',
+        () => _syncReplenishmentRequests(forceFullPull: true));
   }
 
   Future<void> _syncChangeRequests() async {
@@ -940,11 +957,9 @@ class SupabaseSyncServiceV2 {
         }
       }
 
-      final commissaries = await db.organizationsDao.getAllOrganizations(type: 'commissary');
-      if (commissaries.isNotEmpty) {
-        _parentCommissaryId = commissaries.first.id;
-        _parentCommissaryCloudId = commissaries.first.cloudId;
-      }
+      // No fallback — log the failure so it surfaces in diagnostics.
+      AppLogger.sync('   ⚠️ Franchisee parent commissary could not be resolved. '
+          'Ensure the organization has a valid parent_commissary_id.');
     } catch (e) {
       AppLogger.sync('   ⚠️ Failed to reload parent commissary: $e');
     }
@@ -1105,21 +1120,9 @@ class SupabaseSyncServiceV2 {
   }
 
   Future<void> syncItemsOnly() async {
-    if (_isSyncing) return;
-
-    _isSyncing = true;
-    onSyncStatusChanged?.call('Syncing products...');
-
-    try {
+    await _runGuardedSync('products', () async {
       await _syncItems();
-      onSyncStatusChanged?.call('Synced');
-      notifySyncComplete();
-    } catch (e) {
-      onSyncError?.call('Quick sync failed: $e');
-      onSyncStatusChanged?.call('Sync failed');
-    } finally {
-      _isSyncing = false;
-    }
+    });
   }
 
   // ============================================================================
@@ -1127,70 +1130,81 @@ class SupabaseSyncServiceV2 {
   // These allow screens/helpers to trigger single-table syncs
   // ============================================================================
 
+  /// Acquire the same sync lock used by [syncAll] and run [body].
+  /// If a sync is already in flight, the call is dropped.
+  Future<void> _runGuardedSync(String label, Future<void> Function() body) async {
+    if (_syncCompleter != null && !_syncCompleter!.isCompleted) return;
+    if (_isSyncing) return;
+
+    _isSyncing = true;
+    _syncCompleter = Completer<void>();
+    try {
+      await body();
+    } catch (e) {
+      onSyncError?.call('$label sync failed: $e');
+    } finally {
+      _isSyncing = false;
+      _syncCompleter?.complete();
+      if (_pendingContextClear) {
+        _pendingContextClear = false;
+        clearOrganizationContext();
+      }
+    }
+  }
+
   /// Sync organizations table only
   Future<void> syncOrganizations() async {
-    if (_isSyncing) return;
-    await _syncOrganizations();
+    await _runGuardedSync('organizations', _syncOrganizations);
   }
 
   /// Sync roles table only
   Future<void> syncRoles() async {
-    if (_isSyncing) return;
-    await _syncRoles();
+    await _runGuardedSync('roles', _syncRoles);
   }
 
   /// Sync users table only
   Future<void> syncUsers() async {
-    if (_isSyncing) return;
-    await _syncUsers();
+    await _runGuardedSync('users', _syncUsers);
   }
 
   /// Sync items table only
   Future<void> syncItems() async {
-    if (_isSyncing) return;
-    await _syncItems();
+    await _runGuardedSync('items', _syncItems);
   }
 
   /// Sync ingredients table only
   Future<void> syncIngredients() async {
-    if (_isSyncing) return;
-    await _syncIngredients();
+    await _runGuardedSync('ingredients', _syncIngredients);
   }
 
   /// Sync recipe ingredients table only
   Future<void> syncRecipeIngredients() async {
-    if (_isSyncing) return;
-    await _syncRecipeIngredients();
+    await _runGuardedSync('recipe_ingredients', _syncRecipeIngredients);
   }
 
   /// Sync stock replenishment requests table only
   Future<void> syncStockReplenishmentRequests() async {
-    if (_isSyncing) return;
-    await _syncReplenishmentRequests();
+    await _runGuardedSync('replenishment_requests', () => _syncReplenishmentRequests());
   }
 
   /// Sync stock change requests table only
   Future<void> syncStockChangeRequests() async {
-    if (_isSyncing) return;
-    await _syncChangeRequests();
+    await _runGuardedSync('change_requests', _syncChangeRequests);
   }
 
   /// Sync branch item stock table only
   Future<void> syncBranchItemStock() async {
-    if (_isSyncing) return;
-    await _syncBranchItemStock();
+    await _runGuardedSync('branch_item_stock', _syncBranchItemStock);
   }
 
   /// Sync branch ingredient stock table only
   Future<void> syncBranchIngredientStock() async {
-    if (_isSyncing) return;
-    await _syncBranchIngredientStock();
+    await _runGuardedSync('branch_ingredient_stock', _syncBranchIngredientStock);
   }
 
   /// Sync daily sales summary table only
   Future<void> syncDailySalesSummary() async {
-    if (_isSyncing) return;
-    await _syncDailySalesSummary();
+    await _runGuardedSync('daily_sales_summary', _syncDailySalesSummary);
   }
 
   Future<Map<String, dynamic>> getSyncStatus() async {
@@ -1296,6 +1310,7 @@ class SupabaseSyncServiceV2 {
 
   void dispose() {
     _syncTimer?.cancel();
+    _syncDebounceTimer?.cancel();
     _connectivitySubscription?.cancel();
     _engine.clearCaches();
     AppLogger.sync('🛑 Sync service disposed');

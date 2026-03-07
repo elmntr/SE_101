@@ -1,5 +1,4 @@
 // lib/main.dart
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_size/window_size.dart';
@@ -28,8 +27,6 @@ final syncStatusNotifier = ValueNotifier<Map<String, dynamic>>({
   'is_online': true,
 });
 
-// Timer for periodic sync status updates (cancellable)
-Timer? _syncStatusTimer;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,26 +79,31 @@ void main() async {
     supabase: Supabase.instance.client,
     onConnectivityChanged: (isOnline) {
       AppLogger.connectivity(isOnline ? 'Online ✅' : 'Offline 📵');
-      syncStatusNotifier.value = {
-        ...syncStatusNotifier.value,
-        'is_online': isOnline,
-        'status': isOnline ? 'Online' : 'Offline',
-      };
+      final current = syncStatusNotifier.value;
+      final newStatus = isOnline ? 'Online' : 'Offline';
+      if (current['is_online'] != isOnline || current['status'] != newStatus) {
+        syncStatusNotifier.value = {
+          ...current,
+          'is_online': isOnline,
+          'status': newStatus,
+        };
+      }
     },
     onSyncStatusChanged: (status) {
       AppLogger.sync('Sync status: $status');
-      syncStatusNotifier.value = {
-        ...syncStatusNotifier.value,
-        'status': status,
-      };
+      final current = syncStatusNotifier.value;
+      if (current['status'] != status) {
+        syncStatusNotifier.value = {...current, 'status': status};
+      }
     },
     onSyncError: (error) {
       AppLogger.error('Sync error: $error');
-      syncStatusNotifier.value = {
-        ...syncStatusNotifier.value,
-        'status':
-            'Error: ${error.length > 30 ? error.substring(0, 30) : error}...',
-      };
+      final truncated =
+          'Error: ${error.length > 30 ? error.substring(0, 30) : error}...';
+      final current = syncStatusNotifier.value;
+      if (current['status'] != truncated) {
+        syncStatusNotifier.value = {...current, 'status': truncated};
+      }
     },
   );
 
@@ -154,15 +156,11 @@ void main() async {
       .then((_) {
         AppLogger.info('✅ Sync service initialized');
         AppLogger.websocket('🔌 SYNC SERVICE  initialized (from main.dart non-blocking)');
-        _updateSyncStatus();
       })
       .catchError((e) {
         AppLogger.warning('Sync service initialization failed: $e');
         AppLogger.info('📱 App will continue in offline mode');
       });
-
-  // Start periodic sync updates with cancellable timer
-  _startSyncStatusUpdates();
 
   // -------------------------------------------------------------
   // RUN APPLICATION
@@ -170,26 +168,6 @@ void main() async {
   runApp(const MyApp());
 }
 
-/// Update sync status periodically using a cancellable Timer
-void _startSyncStatusUpdates() {
-  _syncStatusTimer?.cancel();
-  _syncStatusTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-    await _updateSyncStatus();
-  });
-}
-
-/// Update the sync status notifier
-Future<void> _updateSyncStatus() async {
-  try {
-    // Check if initialized before accessing
-    if (AppGlobals.instance.isInitialized) {
-      final status = await syncService.getSyncStatus();
-      syncStatusNotifier.value = {...syncStatusNotifier.value, ...status};
-    }
-  } catch (e) {
-    AppLogger.error('Error updating sync status: $e');
-  }
-}
 
 Future<void> deleteOldDatabase() async {
   final dbFolder = await getApplicationDocumentsDirectory();

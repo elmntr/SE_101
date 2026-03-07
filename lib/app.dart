@@ -71,10 +71,36 @@ class MyApp extends StatefulWidget {
   }
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   NavigatorState get navigator => navigatorKey.currentState!;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!AppGlobals.instance.isInitialized) return;
+    final realtime = AppGlobals.instance.realtimeStockRequestService;
+
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      AppLogger.websocket('📱 APP LIFECYCLE → $state — pausing realtime');
+      realtime.pause();
+    } else if (state == AppLifecycleState.resumed) {
+      AppLogger.websocket('📱 APP LIFECYCLE → resumed — resuming realtime');
+      realtime.resume();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

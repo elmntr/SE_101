@@ -38,7 +38,7 @@ final usersDescriptor = TableSyncDescriptor(
   fieldMappings: [
     FieldMapping.simple('email', 'email'),
     FieldMapping.simple('username', 'username'),
-    FieldMapping.simple('password', 'password'),
+    // password is intentionally excluded — kept local-only for security
     FieldMapping.simple('phone', 'phone'),
     FieldMapping.simple('fullName', 'full_name'),
     FieldMapping.boolean('isActive', 'is_active'),

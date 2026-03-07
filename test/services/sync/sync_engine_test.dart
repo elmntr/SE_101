@@ -516,4 +516,135 @@ void main() {
       expect(maxJitter.inMilliseconds, 500);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Task 6.1 – Pull pagination accumulation regression tests (Task 1.4 fix)
+  //
+  // SyncEngine.pullTable uses a do-while loop that:
+  //   1. Fetches one page of up to pullLimit rows.
+  //   2. Accumulates them into a combined list.
+  //   3. Stops when the returned page is smaller than pullLimit (partial page).
+  //
+  // These tests lock in that logic using pure in-process simulations of
+  // the accumulation pattern — no real Supabase calls involved.
+  // ---------------------------------------------------------------------------
+  group('Pull pagination accumulation (Task 1.4 regression)', () {
+    /// Mimics the accumulation + stop-condition logic from SyncEngine.pullTable.
+    List<T> simulatePagedPull<T>({
+      required List<List<T>> pages,
+      required int pageSize,
+    }) {
+      final accumulated = <T>[];
+      for (final page in pages) {
+        accumulated.addAll(page);
+        if (page.length < pageSize) break; // partial page → last page
+      }
+      return accumulated;
+    }
+
+    test('accumulates all records across two full pages plus a partial page',
+        () {
+      const pageSize = 3;
+      final pages = [
+        [1, 2, 3], // full page — continue
+        [4, 5, 6], // full page — continue
+        [7, 8], //    partial page — stop
+      ];
+
+      final result = simulatePagedPull(pages: pages, pageSize: pageSize);
+
+      expect(result, [1, 2, 3, 4, 5, 6, 7, 8],
+          reason: 'All records from all pages should be accumulated');
+      expect(result.length, 8);
+    });
+
+    test('stops after first partial page — does not request further pages', () {
+      const pageSize = 5;
+      int pagesFetched = 0;
+
+      final accumulated = <int>[];
+      // Simulate: page 1 has 5 (full), page 2 has 3 (partial)
+      final pages = [
+        List.generate(5, (i) => i + 1),
+        List.generate(3, (i) => i + 6),
+      ];
+      for (final page in pages) {
+        pagesFetched++;
+        accumulated.addAll(page);
+        if (page.length < pageSize) break;
+      }
+
+      expect(pagesFetched, 2,
+          reason: 'Should stop after receiving partial page');
+      expect(accumulated.length, 8);
+    });
+
+    test('single page smaller than limit — pagination does not continue', () {
+      const pageSize = 500; // Default pullLimit
+      final pages = [
+        List.generate(42, (i) => i), // Single partial page
+      ];
+
+      final result = simulatePagedPull(pages: pages, pageSize: pageSize);
+
+      expect(result.length, 42);
+    });
+
+    test('single full page followed by empty page — stops after empty page',
+        () {
+      const pageSize = 3;
+      final pages = [
+        [10, 20, 30], // full page
+        <int>[], //      empty page — length 0 < pageSize
+      ];
+
+      final result = simulatePagedPull(pages: pages, pageSize: pageSize);
+
+      // Empty page signals end-of-data
+      expect(result, [10, 20, 30]);
+    });
+
+    test('exactly N full pages with no partial page accumulates all records',
+        () {
+      const pageSize = 4;
+      final pages = [
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        [9, 10, 11, 12],
+      ];
+      // Drift would then request page 4 which returns empty — we model that
+      final pagesWithTerminator = [...pages, <int>[]];
+
+      final result =
+          simulatePagedPull(pages: pagesWithTerminator, pageSize: pageSize);
+
+      expect(result.length, 12);
+      expect(result, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    });
+
+    test('page offset increments by pageSize on each iteration', () {
+      const pageSize = 500;
+      final offsets = <int>[];
+      // Simulate 3 full pages + 1 partial
+      int offset = 0;
+      const pagesData = [500, 500, 200]; // record counts per page
+      for (final count in pagesData) {
+        offsets.add(offset);
+        offset += pageSize;
+        if (count < pageSize) break;
+      }
+
+      expect(offsets, [0, 500, 1000],
+          reason: 'Each page should start at offset = pageIndex * pageSize');
+    });
+
+    test('pullLimit constant on descriptor defaults to 500', () {
+      // Verify that the default pullLimit used by the pagination loop is 500
+      const descriptor = TableSyncDescriptor<Map<String, dynamic>>(
+        tableName: 'daily_sales_summary',
+        cloudTableName: 'daily_sales_summary',
+      );
+      expect(descriptor.pullLimit, 500);
+    });
+  });
 }

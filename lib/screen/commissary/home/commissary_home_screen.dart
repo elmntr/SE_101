@@ -67,6 +67,7 @@ class CommissaryHomeScreenState extends State<CommissaryHomeScreen> {
         'label': 'Dashboard',
         'page': DashboardWidget(
           username: widget.signedInUser.username,
+          organizationId: widget.signedInUser.organizationId,
           onSwitchPage: switchPage,
         ),
       },

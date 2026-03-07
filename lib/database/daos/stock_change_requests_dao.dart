@@ -668,66 +668,134 @@ class StockChangeRequestsDao extends DatabaseAccessor<AppDatabase>
     return null;
   }
 
+  /// Safely coerce a dynamic value to int, or return null.
+  /// Handles: int, double (truncated), numeric String, null.
+  static int? _coerceInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is String) return int.tryParse(v) ?? double.tryParse(v)?.toInt();
+    return null;
+  }
+
+  /// Safely coerce a dynamic value to bool, or return fallback.
+  static bool _coerceBool(dynamic v, {bool fallback = false}) {
+    if (v == null) return fallback;
+    if (v is bool) return v;
+    if (v is int) return v != 0;
+    if (v is String) return v.toLowerCase() == 'true' || v == '1';
+    return fallback;
+  }
+
   /// ✅ Batch upsert from cloud
-  /// Supports both camelCase (from toLocalFormat) and snake_case keys
+  /// Supports both camelCase (from toLocalFormat) and snake_case keys.
+  /// Defensively coerces every value — never trusts upstream normalization.
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudRequests,
   ) async {
+    if (cloudRequests.isEmpty) return;
     try {
+      // Pre-fetch existing cloudId → local id in one query to avoid N SELECTs
+      final existingMap = <String, int>{};
+      final existingRows = await (selectOnly(stockChangeRequests)
+            ..addColumns([stockChangeRequests.id, stockChangeRequests.cloudId]))
+          .get();
+      for (final row in existingRows) {
+        final cid = row.read(stockChangeRequests.cloudId);
+        final lid = row.read(stockChangeRequests.id);
+        if (cid != null && lid != null) existingMap[cid] = lid;
+      }
+
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
-          final franchiseeId = cloudReq['franchiseeId'] ?? cloudReq['franchisee_id'];
-          final itemId = cloudReq['itemId'] ?? cloudReq['item_id'];
-          final quantity = cloudReq['quantity'];
-          final requestedBy = cloudReq['requestedBy'] ?? cloudReq['requested_by'];
-          final originalStock = cloudReq['originalStock'] ?? cloudReq['original_stock'];
-          final cloudId = cloudReq['cloudId'] ?? cloudReq['cloud_id'];
-          
-          // Skip invalid records where required fields are null
-          if (franchiseeId == null || itemId == null || 
-              quantity == null || requestedBy == null || originalStock == null || cloudId == null) {
-            AppLogger.sync('⚠️ Skipping stock_change_requests record: Required field is null');
+          final franchiseeId = _coerceInt(
+            cloudReq['franchiseeId'] ?? cloudReq['franchisee_id'],
+          );
+          final itemId = _coerceInt(
+            cloudReq['itemId'] ?? cloudReq['item_id'],
+          );
+          final quantity = _coerceInt(cloudReq['quantity']);
+          final requestedBy = _coerceInt(
+            cloudReq['requestedBy'] ?? cloudReq['requested_by'],
+          );
+          final originalStock = _coerceInt(
+            cloudReq['originalStock'] ?? cloudReq['original_stock'],
+          );
+          final cloudId = (cloudReq['cloudId'] ?? cloudReq['cloud_id'])
+              ?.toString();
+
+          // Skip record if any required field could not be coerced
+          if (franchiseeId == null ||
+              itemId == null ||
+              quantity == null ||
+              requestedBy == null ||
+              originalStock == null ||
+              cloudId == null ||
+              cloudId.isEmpty) {
+            AppLogger.sync(
+              '⚠️ Skipping stock_change_requests record: '
+              'Required field is null or uncoercible '
+              '(franchiseeId=$franchiseeId, itemId=$itemId, '
+              'quantity=$quantity, requestedBy=$requestedBy, '
+              'originalStock=$originalStock, cloudId=$cloudId)',
+            );
             continue;
           }
 
-          // Look up by cloudId to decide insert vs update
-          final existing = await getChangeRequestByCloudId(cloudId as String);
-          
+          // Look up by cloudId to decide insert vs update (uses pre-fetched map)
+          final existingId = existingMap[cloudId];
+
+          final reviewedBy = _coerceInt(
+            cloudReq['reviewedBy'] ?? cloudReq['reviewed_by'],
+          );
+
           final companion = StockChangeRequestsCompanion(
-            franchiseeId: Value(franchiseeId as int),
-            itemId: Value(itemId as int),
-            changeType: Value(cloudReq['changeType'] ?? cloudReq['change_type'] ?? 'sold'),
-            quantity: Value(quantity as int),
-            status: Value(cloudReq['status'] ?? 'approved'),
-            requestedBy: Value(requestedBy as int),
+            franchiseeId: Value(franchiseeId),
+            itemId: Value(itemId),
+            changeType: Value(
+              (cloudReq['changeType'] ?? cloudReq['change_type'] ?? 'sold')
+                  .toString(),
+            ),
+            quantity: Value(quantity),
+            status: Value(
+              (cloudReq['status'] ?? 'approved').toString(),
+            ),
+            requestedBy: Value(requestedBy),
             requestedAt: Value(_parseDateTime(
               cloudReq['requestedAt'] ?? cloudReq['requested_at'],
             )),
             submittedAt: Value(_parseDateTimeNullable(
               cloudReq['submittedAt'] ?? cloudReq['submitted_at'],
             )),
-            reviewedBy: Value(cloudReq['reviewedBy'] ?? cloudReq['reviewed_by']),
+            reviewedBy: Value(reviewedBy),
             reviewedAt: Value(_parseDateTimeNullable(
               cloudReq['reviewedAt'] ?? cloudReq['reviewed_at'],
             )),
-            reason: Value(cloudReq['reason']),
-            reviewNotes: Value(cloudReq['reviewNotes'] ?? cloudReq['reviewerNotes'] ?? cloudReq['review_notes']),
-            originalStock: Value(originalStock as int),
+            reason: Value(cloudReq['reason']?.toString()),
+            reviewNotes: Value(
+              (cloudReq['reviewNotes'] ??
+                      cloudReq['reviewerNotes'] ??
+                      cloudReq['review_notes'])
+                  ?.toString(),
+            ),
+            originalStock: Value(originalStock),
             createdAt: Value(_parseDateTime(
               cloudReq['createdAt'] ?? cloudReq['created_at'],
             )),
             lastUpdated: Value(_parseDateTime(
               cloudReq['lastUpdated'] ?? cloudReq['last_updated'],
             )),
-            isDeleted: Value(cloudReq['isDeleted'] ?? cloudReq['is_deleted'] ?? false),
+            isDeleted: Value(_coerceBool(
+              cloudReq['isDeleted'] ?? cloudReq['is_deleted'],
+            )),
             isSynced: const Value(true),
             cloudId: Value(cloudId),
           );
 
-          if (existing != null) {
+          if (existingId != null) {
             // Update existing record
             await (update(stockChangeRequests)
-                  ..where((t) => t.id.equals(existing.id)))
+                  ..where((t) => t.id.equals(existingId)))
                 .write(companion);
           } else {
             // Insert new record (auto-increment id)

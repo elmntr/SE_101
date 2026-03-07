@@ -5,6 +5,9 @@ import 'package:drift/drift.dart' hide isNotNull, isNull;
 import '../database/test_database.dart';
 import 'package:chickenjoo_inventory/database/daos/stock_change_requests_dao.dart';
 
+/// Sentinel to distinguish "not provided" from "explicitly null" in test helpers.
+const _absent = Object();
+
 void main() {
   late AppDatabase db;
   late StockChangeRequestsDao dao;
@@ -388,5 +391,305 @@ void main() {
     expect(stats['pending'], 1);
     expect(stats['approved'], 1);
     expect(stats['rejected'], 0);
+  });
+
+  // ==========================================================================
+  // upsertBatchFromCloud – cloud coercion / null safety
+  // ==========================================================================
+
+  /// Helper: build a valid cloud record map with required fields.
+  /// Pass explicit null to test null-handling (sentinel distinguishes from omission).
+  Map<String, dynamic> _validCloudRecord({
+    Object? franchiseeId = _absent,
+    Object? itemId = _absent,
+    Object? quantity = _absent,
+    Object? requestedBy = _absent,
+    Object? originalStock = _absent,
+    Object? cloudId = _absent,
+    String? changeType,
+    String? status,
+    Object? isDeleted = _absent,
+  }) {
+    return {
+      'franchiseeId': identical(franchiseeId, _absent) ? 1 : franchiseeId,
+      'itemId': identical(itemId, _absent) ? 1 : itemId,
+      'quantity': identical(quantity, _absent) ? 5 : quantity,
+      'requestedBy': identical(requestedBy, _absent) ? 1 : requestedBy,
+      'originalStock': identical(originalStock, _absent) ? 100 : originalStock,
+      'cloudId': identical(cloudId, _absent) ? 'cloud-uuid-1' : cloudId,
+      'changeType': changeType ?? 'sold',
+      'status': status ?? 'approved',
+      'isDeleted': identical(isDeleted, _absent) ? false : isDeleted,
+      'requestedAt': DateTime.now().toUtc().toIso8601String(),
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'lastUpdated': DateTime.now().toUtc().toIso8601String(),
+    };
+  }
+
+  group('upsertBatchFromCloud coercion', () {
+    test('16. Accepts int values for numeric fields', () async {
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: 7,
+          requestedBy: employeeId,
+          originalStock: 90,
+          cloudId: 'int-test-1',
+        ),
+      ]);
+
+      final req = await dao.getChangeRequestByCloudId('int-test-1');
+      expect(req, isNotNull);
+      expect(req!.quantity, 7);
+      expect(req.originalStock, 90);
+    });
+
+    test('17. Coerces double values to int (e.g. 3.0 → 3)', () async {
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId.toDouble(),
+          itemId: itemId.toDouble(),
+          quantity: 3.0,
+          requestedBy: employeeId.toDouble(),
+          originalStock: 50.0,
+          cloudId: 'double-test-1',
+        ),
+      ]);
+
+      final req = await dao.getChangeRequestByCloudId('double-test-1');
+      expect(req, isNotNull);
+      expect(req!.quantity, 3);
+      expect(req.originalStock, 50);
+      expect(req.franchiseeId, franchiseeId);
+      expect(req.itemId, itemId);
+      expect(req.requestedBy, employeeId);
+    });
+
+    test('18. Coerces numeric String values to int (e.g. "3" → 3)', () async {
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId.toString(),
+          itemId: itemId.toString(),
+          quantity: '8',
+          requestedBy: employeeId.toString(),
+          originalStock: '42',
+          cloudId: 'string-test-1',
+        ),
+      ]);
+
+      final req = await dao.getChangeRequestByCloudId('string-test-1');
+      expect(req, isNotNull);
+      expect(req!.quantity, 8);
+      expect(req.originalStock, 42);
+    });
+
+    test('19. Skips row when required numeric field is null', () async {
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: null,
+          requestedBy: employeeId,
+          originalStock: 100,
+          cloudId: 'null-quantity-1',
+        ),
+      ]);
+
+      final req = await dao.getChangeRequestByCloudId('null-quantity-1');
+      expect(req, isNull, reason: 'Row with null required quantity should be skipped');
+    });
+
+    test('20. Skips row when originalStock is null', () async {
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: 5,
+          requestedBy: employeeId,
+          originalStock: null,
+          cloudId: 'null-stock-1',
+        ),
+      ]);
+
+      final req = await dao.getChangeRequestByCloudId('null-stock-1');
+      expect(req, isNull, reason: 'Row with null required originalStock should be skipped');
+    });
+
+    test('21. Skips row when cloudId is null', () async {
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: 5,
+          requestedBy: employeeId,
+          originalStock: 100,
+          cloudId: null,
+        ),
+      ]);
+
+      // Nothing inserted — no way to look it up, just verify no crash
+      final all = await dao.getAllChangeRequests();
+      expect(all.where((r) => r.cloudId == null).isEmpty, isTrue);
+    });
+
+    test('22. Skips row when franchiseeId is null', () async {
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: null,
+          itemId: itemId,
+          quantity: 5,
+          requestedBy: employeeId,
+          originalStock: 100,
+          cloudId: 'null-fid-1',
+        ),
+      ]);
+
+      final req = await dao.getChangeRequestByCloudId('null-fid-1');
+      expect(req, isNull);
+    });
+
+    test('23. Mixed batch: valid rows inserted, invalid rows skipped', () async {
+      await dao.upsertBatchFromCloud([
+        // Valid
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: 1,
+          requestedBy: employeeId,
+          originalStock: 100,
+          cloudId: 'batch-ok-1',
+        ),
+        // Invalid: null quantity
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: null,
+          requestedBy: employeeId,
+          originalStock: 100,
+          cloudId: 'batch-bad-1',
+        ),
+        // Valid with doubles
+        _validCloudRecord(
+          franchiseeId: franchiseeId.toDouble(),
+          itemId: itemId.toDouble(),
+          quantity: 2.0,
+          requestedBy: employeeId.toDouble(),
+          originalStock: 80.0,
+          cloudId: 'batch-ok-2',
+        ),
+      ]);
+
+      expect(await dao.getChangeRequestByCloudId('batch-ok-1'), isNotNull);
+      expect(await dao.getChangeRequestByCloudId('batch-bad-1'), isNull);
+      expect(await dao.getChangeRequestByCloudId('batch-ok-2'), isNotNull);
+    });
+
+    test('24. Handles snake_case keys from raw cloud payload', () async {
+      await dao.upsertBatchFromCloud([
+        {
+          'franchisee_id': franchiseeId,
+          'item_id': itemId,
+          'quantity': 6,
+          'requested_by': employeeId,
+          'original_stock': 77,
+          'cloud_id': 'snake-test-1',
+          'change_type': 'spoiled',
+          'status': 'pending',
+          'is_deleted': false,
+          'requested_at': DateTime.now().toUtc().toIso8601String(),
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+          'last_updated': DateTime.now().toUtc().toIso8601String(),
+        },
+      ]);
+
+      final req = await dao.getChangeRequestByCloudId('snake-test-1');
+      expect(req, isNotNull);
+      expect(req!.quantity, 6);
+      expect(req.originalStock, 77);
+      expect(req.changeType, 'spoiled');
+    });
+
+    test('25. Updates existing record on duplicate cloudId', () async {
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: 10,
+          requestedBy: employeeId,
+          originalStock: 100,
+          cloudId: 'dup-test-1',
+          status: 'draft',
+        ),
+      ]);
+
+      final first = await dao.getChangeRequestByCloudId('dup-test-1');
+      expect(first!.quantity, 10);
+      expect(first.status, 'draft');
+
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: 20,
+          requestedBy: employeeId,
+          originalStock: 100,
+          cloudId: 'dup-test-1',
+          status: 'approved',
+        ),
+      ]);
+
+      final updated = await dao.getChangeRequestByCloudId('dup-test-1');
+      expect(updated!.quantity, 20);
+      expect(updated.status, 'approved');
+    });
+
+    test('26. Coerces isDeleted from int (1) and string ("true")', () async {
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: 1,
+          requestedBy: employeeId,
+          originalStock: 100,
+          cloudId: 'bool-int-1',
+          isDeleted: 1,
+        ),
+      ]);
+      final r1 = await dao.getChangeRequestByCloudId('bool-int-1');
+      expect(r1!.isDeleted, isTrue);
+
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: 1,
+          requestedBy: employeeId,
+          originalStock: 100,
+          cloudId: 'bool-str-1',
+          isDeleted: 'true',
+        ),
+      ]);
+      final r2 = await dao.getChangeRequestByCloudId('bool-str-1');
+      expect(r2!.isDeleted, isTrue);
+    });
+
+    test('27. Coerces double string "3.5" to int 3 for quantity', () async {
+      await dao.upsertBatchFromCloud([
+        _validCloudRecord(
+          franchiseeId: franchiseeId,
+          itemId: itemId,
+          quantity: '3.5',
+          requestedBy: employeeId,
+          originalStock: '100.9',
+          cloudId: 'double-str-1',
+        ),
+      ]);
+
+      final req = await dao.getChangeRequestByCloudId('double-str-1');
+      expect(req, isNotNull);
+      expect(req!.quantity, 3);
+      expect(req.originalStock, 100);
+    });
   });
 }
