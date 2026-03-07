@@ -38,7 +38,7 @@ class SettingsPageState extends State<SettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('âœ… Sync completed successfully!'),
+            content: Text('Sync completed'),
             backgroundColor: Colors.green,
           ),
         );

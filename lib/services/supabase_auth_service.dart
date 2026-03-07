@@ -1810,6 +1810,48 @@ class SupabaseAuthService {
     }
   }
 
+  /// Reload current user from database (e.g., after profile updates)
+  Future<bool> reloadCurrentUser() async {
+    try {
+      final authUser = _supabase.auth.currentUser;
+      if (authUser == null) {
+        _logAuth('Cannot reload user - no authenticated Supabase user');
+        return false;
+      }
+
+      await _loadCurrentUser(authUser);
+      _logAuth('User reloaded: ${_currentUser?.username ?? "null"}');
+      return _currentUser != null;
+    } catch (e) {
+      _logAuth('Error reloading user: $e');
+      return false;
+    }
+  }
+
+  /// Update Supabase Auth user email via Edge Function (bypasses email validation restrictions)
+  Future<Map<String, dynamic>> updateAuthUserEmail(String userId, String newEmail) async {
+    try {
+      final response = await _supabase.functions.invoke(
+        'update-user-email',
+        body: {
+          'user_id': userId,
+          'new_email': newEmail,
+        },
+      );
+
+      if (response.status == 200) {
+        final data = response.data as Map<String, dynamic>;
+        return {'success': true, 'email': data['email'] ?? newEmail};
+      } else {
+        final data = response.data as Map<String, dynamic>?;
+        final error = data?['error'] ?? 'Unknown error (status ${response.status})';
+        return {'success': false, 'error': error};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Edge Function call failed: $e'};
+    }
+  }
+
   /// Dispose resources
   void dispose() {
     _authStateController?.close();

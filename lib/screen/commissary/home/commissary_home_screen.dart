@@ -1,4 +1,5 @@
 // lib/screens/home/home_screen.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/database/app_database.dart';
@@ -12,6 +13,7 @@ import '../reports/reports_page.dart';
 import '../inventory_management/inventory_management_page.dart';
 import '../requests/requests_page.dart';
 import '../settings/settings_page.dart';
+import '../settings/settings_edit_account.dart';
 
 // Import separated UI files
 import 'commissary_home_screen_mobile.dart';
@@ -31,6 +33,10 @@ class CommissaryHomeScreen extends StatefulWidget {
 class CommissaryHomeScreenState extends State<CommissaryHomeScreen> {
   late AppDatabase db;
   CommissaryHomeScreenController? _controller;
+  StreamSubscription<UserData?>? _authSubscription;
+
+  /// Live user data that updates when profile is edited
+  late UserData currentUserData;
 
   CommissaryHomeScreenController get controller => _controller!;
 
@@ -47,6 +53,7 @@ class CommissaryHomeScreenState extends State<CommissaryHomeScreen> {
   void initState() {
     super.initState();
     db = database;
+    currentUserData = widget.signedInUser;
     _controller = CommissaryHomeScreenController(
       db: db,
       signedInUser: widget.signedInUser,
@@ -58,6 +65,16 @@ class CommissaryHomeScreenState extends State<CommissaryHomeScreen> {
     );
     _controller!.init();
     _loadMenuItems();
+
+    // Listen for auth state changes (e.g. after profile edits) to refresh UI
+    _authSubscription = authService.authStateChanges.listen((userData) {
+      if (userData != null && mounted) {
+        setState(() {
+          currentUserData = userData;
+        });
+        _loadMenuItems();
+      }
+    });
   }
 
   void _loadMenuItems() {
@@ -66,7 +83,7 @@ class CommissaryHomeScreenState extends State<CommissaryHomeScreen> {
         'icon': Icons.dashboard,
         'label': 'Dashboard',
         'page': DashboardWidget(
-          username: widget.signedInUser.username,
+          username: currentUserData.username,
           onSwitchPage: switchPage,
         ),
       },
@@ -79,8 +96,8 @@ class CommissaryHomeScreenState extends State<CommissaryHomeScreen> {
         'icon': Icons.inventory_2,
         'label': 'Inventory',
         'page': InventoryManagementPage(
-          organizationId: widget.signedInUser.organizationId,
-          commissaryId: widget.signedInUser.organizationId,
+          organizationId: currentUserData.organizationId,
+          commissaryId: currentUserData.organizationId,
           organizationName: 'Inventory Management',
         ),
       },
@@ -95,17 +112,26 @@ class CommissaryHomeScreenState extends State<CommissaryHomeScreen> {
         'page': const ReportsPage(),
       },
       {
+        'icon': Icons.account_circle,
+        'label': 'Account',
+        'page': SettingsEditAccountPage(userData: currentUserData),
+      },
+      {
         'icon': Icons.settings,
         'label': 'Settings',
         'page': const SettingsPage(),
       },
     ];
 
-    controller.currentPage = controller.menuItems[0]['page'];
+    // Preserve current page selection when rebuilding menu
+    if (controller.selectedIndex < controller.menuItems.length) {
+      controller.currentPage = controller.menuItems[controller.selectedIndex]['page'];
+    }
   }
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
     controller.dispose();
     super.dispose();
   }
@@ -137,7 +163,7 @@ class CommissaryHomeScreenState extends State<CommissaryHomeScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('âœ… Sync completed successfully!'),
+            content: Text('Sync completed'),
             backgroundColor: Colors.green,
           ),
         );
