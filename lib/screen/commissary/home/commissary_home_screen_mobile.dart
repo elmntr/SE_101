@@ -60,7 +60,7 @@ class CommissaryHomeScreenMobile extends StatelessWidget {
                       const Icon(Icons.person, size: 20),
                       const SizedBox(width: 12),
                       Text(
-                        state.widget.signedInUser.username,
+                        state.currentUserData.username,
                         style: const TextStyle(fontFamily: fontAll),
                       ),
                     ],
@@ -69,7 +69,7 @@ class CommissaryHomeScreenMobile extends StatelessWidget {
                 PopupMenuItem(
                   enabled: false,
                   child: Text(
-                    state.widget.signedInUser.email,
+                    state.currentUserData.email,
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[600],

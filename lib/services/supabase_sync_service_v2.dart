@@ -346,6 +346,10 @@ class SupabaseSyncServiceV2 {
       onSyncStatusChanged?.call('Sync failed');
     } finally {
       _isSyncing = false;
+      // Complete the sync completer so callers waiting on it can proceed
+      if (_syncCompleter != null && !_syncCompleter!.isCompleted) {
+        _syncCompleter!.complete();
+      }
       // Apply any context clear that was deferred because a sync was running.
       if (_pendingContextClear) {
         _pendingContextClear = false;
