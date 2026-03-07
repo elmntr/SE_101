@@ -140,7 +140,12 @@ class CommissaryHomeScreenState extends State<CommissaryHomeScreen> {
     controller.toggleSidebar();
   }
 
-  void switchPage(int index) {
+  void switchPage(int index, {int subTab = 0}) {
+    // If navigating to Branches (index 1) with a specific sub-tab,
+    // recreate the page with the correct initialTab
+    if (subTab > 0 && index == 1) {
+      controller.menuItems[1]['page'] = BranchesPage(initialTab: subTab);
+    }
     controller.switchPage(index);
   }
 

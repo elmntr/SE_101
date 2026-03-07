@@ -6,7 +6,7 @@ import 'package:chickenjoo_inventory/design_constants.dart';
 /// Displays overview stats and quick action buttons.
 class DashboardWidget extends StatelessWidget {
   final String username;
-  final void Function(int) onSwitchPage;
+  final void Function(int, {int subTab}) onSwitchPage;
 
   const DashboardWidget({
     super.key,
@@ -125,7 +125,7 @@ class DashboardWidget extends StatelessWidget {
                   _buildQuickAction(
                     icon: Icons.person_add,
                     label: 'Add Branch Admin',
-                    onTap: () => onSwitchPage(1),
+                    onTap: () => onSwitchPage(1, subTab: 1),
                   ),
                   _buildQuickAction(
                     icon: Icons.assessment,

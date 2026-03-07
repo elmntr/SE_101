@@ -311,34 +311,6 @@ class _ItemFormDialogState extends State<ItemFormDialog> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Category dropdown
-                  DropdownButtonFormField<int?>(
-                    value: _selectedCategoryId,
-                    decoration: const InputDecoration(
-                      labelText: 'Category (Optional)',
-                      prefixIcon: Icon(Icons.category),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem<int?>(
-                        value: null,
-                        child: Text('No Category'),
-                      ),
-                      ...widget.categories.map(
-                        (cat) => DropdownMenuItem<int?>(
-                          value: cat.id,
-                          child: Text(cat.name),
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedCategoryId = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
                   // Price and Stock row
                   Row(
                     children: [
