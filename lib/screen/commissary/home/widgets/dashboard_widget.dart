@@ -1,10 +1,11 @@
 // lib/screens/home/widgets/dashboard_widget.dart
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
 
 /// Dashboard widget shown as the home/landing page of the commissary app.
 /// Displays overview stats and quick action buttons.
-class DashboardWidget extends StatelessWidget {
+class DashboardWidget extends StatefulWidget {
   final String username;
   final void Function(int, {int subTab}) onSwitchPage;
 
@@ -15,6 +16,48 @@ class DashboardWidget extends StatelessWidget {
   });
 
   @override
+  State<DashboardWidget> createState() => _DashboardWidgetState();
+}
+
+class _DashboardWidgetState extends State<DashboardWidget> {
+  int _activeBranches = 0;
+  int _totalItems = 0;
+  int _pendingRequests = 0;
+  int _lowStockAlerts = 0;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final db = database;
+      final results = await Future.wait([
+        db.organizationsDao.getOrganizationCount(type: 'franchisee', isActive: true),
+        db.itemsDao.getItemCount(),
+        db.stockReplenishmentRequestsDao.getRequestCount(status: 'pending'),
+        db.ingredientsDao.getLowStockIngredients(),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _activeBranches = results[0] as int;
+          _totalItems = results[1] as int;
+          _pendingRequests = results[2] as int;
+          _lowStockAlerts = (results[3] as List).length;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Dashboard stats error: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -23,7 +66,7 @@ class DashboardWidget extends StatelessWidget {
         children: [
           // Welcome message
           Text(
-            'Welcome back, $username!',
+            'Welcome back, ${widget.username}!',
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -60,25 +103,25 @@ class DashboardWidget extends StatelessWidget {
                 children: [
                   _buildStatCard(
                     title: 'Active Branches',
-                    value: '0',
+                    value: _isLoading ? '...' : '$_activeBranches',
                     icon: Icons.store,
                     color: Colors.blue,
                   ),
                   _buildStatCard(
                     title: 'Total Items',
-                    value: '0',
+                    value: _isLoading ? '...' : '$_totalItems',
                     icon: Icons.inventory,
                     color: Colors.green,
                   ),
                   _buildStatCard(
                     title: 'Pending Requests',
-                    value: '0',
+                    value: _isLoading ? '...' : '$_pendingRequests',
                     icon: Icons.pending_actions,
                     color: Colors.orange,
                   ),
                   _buildStatCard(
                     title: 'Low Stock Alerts',
-                    value: '0',
+                    value: _isLoading ? '...' : '$_lowStockAlerts',
                     icon: Icons.warning,
                     color: Colors.red,
                   ),
@@ -115,22 +158,22 @@ class DashboardWidget extends StatelessWidget {
                   _buildQuickAction(
                     icon: Icons.add_business,
                     label: 'Add Branch',
-                    onTap: () => onSwitchPage(1),
+                    onTap: () => widget.onSwitchPage(1),
                   ),
                   _buildQuickAction(
                     icon: Icons.add_box,
                     label: 'Add Item',
-                    onTap: () => onSwitchPage(2),
+                    onTap: () => widget.onSwitchPage(2),
                   ),
                   _buildQuickAction(
                     icon: Icons.person_add,
                     label: 'Add Branch Admin',
-                    onTap: () => onSwitchPage(1, subTab: 1),
+                    onTap: () => widget.onSwitchPage(1, subTab: 1),
                   ),
                   _buildQuickAction(
                     icon: Icons.assessment,
                     label: 'View Reports',
-                    onTap: () => onSwitchPage(4),
+                    onTap: () => widget.onSwitchPage(4),
                   ),
                 ],
               );
