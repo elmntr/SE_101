@@ -716,6 +716,7 @@ class RequestsPageDesktop extends StatelessWidget {
                 rows: rowSnapshot.data!,
                 smallHeaderWidth: 20,
                 largeHeaderWidth: 80,
+                showHorizontalScrollbar: true,
             );
           },
         );

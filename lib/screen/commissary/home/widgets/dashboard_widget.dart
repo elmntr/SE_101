@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:chickenjoo_inventory/app_globals.dart';
 import 'package:chickenjoo_inventory/design_constants.dart';
+import 'package:chickenjoo_inventory/app_globals.dart';
 
 /// Dashboard widget shown as the home/landing page of the commissary app.
 /// Displays live overview stats (loaded from local DB) and quick action buttons.
@@ -89,6 +90,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
           // Welcome message
           Text(
             'Welcome back, ${widget.username}!',
+            
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -181,11 +183,13 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                     icon: Icons.add_business,
                     label: 'Add Branch',
                     onTap: () => widget.onSwitchPage(1),
+                    
                   ),
                   _buildQuickAction(
                     icon: Icons.add_box,
                     label: 'Add Item',
                     onTap: () => widget.onSwitchPage(2),
+                    
                   ),
                   _buildQuickAction(
                     icon: Icons.person_add,
@@ -196,6 +200,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                     icon: Icons.assessment,
                     label: 'View Reports',
                     onTap: () => widget.onSwitchPage(4),
+                    
                   ),
                 ],
               );
