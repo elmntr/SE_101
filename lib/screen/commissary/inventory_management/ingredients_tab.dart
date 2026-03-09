@@ -101,41 +101,171 @@ class _IngredientsTabState extends State<IngredientsTab> {
   }
 
   void _showDeleteConfirmation(Ingredient ingredient) {
+    final passwordController = TextEditingController();
+    bool isPasswordVisible = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Ingredient'),
-        content: Text(
-          'Are you sure you want to delete "${ingredient.name}"?\n\n'
-          'This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.warning, color: Colors.red),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Delete Ingredient')),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await database.ingredientsDao.softDeleteIngredient(ingredient.id);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${ingredient.name} deleted'),
-                    backgroundColor: Colors.orange,
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Are you sure you want to delete "${ingredient.name}"?',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
                   ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This will permanently delete the ingredient from both the local database and the cloud. This action cannot be undone.',
+                          style: TextStyle(fontSize: 12, color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Enter your password to confirm:',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: passwordController,
+                  obscureText: !isPasswordVisible,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isPasswordVisible
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setDialogState(() {
+                          isPasswordVisible = !isPasswordVisible;
+                        });
+                      },
+                    ),
+                    border: const OutlineInputBorder(),
+                  ),
+                  onSubmitted: (_) =>
+                      _performDeleteIngredient(ingredient, passwordController.text),
+                ),
+              ],
             ),
-            child: const Text('Delete'),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () =>
+                  _performDeleteIngredient(ingredient, passwordController.text),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _performDeleteIngredient(Ingredient ingredient, String password) async {
+    if (password.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password is required'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (mounted) Navigator.pop(context);
+
+    try {
+      final currentUser = authService.currentUser;
+      if (currentUser == null) {
+        throw Exception('No user logged in');
+      }
+
+      final user = await database.usersDao.getUserById(currentUser.id);
+      if (user == null) {
+        throw Exception('User not found');
+      }
+
+      if (!verifyPassword(password, user.password)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Incorrect password'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      await database.ingredientsDao.softDeleteIngredient(ingredient.id);
+
+      try {
+        await syncService.syncAll();
+      } catch (e) {
+        print('⚠️ Failed to sync after delete: $e');
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${ingredient.name} deleted'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showAdjustStockDialog(Ingredient ingredient) {
