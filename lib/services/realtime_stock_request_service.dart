@@ -78,7 +78,6 @@ class RealtimeStockRequestService {
   
   // Polling fallback
   Timer? _pollingTimer;
-  DateTime? _lastPollTime;
   Timer? _realtimeRetryTimer;
   // Cancellable timer for the post-disconnection reconnect delay.
   // Replaces an untracked Future.delayed so it can never stack with
@@ -97,6 +96,10 @@ class RealtimeStockRequestService {
   Timer? _debounceTimer;
   bool _isSyncing = false;
   static const Duration _debounceDuration = Duration(milliseconds: 500);
+
+  // Polling: track last known counts to avoid spurious syncs
+  int _lastKnownPendingCount = 0;
+  int _lastKnownStatusChangedCount = 0;
   
   // Dependencies
   final Battery _battery = Battery();
@@ -445,6 +448,8 @@ class RealtimeStockRequestService {
     _connectivitySubscription = null;
     _isCommissaryMode = false;
     _commissaryCloudId = null;
+    _lastKnownPendingCount = 0;
+    _lastKnownStatusChangedCount = 0;
 
     if (_stockRequestChannel != null) {
       AppLogger.websocket('🔌 CLOSE  reason=all_screens_detached  screens=$_activeScreenCount');
@@ -488,8 +493,11 @@ class RealtimeStockRequestService {
             .eq('commissary_id', _commissaryCloudId!)
             .eq('status', 'pending')
             .eq('is_deleted', false);
-        AppLogger.sync('📊 Found ${(response as List).length} pending requests');
-        if (response.isNotEmpty) {
+        final count = (response as List).length;
+        AppLogger.sync('📊 Found $count pending requests (last known: $_lastKnownPendingCount)');
+        if (count != _lastKnownPendingCount) {
+          _lastKnownPendingCount = count;
+          AppLogger.sync('📬 Pending count changed — triggering sync');
           _triggerDebouncedSync();
         }
       } else {
@@ -500,9 +508,11 @@ class RealtimeStockRequestService {
             .eq('franchisee_id', _franchiseeCloudId!)
             .inFilter('status', ['approved', 'rejected', 'delivered'])
             .eq('is_deleted', false);
-        AppLogger.sync('📊 Found ${(response as List).length} approved/rejected/delivered requests');
-        if (response.isNotEmpty) {
-          AppLogger.sync('📬 Triggering sync to check for updates...');
+        final count = (response as List).length;
+        AppLogger.sync('📊 Found $count approved/rejected/delivered requests (last known: $_lastKnownStatusChangedCount)');
+        if (count != _lastKnownStatusChangedCount) {
+          _lastKnownStatusChangedCount = count;
+          AppLogger.sync('📬 Status-changed count changed — triggering sync');
           _triggerDebouncedSync();
         }
       }

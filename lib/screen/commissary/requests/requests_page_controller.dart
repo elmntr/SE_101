@@ -39,13 +39,12 @@ class RequestsPageController {
         if (org?.cloudId != null) {
           commissaryCloudId = org!.cloudId;
           debugPrint(
-            'RequestsPageController: attaching realtime cloudId=$commissaryCloudId',
+            'RequestsPageController: commissaryCloudId=$commissaryCloudId (realtime managed by RequestsPage)',
           );
-          await realtimeStockRequestService.attach(commissaryCloudId!);
         }
       } catch (e) {
         debugPrint(
-          'RequestsPageController: WARN Failed to initialize realtime: $e',
+          'RequestsPageController: WARN Failed to load org: $e',
         );
       }
     } else {

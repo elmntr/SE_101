@@ -1,6 +1,6 @@
 # ChickenJoo Inventory — App Status
 
-**Date:** March 7, 2026  
+**Date:** March 9, 2026  
 **Platform:** Flutter (Android / Windows / iOS / macOS / Linux / Web)  
 **Architecture:** Offline-first — Drift (SQLite v8) + Supabase cloud sync  
 
@@ -22,6 +22,7 @@ All 6 implementation phases are complete. The app has been stabilized, secured, 
 | 4 | UI Correctness | ✅ Complete |
 | 5 | Performance and Memory | ✅ Complete (5.4–5.5 require manual DevTools re-profiling) |
 | 6 | Validation and Regression | ✅ Complete (6.2 requires manual device testing) |
+| 7 | Commissary Realtime Live Updates Fix | ✅ Complete |
 
 ---
 
@@ -112,6 +113,25 @@ All 6 implementation phases are complete. The app has been stabilized, secured, 
 - [ ] Idle network traffic is quiet
 - [ ] 401 spam is gone
 - [ ] Memory/query counts are lower than pre-fix baseline
+
+---
+
+---
+
+### Phase 7 — Commissary Realtime Live Updates Fix ✅
+
+**Date:** March 9, 2026
+
+| Task | Description | Result |
+|---|---|---|
+| 7.1 | Removed wrong `attach()` call from `RequestsPageController.loadContext()`. The controller was calling the franchisee `attach()` method with the commissary's cloud ID, creating a Realtime channel filtered on `franchisee_id = commissaryCloudId`. No franchisee request will ever match that filter, so the commissary received zero INSERT events. Removed the realtime call from the controller entirely — `RequestsPage._loadContext()` already correctly owns the service via `attachAsCommissary()`. | ✅ |
+| 7.2 | Eliminated attach race condition in `RequestsPage.initState()`. Both `controller.loadContext()` and `_loadContext()` were fired concurrently unawaited; whichever finished last overwrote the other's subscription on the shared `RealtimeStockRequestService` singleton. Resolved as a side-effect of Task 7.1 — with the controller no longer touching realtime, `_loadContext()` is the sole owner. | ✅ |
+| 7.3 | Fixed polling fallback firing on every cycle. `_pollForUpdates()` triggered a full sync whenever any pending request existed, causing constant churn. Added `_lastKnownPendingCount` and `_lastKnownStatusChangedCount` fields; sync is now only triggered when the count **changes**. Both counters are reset in `_stopListening()`. | ✅ |
+| 7.4 | Removed unused `_lastPollTime` field from `realtime_stock_request_service.dart`. | ✅ |
+
+**Files changed:**
+- `lib/screen/commissary/requests/requests_page_controller.dart` — removed `realtimeStockRequestService.attach()` call
+- `lib/services/realtime_stock_request_service.dart` — added count-tracking fields, fixed polling logic, removed unused field
 
 ---
 
