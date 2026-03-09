@@ -23,6 +23,8 @@ All 6 implementation phases are complete. The app has been stabilized, secured, 
 | 5 | Performance and Memory | ✅ Complete (5.4–5.5 require manual DevTools re-profiling) |
 | 6 | Validation and Regression | ✅ Complete (6.2 requires manual device testing) |
 | 7 | Commissary Realtime Live Updates Fix | ✅ Complete |
+| 8 | Commissary Delete Product Fix | ✅ Complete |
+| 9 | Cloud Cleanup Function for Soft-Deleted Records | ✅ Complete |
 
 ---
 
@@ -132,6 +134,139 @@ All 6 implementation phases are complete. The app has been stabilized, secured, 
 **Files changed:**
 - `lib/screen/commissary/requests/requests_page_controller.dart` — removed `realtimeStockRequestService.attach()` call
 - `lib/services/realtime_stock_request_service.dart` — added count-tracking fields, fixed polling logic, removed unused field
+
+---
+
+### Phase 8 — Commissary Delete Product Fix ✅
+
+**Date:** March 9, 2026
+
+#### Root Causes Fixed
+
+**Bug 1: "Invalid hash format (expected salt$hash)" on delete confirmation**
+
+The commissary login path (`signIn()`) never updated the local password hash after a successful online login. When a user row is pulled from cloud sync, the `password` column gets the placeholder `'!cloud_user_no_local_password'` because the field is intentionally excluded from sync. `verifyPassword()` in `app_database.dart` then failed to parse it, returned `false`, and the delete was blocked.
+
+**Bug 2: Deleted items/stock never reached Supabase cloud**
+
+`shouldSkip: (item) => item.isDeleted` in both `_syncItems()` and `_syncBranchItemStock()` silently swallowed all soft-deletions — deleted records appeared in `getUnsyncedItems()` but were skipped before being pushed, so `is_deleted: true` was never sent to the cloud. Branches and franchisees never received the deletion signal.
+
+**Bug 3: Branch stock rows orphaned on item delete**
+
+When a commissary deleted an item, only the `items` row was soft-deleted. The `branch_item_stock` rows for that item on every franchisee were never touched, leaving orphaned stock records that wasted space and would never clean up.
+
+**Bug 4: `recipe_ingredients.is_deleted` missing on Supabase cloud**
+
+The Dart sync descriptor included `is_deleted` as a field mapping, so pushing a soft-deleted recipe ingredient would fail with a column-not-found error.
+
+**Bug 5: `branch_item_stock.softDelete()` not stamping `lastUpdated`**
+
+The existing soft-delete used `lastUpdated: Value.absent()`, which meant the timestamp was never updated and incremental sync would never detect the change.
+
+#### Tasks
+
+| Task | Description | Result |
+|---|---|---|
+| 8.1 | Fixed `signIn()` (commissary login) to write the local PBKDF2 password hash after every successful online login, same as the franchisee `_onlineSignInToBranch()` path already did. | ✅ |
+| 8.2 | Added `verifyCurrentUserPassword(password)` public method to `SupabaseAuthService`. Tries Supabase Auth re-authentication first (online, no local hash dependency); falls back to local PBKDF2 hash offline. Also opportunistically refreshes the local hash on success. | ✅ |
+| 8.3 | Updated `_performDelete()` in `ProductsTab` to use `authService.verifyCurrentUserPassword()` instead of the direct local-hash check. | ✅ |
+| 8.4 | Fixed `shouldSkip` in `_syncItems()` and `_syncBranchItemStock()`: changed from `shouldSkip: (r) => r.isDeleted` to `shouldSkip: (_) => false` so soft-deleted records are pushed to cloud with `is_deleted: true`. | ✅ |
+| 8.5 | Added `softDeleteByItemId(int itemId)` to `BranchItemStockDao`. Bulk soft-deletes all stock rows for a given item, setting `is_deleted = true`, `is_synced = false`, `last_updated = now()`. | ✅ |
+| 8.6 | Fixed `BranchItemStockDao.softDelete()` to stamp `lastUpdated` (was using `Value.absent()`). | ✅ |
+| 8.7 | Updated `_performDelete()` to cascade the soft-delete in order: item → branch_item_stock (all branches) → recipe_ingredients. All three are then pushed in the subsequent `syncAll()` call. | ✅ |
+| 8.8 | Added `db.branchItemStockDao.cleanupDeleted()` to `_cleanupDeletedRecords()` so hard-cleanup runs for branch stock rows after cloud confirms deletion. | ✅ |
+| 8.9 | Created Supabase migration `019_add_is_deleted_to_recipe_ingredients.sql` to add the missing `is_deleted BOOLEAN DEFAULT FALSE` column and a partial index to the cloud `recipe_ingredients` table. | ✅ |
+
+#### Delete Flow (after fixes)
+
+```
+[Commissary] clicks delete → password verified via Supabase re-auth
+     │
+     ▼  Three cascaded soft-deletes (all at once before sync):
+     │  1. items.is_deleted = true
+     │  2. branch_item_stock.is_deleted = true  (all branches)
+     │  3. recipe_ingredients.is_deleted = true (all recipe rows)
+     │
+     ▼  syncAll() pushes all three tables to Supabase cloud
+[Supabase Cloud DB]
+     │
+     ├─ Realtime event ──────────────────────────┐
+     │                                            │
+     ▼                                            ▼
+[Branch ONLINE]                        [Branch OFFLINE]
+Receives event immediately             Misses event
+→ pulls is_deleted=true                → On reconnect pulls via incremental sync
+→ updates local DB                     → catches up, updates local DB
+→ UI removes item                      → UI removes item
+```
+
+**Files changed:**
+- `lib/services/supabase_auth_service.dart` — `signIn()` hash update, new `verifyCurrentUserPassword()`
+- `lib/screen/commissary/inventory_management/products_tab.dart` — cascade delete, Supabase re-auth
+- `lib/database/daos/branch_item_stock_dao.dart` — `softDeleteByItemId()`, fixed `softDelete()`
+- `lib/services/supabase_sync_service_v2.dart` — `shouldSkip` fixes, `cleanupDeleted` added
+- `supabase/migrations/019_add_is_deleted_to_recipe_ingredients.sql` — **apply to Supabase**
+
+---
+
+### Phase 9 — Cloud Cleanup Function for Soft-Deleted Records ✅
+
+**Date:** March 9, 2026
+
+#### Overview
+
+Added a PostgreSQL `SECURITY DEFINER` function to Supabase that hard-deletes cloud rows that were soft-deleted more than 30 days ago. This prevents indefinite row accumulation in the cloud DB — soft-deleted records that every client has already pulled are permanently removed.
+
+#### Root Cause / Motivation
+
+The Phase 8 cascade-delete flow correctly soft-deletes `items`, `branch_item_stock`, and `recipe_ingredients` on both the local DB and in Supabase. However, those `is_deleted = TRUE` rows were never hard-deleted from the cloud, causing table bloat over time.
+
+#### Tasks
+
+| Task | Description | Result |
+|---|---|---|
+| 9.1 | Created `cleanup_soft_deleted_records(older_than_days INTEGER DEFAULT 30)` PostgreSQL function. Deletes in dependency order: `recipe_ingredients` → `branch_item_stock` (with extra `is_synced = TRUE` guard) → `items`. Returns a summary row with counts of deleted rows per table. | ✅ |
+| 9.2 | Locked down permissions: `REVOKE EXECUTE … FROM PUBLIC`, `GRANT EXECUTE … TO service_role`. Anonymous and authenticated roles cannot invoke the function. | ✅ |
+| 9.3 | Added three partial indexes (`WHERE is_deleted = TRUE`) on `items`, `branch_item_stock`, and `recipe_ingredients` so the cleanup DELETE queries use index scans instead of full table scans. | ✅ |
+| 9.4 | Added commented-out `pg_cron` schedule block (every Sunday 03:00 UTC) ready to activate once the extension is enabled in the Supabase Dashboard. | ✅ |
+
+#### Design Decisions
+
+| Decision | Reason |
+|---|---|
+| Uses `last_updated` as the deletion timestamp proxy | No `deleted_at` column exists on any table. Every soft-delete path stamps `last_updated = NOW()`, making it a reliable proxy. |
+| `is_synced = TRUE` guard on `branch_item_stock` only | `is_synced` only exists in the cloud schema for `branch_item_stock` (migration 008). For `items` and `recipe_ingredients` the 30-day window is the safety gate. |
+| 30-day default window | Covers clients that are offline for up to a month while still providing timely cleanup. Do not reduce below 30 days without adding `is_synced` guards to the other two tables. |
+
+#### Cleanup Flow
+
+```
+pg_cron triggers every Sunday 03:00 UTC (or manual call via service_role)
+     │
+     ▼  cleanup_soft_deleted_records(30)
+     │  cutoff = NOW() - 30 days
+     │
+     ├─ DELETE recipe_ingredients   WHERE is_deleted=TRUE AND last_updated < cutoff
+     ├─ DELETE branch_item_stock    WHERE is_deleted=TRUE AND is_synced=TRUE AND last_updated < cutoff
+     └─ DELETE items                WHERE is_deleted=TRUE AND last_updated < cutoff
+     │
+     ▼  Returns: (deleted_recipe_ingredients, deleted_branch_item_stock, deleted_items)
+```
+
+#### Manual Dry-Run (before scheduling)
+
+```sql
+-- Count rows that would be purged without deleting anything
+SELECT COUNT(*) FROM recipe_ingredients WHERE is_deleted = TRUE AND last_updated < NOW() - INTERVAL '30 days';
+SELECT COUNT(*) FROM branch_item_stock  WHERE is_deleted = TRUE AND is_synced = TRUE AND last_updated < NOW() - INTERVAL '30 days';
+SELECT COUNT(*) FROM items              WHERE is_deleted = TRUE AND last_updated < NOW() - INTERVAL '30 days';
+
+-- Execute cleanup
+SELECT * FROM cleanup_soft_deleted_records();
+```
+
+**Files changed:**
+- `supabase/migrations/020_cleanup_soft_deleted_records.sql` — **apply to Supabase**
 
 ---
 

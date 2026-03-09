@@ -729,6 +729,25 @@ class SupabaseAuthService {
         );
       }
 
+      // Update local password hash so delete/sensitive ops work without
+      // re-checking Supabase (and for offline support).
+      try {
+        final localUser = await _db.usersDao.getUserByEmail(email);
+        if (localUser != null) {
+          final parts = localUser.password.split(r'$');
+          final alreadySecure =
+              parts.length == 2 && parts[0].length == 32 && parts[1].length == 64;
+          if (!alreadySecure) {
+            await _db.usersDao.updatePasswordHash(
+              localUser.id, _hashPassword(password),
+            );
+            _logAuth('Updated local password hash for offline/delete support');
+          }
+        }
+      } catch (e) {
+        _logAuth('Non-critical: failed to update local password hash: $e');
+      }
+
       return AuthResult.success(
         user: authResponse.user,
         localUser: _currentUser,
@@ -1232,6 +1251,58 @@ class SupabaseAuthService {
       result |= storedHash.codeUnitAt(i) ^ expectedFullHash.codeUnitAt(i);
     }
     return result == 0;
+  }
+
+  /// Verify the current user's password for sensitive local operations
+  /// (e.g., confirming a permanent delete).
+  ///
+  /// Strategy:
+  ///   1. Re-authenticate against Supabase Auth (online, preferred — uses
+  ///      Supabase's own bcrypt verification, no local hash dependency).
+  ///   2. Fall back to local PBKDF2 hash when offline.
+  ///
+  /// Returns `true` only when the password is definitively correct.
+  Future<bool> verifyCurrentUserPassword(String password) async {
+    final email = _currentUser?.email;
+    if (email == null) return false;
+
+    // 1. Try Supabase re-auth (online)
+    try {
+      await _supabase.auth.signInWithPassword(email: email, password: password);
+      // Re-auth succeeded — also opportunistically refresh local hash so
+      // future offline checks work.
+      try {
+        final localUser = await _db.usersDao.getUserByEmail(email);
+        if (localUser != null) {
+          final parts = localUser.password.split(r'$');
+          final alreadySecure = parts.length == 2 &&
+              parts[0].length == 32 &&
+              parts[1].length == 64;
+          if (!alreadySecure) {
+            await _db.usersDao.updatePasswordHash(
+              localUser.id, _hashPassword(password),
+            );
+          }
+        }
+      } catch (_) {
+        // Non-critical
+      }
+      return true;
+    } on AuthException {
+      // Wrong password — do NOT fall through; the user typed the wrong thing.
+      return false;
+    } catch (_) {
+      // Network / other transient error — fall through to offline check.
+    }
+
+    // 2. Offline fallback: PBKDF2 local hash
+    try {
+      final localUser = await _db.usersDao.getUserByEmail(email);
+      if (localUser == null) return false;
+      return _verifyPassword(password, localUser.password);
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Update local password hash for offline login support

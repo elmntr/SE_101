@@ -612,7 +612,9 @@ class SupabaseSyncServiceV2 {
       },
       getId: (item) => item.id,
       getCloudId: (item) => item.cloudId,
-      shouldSkip: (item) => item.isDeleted,
+      // Never skip — deleted items must be pushed with is_deleted=true so
+      // branches receive the deletion signal on their next sync.
+      shouldSkip: (_) => false,
     );
 
     await _engine.pullTable(
@@ -762,7 +764,9 @@ class SupabaseSyncServiceV2 {
       },
       getId: (stock) => stock.id,
       getCloudId: (stock) => stock.cloudId,
-      shouldSkip: (stock) => stock.isDeleted,
+      // Never skip — deleted stock rows must be pushed so branches/franchisees
+      // receive the removal on their next sync.
+      shouldSkip: (_) => false,
     );
 
     await _engine.pullTable(
@@ -974,6 +978,7 @@ class SupabaseSyncServiceV2 {
         db.usersDao.cleanupDeletedUsers(),
         db.rolesDao.cleanupDeletedRoles(),
         db.categoriesDao.cleanupDeletedCategories(),
+        db.branchItemStockDao.cleanupDeleted(),
         db.syncConflictsDao.cleanupOldConflicts(days: 30),
       ]);
 

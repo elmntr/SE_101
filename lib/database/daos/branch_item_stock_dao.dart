@@ -462,18 +462,29 @@ class BranchItemStockDao extends DatabaseAccessor<AppDatabase>
   // DELETE OPERATIONS
   // ============================================================================
 
-  /// Soft delete a stock record
+  /// Soft delete a single stock record by its primary key
   Future<bool> softDelete(int id) {
     return (update(branchItemStock)..where((s) => s.id.equals(id)))
-        .write(const BranchItemStockCompanion(
-          isDeleted: Value(true),
-          lastUpdated: Value.absent(),
-          isSynced: Value(false),
+        .write(BranchItemStockCompanion(
+          isDeleted: const Value(true),
+          isSynced: const Value(false),
+          lastUpdated: Value(DateTime.now().toUtc()),
         ))
         .then((rows) => rows > 0);
   }
 
-  /// Hard delete synced soft-deleted records
+  /// Soft delete ALL stock records for a given item (called when commissary
+  /// soft-deletes the master item so branches receive the removal on next sync).
+  Future<int> softDeleteByItemId(int itemId) {
+    return (update(branchItemStock)..where((s) => s.itemId.equals(itemId)))
+        .write(BranchItemStockCompanion(
+          isDeleted: const Value(true),
+          isSynced: const Value(false),
+          lastUpdated: Value(DateTime.now().toUtc()),
+        ));
+  }
+
+  /// Hard delete synced soft-deleted records (called after cloud confirms deletion)
   Future<int> cleanupDeleted() {
     return (delete(branchItemStock)
           ..where((s) => s.isDeleted.equals(true))
