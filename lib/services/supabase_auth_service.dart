@@ -729,24 +729,9 @@ class SupabaseAuthService {
         );
       }
 
-      // Update local password hash so delete/sensitive ops work without
-      // re-checking Supabase (and for offline support).
-      try {
-        final localUser = await _db.usersDao.getUserByEmail(email);
-        if (localUser != null) {
-          final parts = localUser.password.split(r'$');
-          final alreadySecure =
-              parts.length == 2 && parts[0].length == 32 && parts[1].length == 64;
-          if (!alreadySecure) {
-            await _db.usersDao.updatePasswordHash(
-              localUser.id, _hashPassword(password),
-            );
-            _logAuth('Updated local password hash for offline/delete support');
-          }
-        }
-      } catch (e) {
-        _logAuth('Non-critical: failed to update local password hash: $e');
-      }
+      // 3. Update local password hash for offline verification
+      // Ensures features like password-protected deletion work correctly
+      await _updateLocalPasswordAfterLogin(_currentUser!.id, password);
 
       return AuthResult.success(
         user: authResponse.user,
@@ -1345,6 +1330,29 @@ class SupabaseAuthService {
     } catch (e) {
       _logAuth('Failed to update local password for offline: $e');
       // Don't fail the login if this fails - it's not critical
+    }
+  }
+
+  /// Update local password hash after successful online login (commissary flow).
+  /// Ensures the local DB has a proper salt$hash so features like
+  /// password-protected deletion work correctly.
+  Future<void> _updateLocalPasswordAfterLogin(int userId, String password) async {
+    try {
+      final user = await _db.usersDao.getUserById(userId);
+      if (user == null) return;
+
+      // Check if password is already in secure format and matches
+      final parts = user.password.split('\$');
+      if (parts.length == 2 && parts[0].length == 32 && parts[1].length == 64) {
+        if (_verifyPassword(password, user.password)) return;
+      }
+
+      // Hash password in secure format and update local database
+      final secureHash = _hashPassword(password);
+      await _db.usersDao.updatePasswordHash(user.id, secureHash);
+      _logAuth('Updated local password to secure format after online login');
+    } catch (e) {
+      _logAuth('Failed to update local password after login: $e');
     }
   }
 
