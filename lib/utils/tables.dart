@@ -55,6 +55,76 @@ Widget buildUniversalTable({
   bool showHorizontalScrollbar = false,
   ScrollController? horizontalController,
 }) {
+  // When showing scrollbar, we need a shared controller between
+  // Scrollbar and SingleChildScrollView. Use _UniversalTableWrapper
+  // to manage the controller lifecycle if none was provided.
+  if (showHorizontalScrollbar && horizontalController == null) {
+    return _UniversalTableWrapper(
+      headers: headers,
+      rows: rows,
+      smallHeaderWidth: smallHeaderWidth,
+      largeHeaderWidth: largeHeaderWidth,
+    );
+  }
+
+  return _buildTableContent(
+    headers: headers,
+    rows: rows,
+    smallHeaderWidth: smallHeaderWidth,
+    largeHeaderWidth: largeHeaderWidth,
+    showHorizontalScrollbar: showHorizontalScrollbar,
+    horizontalController: horizontalController,
+  );
+}
+
+/// Stateful wrapper that owns a ScrollController for the horizontal scrollbar
+class _UniversalTableWrapper extends StatefulWidget {
+  final List<String> headers;
+  final List<List<dynamic>> rows;
+  final double smallHeaderWidth;
+  final double largeHeaderWidth;
+
+  const _UniversalTableWrapper({
+    required this.headers,
+    required this.rows,
+    required this.smallHeaderWidth,
+    required this.largeHeaderWidth,
+  });
+
+  @override
+  State<_UniversalTableWrapper> createState() => _UniversalTableWrapperState();
+}
+
+class _UniversalTableWrapperState extends State<_UniversalTableWrapper> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _buildTableContent(
+      headers: widget.headers,
+      rows: widget.rows,
+      smallHeaderWidth: widget.smallHeaderWidth,
+      largeHeaderWidth: widget.largeHeaderWidth,
+      showHorizontalScrollbar: true,
+      horizontalController: _controller,
+    );
+  }
+}
+
+Widget _buildTableContent({
+  required List<String> headers,
+  required List<List<dynamic>> rows,
+  required double smallHeaderWidth,
+  required double largeHeaderWidth,
+  bool showHorizontalScrollbar = false,
+  ScrollController? horizontalController,
+}) {
   return LayoutBuilder(
     builder: (context, constraints) {
       final isSmall = constraints.maxWidth < 800;

@@ -113,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(super.executor) : _seedData = false;
 
   @override
-  int get schemaVersion => 7; // v7: Add is_deleted to items/categories/recipe_ingredients/stock_*_requests/branch_item_stock
+  int get schemaVersion => 8; // v8: Deduplicate daily_sales_summary by business key
 
   @override
   MigrationStrategy get migration {
@@ -339,6 +339,41 @@ class AppDatabase extends _$AppDatabase {
           AppLogger.database('v7 migration complete');
         }
 
+        if (from < 8) {
+          // v8: Deduplicate daily_sales_summary by business key
+          // (organization_id, item_id, summary_date) and enforce uniqueness.
+          // The v4 migration only deduped by cloud_id; rows with the same
+          // business key but different (or null) cloud_ids can still exist.
+          AppLogger.database('Deduplicating daily_sales_summary by business key...');
+
+          // Keep the row with the highest last_updated (tie-break by id) for
+          // each (organization_id, item_id, summary_date) group.
+          await customStatement('''
+            DELETE FROM daily_sales_summary
+            WHERE id NOT IN (
+              SELECT id FROM (
+                SELECT id,
+                       ROW_NUMBER() OVER (
+                         PARTITION BY organization_id, item_id, summary_date
+                         ORDER BY last_updated DESC, id DESC
+                       ) AS rn
+                FROM daily_sales_summary
+              )
+              WHERE rn = 1
+            )
+          ''');
+
+          // Now create a unique index on the business key so Drift's
+          // ON CONFLICT(organization_id, item_id, summary_date) works and
+          // no new duplicates can be inserted.
+          await customStatement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS '
+            'idx_daily_sales_bk ON daily_sales_summary(organization_id, item_id, summary_date)',
+          );
+
+          AppLogger.database('v8 migration complete');
+        }
+
         AppLogger.database('Database upgrade complete!');
       },
       beforeOpen: (details) async {
@@ -464,6 +499,14 @@ class AppDatabase extends _$AppDatabase {
     );
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_stock_changes_cloud_id ON stock_change_requests(cloud_id)',
+    );
+
+    // Daily Sales Summary indexes
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_sales_cloud_id ON daily_sales_summary(cloud_id) WHERE cloud_id IS NOT NULL',
+    );
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_sales_bk ON daily_sales_summary(organization_id, item_id, summary_date)',
     );
 
     AppLogger.database('All indexes created');

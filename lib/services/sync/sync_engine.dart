@@ -11,6 +11,16 @@ import '../../utils/app_logger.dart';
 import 'sync_conflict.dart';
 import 'table_sync_descriptor.dart';
 
+/// Exception thrown when a sync operation encounters an authentication error
+/// (e.g. expired JWT). Aborts retries immediately and bubbles up to the
+/// sync orchestrator so the entire sync can be stopped.
+class SyncAuthException implements Exception {
+  final String message;
+  SyncAuthException(this.message);
+  @override
+  String toString() => 'SyncAuthException: $message';
+}
+
 /// Result of a sync operation for a single table
 class TableSyncResult {
   final String tableName;
@@ -92,6 +102,23 @@ class SyncEngine {
   // Last successful sync timestamp
   DateTime? lastSuccessfulSync;
 
+  /// Detect authentication/authorization errors from Supabase.
+  /// Returns true for expired JWTs, invalid tokens, and auth failures.
+  static bool isAuthError(Object error) {
+    if (error is AuthException) return true;
+    if (error is PostgrestException) {
+      final code = error.code;
+      final msg = error.message.toLowerCase();
+      if (code == '401' || code == 'PGRST301') return true;
+      if (msg.contains('jwt expired') ||
+          msg.contains('jwt claims invalid') ||
+          msg.contains('not authenticated') ||
+          msg.contains('invalid claim') ||
+          msg.contains('permission denied')) return true;
+    }
+    return false;
+  }
+
   /// Reset lastSuccessfulSync to force a full pull
   void resetLastSuccessfulSync() {
     lastSuccessfulSync = null;
@@ -153,7 +180,7 @@ class SyncEngine {
     final stopwatch = Stopwatch()..start();
 
     try {
-      // Build caches in parallel for all known tables
+      // Build caches in parallel for all synced tables
       await Future.wait([
         _buildTableCache('organizations', () => db.organizationsDao.getAllOrganizations()),
         _buildTableCache('roles', () => db.rolesDao.getAllRoles()),
@@ -161,6 +188,11 @@ class SyncEngine {
         _buildTableCache('items', () => db.itemsDao.getAllItems()),
         _buildTableCache('ingredients', () => db.ingredientsDao.getAllIngredients()),
         _buildTableCache('recipe_ingredients', () => db.recipeIngredientsDao.getAllRecipeIngredients()),
+        _buildTableCache('branch_item_stock', () => db.branchItemStockDao.getAllBranchItemStocks()),
+        _buildTableCache('branch_ingredient_stock', () => db.branchIngredientStockDao.getAllBranchIngredientStocks()),
+        _buildTableCache('daily_sales_summary', () => db.dailySalesSummaryDao.getAllDailySalesSummaries()),
+        _buildTableCache('stock_replenishment_requests', () => db.stockReplenishmentRequestsDao.getAllRequests()),
+        _buildTableCache('stock_change_requests', () => db.stockChangeRequestsDao.getAllChangeRequests()),
       ]);
 
       stopwatch.stop();
@@ -372,6 +404,11 @@ class SyncEngine {
         // Success - break retry loop
         break;
       } catch (e) {
+        // Auth error — abort immediately, don't retry
+        if (isAuthError(e)) {
+          throw SyncAuthException('${descriptor.tableName} push: $e');
+        }
+
         final errorMsg = 'Push attempt $attempt failed: $e';
         if (kDebugMode) {
           AppLogger.sync('   ⚠️ ${descriptor.tableName}: $errorMsg');
@@ -444,33 +481,34 @@ class SyncEngine {
           AppLogger.sync('   🔍 Pulling ${descriptor.tableName} since: $lastSync');
         }
 
-        // Build query
-        var query = supabase
-            .from(descriptor.cloudTableName)
-            .select()
-            .gte('last_updated', lastSync);
+        // Paginated fetch loop — keep pulling pages until a page returns fewer
+        // than pullLimit rows, which means we've fetched everything.
+        final pageSize = descriptor.pullLimit;
+        int pageOffset = 0;
+        final allResolvedRecords = <Map<String, dynamic>>[];
 
-        // Add organization filter if specified
-        if (descriptor.organizationField != null && _organizationCloudId != null) {
-          // RLS should handle this, but we can be explicit
-        }
+        while (true) {
+          // Build query
+          var query = supabase
+              .from(descriptor.cloudTableName)
+              .select()
+              .gte('last_updated', lastSync);
 
-        final cloudRecords = await query
-            .order('last_updated', ascending: false)
-            .limit(descriptor.pullLimit)
-            .timeout(requestTimeout);
+          // Order ascending by last_updated so pagination doesn't miss records
+          final cloudRecords = await query
+              .order('last_updated', ascending: true)
+              .range(pageOffset, pageOffset + pageSize - 1)
+              .timeout(requestTimeout);
 
-        if (kDebugMode) {
-          AppLogger.sync('   📥 Received ${cloudRecords.length} ${descriptor.tableName} from cloud');
-          if (cloudRecords.isNotEmpty && descriptor.tableName == 'users') {
-            // Debug: show first user record to help diagnose FK issues
-            final firstRecord = cloudRecords.first;
-            AppLogger.sync('   🔎 First user record: cloud_id=${firstRecord['cloud_id']}, org_id=${firstRecord['organization_id']}, role_id=${firstRecord['role_id']}');
+          if (kDebugMode) {
+            AppLogger.sync('   📥 Received ${cloudRecords.length} ${descriptor.tableName} from cloud (page offset=$pageOffset)');
+            if (cloudRecords.isNotEmpty && descriptor.tableName == 'users') {
+              final firstRecord = cloudRecords.first;
+              AppLogger.sync('   🔎 First user record: cloud_id=${firstRecord['cloud_id']}, org_id=${firstRecord['organization_id']}, role_id=${firstRecord['role_id']}');
+            }
           }
-        }
 
-        if (cloudRecords.isNotEmpty) {
-          final resolvedRecords = <Map<String, dynamic>>[];
+          if (cloudRecords.isEmpty) break;
 
           for (final cloudRecord in cloudRecords) {
             // Convert to local format using descriptor
@@ -493,9 +531,13 @@ class SyncEngine {
               // Use business key for conflict detection
               existingRecord = await getByBusinessKey(localData);
             } else {
-              // Use cloud_id for conflict detection (original behavior)
+              // Use cloud_id for conflict detection.
+              // Gate behind the in-memory cache: if the cache has no entry for this
+              // cloud_id the record is definitely not in the local DB (the cache is
+              // built from the DB at startup), so skip the DB round-trip entirely.
+              // This eliminates N individual SELECT queries on initial/empty-DB sync.
               final cloudId = cloudRecord['cloud_id'] as String?;
-              if (cloudId != null) {
+              if (cloudId != null && getLocalId(descriptor.tableName, cloudId) != null) {
                 existingRecord = await getByCloudId(cloudId);
               }
             }
@@ -529,22 +571,31 @@ class SyncEngine {
               }
             }
 
-            resolvedRecords.add(localData);
+            allResolvedRecords.add(localData);
           }
 
-          if (resolvedRecords.isNotEmpty) {
-            // Process in batches
-            for (int i = 0; i < resolvedRecords.length; i += descriptor.pushBatchSize) {
-              final batch = resolvedRecords.skip(i).take(descriptor.pushBatchSize).toList();
-              await upsertBatchFromCloud(batch);
-            }
-            totalPulled = resolvedRecords.length;
+          // If this page was smaller than pageSize, we've fetched all records
+          if (cloudRecords.length < pageSize) break;
+          pageOffset += pageSize;
+        }
+
+        if (allResolvedRecords.isNotEmpty) {
+          // Process in batches
+          for (int i = 0; i < allResolvedRecords.length; i += descriptor.pushBatchSize) {
+            final batch = allResolvedRecords.skip(i).take(descriptor.pushBatchSize).toList();
+            await upsertBatchFromCloud(batch);
           }
+          totalPulled = allResolvedRecords.length;
         }
 
         // Success - break retry loop
         break;
       } catch (e) {
+        // Auth error — abort immediately, don't retry
+        if (isAuthError(e)) {
+          throw SyncAuthException('${descriptor.tableName} pull: $e');
+        }
+
         final errorMsg = 'Pull attempt $attempt failed: $e';
         if (kDebugMode) {
           AppLogger.sync('   ⚠️ ${descriptor.tableName}: $errorMsg');

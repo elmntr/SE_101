@@ -55,7 +55,11 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// ✅ Count organizations
-  Future<int> getOrganizationCount({String? type, bool? isActive}) async {
+  Future<int> getOrganizationCount({
+    String? type,
+    bool? isActive,
+    int? parentCommissaryId,
+  }) async {
     try {
       final query = selectOnly(organizations)
         ..addColumns([organizations.id.count()]);
@@ -66,6 +70,12 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
 
       if (isActive != null) {
         query.where(organizations.isActive.equals(isActive));
+      }
+
+      if (parentCommissaryId != null) {
+        query.where(
+          organizations.parentCommissaryId.equals(parentCommissaryId),
+        );
       }
 
       final result = await query.getSingle();
@@ -478,12 +488,27 @@ class OrganizationsDao extends DatabaseAccessor<AppDatabase>
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudOrganizations,
   ) async {
+    if (cloudOrganizations.isEmpty) return;
     try {
+      // Pre-fetch existing cloudId → local id in one query to avoid N SELECTs
+      final existingMap = <String, int>{};
+      final existingRows = await (selectOnly(organizations)
+            ..addColumns([organizations.id, organizations.cloudId]))
+          .get();
+      for (final row in existingRows) {
+        final cid = row.read(organizations.cloudId);
+        final lid = row.read(organizations.id);
+        if (cid != null && lid != null) existingMap[cid] = lid;
+      }
+
       await db.transaction(() async {
         for (final cloudOrg in cloudOrganizations) {
+          final orgCloudId =
+              (cloudOrg['cloudId'] ?? cloudOrg['cloud_id'] ?? '').toString();
           // Support both camelCase (from toLocalFormat) and snake_case (legacy) keys
           await upsertFromCloud(
-            id: cloudOrg['local_id'] ?? cloudOrg['localId'] ?? 0,
+            // Pass pre-resolved id so upsertFromCloud skips the SELECT
+            id: existingMap[orgCloudId] ?? cloudOrg['local_id'] ?? cloudOrg['localId'] ?? 0,
             name: cloudOrg['name'] ?? 'Unknown Organization',
             type: cloudOrg['type'] ?? 'commissary',
             parentCommissaryId:

@@ -474,7 +474,27 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudRequests,
   ) async {
+    if (cloudRequests.isEmpty) return;
     try {
+      // Pre-fetch existing cloudId → (id, status) in one query to avoid N SELECTs
+      // The approval guard needs both the local id and the previous status.
+      final existingMap = <String, ({int id, String status})>{};
+      final existingRows = await (selectOnly(stockReplenishmentRequests)
+            ..addColumns([
+              stockReplenishmentRequests.id,
+              stockReplenishmentRequests.cloudId,
+              stockReplenishmentRequests.status,
+            ]))
+          .get();
+      for (final row in existingRows) {
+        final cid = row.read(stockReplenishmentRequests.cloudId);
+        final lid = row.read(stockReplenishmentRequests.id);
+        final st = row.read(stockReplenishmentRequests.status);
+        if (cid != null && lid != null && st != null) {
+          existingMap[cid] = (id: lid, status: st);
+        }
+      }
+
       await db.transaction(() async {
         for (final cloudReq in cloudRequests) {
           // Support both camelCase (from toLocalFormat) and snake_case (raw cloud) keys
@@ -489,19 +509,19 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
               cloudReq['quantity_requested'] ??
               0;
 
-          // First, check if we already have this record locally by cloud_id
-          final existing = cloudId.isNotEmpty
-              ? await getRequestByCloudId(cloudId)
+          // Use pre-fetched map to avoid a DB round-trip per record
+          final existingEntry = cloudId.isNotEmpty
+              ? existingMap[cloudId]
               : null;
-          final localId = existing?.id;
-          final previousStatus = existing?.status;
+          final localId = existingEntry?.id;
+          final previousStatus = existingEntry?.status;
 
           AppLogger.sync(
             'Processing cloud request: cloudId=$cloudId, cloudStatus=$cloudStatus',
           );
-          if (existing != null) {
+          if (existingEntry != null) {
             AppLogger.sync(
-              '   Found local record #${existing.id}, localStatus=${existing.status}',
+              '   Found local record #${existingEntry.id}, localStatus=${existingEntry.status}',
             );
           } else {
             AppLogger.sync('   No local record found, will insert new');
@@ -518,7 +538,7 @@ class StockReplenishmentRequestsDao extends DatabaseAccessor<AppDatabase>
           // - On re-sync of already-approved request, previousStatus == 'approved' → guard blocks.
           final isNewlyApproved =
               cloudStatus == 'approved' &&
-              existing != null &&
+              existingEntry != null &&
               previousStatus != 'approved';
 
           if (isNewlyApproved) {

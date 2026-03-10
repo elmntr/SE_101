@@ -17,9 +17,21 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
   // CRUD OPERATIONS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /// Insert or update a daily sales summary
+  /// Insert or update a daily sales summary.
+  /// Conflicts are resolved on the business key (organizationId, itemId, summaryDate)
+  /// so that repeated calls update the existing row rather than throwing.
   Future<int> upsertDailySummary(DailySalesSummaryCompanion summary) async {
-    return into(dailySalesSummary).insertOnConflictUpdate(summary);
+    return into(dailySalesSummary).insert(
+      summary,
+      onConflict: DoUpdate(
+        (old) => summary,
+        target: [
+          dailySalesSummary.organizationId,
+          dailySalesSummary.itemId,
+          dailySalesSummary.summaryDate,
+        ],
+      ),
+    );
   }
 
   /// Get summary for a specific item on a specific date for a branch
@@ -263,6 +275,11 @@ class DailySalesSummaryDao extends DatabaseAccessor<AppDatabase>
   // ═══════════════════════════════════════════════════════════════════════════
   // SYNC OPERATIONS
   // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Get all records for UUID cache building
+  Future<List<DailySalesSummaryData>> getAllDailySalesSummaries() {
+    return select(dailySalesSummary).get();
+  }
 
   /// Get unsynced summaries
   Future<List<DailySalesSummaryData>> getUnsyncedSummaries({

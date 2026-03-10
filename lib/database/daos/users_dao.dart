@@ -547,14 +547,28 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
   Future<void> upsertBatchFromCloud(
     List<Map<String, dynamic>> cloudUsers,
   ) async {
+    if (cloudUsers.isEmpty) return;
     try {
+      // Pre-fetch existing email → local id in one query to avoid N SELECTs
+      final existingMap = <String, int>{};
+      final existingRows = await (selectOnly(users)
+            ..addColumns([users.id, users.email]))
+          .get();
+      for (final row in existingRows) {
+        final em = row.read(users.email);
+        final lid = row.read(users.id);
+        if (em != null && lid != null) existingMap[em] = lid;
+      }
+
       await db.transaction(() async {
         for (final cloudUser in cloudUsers) {
+          final userEmail =
+              (cloudUser['email'] ?? 'unknown@example.com') as String;
           await upsertFromCloud(
             id: cloudUser['localId'] ?? cloudUser['local_id'] ?? 0,
-            email: cloudUser['email'] ?? 'unknown@example.com',
+            email: userEmail,
+            existingId: existingMap[userEmail],
             username: cloudUser['username'] ?? 'Unknown User',
-            password: cloudUser['password'] ?? '',
             phone: cloudUser['phone'],
             organizationId:
                 cloudUser['organizationId'] ??
@@ -587,12 +601,13 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     return DateTime.now();
   }
 
-  /// ✅ FIXED: Upsert from cloud with better error handling (check for existing user first)
+  /// Upsert from cloud — password is never overwritten from cloud data.
+  /// Existing users keep their local password hash; new users get a
+  /// placeholder that must be set locally before offline login works.
   Future<void> upsertFromCloud({
     required int id,
     required String email,
     required String username,
-    required String password,
     String? phone,
     required int organizationId,
     required int roleId,
@@ -601,17 +616,19 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
     required DateTime createdAt,
     required DateTime lastUpdated,
     required String cloudId,
+    // Batch hint — when provided by upsertBatchFromCloud, skips the DB lookup
+    int? existingId,
   }) async {
     try {
-      // ✅ First, try to find existing user by email
-      final existingUser = await getUserByEmail(email);
+      // Find existing user by email (skip DB query if hint is provided)
+      final resolvedId = existingId ?? (await getUserByEmail(email))?.id;
 
-      if (existingUser != null) {
-        // ✅ Update existing user instead of inserting
-        await (update(users)..where((t) => t.id.equals(existingUser.id))).write(
+      if (resolvedId != null) {
+        // Update existing user — preserve local password hash
+        await (update(users)..where((t) => t.id.equals(resolvedId))).write(
           UsersCompanion(
             username: Value(username),
-            password: Value(password),
+            // password intentionally omitted — local-only
             phone: Value(phone),
             organizationId: Value(organizationId),
             roleId: Value(roleId),
@@ -623,12 +640,13 @@ class UsersDao extends DatabaseAccessor<AppDatabase> with _$UsersDaoMixin {
           ),
         );
       } else {
-        // ✅ Insert new user
+        // New user from cloud — use placeholder password.
+        // Real password must be set locally (e.g. during first login).
         await into(users).insert(
           UsersCompanion.insert(
             email: email,
             username: username,
-            password: password,
+            password: '!cloud_user_no_local_password',
             phone: Value(phone),
             organizationId: organizationId,
             roleId: roleId,

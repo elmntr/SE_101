@@ -153,6 +153,7 @@ class SupabaseAuthService {
   // Current session state
   UserData? _currentUser;
   StreamController<UserData?>? _authStateController;
+  StreamSubscription<AuthState>? _authListenerSubscription;
   
   // Auth lifecycle state
   AuthLifecycleState _lifecycleState = AuthLifecycleState.bootstrapping;
@@ -189,7 +190,7 @@ class SupabaseAuthService {
 
   /// Initialize auth state listener
   void _initAuthListener() {
-    _supabase.auth.onAuthStateChange.listen((data) async {
+    _authListenerSubscription = _supabase.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
       final session = data.session;
 
@@ -347,12 +348,13 @@ class SupabaseAuthService {
     try {
       final users = await _db.usersDao.getAllUsers();
 
-      // Priority 1: Match by cloudId (Supabase auth user ID) first
+      // Priority 1: Match by cloudId — handles both legacy (auth UID stored
+      // as cloudId) and new (actual users.cloud_id) paths.
       for (final user in users) {
         if (!user.isActive) continue;
 
         if (user.cloudId != null && user.cloudId == authUser.id) {
-          _logAuth('Found user by cloudId: ${user.username}');
+          _logAuth('Found user by cloudId (auth UID match): ${user.username}');
           return await _buildUserData(user, authUser);
         }
       }
@@ -476,11 +478,58 @@ class SupabaseAuthService {
 
       _logAuth('Seeding org/role/user to local DB...');
 
-      // Upsert organization
+      // Resolve parentCommissaryId: for franchisee orgs the cloud record holds
+      // parent_commissary_id as a UUID.  We need the *local* integer ID so
+      // _loadCommissaryId() in the products view can navigate up to the parent.
+      final parentCloudId = orgResponse['parent_commissary_id'] as String?;
+      int? parentLocalId;
+      if (parentCloudId != null) {
+        // Check local DB first
+        var parentOrg = await _db.organizationsDao.getOrganizationByCloudId(parentCloudId);
+
+        // If not in local DB yet, fetch it from cloud and seed it
+        if (parentOrg == null) {
+          _logAuth('Parent commissary not in local DB, fetching from cloud: $parentCloudId');
+          final parentResponse = await _supabase
+              .from('organizations')
+              .select()
+              .eq('cloud_id', parentCloudId)
+              .maybeSingle();
+
+          if (parentResponse != null) {
+            await _db.organizationsDao.upsertFromCloud(
+              id: (parentResponse['local_id'] as int?) ?? 0,
+              name: parentResponse['name'] as String,
+              type: parentResponse['type'] as String,
+              parentCommissaryId: null,
+              contactPerson: parentResponse['contact_person'] as String?,
+              phone: parentResponse['phone'] as String?,
+              email: parentResponse['email'] as String?,
+              address: parentResponse['address'] as String?,
+              isActive: (parentResponse['is_active'] as bool?) ?? true,
+              createdAt: parseTs(parentResponse['created_at']),
+              lastUpdated: parseTs(parentResponse['last_updated']),
+              cloudId: parentCloudId,
+              hqAccessCodeHash: parentResponse['hq_access_code_hash'] as String?,
+            );
+            parentOrg = await _db.organizationsDao.getOrganizationByCloudId(parentCloudId);
+          }
+        }
+
+        parentLocalId = parentOrg?.id;
+        if (parentLocalId != null) {
+          _logAuth('Resolved parent commissary local ID: $parentLocalId');
+        } else {
+          _logAuth('⚠️ Could not resolve parent commissary for cloud_id: $parentCloudId');
+        }
+      }
+
+      // Upsert organization (with resolved parentCommissaryId)
       await _db.organizationsDao.upsertFromCloud(
         id: (orgResponse['local_id'] as int?) ?? 0,
         name: orgResponse['name'] as String,
         type: orgResponse['type'] as String,
+        parentCommissaryId: parentLocalId,
         contactPerson: orgResponse['contact_person'] as String?,
         phone: orgResponse['phone'] as String?,
         email: orgResponse['email'] as String?,
@@ -522,12 +571,14 @@ class SupabaseAuthService {
         return null;
       }
 
-      // Upsert user (store authUser.id as cloudId so future lookups by cloudId work)
+      // Upsert user — store the actual Supabase users.cloud_id (not the auth
+      // UID) so that the sync engine's UUID cache maps correctly and
+      // subsequent user pulls don't create duplicates.
+      final userCloudId = userResponse['cloud_id'] as String;
       await _db.usersDao.upsertFromCloud(
         id: (userResponse['local_id'] as int?) ?? 0,
         email: userResponse['email'] as String,
         username: userResponse['username'] as String,
-        password: userResponse['password'] as String,
         phone: userResponse['phone'] as String?,
         organizationId: localOrg.id,
         roleId: localRole.id,
@@ -535,7 +586,7 @@ class SupabaseAuthService {
         isActive: (userResponse['is_active'] as bool?) ?? true,
         createdAt: parseTs(userResponse['created_at']),
         lastUpdated: parseTs(userResponse['last_updated']),
-        cloudId: authUser.id, // auth UID stored as cloudId for future matching
+        cloudId: userCloudId,
       );
 
       final localUser = await _db.usersDao.getUserByEmail(userResponse['email'] as String);
@@ -677,6 +728,10 @@ class SupabaseAuthService {
           'latest database migration (011_fix_auth_bootstrap.sql).',
         );
       }
+
+      // 3. Update local password hash for offline verification
+      // Ensures features like password-protected deletion work correctly
+      await _updateLocalPasswordAfterLogin(_currentUser!.id, password);
 
       return AuthResult.success(
         user: authResponse.user,
@@ -1183,6 +1238,58 @@ class SupabaseAuthService {
     return result == 0;
   }
 
+  /// Verify the current user's password for sensitive local operations
+  /// (e.g., confirming a permanent delete).
+  ///
+  /// Strategy:
+  ///   1. Re-authenticate against Supabase Auth (online, preferred — uses
+  ///      Supabase's own bcrypt verification, no local hash dependency).
+  ///   2. Fall back to local PBKDF2 hash when offline.
+  ///
+  /// Returns `true` only when the password is definitively correct.
+  Future<bool> verifyCurrentUserPassword(String password) async {
+    final email = _currentUser?.email;
+    if (email == null) return false;
+
+    // 1. Try Supabase re-auth (online)
+    try {
+      await _supabase.auth.signInWithPassword(email: email, password: password);
+      // Re-auth succeeded — also opportunistically refresh local hash so
+      // future offline checks work.
+      try {
+        final localUser = await _db.usersDao.getUserByEmail(email);
+        if (localUser != null) {
+          final parts = localUser.password.split(r'$');
+          final alreadySecure = parts.length == 2 &&
+              parts[0].length == 32 &&
+              parts[1].length == 64;
+          if (!alreadySecure) {
+            await _db.usersDao.updatePasswordHash(
+              localUser.id, _hashPassword(password),
+            );
+          }
+        }
+      } catch (_) {
+        // Non-critical
+      }
+      return true;
+    } on AuthException {
+      // Wrong password — do NOT fall through; the user typed the wrong thing.
+      return false;
+    } catch (_) {
+      // Network / other transient error — fall through to offline check.
+    }
+
+    // 2. Offline fallback: PBKDF2 local hash
+    try {
+      final localUser = await _db.usersDao.getUserByEmail(email);
+      if (localUser == null) return false;
+      return _verifyPassword(password, localUser.password);
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Update local password hash for offline login support
   /// Called after successful online login to ensure secure password format
   Future<void> _updateLocalPasswordForOffline(
@@ -1223,6 +1330,29 @@ class SupabaseAuthService {
     } catch (e) {
       _logAuth('Failed to update local password for offline: $e');
       // Don't fail the login if this fails - it's not critical
+    }
+  }
+
+  /// Update local password hash after successful online login (commissary flow).
+  /// Ensures the local DB has a proper salt$hash so features like
+  /// password-protected deletion work correctly.
+  Future<void> _updateLocalPasswordAfterLogin(int userId, String password) async {
+    try {
+      final user = await _db.usersDao.getUserById(userId);
+      if (user == null) return;
+
+      // Check if password is already in secure format and matches
+      final parts = user.password.split('\$');
+      if (parts.length == 2 && parts[0].length == 32 && parts[1].length == 64) {
+        if (_verifyPassword(password, user.password)) return;
+      }
+
+      // Hash password in secure format and update local database
+      final secureHash = _hashPassword(password);
+      await _db.usersDao.updatePasswordHash(user.id, secureHash);
+      _logAuth('Updated local password to secure format after online login');
+    } catch (e) {
+      _logAuth('Failed to update local password after login: $e');
     }
   }
 
@@ -1810,8 +1940,51 @@ class SupabaseAuthService {
     }
   }
 
+  /// Reload current user from database (e.g., after profile updates)
+  Future<bool> reloadCurrentUser() async {
+    try {
+      final authUser = _supabase.auth.currentUser;
+      if (authUser == null) {
+        _logAuth('Cannot reload user - no authenticated Supabase user');
+        return false;
+      }
+
+      await _loadCurrentUser(authUser);
+      _logAuth('User reloaded: ${_currentUser?.username ?? "null"}');
+      return _currentUser != null;
+    } catch (e) {
+      _logAuth('Error reloading user: $e');
+      return false;
+    }
+  }
+
+  /// Update Supabase Auth user email via Edge Function (bypasses email validation restrictions)
+  Future<Map<String, dynamic>> updateAuthUserEmail(String userId, String newEmail) async {
+    try {
+      final response = await _supabase.functions.invoke(
+        'update-user-email',
+        body: {
+          'user_id': userId,
+          'new_email': newEmail,
+        },
+      );
+
+      if (response.status == 200) {
+        final data = response.data as Map<String, dynamic>;
+        return {'success': true, 'email': data['email'] ?? newEmail};
+      } else {
+        final data = response.data as Map<String, dynamic>?;
+        final error = data?['error'] ?? 'Unknown error (status ${response.status})';
+        return {'success': false, 'error': error};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Edge Function call failed: $e'};
+    }
+  }
+
   /// Dispose resources
   void dispose() {
+    _authListenerSubscription?.cancel();
     _authStateController?.close();
     _lifecycleController.close();
   }

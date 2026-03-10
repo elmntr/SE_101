@@ -301,14 +301,10 @@ class _ProductsTabState extends State<ProductsTab> {
         throw Exception('No user logged in');
       }
 
-      // Get user from database to verify password
-      final user = await database.usersDao.getUserById(currentUser.id);
-      if (user == null) {
-        throw Exception('User not found');
-      }
-
-      // Verify password
-      if (!verifyPassword(password, user.password)) {
+      // Verify password via Supabase re-auth (online) or local PBKDF2 hash
+      // (offline fallback). This replaces the older local-hash-only check that
+      // broke when the local hash was the cloud-sync placeholder value.
+      if (!await authService.verifyCurrentUserPassword(password)) {
         if (mounted) {
           ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -321,10 +317,19 @@ class _ProductsTabState extends State<ProductsTab> {
         return;
       }
 
-      // Soft delete locally to avoid FK issues and allow sync
+      // 1. Soft-delete the master item
       await database.itemsDao.softDeleteItem(item.id);
 
-      // Best-effort sync to push deactivation to cloud
+      // 2. Cascade: soft-delete all branch stock rows for this item so that
+      //    franchisees receive the removal on their next sync (online branches
+      //    get it instantly via Realtime; offline branches catch up on reconnect).
+      await database.branchItemStockDao.softDeleteByItemId(item.id);
+
+      // 3. Cascade: soft-delete recipe ingredients (they reference the item
+      //    and would become orphaned after the item is gone).
+      await database.recipeIngredientsDao.deleteAllForItem(item.id);
+
+      // Best-effort sync to push all three deletions to cloud immediately
       try {
         await syncService.syncAll();
       } catch (e) {

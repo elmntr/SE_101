@@ -624,6 +624,7 @@ class RequestsPageMobile extends StatelessWidget {
                 rows: rowSnapshot.data!,
                 smallHeaderWidth: 80,
                 largeHeaderWidth: 100,
+                showHorizontalScrollbar: true,
             );
           },
         );

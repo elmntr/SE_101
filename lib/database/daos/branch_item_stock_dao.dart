@@ -146,11 +146,16 @@ class BranchItemStockDao extends DatabaseAccessor<AppDatabase>
         .getSingleOrNull();
   }
 
-  /// Get all stock records (for sync)
+  /// Get all stock records (for sync, excludes soft-deleted)
   Future<List<BranchItemStockData>> getAllStock() {
     return (select(branchItemStock)
           ..where((s) => s.isDeleted.equals(false)))
         .get();
+  }
+
+  /// Get all stock records including soft-deleted (for UUID cache building)
+  Future<List<BranchItemStockData>> getAllBranchItemStocks() {
+    return select(branchItemStock).get();
   }
 
   /// Get unsynced stock records
@@ -178,6 +183,29 @@ class BranchItemStockDao extends DatabaseAccessor<AppDatabase>
       variables: [Variable.withInt(orgId)],
       readsFrom: {branchItemStock},
     ).map((row) => branchItemStock.map(row.data)).get();
+  }
+
+  /// Count low stock items across all franchisees belonging to a commissary
+  Future<int> getLowStockCountForCommissary(int commissaryId) async {
+    try {
+      final result = await customSelect(
+        '''
+        SELECT COUNT(*) AS cnt
+        FROM branch_item_stock bis
+        INNER JOIN organizations o ON bis.organization_id = o.id
+        WHERE o.parent_commissary_id = ?
+          AND o.is_active = 1
+          AND bis.is_deleted = 0
+          AND bis.minimum_stock IS NOT NULL
+          AND bis.stock <= bis.minimum_stock
+        ''',
+        variables: [Variable.withInt(commissaryId)],
+        readsFrom: {branchItemStock},
+      ).getSingle();
+      return (result.data['cnt'] as int?) ?? 0;
+    } catch (e) {
+      return 0;
+    }
   }
 
   /// Watch stock changes for a branch (reactive)
@@ -330,25 +358,29 @@ class BranchItemStockDao extends DatabaseAccessor<AppDatabase>
 
   /// Upsert from cloud (for sync)
   /// Supports both camelCase (from toLocalFormat) and snake_case keys
-  Future<void> upsertFromCloud(Map<String, dynamic> data) async {
+  Future<void> upsertFromCloud(Map<String, dynamic> data, {int? existingId}) async {
     final cloudId = (data['cloudId'] ?? data['cloud_id']) as String;
-
-    // Check if exists by cloud_id first
-    var existing = await (select(branchItemStock)
-          ..where((s) => s.cloudId.equals(cloudId)))
-        .getSingleOrNull();
-
     final organizationId = data['organizationId'] ?? data['organization_id'];
     final itemId = data['itemId'] ?? data['item_id'];
 
-    // If not found by cloudId, try business key (organizationId, itemId)
-    // This handles records created locally before sync assigned a cloudId
-    if (existing == null && organizationId != null && itemId != null) {
-      existing = await (select(branchItemStock)
-            ..where((s) => s.organizationId.equals(organizationId as int))
-            ..where((s) => s.itemId.equals(itemId as int))
-            ..where((s) => s.isDeleted.equals(false)))
+    // Use pre-fetched hint if available; otherwise query by cloudId then business key
+    int? resolvedId = existingId;
+    if (resolvedId == null) {
+      // Check if exists by cloud_id first
+      var existing = await (select(branchItemStock)
+            ..where((s) => s.cloudId.equals(cloudId)))
           .getSingleOrNull();
+
+      // If not found by cloudId, try business key (organizationId, itemId)
+      // This handles records created locally before sync assigned a cloudId
+      if (existing == null && organizationId != null && itemId != null) {
+        existing = await (select(branchItemStock)
+              ..where((s) => s.organizationId.equals(organizationId as int))
+              ..where((s) => s.itemId.equals(itemId as int))
+              ..where((s) => s.isDeleted.equals(false)))
+            .getSingleOrNull();
+      }
+      resolvedId = existing?.id;
     }
 
     final stockVal = data['stock'];
@@ -379,9 +411,9 @@ class BranchItemStockDao extends DatabaseAccessor<AppDatabase>
       cloudId: Value(cloudId),
     );
 
-    if (existing != null) {
-      final existingId = existing.id;
-      await (update(branchItemStock)..where((s) => s.id.equals(existingId)))
+    if (resolvedId != null) {
+      final eid = resolvedId;
+      await (update(branchItemStock)..where((s) => s.id.equals(eid)))
           .write(companion);
     } else {
       await into(branchItemStock).insert(companion);
@@ -390,9 +422,38 @@ class BranchItemStockDao extends DatabaseAccessor<AppDatabase>
 
   /// Batch upsert from cloud
   Future<void> upsertBatchFromCloud(List<Map<String, dynamic>> dataList) async {
+    if (dataList.isEmpty) return;
+    // Pre-fetch existing records by cloudId and business key in one query
+    final byCloudId = <String, int>{};
+    final byBusinessKey = <(int, int), int>{};
+    final existingRows = await (selectOnly(branchItemStock)
+          ..addColumns([
+            branchItemStock.id,
+            branchItemStock.cloudId,
+            branchItemStock.organizationId,
+            branchItemStock.itemId,
+          ]))
+        .get();
+    for (final row in existingRows) {
+      final lid = row.read(branchItemStock.id);
+      if (lid == null) continue;
+      final cid = row.read(branchItemStock.cloudId);
+      if (cid != null) byCloudId[cid] = lid;
+      final orgId = row.read(branchItemStock.organizationId);
+      final itmId = row.read(branchItemStock.itemId);
+      if (orgId != null && itmId != null) byBusinessKey[(orgId, itmId)] = lid;
+    }
+
     await batch((b) async {
       for (final data in dataList) {
-        await upsertFromCloud(data);
+        final cloudId_ = (data['cloudId'] ?? data['cloud_id'])?.toString();
+        final orgId = data['organizationId'] ?? data['organization_id'];
+        final itmId = data['itemId'] ?? data['item_id'];
+        final existingId = (cloudId_ != null ? byCloudId[cloudId_] : null) ??
+            (orgId != null && itmId != null
+                ? byBusinessKey[(orgId as int, itmId as int)]
+                : null);
+        await upsertFromCloud(data, existingId: existingId);
       }
     });
   }
@@ -401,18 +462,29 @@ class BranchItemStockDao extends DatabaseAccessor<AppDatabase>
   // DELETE OPERATIONS
   // ============================================================================
 
-  /// Soft delete a stock record
+  /// Soft delete a single stock record by its primary key
   Future<bool> softDelete(int id) {
     return (update(branchItemStock)..where((s) => s.id.equals(id)))
-        .write(const BranchItemStockCompanion(
-          isDeleted: Value(true),
-          lastUpdated: Value.absent(),
-          isSynced: Value(false),
+        .write(BranchItemStockCompanion(
+          isDeleted: const Value(true),
+          isSynced: const Value(false),
+          lastUpdated: Value(DateTime.now().toUtc()),
         ))
         .then((rows) => rows > 0);
   }
 
-  /// Hard delete synced soft-deleted records
+  /// Soft delete ALL stock records for a given item (called when commissary
+  /// soft-deletes the master item so branches receive the removal on next sync).
+  Future<int> softDeleteByItemId(int itemId) {
+    return (update(branchItemStock)..where((s) => s.itemId.equals(itemId)))
+        .write(BranchItemStockCompanion(
+          isDeleted: const Value(true),
+          isSynced: const Value(false),
+          lastUpdated: Value(DateTime.now().toUtc()),
+        ));
+  }
+
+  /// Hard delete synced soft-deleted records (called after cloud confirms deletion)
   Future<int> cleanupDeleted() {
     return (delete(branchItemStock)
           ..where((s) => s.isDeleted.equals(true))

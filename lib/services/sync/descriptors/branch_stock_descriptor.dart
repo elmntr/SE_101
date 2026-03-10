@@ -55,11 +55,14 @@ final branchItemStockDescriptor = TableSyncDescriptor(
   organizationField: 'organization_id',
   softDeleteField: 'is_deleted',
   
-  // Only franchisee devices push their own stock.
-  // Commissary must NOT push branch_item_stock — it doesn't own those rows
-  // and Supabase RLS will reject any insert/update under a franchisee org_id
-  // made with a commissary JWT (error 42501).
-  canPush: (orgType) => orgType == 'franchisee',
+  // Both franchisees AND commissary push branch_item_stock.
+  // Franchisees push their own stock changes (sales, spoilage, manual edits).
+  // Commissary pushes stock records it creates when approving replenishment
+  // requests (the credited stock row is created on the commissary device).
+  //
+  // RLS (migration 017) already permits commissary INSERT/UPDATE for
+  // franchisees in their network, so this is safe.
+  canPush: (orgType) => true,
   
   foreignKeys: [
     ForeignKeyMapping(
